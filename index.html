@@ -28,7 +28,7 @@
         <script type="importmap">
             { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
         </script>
-      <script type="module" crossorigin src="./assets/index-DA0ITt0g.js"></script>
+      <script type="module" crossorigin src="./assets/index-BSxSrjT-.js"></script>
       <link rel="stylesheet" crossorigin href="./assets/index-CSKBSrUN.css">
     </head>
     <body>
@@ -147,7 +147,15 @@
                             {{ strings.emptyStates.firstRun.heading }}
                         </p>
                         <div class="empty-state__actions">
-                            <button type="button" class="btn" disabled>
+                            <!-- Feature 03.7.10 proof: wired to the real WebFileAdapter.pickFile()
+                                 through the platform accessor; TODO(phase-07) replaces this with
+                                 the real M3U import flow (parsing, worker handoff, source creation). -->
+                            <button
+                                type="button"
+                                class="btn"
+                                data-action="click"
+                                data-fn="pickM3uFile"
+                            >
                                 {{ strings.emptyStates.firstRun.file }}
                             </button>
                             <button type="button" class="btn" disabled>
@@ -160,7 +168,24 @@
                                 {{ strings.emptyStates.firstRun.xtream }}
                             </button>
                         </div>
+                        <!-- TODO(phase-07): temporary proof of Feature 03.7.10; removed once
+                             the real import flow renders picked files itself. -->
+                        <p
+                            class="empty-state__note"
+                            data-if="sources.lastPickedLabel"
+                            data-testid="picked-file-note"
+                        >
+                            {{ sources.lastPickedLabel }}
+                        </p>
                         <p class="empty-state__note">{{ strings.emptyStates.firstRun.note }}</p>
+                        <!-- Feature 03.2.10: first real capabilities consumer. -->
+                        <p
+                            class="empty-state__note empty-state__note--cors"
+                            data-if="!platform.capabilities.corsUnrestricted"
+                            data-testid="cors-hint"
+                        >
+                            {{ strings.emptyStates.firstRun.corsHint }}
+                        </p>
                     </div>
                     <!--
                       Feature 02.8.5 density demo: proves --row-h/--row-pad-x/
