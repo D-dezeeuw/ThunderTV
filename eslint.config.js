@@ -26,6 +26,18 @@ const noInputElementSyntaxSelector = {
         'Dynamic <input> elements (file pickers) must be created inside src/core/platform/ via WebFileAdapter — see Feature 03.7.8.',
 };
 
+// Feature 05.2.5: every Spektrum state mutation goes through an action or
+// init function that lives beside its owning key in src/state/, not a bare
+// setValue() call scattered across the app. Written as a plain identifier
+// match (like noInputElementSyntaxSelector above) rather than tracing the
+// import back to 'spektrum' — consistent with this file's existing style,
+// and nothing else in the codebase is named setValue.
+const noBareSetValueSyntaxSelector = {
+    selector: "CallExpression[callee.name='setValue']",
+    message:
+        'setValue() belongs inside src/state/, next to the key it owns — see Feature 05.2.5. Add or extend an action/init function there instead.',
+};
+
 export default tseslint.config(
     {
         ignores: ['dist/**', 'node_modules/**', 'public/vendor/**'],
@@ -155,6 +167,30 @@ export default tseslint.config(
                 },
             ],
             'no-restricted-syntax': ['error', noTransitionSyntaxSelector, noInputElementSyntaxSelector],
+        },
+    },
+    {
+        // Feature 05.2.5: setValue() ownership fence — every Spektrum state
+        // mutation goes through src/state/, next to the KEY_REGISTRY entry
+        // it owns, instead of a bare setValue() call scattered across the
+        // app. Two sanctioned exceptions: src/app/router.ts (the sole
+        // writer of ui.activeView, Feature 02.4.3) and *.spec.ts files
+        // (arrange-phase state setup in tests — the same leniency the spec
+        // block below already gives other platform fences). src/core/**
+        // stays exempted for the same reason as the platform-API fence
+        // above. Re-includes noTransitionSyntaxSelector/
+        // noInputElementSyntaxSelector since flat config replaces (never
+        // merges) a rule's value across matching blocks — see this file's
+        // header comment.
+        files: ['src/**/*.ts'],
+        ignores: ['src/core/**', 'src/state/**', 'src/app/router.ts', 'src/**/*.spec.ts'],
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                noTransitionSyntaxSelector,
+                noInputElementSyntaxSelector,
+                noBareSetValueSyntaxSelector,
+            ],
         },
     },
     {

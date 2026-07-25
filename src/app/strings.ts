@@ -60,6 +60,13 @@ export const strings = {
         detected: 'Connect link detected — this device will be configured shortly.',
     },
 
+    recent: {
+        // TODO(phase-13): temporary proof of Feature 05.4.6/05.5.6 (the
+        // player.active/zapHistory cache rendering from state alone) —
+        // removed once the real recent/favorites UI lands.
+        nowPlaying: 'Now playing:',
+    },
+
     storageNotice: {
         partial: 'Storage is limited on this device — playlists reload on start.',
         none: 'Nothing persists on this device — imports last for this session.',

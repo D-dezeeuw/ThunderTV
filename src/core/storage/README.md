@@ -44,7 +44,11 @@ Per the architecture plan: the active playlist's channels always live in a
 plain module-level array too, and that array — not a repeated `getAll()` —
 is what search/filter/virtual-scroll actually query. Storage tiers only
 decide what survives a reload; they are never the hot read path for a
-90k-row list. That array lives in `src/state/` (Phase 05), not here.
+90k-row list. That array lives in `src/m3u/channel-memory.ts` (stubbed in
+Phase 05, built out in Phase 06), never in Spektrum state — see
+`src/state/README.md`'s "Bulk-data bypass rules" for the full pipeline
+contract (worker chunk → storage → channel memory → one compact progress
+action per chunk).
 
 ## Runtime demotion
 
@@ -52,12 +56,12 @@ decide what survives a reload; they are never the hot read path for a
 The moment any write reports `{ ok: false }`, it demotes one level (full →
 partial → none, never back up), carries `playlists`/`favorites`/`recent`
 over into the new tier, and calls the `onDemote` callback threaded in from
-`createWebPlatform({ onStorageDemote })` — `src/app/index.ts`'s bootstrap
-uses this to re-publish `platform.capabilities`/`storage.tier` into Spektrum
-state and un-dismiss the storage notice (`src/ui/storage-notice.ts`),
-without `src/core/` importing the state framework. Concurrent failing
-writes share a single in-flight demotion rather than cascading past the
-tier that's actually broken.
+`createWebPlatform({ onStorageDemote })` — `src/app/bootstrap.ts` wires this
+to `handleStorageDemotion()` (`src/state/ui.actions.ts`), which re-publishes
+`platform.capabilities`/`storage.tier` into Spektrum state and un-dismisses
+the storage notice, without `src/core/` importing the state framework.
+Concurrent failing writes share a single in-flight demotion rather than
+cascading past the tier that's actually broken.
 
 The demotion is session-scoped only — the next boot re-probes from
 scratch, so a transient failure (private-mode toggle, a full disk that gets
