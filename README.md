@@ -37,7 +37,7 @@ npm run deploy        # build + publish dist/ to the gh-pages branch (no CI)
 npm run lint         # eslint . --max-warnings 0
 npm run format        # prettier --write .
 npm run typecheck       # tsc --noEmit
-npm run test         # wired in Phase 27 (Testing Infrastructure)
+npm run test         # vitest run
 ```
 
 ## Deploy (GitHub Pages, no Actions)
@@ -76,10 +76,13 @@ root-absolute asset reference before it reaches Pages — see
 - **No CSS transitions or animations, anywhere.** State changes are instant.
   `eslint.config.js`'s `no-restricted-syntax` rule rejects `transition:`/
   `animation:` string literals in `.ts` files as a first line of defense.
-- **Platform APIs (`fetch`, `indexedDB`, `localStorage`, file inputs) are
-  only ever touched inside `src/core/`.** Everything else goes through the
-  adapters defined there. Enforced by `no-restricted-globals` in
-  `eslint.config.js` (fully populated in Phase 03).
+- **Platform APIs (`fetch`, `indexedDB`, `localStorage`, `sessionStorage`,
+  `XMLHttpRequest`, `WebSocket`, file inputs) are only ever touched inside
+  `src/core/`.** Everything else goes through the adapters defined there —
+  `getPlatform().http`/`.storage`/`.files` (Phase 03). Enforced by
+  `no-restricted-globals`/`no-restricted-properties`/`no-restricted-syntax`
+  in `eslint.config.js`; test against `FakePlatform`
+  (`src/core/platform/fake-platform.ts`), never live network/storage.
 - **CPU-heavy work runs in a Web Worker, never on the main thread.**
   Playlist parsing (`src/m3u/`, Phase 06) and EPG/XMLTV parsing (`src/epg/`,
   Phase 16) are worker-only by design — the UI thread stays free for
@@ -133,7 +136,7 @@ ways depending on target, both pointing at the exact same pinned version
 | `src/xtream/`        | Phases 19-21 — Xtream API Client / Live / VOD & Series                                     |
 | `src/player/`        | Phases 10-12 — Playback Foundation / Engines / Player UI                                   |
 | `src/ui/`            | Phase 08 onward — virtual list, view partials, bindings                                    |
-| `src/app/`           | Shell wiring (sidebar, view switching, hash router); today just the bootstrap + smoke page |
+| `src/app/`           | Shell wiring (sidebar, view switching, hash router, settings panel, density — Phase 02) plus the boot sequence (`createPlatform()`/`setPlatform()` — Phase 03) |
 | `src/state/`         | Phase 05 — Spektrum State Architecture                                                     |
 | `src/styles/`        | Phase 02 — App Shell & Design System                                                       |
 | `src/types/`         | Ambient declarations (`spektrum.d.ts`)                                                     |

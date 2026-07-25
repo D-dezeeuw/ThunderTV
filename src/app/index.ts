@@ -1,6 +1,8 @@
 import { bindDOM, run, setValue } from 'spektrum';
+import { createPlatform, setPlatform } from '../core/platform';
 import { registerDensityAction } from '../ui/density';
 import { registerEmptyStateComputeds } from '../ui/empty-state';
+import { registerFirstRunFilePickerAction } from './first-run-file-picker';
 import { initRouter } from './router';
 import { registerSettingsPanelActions } from './settings-panel';
 import {
@@ -27,11 +29,20 @@ const DEMO_ROWS = [
  *   3. connect  — parse a #/connect bookmark URL, if present, before render (Phase 14)
  *   4. render   — rehydrate persisted state, bindDOM(), run() (Phase 05 onward)
  *
- * Only step 4 exists today: the real app shell (rail, router, view
- * switching, settings panel, density) built in Phase 02. Steps 1-3 are
+ * Steps 1 and 4 exist today: `createPlatform()` decides web vs. Electron and
+ * `setPlatform()` installs the result before anything else touches
+ * `getPlatform()`, matching masterplan §4/§6.4's boot order. Steps 2-3 are
  * no-ops until their owning phases land.
  */
-export function bootstrap(): void {
+export async function bootstrap(): Promise<void> {
+    const platform = await createPlatform();
+    setPlatform(platform);
+
+    // Diagnostics only (Feature 03.8.6) — templates must gate on
+    // `platform.capabilities`, never `platform.name`.
+    setValue('platform.name', platform.name);
+    setValue('platform.capabilities', platform.capabilities);
+
     // Static reference data seeded once, read by :attr/{{}} bindings —
     // strings.ts is a plain TS module, not Spektrum state, so bindings need
     // it mirrored into state to reach it (see src/app/strings.ts).
@@ -53,6 +64,7 @@ export function bootstrap(): void {
     registerSettingsPanelActions();
     registerDensityAction();
     registerViewSwitching();
+    registerFirstRunFilePickerAction();
 
     // Resolves the initial route before bindDOM()/run() so a deep link
     // (e.g. #/favorites) renders correctly on first paint (Feature 02.4.4).

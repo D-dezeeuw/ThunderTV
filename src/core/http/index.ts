@@ -1,4 +1,16 @@
-// Reserved for the HttpAdapter: timeout/abort wrapper, CORS-shaped-failure
-// classification, and proxy URL template support.
-// Owner: Phase 03 — Platform Adapter Layer (Features 03.4-03.6).
-export {};
+export type {
+    ClassifiedFetchInit,
+    ClassifiedFetchResult,
+    FetchCorsOrNetworkFailure,
+    FetchFailure,
+    FetchHttpFailure,
+    FetchMixedContentFailure,
+    FetchFailureKind,
+    FetchOkResult,
+    FetchTimeoutFailure,
+    FetchTooLargeFailure,
+} from './classified-fetch';
+export { classifiedFetch, mixedContentBlocked } from './classified-fetch';
+export type { HttpAdapter, HttpRequestOptions } from './http-adapter';
+export { applyProxy, isValidProxyTemplate } from './proxy';
+export { WebHttpAdapter, type WebHttpAdapterOptions } from './web-http-adapter';

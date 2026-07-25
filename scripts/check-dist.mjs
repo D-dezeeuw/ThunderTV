@@ -4,7 +4,13 @@
 // a non-root path: a GitHub Pages subpath (/thundertv/), Electron's
 // `file://`, or a packaged webOS app. `base: './'` in vite.config.ts is
 // supposed to prevent this; this script is the regression guard.
-import { readFileSync } from 'node:fs';
+//
+// Also fails if any built JS asset contains a `FakePlatform` symbol
+// (Feature 03.10.4) — `src/core/platform/fake-platform.ts` is test-only and
+// must never be reachable from `main.ts`'s import graph. Nothing besides
+// dead-code elimination keeps it out today, so this is the regression guard
+// for that.
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -27,3 +33,31 @@ if (matches.length > 0) {
 }
 
 console.log(`check-dist: OK — ${indexHtmlPath} has no root-absolute asset references`);
+
+const FAKE_PLATFORM_SYMBOLS = [
+    'FakeHttpAdapter',
+    'FakeFileAdapter',
+    'createFakePlatform',
+    'withFakePlatform',
+    'resetPlatformForTests',
+];
+
+const assetsDir = `${distDir}/assets`;
+const jsFiles = readdirSync(assetsDir).filter((name) => name.endsWith('.js'));
+const leaks = [];
+for (const file of jsFiles) {
+    const contents = readFileSync(`${assetsDir}/${file}`, 'utf8');
+    for (const symbol of FAKE_PLATFORM_SYMBOLS) {
+        if (contents.includes(symbol)) {
+            leaks.push(`${file}: "${symbol}"`);
+        }
+    }
+}
+
+if (leaks.length > 0) {
+    console.error('check-dist: FakePlatform (test-only) symbols leaked into the production bundle:');
+    for (const leak of leaks) console.error(`  ${leak}`);
+    process.exit(1);
+}
+
+console.log(`check-dist: OK — no FakePlatform symbols found in ${jsFiles.length} built JS asset(s)`);
