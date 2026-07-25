@@ -1,0 +1,7 @@
+{
+    "version": "1.1.0",
+    "cdnUrl": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js",
+    "sha384": "8bFQbqAwHO12vBcTA2WNbVMXdg7nVLbvclogdLU5FS112mKWk3dkLH3YLob8OV5r",
+    "vendoredPath": "public/vendor/spektrum.min.js",
+    "note": "Single source of truth for the pinned Spektrum version. index.html's import map, public/vendor/spektrum.min.js, and src/types/spektrum.d.ts must all move together when this changes. Bump via scripts/sync-vendor-spektrum.mjs (Feature 01.5), never by hand-editing the hash."
+}

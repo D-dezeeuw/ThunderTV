@@ -1,0 +1,16 @@
+/* Design tokens. Full palette/spacing/typography/density scale is Phase 02's
+   job — this is deliberately just enough for the Feature 01.10 smoke page
+   to be the first real consumer of the token pipeline. */
+:root {
+    --color-bg: #0b0d10;
+    --color-surface: #14171c;
+    --color-text: #e6e8eb;
+    --color-text-muted: #9aa1a9;
+    --color-accent: #4f8cff;
+
+    --space-2: 0.5rem;
+    --space-3: 1rem;
+    --space-4: 1.5rem;
+
+    --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}

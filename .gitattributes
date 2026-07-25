@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+# Vendored/minified — treat as opaque, never diffed or line-ending-normalized.
+public/vendor/*.js -diff -text

@@ -1,0 +1,32 @@
+{
+    "name": "thundertv",
+    "private": true,
+    "version": "0.0.0",
+    "description": "A compact, fast IPTV player for the web, desktop, and TV.",
+    "license": "SEE LICENSE IN LICENSE",
+    "type": "module",
+    "engines": {
+        "node": ">=22"
+    },
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc --noEmit && vite build",
+        "preview": "vite preview",
+        "deploy": "vite build && gh-pages -d dist",
+        "lint": "eslint . --max-warnings 0",
+        "format": "prettier --write .",
+        "typecheck": "tsc --noEmit",
+        "test": "echo 'test: wired in Phase 27' && exit 1"
+    },
+    "devDependencies": {
+        "@eslint/js": "10.0.1",
+        "eslint": "10.8.0",
+        "eslint-config-prettier": "10.1.8",
+        "gh-pages": "6.3.0",
+        "globals": "17.7.0",
+        "prettier": "3.9.6",
+        "typescript": "6.0.2",
+        "typescript-eslint": "8.65.0",
+        "vite": "8.1.1"
+    }
+}

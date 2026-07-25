@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ThunderTV</title>
+        <link rel="stylesheet" href="/src/styles/tokens.css" />
+        <link rel="stylesheet" href="/src/styles/base.css" />
+
+        <!--
+          Spektrum is the app's only UI/state framework, resolved at runtime
+          through this import map instead of being bundled by Vite — see
+          vite.config.ts's `build.rollupOptions.external`.
+
+          Web (this file, as committed): pinned CDN URL, exact version, no
+          `@latest` and no semver range (masterplan §2, §6.10).
+
+          Packaged targets (Electron, webOS) rewrite the "spektrum" entry
+          below to "./vendor/spektrum.min.js" — scripts/package-target.mjs
+          does this with a regex that depends on this exact JSON shape
+          (one "imports" object, one "spektrum" key, double-quoted). Do not
+          reformat this block without updating that script.
+
+          scripts/spektrum-version.json is the single source of truth for
+          the pinned version + its SHA-384 — scripts/check-importmap.mjs
+          fails the build if this URL drifts from that file.
+        -->
+        <script type="importmap">
+            { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
+        </script>
+    </head>
+    <body>
+        <div id="app">
+            <!--
+              Feature 01.10 smoke page: proves setValue/computed/defineFn +
+              {{expr}}/data-action bindings all work end to end, through the
+              CDN-pinned import map, in both dev and the built dist/. Removed
+              once Phase 02's real app shell replaces it.
+            -->
+            <section class="smoke" data-testid="smoke">
+                <p class="smoke__message">{{ smoke.message }}</p>
+                <p class="smoke__count">
+                    Count: <strong>{{ smoke.count }}</strong> ({{ smoke.parity }})
+                </p>
+                <button type="button" class="smoke__button" data-action="click" data-fn="bumpSmoke">
+                    Bump
+                </button>
+            </section>
+        </div>
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>

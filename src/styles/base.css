@@ -1,0 +1,66 @@
+/* Base reset. No CSS transitions/animations anywhere — state changes are
+   instant, per the standing convention. */
+* {
+    box-sizing: border-box;
+}
+
+html {
+    /* Suppresses the mobile double-tap-to-zoom gesture only. Deliberately
+       not done via the viewport meta tag's user-scalable=no/maximum-scale
+       — that also blocks pinch-zoom and fails WCAG 1.4.10 (Reflow).
+       touch-action: manipulation still allows panning and pinch-zoom. */
+    touch-action: manipulation;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    /* Fixed, full-viewport app shell — not a scrolling document. Scrollable
+       regions (the future channel list, etc.) own their own overflow. */
+    overflow: hidden;
+}
+
+#app {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Feature 01.10 smoke page only — removed with it in Phase 02. */
+.smoke {
+    background: var(--color-surface);
+    border-radius: 8px;
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: flex-start;
+}
+
+.smoke__message {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.smoke__count {
+    margin: 0;
+    color: var(--color-text-muted);
+}
+
+.smoke__button {
+    background: var(--color-accent);
+    color: var(--color-text);
+    border: none;
+    border-radius: 4px;
+    padding: var(--space-2) var(--space-3);
+    font-size: 1rem;
+    cursor: pointer;
+}
