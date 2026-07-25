@@ -85,11 +85,11 @@ describe('FakeFileAdapter', () => {
 });
 
 describe('MemoryStorage', () => {
-    it('round-trips values and clears on reset()', async () => {
+    it('round-trips values and removes them on delete()', async () => {
         const { storage } = createFakePlatform();
         await storage.set('k', 'v');
         expect(await storage.get('k')).toBe('v');
-        await storage.clear();
+        await storage.delete('k');
         expect(await storage.get('k')).toBeUndefined();
     });
 });

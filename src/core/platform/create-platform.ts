@@ -1,5 +1,5 @@
 import type { PlatformAdapter } from './platform-adapter';
-import { createWebPlatform } from './web-platform';
+import { createWebPlatform, type CreateWebPlatformOptions } from './web-platform';
 
 /**
  * `window.electron` truthy → Electron adapter (Phase 28); otherwise the web
@@ -15,9 +15,9 @@ import { createWebPlatform } from './web-platform';
  * there is no late-injection case to guard against and no re-detection ever
  * happens (Feature 03.8.5).
  */
-export async function createPlatform(): Promise<PlatformAdapter> {
+export async function createPlatform(options: CreateWebPlatformOptions = {}): Promise<PlatformAdapter> {
     if (window.electron) {
         throw new Error('The Electron platform adapter is not yet implemented (arrives in Phase 28).');
     }
-    return createWebPlatform();
+    return createWebPlatform(options);
 }

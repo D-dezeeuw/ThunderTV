@@ -1,16 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { MemoryStorage } from '../storage/memory-storage';
 import { getPlatform, resetPlatformForTests, setPlatform } from './index';
 import type { PlatformAdapter } from './platform-adapter';
 
 function stubPlatform(): PlatformAdapter {
     return {
         name: 'web',
-        storage: {
-            get: () => Promise.resolve(undefined),
-            set: () => Promise.resolve(),
-            delete: () => Promise.resolve(),
-            clear: () => Promise.resolve(),
-        },
+        storage: new MemoryStorage(),
         http: {
             get: () => Promise.reject(new Error('not implemented')),
             getText: () => Promise.resolve(null),

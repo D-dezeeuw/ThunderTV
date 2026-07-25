@@ -2,11 +2,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { getPlatform, resetPlatformForTests, setPlatform } from './index';
 import { createWebPlatform } from './web-platform';
 
-describe('createWebPlatform', () => {
-    afterEach(() => {
-        resetPlatformForTests();
-    });
+afterEach(() => {
+    resetPlatformForTests();
+    localStorage.clear();
+});
 
+describe('createWebPlatform', () => {
     it('assembles all four PlatformAdapter slots', async () => {
         const platform = await createWebPlatform();
         expect(platform.name).toBe('web');
@@ -16,13 +17,20 @@ describe('createWebPlatform', () => {
         expect(platform.capabilities).toBeDefined();
     });
 
-    it('reports web-correct capabilities', async () => {
+    it('fixes corsUnrestricted and externalPlayers to false on the web', async () => {
         const platform = await createWebPlatform();
-        expect(platform.capabilities).toEqual({
-            corsUnrestricted: false,
-            externalPlayers: false,
-            durableStorage: 'none',
-        });
+        expect(platform.capabilities.corsUnrestricted).toBe(false);
+        expect(platform.capabilities.externalPlayers).toBe(false);
+    });
+
+    it('capabilities.durableStorage always reflects the live storage tier — no separately cached value to drift (Feature 04.7.5)', async () => {
+        const platform = await createWebPlatform();
+        expect(platform.capabilities.durableStorage).toBe(platform.storage.tier);
+    });
+
+    it('selects a real tier via the boot probe — jsdom has no indexedDB but a working localStorage, so this environment lands on partial', async () => {
+        const platform = await createWebPlatform();
+        expect(platform.storage.tier).toBe('partial');
     });
 
     it('performs no DOM/network work at import — only inside the factory', async () => {
@@ -40,7 +48,7 @@ describe('createWebPlatform', () => {
         expect(getPlatform()).toBe(platform);
     });
 
-    it('the in-memory storage stub actually stores and retrieves values', async () => {
+    it('the boot-probed storage adapter actually stores and retrieves values', async () => {
         const platform = await createWebPlatform();
         await platform.storage.set('k', 'v');
         expect(await platform.storage.get('k')).toBe('v');

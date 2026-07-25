@@ -61,11 +61,11 @@ scripted via `onGet(url).reply(...)` before a `get()` call — an unscripted
 URL throws immediately, so a spec can never accidentally fall through to a
 real network call.
 
-## Storage today vs. Phase 04
+## Storage
 
-`storage` is currently a temporary in-memory stub reporting
-`durableStorage: 'none'` — nothing survives a reload yet. Phase 04 replaces
-it with the real tiered `StorageAdapter` (IndexedDB → localStorage →
-memory, boot-probed). `StorageAdapter`'s shape (`src/core/storage/storage-adapter.ts`)
-is deliberately minimal today — types only, so `PlatformAdapter` compiles —
-and Phase 04 owns its real design.
+`storage` is the real, boot-probed tiered `StorageAdapter` (IndexedDB →
+localStorage → memory) from `src/core/storage/` (Phase 04) — see that
+module's own README for the tier-selection, demotion, chunking, and
+versioning details. `capabilities.durableStorage` is a live getter derived
+from `storage.tier`, never a separately cached value, so it can never drift
+from the real tier after a runtime demotion.

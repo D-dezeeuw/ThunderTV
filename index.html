@@ -132,6 +132,41 @@
                 </button>
             </nav>
 
+            <div
+                class="storage-notice"
+                role="status"
+                data-if="storageNotice.visible"
+                data-testid="storage-notice"
+            >
+                <svg class="icon icon--s" aria-hidden="true">
+                    <use href="#icon-alert"></use>
+                </svg>
+                <p class="storage-notice__message">
+                    {{ storage.tier === 'partial' ? strings.storageNotice.partial : strings.storageNotice.none }}
+                </p>
+                <div class="storage-notice__actions">
+                    <button
+                        type="button"
+                        class="storage-notice__link"
+                        data-action="click"
+                        data-fn="toggleSettings"
+                    >
+                        {{ strings.storageNotice.learnMore }}
+                    </button>
+                    <button
+                        type="button"
+                        class="icon-btn"
+                        :aria-label="strings.storageNotice.dismiss"
+                        data-action="click"
+                        data-fn="dismissStorageNotice"
+                    >
+                        <svg class="icon icon--s" aria-hidden="true">
+                            <use href="#icon-close"></use>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
             <main class="view scroll-y" data-ref="viewContainer">
                 <section
                     class="view__section"
@@ -301,7 +336,12 @@
                         <h3 class="settings-section__title">
                             {{ strings.settings.sections.user }}
                         </h3>
-                        <!-- TODO(phase-22) -->
+                        <!-- Feature 04.8.8: the "learn more" link's target — the
+                             live storage tier, verbatim from state. The rest of
+                             this section is TODO(phase-22). -->
+                        <p data-testid="settings-storage-tier">
+                            {{ strings.storageNotice.userSectionTier }}: {{ storage.tier }}
+                        </p>
                     </section>
                     <section class="settings-section">
                         <h3 class="settings-section__title">

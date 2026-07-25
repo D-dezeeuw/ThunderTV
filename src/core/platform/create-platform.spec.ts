@@ -3,6 +3,7 @@ import { createPlatform } from './create-platform';
 
 afterEach(() => {
     delete (window as { electron?: unknown }).electron;
+    localStorage.clear();
 });
 
 describe('createPlatform', () => {

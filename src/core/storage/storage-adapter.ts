@@ -1,15 +1,49 @@
+import type { StorageKey } from './keys';
+import type { TableName, TableRowMap } from './records';
+
+export type { TableName, StorageKey };
+
 /**
- * Type-only placeholder for the tiered storage contract (masterplan §5).
- * Declared here — not in `./index.ts` — so `PlatformAdapter` (Phase 03)
- * compiles against a real shape before Phase 04 exists. This minimal
- * key/value shape is deliberately provisional: Phase 04 owns the actual
- * design (tier selection, chunked bulk writes, the IndexedDB store layout)
- * and may extend or replace it. Nothing besides `PlatformAdapter` and the
- * Phase 03 in-memory stub/`FakePlatform` should depend on this shape yet.
+ * Every write resolves this instead of throwing — quota/IO failures are
+ * data, not exceptions, so a caller (ultimately the Feature 04.7 tier
+ * controller) can react instead of the app white-screening (Feature 04.1.6).
+ */
+export type WriteResult = { ok: true } | { ok: false; reason: 'quota' | 'io' | 'budget' };
+
+export interface GetRangeOptions {
+    lower?: StorageKey;
+    upper?: StorageKey;
+}
+
+/**
+ * One async interface, identical across tiers (Feature 04.1.1) — shaped so
+ * a future Electron SQLite-over-IPC implementation is just a fourth class.
+ * Every method is async even on tiers with a synchronous backing store
+ * (`localStorage`, memory), so callers never branch on tier.
+ *
+ * Two distinct surfaces, never mixed (Feature 04.1.7):
+ *  - `get`/`set`/`getMany`/`setMany`/`delete`: small keyed snapshots
+ *    (individual settings, session state — Phase 05's persistence bridge).
+ *  - `bulkPut`/`getAll`/`getRange`/`clearTable`/`count`: bulk table rows
+ *    (channels, EPG programs, favorites, …).
  */
 export interface StorageAdapter {
+    readonly tier: 'full' | 'partial' | 'none';
+
     get<T = unknown>(key: string): Promise<T | undefined>;
-    set<T = unknown>(key: string, value: T): Promise<void>;
+    set<T = unknown>(key: string, value: T): Promise<WriteResult>;
+    /** Missing keys resolve `undefined` at their index — the result is always the same length as `keys`, in the same order (Feature 04.3.8). */
+    getMany<T = unknown>(keys: string[]): Promise<(T | undefined)[]>;
+    setMany<T = unknown>(entries: [key: string, value: T][]): Promise<WriteResult>;
     delete(key: string): Promise<void>;
-    clear(): Promise<void>;
+
+    bulkPut<T extends TableName>(
+        table: T,
+        rows: TableRowMap[T][],
+        keyOf: (row: TableRowMap[T]) => StorageKey,
+    ): Promise<WriteResult>;
+    getAll<T extends TableName>(table: T, range?: GetRangeOptions): Promise<TableRowMap[T][]>;
+    getRange<T extends TableName>(table: T, lower: StorageKey, upper: StorageKey): Promise<TableRowMap[T][]>;
+    clearTable(table: TableName): Promise<void>;
+    count(table: TableName): Promise<number>;
 }

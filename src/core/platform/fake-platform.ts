@@ -7,7 +7,7 @@
  */
 import type { ClassifiedFetchResult, FetchFailure, FetchFailureKind } from '../http/classified-fetch';
 import type { HttpAdapter, HttpRequestOptions } from '../http/http-adapter';
-import type { StorageAdapter } from '../storage/storage-adapter';
+import { MemoryStorage } from '../storage/memory-storage';
 import { getPlatform, resetPlatformForTests, setPlatform } from './index';
 import type { Capabilities } from './capabilities';
 import type { FileAdapter, PickedFile, ReadTextResult } from './file-adapter';
@@ -131,29 +131,6 @@ export class FakeFileAdapter implements FileAdapter {
     }
 }
 
-export class MemoryStorage implements StorageAdapter {
-    private readonly map = new Map<string, unknown>();
-
-    get<T>(key: string): Promise<T | undefined> {
-        return Promise.resolve(this.map.get(key) as T | undefined);
-    }
-    set<T>(key: string, value: T): Promise<void> {
-        this.map.set(key, value);
-        return Promise.resolve();
-    }
-    delete(key: string): Promise<void> {
-        this.map.delete(key);
-        return Promise.resolve();
-    }
-    clear(): Promise<void> {
-        this.map.clear();
-        return Promise.resolve();
-    }
-    reset(): void {
-        this.map.clear();
-    }
-}
-
 export interface FakePlatformHandle {
     platform: PlatformAdapter;
     http: FakeHttpAdapter;
@@ -171,13 +148,14 @@ export function createFakePlatform(capabilityOverrides: Partial<Capabilities> = 
     const http = new FakeHttpAdapter();
     const files = new FakeFileAdapter();
     const storage = new MemoryStorage();
-    const platform: PlatformAdapter = {
-        name: 'web',
-        http,
-        files,
-        storage,
-        capabilities: Object.freeze({ ...DEFAULT_CAPABILITIES, ...capabilityOverrides }),
-    };
+    const capabilities = Object.freeze({ ...DEFAULT_CAPABILITIES, ...capabilityOverrides });
+    // MemoryStorage always reports tier 'none' — override it to match the
+    // requested capabilities.durableStorage so code that branches on
+    // `getPlatform().storage.tier` (e.g. Feature 04.8.5's dismissal policy)
+    // sees a consistent fake, without needing a second storage
+    // implementation just for tests.
+    Object.defineProperty(storage, 'tier', { value: capabilities.durableStorage });
+    const platform: PlatformAdapter = { name: 'web', http, files, storage, capabilities };
     return { platform, http, files, storage };
 }
 
@@ -203,3 +181,5 @@ export async function withFakePlatform<T>(
 
 /** Re-exported so specs don't need a second import for the common "is this the fake?" sanity check. */
 export { getPlatform };
+/** Re-exported for convenience — `FakePlatformHandle.storage`'s real type (Feature 04.3.9: the fake now uses the real reference implementation, not a Phase 03 placeholder). */
+export { MemoryStorage };
