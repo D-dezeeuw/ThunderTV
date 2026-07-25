@@ -189,3 +189,7 @@ Before this phase, Spektrum holds ad-hoc UI values (`ui.activeView`, `ui.density
 Docs updated: this file; `src/state/README.md` (new); `masterplan/reference/state-keys.md` (new, generated); `README.md` (state-keys reference link, `src/shared/testing/` row in "Who lives where"); `src/core/storage/README.md` (two stale cross-references fixed: the module-memory location and the demotion-callback wiring, both pointing at their real Phase 05 locations now).
 
 Tests added/updated: 16 new spec files (listed above) plus `src/ui/density.spec.ts` trimmed, `src/app/views.spec.ts` updated, and three superseded spec files deleted with their coverage migrated. 298 tests total, all passing.
+
+## Post-merge deploy verification
+
+Merged to `main` (`07c955c`), `npm run typecheck`/`lint`/`lint:css`/`test` re-run clean on `main` post-merge, then deployed (`npm run deploy`). Live URL is `https://d-dezeeuw.github.io/ThunderTV/` (the repository's actual case-sensitive Pages path — not the lowercase form used elsewhere in this file, confirmed by a 404 on the lowercase path and a 200 on this one). Fetched the live page directly and confirmed it serves the new build: `data-fn="ui/navigate"` (the renamed action), `hasNoZapHistory` and `recent-zap-history` (the new Recent-view stub) are all present in the deployed HTML, with the CDN-pinned import map untouched (the local vendored-Spektrum swap used for the manual drill in Verification above was applied only to a gitignored local `dist/`, never committed or deployed).
