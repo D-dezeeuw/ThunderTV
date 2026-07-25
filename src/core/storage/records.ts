@@ -24,14 +24,30 @@ export interface PlaylistRecord {
     lastModified: string | null;
 }
 
+/** A channel's DRM configuration, extracted from `#KODIPROP` lines (Phase 06 `kodiprop.utils.ts`). */
+export interface ChannelDrm {
+    /** Normalized license type, e.g. `clearkey` or `com.widevine.alpha`. */
+    licenseType: string;
+    /** True only for ClearKey entries with at least one successfully parsed key. */
+    supported: boolean;
+    clearKeys?: ChannelDrmClearKeys;
+}
+
+export interface ChannelDrmClearKeys {
+    /** Key id (32 lowercase hex chars) mapped to its key (32 lowercase hex chars). */
+    [kidHex: string]: string;
+}
+
 export interface ChannelRecord {
     playlistId: string;
     index: number;
     name: string;
-    streamUrl: string;
+    url: string;
     logo: string | null;
     group: string | null;
+    tvgId: string | null;
     radio: boolean;
+    drm?: ChannelDrm;
 }
 
 export interface GroupRecord {
@@ -82,7 +98,8 @@ export interface RecentRecord {
  * individual settings) go through the plain `get`/`set`/`getMany`/`setMany`
  * methods instead of table ops; mixing the two is a review reject.
  */
-export type TableName = 'playlists' | 'channels' | 'groups' | 'epgChannels' | 'epgPrograms' | 'favorites' | 'recent';
+export type TableName =
+    'playlists' | 'channels' | 'groups' | 'epgChannels' | 'epgPrograms' | 'favorites' | 'recent';
 
 export interface TableRowMap {
     playlists: PlaylistRecord;

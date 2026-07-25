@@ -1,0 +1,5 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="1",Channel One
+https://example.channels/1.m3u8
+#EXTINF:-1 tvg-id="2",Truncated Channel
+https://example.channels/tru

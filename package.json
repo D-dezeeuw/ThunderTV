@@ -17,11 +17,14 @@
         "lint:css": "node scripts/check-css.mjs",
         "format": "prettier --write .",
         "typecheck": "tsc --noEmit",
-        "test": "vitest run"
+        "test": "vitest run",
+        "bench:m3u": "vitest run --config vitest.bench.config.ts",
+        "gen:m3u-fixture": "node scripts/gen-m3u-fixture.mjs"
     },
     "devDependencies": {
         "@eslint/js": "10.0.1",
         "@types/node": "22.20.1",
+        "@vitest/web-worker": "^4.1.10",
         "eslint": "10.8.0",
         "eslint-config-prettier": "10.1.8",
         "fake-indexeddb": "6.2.5",
@@ -35,6 +38,7 @@
         "vitest": "4.1.10"
     },
     "dependencies": {
-        "idb": "8.0.3"
+        "idb": "8.0.3",
+        "iptv-playlist-parser": "github:4gray/iptv-playlist-parser#v0.15.2-iptvnator.2"
     }
 }

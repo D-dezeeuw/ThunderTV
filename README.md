@@ -38,6 +38,8 @@ npm run lint         # eslint . --max-warnings 0
 npm run format        # prettier --write .
 npm run typecheck       # tsc --noEmit
 npm run test         # vitest run
+npm run bench:m3u       # vitest run --config vitest.bench.config.ts — 100k-channel M3U parse budget (Feature 06.10)
+npm run gen:m3u-fixture    # node scripts/gen-m3u-fixture.mjs — seeded M3U fixture generator (see --help-style usage in the script header)
 ```
 
 ## Deploy (GitHub Pages, no Actions)
@@ -141,7 +143,7 @@ ways depending on target, both pointing at the exact same pinned version
 | `src/shared/testing/`| Test-only harnesses shared across phases (`bind-dom.ts`, Phase 05)                         |
 | `src/styles/`        | Phase 02 — App Shell & Design System                                                       |
 | `src/types/`         | Ambient declarations (`spektrum.d.ts`)                                                     |
-| `scripts/`           | Tooling: Spektrum pin sync/guard, dist checks, packaging swap                              |
+| `scripts/`           | Tooling: Spektrum pin sync/guard, dist checks, packaging swap, M3U fixture generation (Phase 06) |
 | `public/vendor/`     | Vendored Spektrum copy — committed, never hand-edited                                      |
 
 **Where does a piece of state live, and does it persist?** `src/state/README.md`

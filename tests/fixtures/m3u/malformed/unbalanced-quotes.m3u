@@ -1,0 +1,5 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="unterminated group-title="News",Broken Attribute Channel
+https://example.channels/broken.m3u8
+#EXTINF:-1 tvg-id="ok" group-title="News",Fine Channel
+https://example.channels/fine.m3u8

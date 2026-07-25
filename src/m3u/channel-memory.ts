@@ -5,33 +5,25 @@
  * `src/ui/` (Phase 08's virtual-list controller) reads through `getRows()`/
  * `query()` and publishes only the windowed slice to state.
  *
- * Stub for Phase 06 (Feature 05.8.3): the `Channel` shape here is
- * provisional — Phase 06's real parser owns the authoritative type and may
- * adjust it; this file's job today is only to prove the module-memory
- * pattern exists and is where bulk rows belong, ahead of anything that
- * writes to it.
+ * `ChannelRow` (`src/m3u/types.ts`) is the authoritative shape as of Phase
+ * 06 — the Phase 05 stub `Channel` interface that used to live here is
+ * gone; `parser-client.ts` calls `setRows()` with exactly the rows it just
+ * bulk-put into the `channels` storage table.
  */
-export interface Channel {
-    id: string;
-    name: string;
-    streamUrl: string;
-    logo: string | null;
-    group: string | null;
-    radio: boolean;
-}
+import type { ChannelRow } from './types';
 
-let allRows: Channel[] = [];
+let allRows: ChannelRow[] = [];
 
-export function setRows(rows: Channel[]): void {
+export function setRows(rows: ChannelRow[]): void {
     allRows = rows;
 }
 
-export function getRows(): readonly Channel[] {
+export function getRows(): readonly ChannelRow[] {
     return allRows;
 }
 
 /** A linear scan is fine at this layer today (no real caller yet); Phase 08's windowing controller is what actually needs to stay cheap per keystroke, via the published slice, not this function. */
-export function query(predicate: (channel: Channel) => boolean): Channel[] {
+export function query(predicate: (channel: ChannelRow) => boolean): ChannelRow[] {
     return allRows.filter(predicate);
 }
 

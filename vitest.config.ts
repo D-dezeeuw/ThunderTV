@@ -22,5 +22,12 @@ export default defineConfig({
         environment: 'jsdom',
         include: ['src/**/*.spec.ts'],
         css: false,
+        // Feature 06.3.8: jsdom has no real Worker implementation at all
+        // (`new Worker(...)` throws `ReferenceError`) — @vitest/web-worker
+        // simulates one in the same thread (real postMessage/addEventListener
+        // semantics, structured-clone message passing), so parser-client.spec.ts
+        // can exercise the real `ParserClient` against the real
+        // `parser.worker.ts` instead of a hand-rolled fake.
+        setupFiles: ['@vitest/web-worker'],
     },
 });
