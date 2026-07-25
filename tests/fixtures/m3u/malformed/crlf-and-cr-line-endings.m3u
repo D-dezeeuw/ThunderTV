@@ -1,0 +1,3 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="1",CRLF Channel
+https://example.channels/crlf.m3u8#EXTINF:-1 tvg-id="2",Lone CR Channelhttps://example.channels/lonecr.m3u8

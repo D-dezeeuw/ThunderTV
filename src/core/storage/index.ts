@@ -24,8 +24,18 @@ export { probeIndexedDb, probeLocalStorage } from './probe';
 export { IdbStorage } from './idb-storage';
 export { LocalStorageStorage } from './local-storage-storage';
 export { MemoryStorage } from './memory-storage';
-export { StorageTierController, type DemotionReason, type TierControllerOptions } from './tier-controller';
-export { CHUNK_ROWS, writeChunked, replaceTableChunked, type ChunkedWriteProgress, type ChunkedWriteResult } from './bulk';
+export {
+    StorageTierController,
+    type DemotionReason,
+    type TierControllerOptions,
+} from './tier-controller';
+export {
+    CHUNK_ROWS,
+    writeChunked,
+    replaceTableChunked,
+    type ChunkedWriteProgress,
+    type ChunkedWriteResult,
+} from './bulk';
 export {
     getVersioned,
     setVersioned,
@@ -35,5 +45,23 @@ export {
     type MigrationFn,
 } from './versioning';
 export { encodeKey } from './keys';
-export type { StorageAdapter, WriteResult, GetRangeOptions, TableName, StorageKey } from './storage-adapter';
-export type { TableRowMap, PlaylistRecord, ChannelRecord, GroupRecord, EpgChannelRecord, EpgProgramRecord, FavoriteRecord, RecentRecord } from './records';
+export type {
+    StorageAdapter,
+    WriteResult,
+    GetRangeOptions,
+    TableName,
+    StorageKey,
+} from './storage-adapter';
+export type {
+    TableRowMap,
+    PlaylistRecord,
+    PlaylistType,
+    ChannelRecord,
+    ChannelDrm,
+    ChannelDrmClearKeys,
+    GroupRecord,
+    EpgChannelRecord,
+    EpgProgramRecord,
+    FavoriteRecord,
+    RecentRecord,
+} from './records';

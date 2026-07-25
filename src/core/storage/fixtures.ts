@@ -10,9 +10,10 @@ export function makeChannelRows(playlistId: string, count: number): ChannelRecor
         playlistId,
         index,
         name: `Channel ${String(index)}`,
-        streamUrl: `https://provider.example/stream/${String(index)}.m3u8`,
+        url: `https://provider.example/stream/${String(index)}.m3u8`,
         logo: null,
         group: index % 10 === 0 ? 'News' : 'Entertainment',
+        tvgId: null,
         radio: false,
     }));
 }
@@ -21,7 +22,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 
 /** Programs are generated in chronological order — `getRange`/`getAll` ordering assertions depend on this. */
-export function makeEpgProgramRows(channelId: string, count: number, startAt = 0): EpgProgramRecord[] {
+export function makeEpgProgramRows(
+    channelId: string,
+    count: number,
+    startAt = 0,
+): EpgProgramRecord[] {
     return Array.from({ length: count }, (_, i) => {
         const start = startAt + i * HOUR_MS;
         return {

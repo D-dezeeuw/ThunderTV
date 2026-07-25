@@ -21,7 +21,8 @@ const noTransitionSyntaxSelector = {
 // be created inside src/core/platform/ via WebFileAdapter, not ad hoc
 // elsewhere in the app.
 const noInputElementSyntaxSelector = {
-    selector: "CallExpression[callee.object.name='document'][callee.property.name='createElement'] > Literal[value='input']",
+    selector:
+        "CallExpression[callee.object.name='document'][callee.property.name='createElement'] > Literal[value='input']",
     message:
         'Dynamic <input> elements (file pickers) must be created inside src/core/platform/ via WebFileAdapter — see Feature 03.7.8.',
 };
@@ -100,15 +101,18 @@ export default tseslint.config(
                 'error',
                 {
                     name: 'fetch',
-                    message: 'Use getPlatform().http instead of the global fetch — see src/core/http/.',
+                    message:
+                        'Use getPlatform().http instead of the global fetch — see src/core/http/.',
                 },
                 {
                     name: 'indexedDB',
-                    message: 'Use getPlatform().storage instead of indexedDB directly — see src/core/storage/.',
+                    message:
+                        'Use getPlatform().storage instead of indexedDB directly — see src/core/storage/.',
                 },
                 {
                     name: 'localStorage',
-                    message: 'Use getPlatform().storage instead of localStorage directly — see src/core/storage/.',
+                    message:
+                        'Use getPlatform().storage instead of localStorage directly — see src/core/storage/.',
                 },
                 {
                     name: 'sessionStorage',
@@ -123,12 +127,16 @@ export default tseslint.config(
                 {
                     name: 'WebSocket',
                     message:
-                        'No transport bypasses the http adapter\'s classification today; if a real need for WebSocket arises, add a dedicated adapter method deliberately — see src/core/http/.',
+                        "No transport bypasses the http adapter's classification today; if a real need for WebSocket arises, add a dedicated adapter method deliberately — see src/core/http/.",
                 },
             ],
             'no-restricted-properties': [
                 'error',
-                { object: 'window', property: 'fetch', message: 'Use getPlatform().http instead of window.fetch.' },
+                {
+                    object: 'window',
+                    property: 'fetch',
+                    message: 'Use getPlatform().http instead of window.fetch.',
+                },
                 {
                     object: 'globalThis',
                     property: 'fetch',
@@ -147,7 +155,8 @@ export default tseslint.config(
                 {
                     object: 'window',
                     property: 'sessionStorage',
-                    message: 'Session-scoped persistence goes through the storage layer, not window.sessionStorage.',
+                    message:
+                        'Session-scoped persistence goes through the storage layer, not window.sessionStorage.',
                 },
                 {
                     object: 'navigator',
@@ -166,7 +175,11 @@ export default tseslint.config(
                         'Branch on capabilities (getPlatform().capabilities), not window.electron — see Feature 03.2.6. Only src/core/platform/ may sniff window.electron directly.',
                 },
             ],
-            'no-restricted-syntax': ['error', noTransitionSyntaxSelector, noInputElementSyntaxSelector],
+            'no-restricted-syntax': [
+                'error',
+                noTransitionSyntaxSelector,
+                noInputElementSyntaxSelector,
+            ],
         },
     },
     {
@@ -194,6 +207,107 @@ export default tseslint.config(
         },
     },
     {
+        // Feature 06.2.10: the patched iptv-playlist-parser fork is a
+        // third-party API surface contained to one file — every other
+        // module reaches it only through parseM3u()'s wrapper contract
+        // (never-throws, ParseM3uResult), never the raw `parse()` export.
+        files: ['src/**/*.ts'],
+        ignores: ['src/m3u/parse-m3u.ts'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        {
+                            name: 'iptv-playlist-parser',
+                            message:
+                                'Import parseM3u() from src/m3u/parse-m3u.ts instead — see Feature 06.2.10.',
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        // Feature 06.3.5: the parser worker stays Spektrum- and DOM-free —
+        // it's a pure parse/map/group pipeline, never a UI or state
+        // consumer. The import-level fence is what actually matters here,
+        // since a stray `import ... from 'spektrum'` or `'../ui/...'` would
+        // otherwise silently compile (Vite bundles the worker as its own
+        // chunk, so a Spektrum import would even work at runtime) while
+        // violating the "workers parse, memory queries, storage persists"
+        // separation this phase's worker file exists to prove. This file
+        // also matches the platform-API fence (Feature 03.9, `src/**/*.ts`
+        // minus `src/core/**`) and the 06.2.10 block just above — flat
+        // config replaces (never merges) a rule's value per matching file,
+        // so both `no-restricted-imports` (the iptv-playlist-parser ban)
+        // and `no-restricted-globals` (fetch/indexedDB/etc.) are re-listed
+        // here in full instead of silently dropping for this one file. See
+        // this file's header comment.
+        files: ['src/m3u/parser.worker.ts'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        {
+                            name: 'spektrum',
+                            message: 'The parser worker stays Spektrum-free — see Feature 06.3.5.',
+                        },
+                        {
+                            name: 'iptv-playlist-parser',
+                            message:
+                                'Import parseM3u() from src/m3u/parse-m3u.ts instead — see Feature 06.2.10.',
+                        },
+                    ],
+                    patterns: [
+                        {
+                            group: ['**/ui/*', '**/state/*'],
+                            message: 'The parser worker stays UI/state-free — see Feature 06.3.5.',
+                        },
+                    ],
+                },
+            ],
+            'no-restricted-globals': [
+                'error',
+                {
+                    name: 'document',
+                    message: 'The parser worker is Spektrum/DOM-free — see Feature 06.3.5.',
+                },
+                {
+                    name: 'fetch',
+                    message:
+                        'Use getPlatform().http instead of the global fetch — see src/core/http/.',
+                },
+                {
+                    name: 'indexedDB',
+                    message:
+                        'Use getPlatform().storage instead of indexedDB directly — see src/core/storage/.',
+                },
+                {
+                    name: 'localStorage',
+                    message:
+                        'Use getPlatform().storage instead of localStorage directly — see src/core/storage/.',
+                },
+                {
+                    name: 'sessionStorage',
+                    message:
+                        'Session-scoped persistence goes through the storage layer, not sessionStorage directly — see src/core/storage/.',
+                },
+                {
+                    name: 'XMLHttpRequest',
+                    message:
+                        'All network I/O goes through getPlatform().http so CORS/timeout classification is unavoidable — see src/core/http/.',
+                },
+                {
+                    name: 'WebSocket',
+                    message:
+                        "No transport bypasses the http adapter's classification today; if a real need for WebSocket arises, add a dedicated adapter method deliberately — see src/core/http/.",
+                },
+            ],
+        },
+    },
+    {
         // Feature 03.9.6: spec files legitimately stub `fetch` to test
         // classifiedFetch/WebHttpAdapter (or to assert a real network call
         // never happens) without touching a real network — vitest's
@@ -209,24 +323,51 @@ export default tseslint.config(
         rules: {
             'no-restricted-globals': [
                 'error',
-                { name: 'indexedDB', message: 'Use FakePlatform/MemoryStorage in tests, not real indexedDB.' },
-                { name: 'localStorage', message: 'Use FakePlatform/MemoryStorage in tests, not real localStorage.' },
+                {
+                    name: 'indexedDB',
+                    message: 'Use FakePlatform/MemoryStorage in tests, not real indexedDB.',
+                },
+                {
+                    name: 'localStorage',
+                    message: 'Use FakePlatform/MemoryStorage in tests, not real localStorage.',
+                },
                 {
                     name: 'sessionStorage',
                     message: 'Use FakePlatform/MemoryStorage in tests, not real sessionStorage.',
                 },
                 {
                     name: 'XMLHttpRequest',
-                    message: 'Not used by this codebase; if a spec needs one, reconsider the design.',
+                    message:
+                        'Not used by this codebase; if a spec needs one, reconsider the design.',
                 },
-                { name: 'WebSocket', message: 'Not used by this codebase; if a spec needs one, reconsider the design.' },
+                {
+                    name: 'WebSocket',
+                    message:
+                        'Not used by this codebase; if a spec needs one, reconsider the design.',
+                },
             ],
             'no-restricted-properties': [
                 'error',
-                { object: 'window', property: 'localStorage', message: 'Use FakePlatform/MemoryStorage in tests.' },
-                { object: 'window', property: 'indexedDB', message: 'Use FakePlatform/MemoryStorage in tests.' },
-                { object: 'window', property: 'sessionStorage', message: 'Use FakePlatform/MemoryStorage in tests.' },
-                { object: 'navigator', property: 'storage', message: 'Use FakePlatform/MemoryStorage in tests.' },
+                {
+                    object: 'window',
+                    property: 'localStorage',
+                    message: 'Use FakePlatform/MemoryStorage in tests.',
+                },
+                {
+                    object: 'window',
+                    property: 'indexedDB',
+                    message: 'Use FakePlatform/MemoryStorage in tests.',
+                },
+                {
+                    object: 'window',
+                    property: 'sessionStorage',
+                    message: 'Use FakePlatform/MemoryStorage in tests.',
+                },
+                {
+                    object: 'navigator',
+                    property: 'storage',
+                    message: 'Use FakePlatform/MemoryStorage in tests.',
+                },
             ],
         },
     },
