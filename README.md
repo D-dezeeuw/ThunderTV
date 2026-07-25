@@ -17,12 +17,14 @@ Four constraints drive every decision in this codebase:
    subscription (M3U URL or Xtream credentials) so one visit configures a
    device.
 
-The full architecture rationale and the 30-phase build-out plan (10 features
-each, 10 tasks per feature) live in the sibling
-[`thunder-tv`](https://github.com/d-dezeeuw/thunder-tv) repository, under
-`.plans/2026-07-25-thundertv-new-iptv-webapp.md` and `masterplan/`
-respectively — that's where this project originated and is planned; this
-repository is where it's actually built and shipped.
+The full architecture rationale lives in
+[`masterplan/architecture-plan.md`](./masterplan/architecture-plan.md); the
+30-phase build-out plan (10 features each, 10 tasks per feature) lives in
+[`masterplan/MASTERPLAN.md`](./masterplan/MASTERPLAN.md) and
+[`masterplan/phases/`](./masterplan/phases/). Both originated in the sibling
+[`thunder-tv`](https://github.com/d-dezeeuw/thunder-tv) repository (where
+this project's planning began) and were moved here once this repository
+existed, so the roadmap lives with the code it describes.
 
 ## Commands
 
