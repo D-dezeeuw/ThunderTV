@@ -225,6 +225,33 @@
     font-size: var(--text-sm);
 }
 
+/* ---- Recent view zap-history stub (Feature 05.4.6/05.5.6) ---- */
+
+.recent-now-playing {
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+    margin: var(--space-5) 0 var(--space-2);
+}
+
+.recent-zap-history {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--color-border);
+}
+
+.recent-zap-history__row {
+    display: flex;
+    align-items: center;
+    height: var(--row-h);
+    padding-inline: var(--row-pad-x);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.recent-zap-history__name {
+    font-size: var(--text-sm);
+}
+
 /* ---- Settings panel overlay (Feature 02.7) ---- */
 
 .settings-panel {

@@ -1,14 +1,14 @@
 import { bindDOM, resetState, tick } from 'spektrum';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { registerUiSelectors } from '../state/ui.selectors';
 import { initRouter, ROUTE_VALUES } from './router';
-import { registerViewActiveComputeds } from './shell';
 
 describe('view switching', () => {
     let sections: Record<string, HTMLElement>;
     let destroy: () => void;
 
     beforeAll(() => {
-        registerViewActiveComputeds();
+        registerUiSelectors();
         // Resolves the current hash once and subscribes to every future
         // hashchange — the single writer of ui.activeView (Feature 02.4.3).
         initRouter();

@@ -66,7 +66,7 @@
                     :aria-label="strings.rail.sources"
                     :title="strings.rail.sources"
                     data-action="click"
-                    data-fn="navigate"
+                    data-fn="ui/navigate"
                 >
                     <svg class="icon icon--m" aria-hidden="true">
                         <use href="#icon-sources"></use>
@@ -81,7 +81,7 @@
                     :aria-label="strings.rail.favorites"
                     :title="strings.rail.favorites"
                     data-action="click"
-                    data-fn="navigate"
+                    data-fn="ui/navigate"
                 >
                     <svg class="icon icon--m" aria-hidden="true">
                         <use href="#icon-favorites"></use>
@@ -96,7 +96,7 @@
                     :aria-label="strings.rail.recent"
                     :title="strings.rail.recent"
                     data-action="click"
-                    data-fn="navigate"
+                    data-fn="ui/navigate"
                 >
                     <svg class="icon icon--m" aria-hidden="true">
                         <use href="#icon-recent"></use>
@@ -111,7 +111,7 @@
                     :aria-label="strings.rail.guide"
                     :title="strings.rail.guide"
                     data-action="click"
-                    data-fn="navigate"
+                    data-fn="ui/navigate"
                 >
                     <svg class="icon icon--m" aria-hidden="true">
                         <use href="#icon-guide"></use>
@@ -124,7 +124,7 @@
                     :aria-label="strings.rail.settings"
                     :title="strings.rail.settings"
                     data-action="click"
-                    data-fn="toggleSettings"
+                    data-fn="ui/toggleSettings"
                 >
                     <svg class="icon icon--m" aria-hidden="true">
                         <use href="#icon-settings"></use>
@@ -149,7 +149,7 @@
                         type="button"
                         class="storage-notice__link"
                         data-action="click"
-                        data-fn="toggleSettings"
+                        data-fn="ui/toggleSettings"
                     >
                         {{ strings.storageNotice.learnMore }}
                     </button>
@@ -158,7 +158,7 @@
                         class="icon-btn"
                         :aria-label="strings.storageNotice.dismiss"
                         data-action="click"
-                        data-fn="dismissStorageNotice"
+                        data-fn="ui/dismissStorageNotice"
                     >
                         <svg class="icon icon--s" aria-hidden="true">
                             <use href="#icon-close"></use>
@@ -189,7 +189,7 @@
                                 type="button"
                                 class="btn"
                                 data-action="click"
-                                data-fn="pickM3uFile"
+                                data-fn="playlist/pickM3uFile"
                             >
                                 {{ strings.emptyStates.firstRun.file }}
                             </button>
@@ -207,10 +207,10 @@
                              the real import flow renders picked files itself. -->
                         <p
                             class="empty-state__note"
-                            data-if="sources.lastPickedLabel"
+                            data-if="playlist.lastPickedLabel"
                             data-testid="picked-file-note"
                         >
-                            {{ sources.lastPickedLabel }}
+                            {{ playlist.lastPickedLabel }}
                         </p>
                         <p class="empty-state__note">{{ strings.emptyStates.firstRun.note }}</p>
                         <!-- Feature 03.2.10: first real capabilities consumer. -->
@@ -230,7 +230,7 @@
                       its purpose is independent of real source state.
                     -->
                     <p class="demo-rows__label">{{ strings.emptyStates.demoRowsLabel }}</p>
-                    <ul class="demo-rows cv-auto" data-each="demoRows" aria-hidden="true">
+                    <ul class="demo-rows cv-auto" data-each="playlist.demoRows" aria-hidden="true">
                         <li class="demo-row">
                             <span class="demo-row__logo"></span>
                             <span class="demo-row__name truncate">{{ item }}</span>
@@ -263,13 +263,31 @@
                     data-testid="view-recent"
                 >
                     <h1 class="view__heading">{{ strings.views.recent.heading }}</h1>
-                    <div class="empty-state">
+                    <div class="empty-state" data-if="hasNoZapHistory">
                         <svg class="icon icon--empty" aria-hidden="true">
                             <use href="#icon-recent"></use>
                         </svg>
                         <p class="empty-state__heading">{{ strings.emptyStates.recent.heading }}</p>
                         <p class="empty-state__message">{{ strings.emptyStates.recent.message }}</p>
                     </div>
+                    <!-- TODO(phase-13): temporary proof of Feature 05.4.6/05.5.6 — the
+                         player.active/zapHistory cache rendering from state alone,
+                         restored before any playlist loads. Phase 13 replaces this
+                         with the real recent/favorites UI (thumbnails, play
+                         affordance, remove). -->
+                    <p class="recent-now-playing" data-if="player.active" data-testid="now-playing">
+                        {{ strings.recent.nowPlaying }} {{ player.active.name }}
+                    </p>
+                    <ul
+                        class="recent-zap-history cv-auto"
+                        data-if="!hasNoZapHistory"
+                        data-each="player.zapHistory"
+                        data-testid="zap-history-list"
+                    >
+                        <li class="recent-zap-history__row">
+                            <span class="recent-zap-history__name truncate">{{ item.name }}</span>
+                        </li>
+                    </ul>
                 </section>
 
                 <section
@@ -309,12 +327,12 @@
                 aria-modal="true"
                 :aria-label="strings.settings.title"
                 data-action="keydown.esc"
-                data-fn="closeSettings"
+                data-fn="ui/closeSettings"
             >
                 <div
                     class="settings-panel__backdrop"
                     data-action="click"
-                    data-fn="closeSettings"
+                    data-fn="ui/closeSettings"
                 ></div>
                 <div class="settings-panel__body">
                     <div class="settings-panel__header">
@@ -324,7 +342,7 @@
                             class="icon-btn"
                             :aria-label="strings.settings.close"
                             data-action="click"
-                            data-fn="closeSettings"
+                            data-fn="ui/closeSettings"
                         >
                             <svg class="icon icon--s" aria-hidden="true">
                                 <use href="#icon-close"></use>
@@ -370,7 +388,7 @@
                                 :class="{ 'density-toggle__btn--active': ui.density === 'comfortable' }"
                                 data-density="comfortable"
                                 data-action="click"
-                                data-fn="setDensity"
+                                data-fn="ui/setDensity"
                             >
                                 {{ strings.settings.appearance.densityComfortable }}
                             </button>
@@ -380,7 +398,7 @@
                                 :class="{ 'density-toggle__btn--active': ui.density === 'compact' }"
                                 data-density="compact"
                                 data-action="click"
-                                data-fn="setDensity"
+                                data-fn="ui/setDensity"
                             >
                                 {{ strings.settings.appearance.densityCompact }}
                             </button>

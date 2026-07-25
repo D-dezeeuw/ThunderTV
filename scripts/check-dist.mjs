@@ -42,14 +42,30 @@ const FAKE_PLATFORM_SYMBOLS = [
     'resetPlatformForTests',
 ];
 
+// Feature 05.7.5: installDevtools()/`__tl` are gated behind
+// `if (import.meta.env.DEV)` in bootstrap.ts specifically so Vite's
+// dead-code elimination drops src/state/devtools.ts from a production
+// build — a prod bundle has nothing to replay by design (Feature 05.7's
+// history-limit-0 policy would make replay() a no-op anyway, but the code
+// itself must not ship either). Checked separately from FAKE_PLATFORM_SYMBOLS
+// since a leak here is a dead-code-elimination regression, not a test-only
+// import reaching main.ts.
+const DEVTOOLS_SYMBOLS = ['installDevtools', '__tl', 'dumpState'];
+
 const assetsDir = `${distDir}/assets`;
 const jsFiles = readdirSync(assetsDir).filter((name) => name.endsWith('.js'));
 const leaks = [];
+const devtoolsLeaks = [];
 for (const file of jsFiles) {
     const contents = readFileSync(`${assetsDir}/${file}`, 'utf8');
     for (const symbol of FAKE_PLATFORM_SYMBOLS) {
         if (contents.includes(symbol)) {
             leaks.push(`${file}: "${symbol}"`);
+        }
+    }
+    for (const symbol of DEVTOOLS_SYMBOLS) {
+        if (contents.includes(symbol)) {
+            devtoolsLeaks.push(`${file}: "${symbol}"`);
         }
     }
 }
@@ -61,3 +77,11 @@ if (leaks.length > 0) {
 }
 
 console.log(`check-dist: OK — no FakePlatform symbols found in ${jsFiles.length} built JS asset(s)`);
+
+if (devtoolsLeaks.length > 0) {
+    console.error('check-dist: dev-only devtools (src/state/devtools.ts, Feature 05.7.3-05.7.5) leaked into the production bundle:');
+    for (const leak of devtoolsLeaks) console.error(`  ${leak}`);
+    process.exit(1);
+}
+
+console.log(`check-dist: OK — no devtools symbols found in ${jsFiles.length} built JS asset(s)`);
