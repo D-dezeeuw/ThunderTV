@@ -200,3 +200,11 @@ A deterministic `FakePlatform` (scripted HTTP, in-memory files, memory storage) 
 Docs updated: this file, `src/core/platform/README.md` (new), `src/core/http/README.md` (new), and `README.md` (commands table's stale "wired in Phase 27" `test` script note fixed, standing-conventions bullet expanded to the full fenced-API list, `src/app/` row in "Who lives where" updated — the last two were stale from before this phase and are fixed here per the "fix stale docs you notice" rule).
 
 Tests added: 9 new spec files (`index.spec.ts`, `capabilities.spec.ts`, `web-platform.spec.ts`, `classified-fetch.spec.ts`, `proxy.spec.ts`, `web-http-adapter.spec.ts`, `web-file-adapter.spec.ts`, `create-platform.spec.ts`, `fake-platform.spec.ts`), 66 new test cases, all passing alongside the 20 pre-existing Phase 02 tests (86 total).
+
+## Post-merge deploy follow-up (03.10.10)
+
+Deployed from a clean, merged `main` per the README's deploy rule (`npm run deploy`; published `dist/` to `gh-pages`). The sandbox's headless Chromium cannot complete outbound HTTPS to `github.io` either (the same `net::ERR_CONNECTION_RESET` proxy limitation as the CDN check above — a real browser is unaffected), so the live site was verified structurally instead:
+
+- `curl https://d-dezeeuw.github.io/ThunderTV/` → `200`, response body byte-for-byte the same size as the local build's `dist/index.html` (19,903 bytes).
+- The served HTML carries the real Phase 03 markup: `data-fn="pickM3uFile"` and `strings.emptyStates.firstRun.corsHint` binding both present (1 match each), plus every `data-testid` from this phase and Phase 02 (`cors-hint`, `picked-file-note`, `empty-first-run`, all four `view-*` testids).
+- The import map still points at the pinned CDN URL (`https://unpkg.com/spektrum@1.1.0/spektrum.min.js`) — confirmed the deploy did **not** pick up the local vendored-Spektrum swap used for sandbox testing (that swap only ever touched a local, gitignored `dist/`, never the committed source).
