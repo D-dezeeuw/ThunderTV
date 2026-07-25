@@ -28,7 +28,7 @@ Renaming is trivial; deleting is not. A delete must remove bulk rows in bounded 
 - [ ] **15.2.2** Persist renames through `defineFn('renameSource')`, updating the StorageAdapter row and the in-state collection together — no drift between store and state.
 - [ ] **15.2.3** Build the delete confirm as minimal static UI (native `confirm()` or a plain dialog — decide and note) stating exactly what goes: cached channels, groups, and refresh metadata; favorites survive as orphans.
 - [ ] **15.2.4** Order the cascade: delete channels/groups rows first in bounded chunked batches, then the source row — a crash mid-cascade leaves a re-deletable source, never parentless bulk rows.
-- [ ] **15.2.5** Handle deleting the *active* source deterministically: clear the memory query layer, fall back to the next source or the import card — a decided behavior, not an accident.
+- [ ] **15.2.5** Handle deleting the _active_ source deterministically: clear the memory query layer, fall back to the next source or the import card — a decided behavior, not an accident.
 - [ ] **15.2.6** Invoke the 13.8 mass-orphan contract for every favorite with the deleted `sourceId` — snapshots stay playable and the favorites view shows the hint.
 - [ ] **15.2.7** Delete ephemeral sources (14.5) from memory only — no storage calls that could fail for rows that were never written.
 - [ ] **15.2.8** Update storage accounting (15.10) in the same flow so freed rows and bytes appear in the view immediately after the cascade completes.

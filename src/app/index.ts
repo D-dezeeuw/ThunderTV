@@ -1,12 +1,22 @@
-import { bindDOM, computed, defineFn, run, setValue, type State } from 'spektrum';
+import { bindDOM, run, setValue } from 'spektrum';
+import { registerDensityAction } from '../ui/density';
+import { registerEmptyStateComputeds } from '../ui/empty-state';
+import { initRouter } from './router';
+import { registerSettingsPanelActions } from './settings-panel';
+import {
+    registerConnectDetection,
+    registerNavigateAction,
+    registerViewActiveComputeds,
+} from './shell';
+import { strings } from './strings';
+import { registerViewSwitching } from './views';
 
-interface SmokeState extends State {
-    smoke?: { count?: number };
-}
-
-function readSmokeCount(state: State): number {
-    return (state as SmokeState).smoke?.count ?? 0;
-}
+const DEMO_ROWS = [
+    'Sample Channel One',
+    'Sample Channel Two',
+    'Sample Channel Three',
+    'Sample Channel Four',
+];
 
 /**
  * Application bootstrap — the single place main.ts delegates to.
@@ -17,26 +27,36 @@ function readSmokeCount(state: State): number {
  *   3. connect  — parse a #/connect bookmark URL, if present, before render (Phase 14)
  *   4. render   — rehydrate persisted state, bindDOM(), run() (Phase 05 onward)
  *
- * Only step 4 exists today, as the Feature 01.10 smoke page (markup lives in
- * index.html's #app block). Steps 1-3 are no-ops until their owning phases
- * land, and the smoke page itself is removed once Phase 02's real app shell
- * replaces it.
+ * Only step 4 exists today: the real app shell (rail, router, view
+ * switching, settings panel, density) built in Phase 02. Steps 1-3 are
+ * no-ops until their owning phases land.
  */
 export function bootstrap(): void {
-    setValue('smoke.message', 'ThunderTV is alive');
-    setValue('smoke.count', 0);
+    // Static reference data seeded once, read by :attr/{{}} bindings —
+    // strings.ts is a plain TS module, not Spektrum state, so bindings need
+    // it mirrored into state to reach it (see src/app/strings.ts).
+    setValue('strings', strings);
 
-    // computed(): derives smoke.parity from smoke.count and re-runs whenever
-    // that dependency changes — proven by the bump button below.
-    computed('smoke.parity', ['smoke.count'], (state: State) =>
-        readSmokeCount(state) % 2 === 0 ? 'even' : 'odd',
-    );
+    // Stub state Phase 07 (playlist import) replaces with real data; every
+    // binding reading it (hasNoSources, etc.) needs no changes when that
+    // happens.
+    setValue('sources.count', 0);
+    setValue('demoRows', DEMO_ROWS);
 
-    // defineFn(): registers the handler index.html's data-action="click:bumpSmoke"
-    // binds to.
-    defineFn('bumpSmoke', (_el, state) => {
-        setValue('smoke.count', readSmokeCount(state) + 1);
-    });
+    setValue('ui.density', 'comfortable');
+    setValue('ui.settingsOpen', false);
+
+    registerEmptyStateComputeds();
+    registerViewActiveComputeds();
+    registerConnectDetection();
+    registerNavigateAction();
+    registerSettingsPanelActions();
+    registerDensityAction();
+    registerViewSwitching();
+
+    // Resolves the initial route before bindDOM()/run() so a deep link
+    // (e.g. #/favorites) renders correctly on first paint (Feature 02.4.4).
+    initRouter();
 
     bindDOM();
     run();

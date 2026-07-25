@@ -1,0 +1,284 @@
+/*
+ * App shell chrome: the rail, view container, settings panel overlay,
+ * empty states, and their supporting bits. Token-only (scripts/check-css.mjs
+ * fails the build on literal hex colors or any transition/animation).
+ *
+ * Layout (Feature 02.10.1): one CSS grid on #app — a fixed --rail-w column
+ * plus a flexible content column. No absolute positioning except the
+ * settings overlay itself. Phase 12's player dock adds a second grid row
+ * without otherwise changing this structure.
+ */
+#app {
+    display: grid;
+    grid-template-columns: var(--rail-w) 1fr;
+    grid-template-rows: 1fr;
+}
+
+/* ---- Rail (Feature 02.3) ---- */
+
+.rail {
+    grid-row: 1;
+    grid-column: 1;
+    width: var(--rail-w);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding-block: var(--space-3);
+    background: var(--color-surface);
+    border-right: 1px solid var(--color-border);
+}
+
+.rail__btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-dim);
+    cursor: pointer;
+}
+
+.rail__btn:hover {
+    background: var(--surface-hover);
+}
+
+.rail__btn--active {
+    background: var(--surface-active);
+    color: var(--color-accent);
+}
+
+.rail__btn--settings {
+    margin-top: auto;
+}
+
+/* ---- View container (Feature 02.5) ---- */
+
+.view {
+    grid-row: 1;
+    grid-column: 2;
+    padding: var(--space-5);
+    min-width: 0;
+}
+
+.view__heading {
+    font-size: var(--text-lg);
+    line-height: var(--leading-tight);
+    margin: 0 0 var(--space-4);
+}
+
+/* ---- Empty states (Feature 02.6) ---- */
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-3);
+    padding: var(--space-6) var(--space-4);
+    color: var(--color-text-dim);
+}
+
+.empty-state .icon--empty {
+    width: var(--icon-l);
+    height: var(--icon-l);
+}
+
+.empty-state__heading {
+    font-size: var(--text-md);
+    color: var(--color-text);
+    margin: 0;
+}
+
+.empty-state__message,
+.empty-state__note {
+    margin: 0;
+    font-size: var(--text-sm);
+    max-width: 32rem;
+}
+
+.empty-state__actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Error variant (Feature 02.6.4) — shape defined now, no live instance
+   renders it yet: nothing in the app performs a fetch that can fail until
+   Phase 03's classifiedFetch exists. */
+.empty-state--error {
+    color: var(--color-danger);
+}
+.empty-state--error .empty-state__heading {
+    color: var(--color-danger);
+}
+
+.btn {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+}
+.btn:disabled {
+    color: var(--color-text-dim);
+    cursor: not-allowed;
+}
+
+.icon-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-text-dim);
+    cursor: pointer;
+}
+.icon-btn:hover {
+    background: var(--surface-hover);
+}
+
+/* ---- Density demo rows (Feature 02.8.5) ---- */
+
+.demo-rows__label {
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+    margin: var(--space-5) 0 var(--space-2);
+}
+
+.demo-rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--color-border);
+}
+
+.demo-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    height: var(--row-h);
+    padding-inline: var(--row-pad-x);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.demo-row__logo {
+    width: var(--logo-box);
+    height: var(--logo-box);
+    border-radius: 4px;
+    background: var(--color-surface-raised);
+    flex-shrink: 0;
+}
+
+.demo-row__name {
+    font-size: var(--text-sm);
+}
+
+/* ---- Settings panel overlay (Feature 02.7) ---- */
+
+.settings-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.settings-panel__backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--color-scrim);
+}
+
+.settings-panel__body {
+    position: relative;
+    width: var(--panel-w);
+    max-width: 100%;
+    height: 100%;
+    background: var(--color-surface-raised);
+    border-left: 1px solid var(--color-border);
+    padding: var(--space-4);
+    overflow-y: auto;
+}
+
+.settings-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+}
+
+.settings-panel__title {
+    font-size: var(--text-lg);
+    margin: 0;
+}
+
+.settings-section {
+    margin-bottom: var(--space-5);
+}
+
+.settings-section__title {
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-dim);
+    margin: 0 0 var(--space-2);
+}
+
+.density-toggle {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.density-toggle__btn {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    cursor: pointer;
+}
+
+.density-toggle__btn--active {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-bg);
+}
+
+/* ---- Icons (Feature 02.9) ---- */
+
+.icon {
+    color: currentColor;
+}
+.icon--s {
+    width: var(--icon-s);
+    height: var(--icon-s);
+}
+.icon--m {
+    width: var(--icon-m);
+    height: var(--icon-m);
+}
+
+/* ---- Responsive (Feature 02.10) ---- */
+/* Floor: --rail-w stays fixed at ~360px+ (--floor-w); content compresses,
+   never scrolls horizontally. Below --floor-w is unsupported (no
+   TV/desktop/tablet target goes narrower); nothing special is needed here
+   because the grid's 1fr column already compresses instead of overflowing.
+
+   Narrow settings overlay: media query conditions can't reference custom
+   properties, so --panel-narrow-threshold (tokens.css) is documentation —
+   keep this literal 480px in sync with it by hand. */
+@media (max-width: 480px) {
+    .settings-panel__body {
+        width: 100%;
+    }
+}
