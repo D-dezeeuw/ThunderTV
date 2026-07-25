@@ -60,6 +60,14 @@ export const strings = {
         detected: 'Connect link detected — this device will be configured shortly.',
     },
 
+    storageNotice: {
+        partial: 'Storage is limited on this device — playlists reload on start.',
+        none: 'Nothing persists on this device — imports last for this session.',
+        dismiss: 'Dismiss',
+        learnMore: 'Learn more',
+        userSectionTier: 'Storage',
+    },
+
     http: {
         failure: {
             http: 'The server responded with an error.',

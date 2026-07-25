@@ -24,6 +24,7 @@ export function resetPlatformForTests(): void {
 }
 
 export { createPlatform } from './create-platform';
+export type { CreateWebPlatformOptions } from './web-platform';
 export type { Capabilities } from './capabilities';
 export type { FileAdapter, PickedFile, ReadTextResult } from './file-adapter';
 export type { PlatformAdapter } from './platform-adapter';

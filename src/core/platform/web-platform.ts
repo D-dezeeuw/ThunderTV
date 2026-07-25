@@ -1,39 +1,26 @@
 import { WebHttpAdapter } from '../http/web-http-adapter';
-import type { StorageAdapter } from '../storage/storage-adapter';
+import { createStorage } from '../storage';
+import type { TierControllerOptions } from '../storage/tier-controller';
 import { createWebCapabilities } from './capabilities';
 import type { PlatformAdapter } from './platform-adapter';
 import { WebFileAdapter } from './web-file-adapter';
 
-/**
- * Temporary in-memory storage stub. Phase 04 replaces this with the real
- * tiered `StorageAdapter` (IndexedDB → localStorage → memory, boot-probed).
- * Reports `durableStorage: 'none'` honestly (Feature 03.2.3) — nothing
- * written through this stub survives a reload.
- */
-function createStorageStub(): StorageAdapter {
-    const memory = new Map<string, unknown>();
-    return {
-        get<T>(key: string) {
-            return Promise.resolve(memory.get(key) as T | undefined);
-        },
-        set<T>(key: string, value: T) {
-            memory.set(key, value);
-            return Promise.resolve();
-        },
-        delete(key: string) {
-            memory.delete(key);
-            return Promise.resolve();
-        },
-        clear() {
-            memory.clear();
-            return Promise.resolve();
-        },
-    };
+export interface CreateWebPlatformOptions {
+    /** Forwarded to the storage tier controller (Feature 04.7.5) — lets `main.ts` react to a mid-session demotion (e.g. re-mirror `platform.capabilities`/`storage.tier` into Spektrum state) without `src/core/` importing the state framework. */
+    onStorageDemote?: TierControllerOptions['onDemote'];
 }
 
 /**
  * Assembles the web `PlatformAdapter`: `WebHttpAdapter`, `WebFileAdapter`,
- * the in-memory storage stub above, and fixed web capabilities.
+ * the real boot-probed `StorageAdapter` (Phase 04's `createStorage()`), and
+ * capabilities.
+ *
+ * `capabilities` is a *live getter*, not a field snapshotted once — reading
+ * it always derives `durableStorage` from `storage.tier` (which itself
+ * reflects the tier controller's current active adapter). This makes
+ * "capabilities.durableStorage reports the live tier" (this phase's own
+ * verification line) true by construction: there is no separate cached
+ * value that could drift from the real tier after a demotion.
  *
  * `WebHttpAdapter` defaults to "no proxy configured" (Feature 03.6.3) when
  * constructed without a `getProxyTemplate` getter, which is exactly this
@@ -41,24 +28,23 @@ function createStorageStub(): StorageAdapter {
  * passing a getter that only ever returns `undefined` today would be dead
  * code, so none is passed here yet.
  *
- * Returns a `Promise` (rather than being declared `async`, which would trip
- * `@typescript-eslint/require-await` with nothing yet to `await`) so Phase
- * 04 can insert a real `await` for the storage probe without changing this
- * function's call signature.
- *
  * Feature 03.3.5 asks collaborator construction to degrade rather than
  * white-screen on failure. `WebHttpAdapter` and `WebFileAdapter`'s
  * constructors only assign fields — nothing here can throw for any input —
  * so a catch-and-degrade branch would guard a path that's structurally
- * unreachable (dead defensive code). Reassess if a future collaborator
- * gains a constructor that can actually fail.
+ * unreachable (dead defensive code). `createStorage()` itself never
+ * rejects (every probe failure mode already resolves `false`, landing on
+ * the `MemoryStorage` floor), so the same reasoning applies to it too.
  */
-export function createWebPlatform(): Promise<PlatformAdapter> {
-    return Promise.resolve({
+export async function createWebPlatform(options: CreateWebPlatformOptions = {}): Promise<PlatformAdapter> {
+    const storage = await createStorage({ onDemote: options.onStorageDemote });
+    return {
         name: 'web',
-        storage: createStorageStub(),
+        storage,
         http: new WebHttpAdapter(),
         files: new WebFileAdapter(),
-        capabilities: createWebCapabilities('none'),
-    });
+        get capabilities() {
+            return createWebCapabilities(storage.tier);
+        },
+    };
 }
