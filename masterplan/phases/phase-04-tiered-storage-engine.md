@@ -41,7 +41,7 @@ The simplest tier is the semantic authority: `MemoryStorage` defines correct beh
 
 - [ ] **04.3.1** Implement the class — `src/core/storage/memory-storage.ts`: `Map`-backed key-value store plus a `Map<TableName, Map<key, row>>` for table ops, `tier: 'none'`.
 - [ ] **04.3.2** Implement range semantics — `getRange` over sorted composite keys (e.g. `[channelId, start]` for `epgPrograms`) with an explicit key-encoding helper shared with the IDB tier so orderings can never diverge.
-- [ ] **04.3.3** Deep-copy on the boundary — `structuredClone` values on set *and* get so callers cannot mutate stored state by reference; document this as contract behavior all tiers must exhibit.
+- [ ] **04.3.3** Deep-copy on the boundary — `structuredClone` values on set _and_ get so callers cannot mutate stored state by reference; document this as contract behavior all tiers must exhibit.
 - [ ] **04.3.4** Honor write results — return `{ ok: true }` always (memory cannot meaningfully fail) while keeping the result shape, so calling code is exercise-identical across tiers.
 - [ ] **04.3.5** Implement `clearTable`/`count` — trivial here, but specified precisely (count after clear is 0; bulkPut upserts by key) because these become the matrix assertions.
 - [ ] **04.3.6** Keep it under 150 lines — the reference implementation stays small enough to be read as documentation; split key-encoding into `src/core/storage/keys.ts`.
@@ -76,7 +76,7 @@ The partial tier persists only the small, valuable data — settings, source def
 - [ ] **04.5.5** Write atomically enough — write chunks first, manifest last; a read finding a manifest/chunk mismatch discards the value (resolves `undefined`) instead of returning a corrupt partial parse.
 - [ ] **04.5.6** Budget the tier — track approximate bytes used under the `tl:` prefix and refuse (classified `{ ok: false, reason: 'budget' }`) writes that would exceed the ~5 MB plan budget, before the browser throws.
 - [ ] **04.5.7** Serialize denormalized snapshots — verify favorites/recent rows (name, stream URL, logo, group — per the plan's denormalization) survive a reload and are readable before any playlist parse, powering the fast-boot path.
-- [ ] **04.5.8** Keep credentials storable but bounded — `playlists` rows (Xtream credentials included) persist here by design; document the residual-risk note and confirm no credential ever appears in a chunk *key* (keys can end up in error messages).
+- [ ] **04.5.8** Keep credentials storable but bounded — `playlists` rows (Xtream credentials included) persist here by design; document the residual-risk note and confirm no credential ever appears in a chunk _key_ (keys can end up in error messages).
 - [ ] **04.5.9** Run the contract matrix — `describeStorageContract(LocalStorageStorage)` green, plus partial-tier-specific specs: bulk tables readable within the session but empty after a simulated reload (fresh instance), quota write demotes gracefully.
 - [ ] **04.5.10** Manual partial-tier smoke — with IDB sabotaged on built `dist/`, add a source + favorites, reload, and confirm sources/favorites survive while the app re-parses bulk data with the documented one-line notice showing.
 
@@ -132,8 +132,8 @@ Every stored shape carries a version from day one, so a later schema change is a
 - [ ] **04.9.1** Version the envelope — wrap kv values in `{ v: number, data }` at the adapter boundary (`src/core/storage/versioning.ts`), with the current shape version per key family declared in one registry map.
 - [ ] **04.9.2** Version table rows — add a `v` field to the row types in `records.ts` for `playlists`, `favorites`, and `recent` (the long-lived, cross-version rows); bulk `channels`/`epgPrograms` rows stay unversioned by design (they are re-parseable caches — document this split).
 - [ ] **04.9.3** Define the hook API — `registerMigration(keyFamily, fromV, toV, fn)`; reads encountering an old `v` run the chain, write back the migrated value, and return the current shape.
-- [ ] **04.9.4** Fail safe on unknown versions — a `v` *newer* than the registry (downgraded app) or an unparseable envelope resolves `undefined` plus one redacted diagnostic — never a throw into feature code.
-- [ ] **04.9.5** Version the IDB database itself — document the split: `idb`'s native `version`/`upgrade` handles *structural* changes (new stores/indexes), the envelope handles *shape* changes within a store; both live in this feature's files.
+- [ ] **04.9.4** Fail safe on unknown versions — a `v` _newer_ than the registry (downgraded app) or an unparseable envelope resolves `undefined` plus one redacted diagnostic — never a throw into feature code.
+- [ ] **04.9.5** Version the IDB database itself — document the split: `idb`'s native `version`/`upgrade` handles _structural_ changes (new stores/indexes), the envelope handles _shape_ changes within a store; both live in this feature's files.
 - [ ] **04.9.6** Seed v1 everywhere — declare version 1 for `settings`, `playlists`, `favorites`, `recent`, and the future session-snapshot keys, so Phase 05's persistence bridge writes versioned data from its first byte.
 - [ ] **04.9.7** Keep migrations pure — migration functions are pure `(old) => new` with no storage or platform access; enforce by type signature and spec.
 - [ ] **04.9.8** Unit-test the chain — specs: v1→v3 runs two hooks in order, write-back occurs once, missing intermediate hook surfaces a registry-time error (not a read-time surprise), newer-version reads resolve `undefined`.
@@ -147,7 +147,7 @@ The phase's proof: one behavioral suite, three adapters, zero per-tier spec fork
 - [ ] **04.10.1** Finalize the matrix runner — `src/core/storage/storage-matrix.spec.ts` invoking `describeStorageContract` for `MemoryStorage`, `IdbStorage` (over `fake-indexeddb`), and `LocalStorageStorage` (over a jsdom localStorage), each in an isolated `describe` with fresh instances per test.
 - [ ] **04.10.2** Pin the shims — add `fake-indexeddb` as a pinned devDependency and document why the matrix runs on shims locally while manual smokes cover real engines (no Actions, per the distribution model).
 - [ ] **04.10.3** Cover the bulk path — matrix includes the `writeChunked`/`replaceTableChunked` specs from 04.6 with a 12 000-row fixture (three chunks) asserting counts, ordering, and range reads per tier.
-- [ ] **04.10.4** Cover the partial-tier policy — tier-*behavioral* differences (bulk tables not surviving an instance recreate on partial; nothing surviving on none) are expressed as matrix parameters (`survivesReload: boolean` per table), not as forked specs.
+- [ ] **04.10.4** Cover the partial-tier policy — tier-_behavioral_ differences (bulk tables not surviving an instance recreate on partial; nothing surviving on none) are expressed as matrix parameters (`survivesReload: boolean` per table), not as forked specs.
 - [ ] **04.10.5** Cover versioning and demotion — envelope migration specs and the tier-controller ladder specs run inside the same `npm test` invocation so the whole engine gates together.
 - [ ] **04.10.6** Build shared fixtures — `src/core/storage/fixtures.ts` with generators for channel rows, EPG programs (sorted by start), and denormalized favorite snapshots, reused later by the Phase 06/16 worker tests.
 - [ ] **04.10.7** Assert clone isolation everywhere — the matrix mutates every returned object and re-reads to prove no tier leaks references (the `structuredClone` contract from 04.3.3).

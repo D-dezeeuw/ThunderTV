@@ -15,7 +15,7 @@ The fragment is untrusted input arriving from anywhere. A pure, strict parser tu
 - [ ] **14.1.4** Enforce per-type requireds: `xtream` needs `user` and `pass`; `m3u` needs only `url` — each missing required yields a field-specific error token for the UI.
 - [ ] **14.1.5** Define the optionals: `name` (trimmed, length-capped), `epg` (validated like `url`), and `save` where only the literal `0` disables persistence — any other value means default-save.
 - [ ] **14.1.6** Length-cap every value at parse time (~2 KB each) so a hostile mile-long fragment is rejected before any allocation-heavy work.
-- [ ] **14.1.7** Ignore unknown parameter *names* with a diagnostic note (forward compatibility) while unknown *types* reject — document the deliberate asymmetry in the module.
+- [ ] **14.1.7** Ignore unknown parameter _names_ with a diagnostic note (forward compatibility) while unknown _types_ reject — document the deliberate asymmetry in the module.
 - [ ] **14.1.8** Keep the parser pure and platform-free — no `location`, storage, or fetch imports — so 14.10 can fuzz it trivially.
 - [ ] **14.1.9** Export `ConnectParams` as the single source-creation input type — 14.3's upsert and 14.6's generator both compile against it, guaranteeing round-trip symmetry.
 - [ ] **14.1.10** Unit-test the acceptance grid: both valid types, every missing-required case, malformed URLs, and `save=0` vs `save=1` vs absent.
@@ -76,7 +76,7 @@ For shared machines: the link works, the session works, and nothing survives. On
 - [ ] **14.5.5** Keep ETag/refresh metadata for ephemeral sources in memory — the Phase 15 refresh path must not slip validators into storage as a side channel.
 - [ ] **14.5.6** Show a session-only badge on the source (sources view and settings) via a strings-module label — the user can see the mode they asked for.
 - [ ] **14.5.7** Make reload behavior honest: the source is gone after reload by design, landing on the normal empty/landing state with no error surface.
-- [ ] **14.5.8** Decide the collision case: an ephemeral consume matching a *persisted* source updates only the in-memory copy for this session, leaving the stored row unmodified — shared-machine semantics, recorded as a decision note.
+- [ ] **14.5.8** Decide the collision case: an ephemeral consume matching a _persisted_ source updates only the in-memory copy for this session, leaving the stored row unmodified — shared-machine semantics, recorded as a decision note.
 - [ ] **14.5.9** Unit-test the choke point: with an ephemeral source active, run favorites/recent/settings writes, then dump every tier — zero occurrences of user, pass, or the source URL.
 - [ ] **14.5.10** Unit-test reload semantics: the ephemeral source is absent after a simulated reboot while persisted sources are unaffected.
 

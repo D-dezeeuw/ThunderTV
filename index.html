@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" :data-density="ui.density">
     <head>
         <meta charset="UTF-8" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -7,6 +7,7 @@
         <title>ThunderTV</title>
         <link rel="stylesheet" href="/src/styles/tokens.css" />
         <link rel="stylesheet" href="/src/styles/base.css" />
+        <link rel="stylesheet" href="/src/styles/shell.css" />
 
         <!--
           Spektrum is the app's only UI/state framework, resolved at runtime
@@ -31,22 +32,298 @@
         </script>
     </head>
     <body>
+        <!--
+          Feature 02.9 inline SVG icon sprite. Hand-drawn 24x24 stroke-based
+          paths (stroke-width 2, no copied icon-font glyphs) referenced via
+          <use href="#icon-name">. One <symbol> per glyph; `display:none` on
+          the sprite itself keeps it out of layout without hiding <use>
+          instances that reference it (SVG <use> clones content regardless
+          of the source's own display value). See "how to add one" below.
+        -->
+        <!-- prettier-ignore -->
+        <svg style="display: none" aria-hidden="true">
+            <!-- how to add one: id="icon-<name>", viewBox="0 0 24 24", stroke="currentColor" stroke-width="2" fill="none", stroke-linecap/linejoin="round" -->
+            <symbol id="icon-sources" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="7" y1="9" x2="17" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="7" y1="13" x2="17" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="7" y1="17" x2="13" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <symbol id="icon-favorites" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.2 1 6-5.2-2.9-5.2 2.9 1-6-4.3-4.2 5.9-.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+            <symbol id="icon-recent" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><polyline points="12,7.5 12,12 15.5,14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+            <symbol id="icon-guide" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+            <symbol id="icon-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="3" x2="12" y2="5.3"/><line x1="12" y1="18.7" x2="12" y2="21"/><line x1="3" y1="12" x2="5.3" y2="12"/><line x1="18.7" y1="12" x2="21" y2="12"/><line x1="5.6" y1="5.6" x2="7.2" y2="7.2"/><line x1="16.8" y1="16.8" x2="18.4" y2="18.4"/><line x1="5.6" y1="18.4" x2="7.2" y2="16.8"/><line x1="16.8" y1="7.2" x2="18.4" y2="5.6"/></g></symbol>
+            <symbol id="icon-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><line x1="15.5" y1="15.5" x2="20.5" y2="20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <symbol id="icon-alert" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><line x1="12" y1="10" x2="12" y2="14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1" fill="currentColor" stroke="none"/></symbol>
+            <symbol id="icon-play" viewBox="0 0 24 24"><path d="M6 4.5v15l14-7.5z" fill="currentColor" stroke="none"/></symbol>
+        </svg>
+
         <div id="app">
-            <!--
-              Feature 01.10 smoke page: proves setValue/computed/defineFn +
-              {{expr}}/data-action bindings all work end to end, through the
-              CDN-pinned import map, in both dev and the built dist/. Removed
-              once Phase 02's real app shell replaces it.
-            -->
-            <section class="smoke" data-testid="smoke">
-                <p class="smoke__message">{{ smoke.message }}</p>
-                <p class="smoke__count">
-                    Count: <strong>{{ smoke.count }}</strong> ({{ smoke.parity }})
-                </p>
-                <button type="button" class="smoke__button" data-action="click" data-fn="bumpSmoke">
-                    Bump
+            <nav class="rail" aria-label="Main">
+                <button
+                    type="button"
+                    class="rail__btn"
+                    data-view="sources"
+                    :class="{ 'rail__btn--active': view.sources.active }"
+                    :aria-current="view.sources.active ? 'page' : null"
+                    :aria-label="strings.rail.sources"
+                    :title="strings.rail.sources"
+                    data-action="click"
+                    data-fn="navigate"
+                >
+                    <svg class="icon icon--m" aria-hidden="true">
+                        <use href="#icon-sources"></use>
+                    </svg>
                 </button>
-            </section>
+                <button
+                    type="button"
+                    class="rail__btn"
+                    data-view="favorites"
+                    :class="{ 'rail__btn--active': view.favorites.active }"
+                    :aria-current="view.favorites.active ? 'page' : null"
+                    :aria-label="strings.rail.favorites"
+                    :title="strings.rail.favorites"
+                    data-action="click"
+                    data-fn="navigate"
+                >
+                    <svg class="icon icon--m" aria-hidden="true">
+                        <use href="#icon-favorites"></use>
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    class="rail__btn"
+                    data-view="recent"
+                    :class="{ 'rail__btn--active': view.recent.active }"
+                    :aria-current="view.recent.active ? 'page' : null"
+                    :aria-label="strings.rail.recent"
+                    :title="strings.rail.recent"
+                    data-action="click"
+                    data-fn="navigate"
+                >
+                    <svg class="icon icon--m" aria-hidden="true">
+                        <use href="#icon-recent"></use>
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    class="rail__btn"
+                    data-view="guide"
+                    :class="{ 'rail__btn--active': view.guide.active }"
+                    :aria-current="view.guide.active ? 'page' : null"
+                    :aria-label="strings.rail.guide"
+                    :title="strings.rail.guide"
+                    data-action="click"
+                    data-fn="navigate"
+                >
+                    <svg class="icon icon--m" aria-hidden="true">
+                        <use href="#icon-guide"></use>
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    class="rail__btn rail__btn--settings"
+                    :class="{ 'rail__btn--active': ui.settingsOpen }"
+                    :aria-label="strings.rail.settings"
+                    :title="strings.rail.settings"
+                    data-action="click"
+                    data-fn="toggleSettings"
+                >
+                    <svg class="icon icon--m" aria-hidden="true">
+                        <use href="#icon-settings"></use>
+                    </svg>
+                </button>
+            </nav>
+
+            <main class="view scroll-y" data-ref="viewContainer">
+                <section
+                    class="view__section"
+                    data-if="view.sources.active"
+                    data-testid="view-sources"
+                >
+                    <h1 class="view__heading">{{ strings.views.sources.heading }}</h1>
+                    <div class="empty-state" data-if="hasNoSources" data-testid="empty-first-run">
+                        <svg class="icon icon--empty" aria-hidden="true">
+                            <use href="#icon-plus"></use>
+                        </svg>
+                        <p class="empty-state__heading">
+                            {{ strings.emptyStates.firstRun.heading }}
+                        </p>
+                        <div class="empty-state__actions">
+                            <button type="button" class="btn" disabled>
+                                {{ strings.emptyStates.firstRun.file }}
+                            </button>
+                            <button type="button" class="btn" disabled>
+                                {{ strings.emptyStates.firstRun.paste }}
+                            </button>
+                            <button type="button" class="btn" disabled>
+                                {{ strings.emptyStates.firstRun.url }}
+                            </button>
+                            <button type="button" class="btn" disabled>
+                                {{ strings.emptyStates.firstRun.xtream }}
+                            </button>
+                        </div>
+                        <p class="empty-state__note">{{ strings.emptyStates.firstRun.note }}</p>
+                    </div>
+                    <!--
+                      Feature 02.8.5 density demo: proves --row-h/--row-pad-x/
+                      --logo-box render correctly in both density modes before
+                      Phase 06/08 build the real, worker-parsed channel list.
+                      Shown unconditionally (not gated on hasNoSources) since
+                      its purpose is independent of real source state.
+                    -->
+                    <p class="demo-rows__label">{{ strings.emptyStates.demoRowsLabel }}</p>
+                    <ul class="demo-rows cv-auto" data-each="demoRows" aria-hidden="true">
+                        <li class="demo-row">
+                            <span class="demo-row__logo"></span>
+                            <span class="demo-row__name truncate">{{ item }}</span>
+                        </li>
+                    </ul>
+                </section>
+
+                <section
+                    class="view__section cv-auto"
+                    data-if="view.favorites.active"
+                    data-testid="view-favorites"
+                >
+                    <h1 class="view__heading">{{ strings.views.favorites.heading }}</h1>
+                    <div class="empty-state">
+                        <svg class="icon icon--empty" aria-hidden="true">
+                            <use href="#icon-favorites"></use>
+                        </svg>
+                        <p class="empty-state__heading">
+                            {{ strings.emptyStates.favorites.heading }}
+                        </p>
+                        <p class="empty-state__message">
+                            {{ strings.emptyStates.favorites.message }}
+                        </p>
+                    </div>
+                </section>
+
+                <section
+                    class="view__section cv-auto"
+                    data-if="view.recent.active"
+                    data-testid="view-recent"
+                >
+                    <h1 class="view__heading">{{ strings.views.recent.heading }}</h1>
+                    <div class="empty-state">
+                        <svg class="icon icon--empty" aria-hidden="true">
+                            <use href="#icon-recent"></use>
+                        </svg>
+                        <p class="empty-state__heading">{{ strings.emptyStates.recent.heading }}</p>
+                        <p class="empty-state__message">{{ strings.emptyStates.recent.message }}</p>
+                    </div>
+                </section>
+
+                <section
+                    class="view__section cv-auto"
+                    data-if="view.guide.active"
+                    data-testid="view-guide"
+                >
+                    <h1 class="view__heading">{{ strings.views.guide.heading }}</h1>
+                    <div class="empty-state">
+                        <svg class="icon icon--empty" aria-hidden="true">
+                            <use href="#icon-guide"></use>
+                        </svg>
+                        <p class="empty-state__heading">{{ strings.emptyStates.guide.heading }}</p>
+                        <p class="empty-state__message">{{ strings.emptyStates.guide.message }}</p>
+                    </div>
+                </section>
+
+                <section
+                    class="view__section cv-auto"
+                    data-if="view.connect.active"
+                    data-testid="view-connect"
+                >
+                    <h1 class="view__heading">{{ strings.views.connect.heading }}</h1>
+                    <!-- TODO(phase-14): this stub never reads or renders connect params —
+                         only whether any were present. Phase 14 consumes-and-scrubs the
+                         real fragment before any request. -->
+                    <p data-if="connect.detected">{{ strings.connect.detected }}</p>
+                </section>
+            </main>
+
+            <aside
+                class="settings-panel"
+                data-if="ui.settingsOpen"
+                data-ref="settingsPanel"
+                tabindex="-1"
+                role="dialog"
+                aria-modal="true"
+                :aria-label="strings.settings.title"
+                data-action="keydown.esc"
+                data-fn="closeSettings"
+            >
+                <div
+                    class="settings-panel__backdrop"
+                    data-action="click"
+                    data-fn="closeSettings"
+                ></div>
+                <div class="settings-panel__body">
+                    <div class="settings-panel__header">
+                        <h2 class="settings-panel__title">{{ strings.settings.title }}</h2>
+                        <button
+                            type="button"
+                            class="icon-btn"
+                            :aria-label="strings.settings.close"
+                            data-action="click"
+                            data-fn="closeSettings"
+                        >
+                            <svg class="icon icon--s" aria-hidden="true">
+                                <use href="#icon-close"></use>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <section class="settings-section">
+                        <h3 class="settings-section__title">
+                            {{ strings.settings.sections.user }}
+                        </h3>
+                        <!-- TODO(phase-22) -->
+                    </section>
+                    <section class="settings-section">
+                        <h3 class="settings-section__title">
+                            {{ strings.settings.sections.streaming }}
+                        </h3>
+                        <!-- TODO(phase-22) -->
+                    </section>
+                    <section class="settings-section">
+                        <h3 class="settings-section__title">
+                            {{ strings.settings.sections.playback }}
+                        </h3>
+                        <!-- TODO(phase-22) -->
+                    </section>
+                    <section class="settings-section">
+                        <h3 class="settings-section__title">
+                            {{ strings.settings.sections.appearance }}
+                        </h3>
+                        <div
+                            class="density-toggle"
+                            role="group"
+                            :aria-label="strings.settings.appearance.density"
+                        >
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.density === 'comfortable' }"
+                                data-density="comfortable"
+                                data-action="click"
+                                data-fn="setDensity"
+                            >
+                                {{ strings.settings.appearance.densityComfortable }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.density === 'compact' }"
+                                data-density="compact"
+                                data-action="click"
+                                data-fn="setDensity"
+                            >
+                                {{ strings.settings.appearance.densityCompact }}
+                            </button>
+                        </div>
+                        <!-- TODO(phase-22): remaining Appearance controls -->
+                    </section>
+                </div>
+            </aside>
         </div>
         <script type="module" src="/src/main.ts"></script>
     </body>

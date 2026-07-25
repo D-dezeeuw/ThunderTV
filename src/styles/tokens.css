@@ -1,16 +1,89 @@
-/* Design tokens. Full palette/spacing/typography/density scale is Phase 02's
-   job — this is deliberately just enough for the Feature 01.10 smoke page
-   to be the first real consumer of the token pipeline. */
+/*
+ * Design tokens — the single vocabulary for color, spacing, type, and
+ * density. Every later component styles itself from these variables, never
+ * from literal colors/sizes (Feature 02.1.10's grep guard enforces this for
+ * src/ui/ and src/app/ CSS).
+ */
 :root {
+    /* Color scale (dark-first; see the light-theme hook below) */
     --color-bg: #0b0d10;
     --color-surface: #14171c;
+    --color-surface-raised: #1c2027;
+    --color-border: #2a2f38;
     --color-text: #e6e8eb;
-    --color-text-muted: #9aa1a9;
+    --color-text-dim: #9aa1a9;
     --color-accent: #4f8cff;
+    --color-danger: #ff5c5c;
+    --color-scrim: rgb(0 0 0 / 55%);
 
+    /* Spacing scale, 4px base */
+    --space-1: 0.25rem;
     --space-2: 0.5rem;
-    --space-3: 1rem;
-    --space-4: 1.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
 
-    --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    /* Typography — system stack only, no webfont downloads */
+    --font-ui: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-md: 1rem;
+    --text-lg: 1.25rem;
+    --leading-tight: 1.2;
+    --leading-normal: 1.5;
+
+    /* Density — the single source of scroll-row geometry. The Phase 08
+       windowing controller reads --row-h as a constant per mode; it must
+       never be measured from the DOM. See src/ui/density.ts. */
+    --row-h: 44px;
+    --row-pad-x: var(--space-3);
+    --logo-box: 32px;
+
+    /* Chrome dimensions */
+    --rail-w: 56px;
+    --panel-w: 320px;
+    --dock-h: 96px;
+
+    /* Icon sizes (Feature 02.9) */
+    --icon-s: 16px;
+    --icon-m: 20px;
+    --icon-l: 32px;
+
+    /* Responsive thresholds (Feature 02.10) */
+    --floor-w: 360px;
+    --panel-narrow-threshold: 480px;
+
+    /* Focus and interaction-state tokens — one consistent treatment for
+       keyboard nav now and webOS remote focus later. */
+    --focus-ring: 0 0 0 2px var(--color-accent);
+    --surface-hover: #1a1e25;
+    --surface-active: #20252d;
+}
+
+/*
+ * Light theme hook (reserved). Theme switching lands with Settings ->
+ * Appearance (Phase 22): flipping `data-theme` on <html> to "light" will
+ * override this block. Tokens stay the only file any theme touches — no
+ * component ever branches on theme itself.
+ */
+/*
+[data-theme='light'] {
+    --color-bg: #ffffff;
+    --color-surface: #f5f6f8;
+    --color-surface-raised: #ffffff;
+    --color-border: #dde1e6;
+    --color-text: #14171c;
+    --color-text-dim: #5b6470;
+    --surface-hover: #eef0f3;
+    --surface-active: #e4e7ec;
+}
+*/
+
+/* Density modes (Feature 02.8) — data-density on <html> retargets the row
+   geometry tokens; nothing else changes. */
+[data-density='compact'] {
+    --row-h: 32px;
+    --row-pad-x: var(--space-2);
+    --logo-box: 24px;
 }

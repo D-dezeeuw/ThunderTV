@@ -72,7 +72,7 @@ A CORS block, DNS failure, and offline all look identical to `fetch`; classifica
 - [ ] **03.5.1** Port the reference — implement `classifiedFetch` in `src/core/http/classified-fetch.ts` following MASTERPLAN.md §5.2: result kinds `ok`, `http` (with status), `timeout`, `cors-or-network`.
 - [ ] **03.5.2** Compute `crossOrigin` — on `cors-or-network`, include `crossOrigin: new URL(url, location.href).origin !== location.origin` so the UI can say "almost certainly CORS" only when it is.
 - [ ] **03.5.3** Fold in `navigator.onLine` — include an `offlineHint` boolean on failures so messaging can distinguish "you appear offline" from "the provider blocks browser requests".
-- [ ] **03.5.4** Detect mixed content early — add `mixedContentBlocked(url)` (§5.9) beside it and classify `https:`-page/`http:`-target requests as a dedicated `mixed-content` kind *before* fetching, since the browser fails these silently.
+- [ ] **03.5.4** Detect mixed content early — add `mixedContentBlocked(url)` (§5.9) beside it and classify `https:`-page/`http:`-target requests as a dedicated `mixed-content` kind _before_ fetching, since the browser fails these silently.
 - [ ] **03.5.5** Type the union exhaustively — export `FetchFailure` and the full result union; consumers must `switch` exhaustively (enforced by `never` checks) so no failure kind is silently dropped.
 - [ ] **03.5.6** Map kinds to strings — add message keys for each kind to `src/app/strings.ts` (specific CORS explanation with download-and-upload and proxy alternatives, not "network error"), consumed by the Phase 02 error empty-state.
 - [ ] **03.5.7** Integrate with the adapter — `WebHttpAdapter.get` delegates to `classifiedFetch` so classification is unavoidable; direct `fetch` remains lint-banned outside `src/core/`.
@@ -87,7 +87,7 @@ The optional user-configured proxy (`https://my-proxy/{url}`) is applied inside 
 - [ ] **03.6.1** Implement the template — `applyProxy(template, url)` in `src/core/http/proxy.ts`: substitute `{url}` with the **encodeURIComponent**-ed target; a template without `{url}` gets the encoded URL appended (documented behavior).
 - [ ] **03.6.2** Validate the template — reject templates that aren't `https://` (or same-origin `http://localhost`) at save time with a specific strings-module error; never silently downgrade to no proxy.
 - [ ] **03.6.3** Wire into the adapter — `WebHttpAdapter` reads the current proxy template from a `settings.proxyTemplate` accessor (Spektrum-state-backed later; constructor-injected getter now) and applies it to every request when set.
-- [ ] **03.6.4** Classify through the proxy — a failing proxied request classifies against the *proxy* origin; include `viaProxy: true` in failure results so error copy can say the proxy itself failed.
+- [ ] **03.6.4** Classify through the proxy — a failing proxied request classifies against the _proxy_ origin; include `viaProxy: true` in failure results so error copy can say the proxy itself failed.
 - [ ] **03.6.5** Skip same-origin — never proxy requests to `location.origin` (app shell assets, vendored files); guard and spec it.
 - [ ] **03.6.6** Keep credentials off the proxy log trail — document prominently that Xtream URLs passed to a proxy expose credentials to the proxy operator; this exact warning string ships in the Settings → Streaming copy (Phase 22 consumes it from `strings.ts` now).
 - [ ] **03.6.7** Expose a bypass flag — per-request `{ noProxy: true }` option for calls that must never be proxied, used later by the PWA service-worker checks.
@@ -117,7 +117,7 @@ One detection function, identical in spirit to thunder-tv's `DataFactory()`: `wi
 - [ ] **03.8.1** Implement `createPlatform()` — `src/core/platform/create-platform.ts`: `if (window.electron) return createElectronPlatform(); return createWebPlatform();` with the Electron branch throwing a descriptive "not yet implemented (Phase 28)" error today.
 - [ ] **03.8.2** Type the global — declare `Window['electron']` as an opaque `unknown` marker in `src/types/` (the real bridge type arrives in Phase 28), so detection compiles strictly without inventing an API.
 - [ ] **03.8.3** Call it first — `main.ts` awaits `createPlatform()` and `setPlatform()` before the router, state seeding, and `run()`; assert the boot order in a comment block referencing plan §4 and §6.4.
-- [ ] **03.8.4** Note the webOS story — document in `create-platform.ts` that webOS is *not* a third branch: it is `WebPlatform` + storage probe + vendored import map (plan §4), so no `isWebOS` sniffing may appear.
+- [ ] **03.8.4** Note the webOS story — document in `create-platform.ts` that webOS is _not_ a third branch: it is `WebPlatform` + storage probe + vendored import map (plan §4), so no `isWebOS` sniffing may appear.
 - [ ] **03.8.5** Guard against late injection — detection reads `window.electron` exactly once at boot; document that a preload script must exist before app code runs (Electron guarantees this) and never re-detect.
 - [ ] **03.8.6** Surface the platform in state — set `platform.name` (`'web' | 'electron'`) alongside capabilities for diagnostics UI; never for feature gating (capabilities own that).
 - [ ] **03.8.7** Keep `main.ts` tiny — bootstrap sequencing lives in `src/app/bootstrap.ts` if `main.ts` nears the line target; `main.ts` stays a thin call-through.
@@ -134,7 +134,7 @@ Make the adapter boundary mechanical: outside `src/core/`, referencing `fetch`, 
 - [ ] **03.9.3** Fence property access too — add `no-restricted-properties`/`no-restricted-syntax` entries for `window.fetch`, `globalThis.fetch`, `window.localStorage`, `window.indexedDB`, and `navigator.storage` so aliasing cannot dodge the global rule.
 - [ ] **03.9.4** Fence `sessionStorage` — include `sessionStorage` in the ban (same leak/persistence concerns), documenting that any session-scoped persistence goes through the storage layer.
 - [ ] **03.9.5** Fence `XMLHttpRequest` and `WebSocket` — add both to the restricted list so no alternative transport bypasses classification; note that a future need reopens this deliberately.
-- [ ] **03.9.6** Keep tests honest — test files may construct mocks but not call real platform APIs; add a `**/*.spec.ts` override permitting `fetch` *stubbing* globals via the chosen mock helper only, with a comment explaining why.
+- [ ] **03.9.6** Keep tests honest — test files may construct mocks but not call real platform APIs; add a `**/*.spec.ts` override permitting `fetch` _stubbing_ globals via the chosen mock helper only, with a comment explaining why.
 - [ ] **03.9.7** Prove the fence — add a temporary `fetch('x')` in `src/ui/`, confirm `npm run lint` fails with the custom message, remove it, and note the run here.
 - [ ] **03.9.8** Prove the carve-out — confirm `src/core/http/web-http-adapter.ts` lints clean while using `fetch`, demonstrating override precision.
 - [ ] **03.9.9** Sweep the existing tree — run the updated lint over the whole repo and migrate any stragglers (the Phase 01 smoke page must contain none) to adapter calls.
@@ -150,7 +150,7 @@ A deterministic `FakePlatform` (scripted HTTP, in-memory files, memory storage) 
 - [ ] **03.10.4** Keep it out of the bundle — ensure `fake-platform.ts` is imported only from spec files; verify via the build-output grep in `scripts/check-dist.mjs` that no fake symbol reaches `dist/`.
 - [ ] **03.10.5** Provide a harness helper — `withFakePlatform(overrides, fn)` test utility that calls `setPlatform`, runs the spec body, and restores/clears the accessor afterward.
 - [ ] **03.10.6** Consolidate the adapter suite — one `npm test` run covering Features 03.1–03.9's specs (accessor, capabilities, http timeout/abort/classification/proxy, file adapter, detection, fence proofs referenced by note).
-- [ ] **03.10.7** Contract-test the fake — run the *same* behavioral specs (classification result shapes, proxy application, 304 handling) against `FakeHttpAdapter` where applicable, so the fake cannot drift from `WebHttpAdapter` semantics.
+- [ ] **03.10.7** Contract-test the fake — run the _same_ behavioral specs (classification result shapes, proxy application, 304 handling) against `FakeHttpAdapter` where applicable, so the fake cannot drift from `WebHttpAdapter` semantics.
 - [ ] **03.10.8** Seed one downstream example — a sample spec demonstrating the intended pattern: script a `cors-or-network` reply, run a hypothetical import call, assert the classified error value lands in Spektrum state.
 - [ ] **03.10.9** Document usage — `src/core/platform/README.md` section with the `withFakePlatform` recipe, the route-table API, and the rule that downstream phases test against `FakePlatform`, never live network.
 - [ ] **03.10.10** Gate the phase — full `npm test`, `npm run lint`, `npm run typecheck`, and a built-`dist/` smoke on the deployed Pages URL (app boots through `createPlatform()`), then check the phase `> Verification:` line and merge `feature/phase-03-platform-adapter-layer`.

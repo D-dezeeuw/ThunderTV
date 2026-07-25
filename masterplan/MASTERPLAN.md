@@ -4,9 +4,9 @@
 road from empty repo to a 1.0 release on web, desktop, and TV.**
 
 This masterplan operationalizes the architecture plan in
-[`architecture-plan.md`](./architecture-plan.md). The plan says *what and
-why*; this document and the phase files under [`phases/`](./phases/) say
-*in which order, in which branch, and down to which task*.
+[`architecture-plan.md`](./architecture-plan.md). The plan says _what and
+why_; this document and the phase files under [`phases/`](./phases/) say
+_in which order, in which branch, and down to which task_.
 
 ---
 
@@ -35,7 +35,7 @@ Core principles:
   instantly (channel row rendered and playable before any playlist re-parse).
 - **Tiered storage.** A boot probe selects IndexedDB (full) → localStorage
   (small valuable data only) → in-memory (session). The in-memory array is the
-  query layer on *every* tier; tiers only decide what survives a reload. The
+  query layer on _every_ tier; tiers only decide what survives a reload. The
   app is always fully functional.
 - **Honest about the web's limits.** CORS and mixed content are designed-in UX
   (classified errors, optional proxy, file/paste imports first-class), not
@@ -52,11 +52,11 @@ hls.js / mpegts.js / native `<video>`, lazy-loaded per stream type.
 
 ## 2. How to read this masterplan
 
-| Agile term | Here | Numbering |
-|---|---|---|
-| Epic | **Phase** — one markdown file under `phases/` | `NN` (01–30) |
-| Story | **Feature** — a `##` section in the phase file | `NN.F` (F = 1–10) |
-| Task | **To-do** — a checkbox line under the feature | `NN.F.T` (T = 1–10) |
+| Agile term | Here                                           | Numbering           |
+| ---------- | ---------------------------------------------- | ------------------- |
+| Epic       | **Phase** — one markdown file under `phases/`  | `NN` (01–30)        |
+| Story      | **Feature** — a `##` section in the phase file | `NN.F` (F = 1–10)   |
+| Task       | **To-do** — a checkbox line under the feature  | `NN.F.T` (T = 1–10) |
 
 Every phase file follows the same template:
 
@@ -69,6 +69,7 @@ Every phase file follows the same template:
 Intro paragraph: what exists before this phase, what exists after.
 
 ## Feature NN.1 — Title
+
 One–two sentence description of the story and why it matters.
 
 - [ ] **NN.1.1** Task title — short description.
@@ -127,38 +128,38 @@ branch merged to `main`, pushed, and (when user-visible) deployed.
 
 ## 4. The 30-phase vision
 
-| # | Phase (epic) | Focus |
-|---|---|---|
-| 01 | [Foundation & Tooling](./phases/phase-01-foundation-and-tooling.md) | Repo, Vite+TS, ESLint, Spektrum import map + vendored fallback, gh-pages deploy proven |
-| 02 | [App Shell & Design System](./phases/phase-02-app-shell-and-design-system.md) | tokens.css, dark theme, icon rail, hash router, empty states, density |
-| 03 | [Platform Adapter Layer](./phases/phase-03-platform-adapter-layer.md) | `PlatformAdapter`, capability flags, http wrapper, lint fences |
-| 04 | [Tiered Storage Engine](./phases/phase-04-tiered-storage-engine.md) | Boot probe, IDB / localStorage / memory tiers, demotion, chunked writes |
-| 05 | [Spektrum State Architecture](./phases/phase-05-spektrum-state-architecture.md) | Store modules, persistence bridge, session restore, channel-state cache |
-| 06 | [M3U Parsing Engine](./phases/phase-06-m3u-parsing-engine.md) | Worker, ported m3u-utils, chunked protocol, 100 k benchmark |
-| 07 | [Playlist Import Flows](./phases/phase-07-playlist-import-flows.md) | File/paste/URL import, CORS-classified errors, progress UI |
-| 08 | [Channel List & Virtual Scrolling](./phases/phase-08-channel-list-virtual-scrolling.md) | Windowing controller, `data-each` slice, groups, lazy logos |
-| 09 | [Search & Filtering](./phases/phase-09-search-and-filtering.md) | Debounced incremental search, normalization, group filter |
-| 10 | [Playback Foundation](./phases/phase-10-playback-foundation.md) | Player host, engine interface/selection, lazy loading, teardown discipline |
-| 11 | [HLS & MPEG-TS Engines](./phases/phase-11-hls-and-mpegts-engines.md) | hls.js + recovery, mpegts.js, native Safari, fallback chain |
-| 12 | [Player UI: Dock & Theater](./phases/phase-12-player-ui-dock-and-theater.md) | Dock, theater mode, transport, zapping, fullscreen |
-| 13 | [Favorites & Recent](./phases/phase-13-favorites-and-recent.md) | Denormalized snapshots, views, cross-tier survival, fast boot path |
-| 14 | [Connect Bookmark URLs](./phases/phase-14-connect-bookmark-urls.md) | Fragment schema, upsert, scrub, link generator, warnings |
-| 15 | [Multi-Playlist Management](./phases/phase-15-multi-playlist-management.md) | Sources view, refresh with conditional GET, staleness policy |
-| 16 | [EPG Ingestion](./phases/phase-16-epg-ingestion.md) | XMLTV worker, gzip, program store, pruning |
-| 17 | [EPG Display](./phases/phase-17-epg-display.md) | EnrichedChannel, global tick, now/next rows, inline detail |
-| 18 | [EPG Guide & Mapping](./phases/phase-18-epg-guide-and-mapping.md) | Favorites guide grid, tvg-id matching, manual mapping, offsets |
-| 19 | [Xtream API Client](./phases/phase-19-xtream-api-client.md) | Credentials, endpoint map, URL construction, error taxonomy |
-| 20 | [Xtream Live](./phases/phase-20-xtream-live.md) | Categories, streams in the same list UI, short EPG, caching |
-| 21 | [Xtream VOD & Series](./phases/phase-21-xtream-vod-and-series.md) | Poster grid, inline detail, episodes, resume positions |
-| 22 | [Settings & Personalization](./phases/phase-22-settings-and-personalization.md) | Full settings panel, import/export, strings module |
-| 23 | [Resilience & Error Surfaces](./phases/phase-23-resilience-and-error-surfaces.md) | Retry flows, engine fallback, demotion notices, redacting diagnostics |
-| 24 | [PWA & Offline Shell](./phases/phase-24-pwa-and-offline-shell.md) | Manifest, SW for shell + pinned Spektrum, update flow, kill-switch |
-| 25 | [Accessibility & Input](./phases/phase-25-accessibility-and-input.md) | Roving focus, keyboard map, ARIA, TV-remote = keyboard |
-| 26 | [Performance Hardening](./phases/phase-26-performance-hardening.md) | Budgets codified, stress fixtures, memory/startup profiling |
-| 27 | [Testing Infrastructure](./phases/phase-27-testing-infrastructure.md) | Vitest conventions, fixtures, storage matrix, Playwright smoke |
-| 28 | [Electron Shell](./phases/phase-28-electron-shell.md) | Main process, preload bridge, CORS-free HTTP, `file://` loading |
-| 29 | [Desktop Packaging & Distribution](./phases/phase-29-desktop-packaging-and-distribution.md) | electron-builder, import-map swap, per-OS QA, versioning |
-| 30 | [webOS Target & 1.0 Release](./phases/phase-30-webos-target-and-release.md) | ares packaging, TV validation, docs, security audit, v1.0 tag |
+| #   | Phase (epic)                                                                                | Focus                                                                                  |
+| --- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 01  | [Foundation & Tooling](./phases/phase-01-foundation-and-tooling.md)                         | Repo, Vite+TS, ESLint, Spektrum import map + vendored fallback, gh-pages deploy proven |
+| 02  | [App Shell & Design System](./phases/phase-02-app-shell-and-design-system.md)               | tokens.css, dark theme, icon rail, hash router, empty states, density                  |
+| 03  | [Platform Adapter Layer](./phases/phase-03-platform-adapter-layer.md)                       | `PlatformAdapter`, capability flags, http wrapper, lint fences                         |
+| 04  | [Tiered Storage Engine](./phases/phase-04-tiered-storage-engine.md)                         | Boot probe, IDB / localStorage / memory tiers, demotion, chunked writes                |
+| 05  | [Spektrum State Architecture](./phases/phase-05-spektrum-state-architecture.md)             | Store modules, persistence bridge, session restore, channel-state cache                |
+| 06  | [M3U Parsing Engine](./phases/phase-06-m3u-parsing-engine.md)                               | Worker, ported m3u-utils, chunked protocol, 100 k benchmark                            |
+| 07  | [Playlist Import Flows](./phases/phase-07-playlist-import-flows.md)                         | File/paste/URL import, CORS-classified errors, progress UI                             |
+| 08  | [Channel List & Virtual Scrolling](./phases/phase-08-channel-list-virtual-scrolling.md)     | Windowing controller, `data-each` slice, groups, lazy logos                            |
+| 09  | [Search & Filtering](./phases/phase-09-search-and-filtering.md)                             | Debounced incremental search, normalization, group filter                              |
+| 10  | [Playback Foundation](./phases/phase-10-playback-foundation.md)                             | Player host, engine interface/selection, lazy loading, teardown discipline             |
+| 11  | [HLS & MPEG-TS Engines](./phases/phase-11-hls-and-mpegts-engines.md)                        | hls.js + recovery, mpegts.js, native Safari, fallback chain                            |
+| 12  | [Player UI: Dock & Theater](./phases/phase-12-player-ui-dock-and-theater.md)                | Dock, theater mode, transport, zapping, fullscreen                                     |
+| 13  | [Favorites & Recent](./phases/phase-13-favorites-and-recent.md)                             | Denormalized snapshots, views, cross-tier survival, fast boot path                     |
+| 14  | [Connect Bookmark URLs](./phases/phase-14-connect-bookmark-urls.md)                         | Fragment schema, upsert, scrub, link generator, warnings                               |
+| 15  | [Multi-Playlist Management](./phases/phase-15-multi-playlist-management.md)                 | Sources view, refresh with conditional GET, staleness policy                           |
+| 16  | [EPG Ingestion](./phases/phase-16-epg-ingestion.md)                                         | XMLTV worker, gzip, program store, pruning                                             |
+| 17  | [EPG Display](./phases/phase-17-epg-display.md)                                             | EnrichedChannel, global tick, now/next rows, inline detail                             |
+| 18  | [EPG Guide & Mapping](./phases/phase-18-epg-guide-and-mapping.md)                           | Favorites guide grid, tvg-id matching, manual mapping, offsets                         |
+| 19  | [Xtream API Client](./phases/phase-19-xtream-api-client.md)                                 | Credentials, endpoint map, URL construction, error taxonomy                            |
+| 20  | [Xtream Live](./phases/phase-20-xtream-live.md)                                             | Categories, streams in the same list UI, short EPG, caching                            |
+| 21  | [Xtream VOD & Series](./phases/phase-21-xtream-vod-and-series.md)                           | Poster grid, inline detail, episodes, resume positions                                 |
+| 22  | [Settings & Personalization](./phases/phase-22-settings-and-personalization.md)             | Full settings panel, import/export, strings module                                     |
+| 23  | [Resilience & Error Surfaces](./phases/phase-23-resilience-and-error-surfaces.md)           | Retry flows, engine fallback, demotion notices, redacting diagnostics                  |
+| 24  | [PWA & Offline Shell](./phases/phase-24-pwa-and-offline-shell.md)                           | Manifest, SW for shell + pinned Spektrum, update flow, kill-switch                     |
+| 25  | [Accessibility & Input](./phases/phase-25-accessibility-and-input.md)                       | Roving focus, keyboard map, ARIA, TV-remote = keyboard                                 |
+| 26  | [Performance Hardening](./phases/phase-26-performance-hardening.md)                         | Budgets codified, stress fixtures, memory/startup profiling                            |
+| 27  | [Testing Infrastructure](./phases/phase-27-testing-infrastructure.md)                       | Vitest conventions, fixtures, storage matrix, Playwright smoke                         |
+| 28  | [Electron Shell](./phases/phase-28-electron-shell.md)                                       | Main process, preload bridge, CORS-free HTTP, `file://` loading                        |
+| 29  | [Desktop Packaging & Distribution](./phases/phase-29-desktop-packaging-and-distribution.md) | electron-builder, import-map swap, per-OS QA, versioning                               |
+| 30  | [webOS Target & 1.0 Release](./phases/phase-30-webos-target-and-release.md)                 | ares packaging, TV validation, docs, security audit, v1.0 tag                          |
 
 Rough arc: **01–05** foundations → **06–09** M3U browsing → **10–12** playback
 → **13–15** daily driver → **16–18** EPG → **19–21** Xtream → **22–27**
@@ -219,7 +220,10 @@ export async function classifiedFetch(url: string, init?: RequestInit) {
         // TypeError here: offline, DNS, *or CORS*. If navigator.onLine and the
         // URL is cross-origin, present the CORS explanation + alternatives
         // (download-and-upload, proxy setting) — not a generic error.
-        return { kind: 'cors-or-network' as const, crossOrigin: new URL(url, location.href).origin !== location.origin };
+        return {
+            kind: 'cors-or-network' as const,
+            crossOrigin: new URL(url, location.href).origin !== location.origin,
+        };
     }
 }
 ```
@@ -235,10 +239,10 @@ crash. One engine instance may exist at a time, enforced in one place.
 let current: PlayerEngine | null = null;
 
 export async function playChannel(url: string, video: HTMLVideoElement) {
-    current?.destroy();          // hls.destroy() / mpegts player.destroy()
-    current = null;              // …even if the next line throws
+    current?.destroy(); // hls.destroy() / mpegts player.destroy()
+    current = null; // …even if the next line throws
     video.removeAttribute('src');
-    video.load();                // release the previous MediaSource
+    video.load(); // release the previous MediaSource
     current = await selectEngine(url); // lazy import inside
     await current.attach(video, url);
 }
@@ -252,7 +256,7 @@ state; the full array stays a plain module-level variable.
 
 ```ts
 // ui/virtual-list.ts
-let allRows: Channel[] = [];          // plain memory — NOT Spektrum state
+let allRows: Channel[] = []; // plain memory — NOT Spektrum state
 
 export function setRows(rows: Channel[]) {
     allRows = rows;
@@ -262,7 +266,7 @@ export function setRows(rows: Channel[]) {
 function publishWindow() {
     const first = Math.floor(scrollTop / ROW_H);
     const slice = allRows.slice(first - OVERSCAN, first + visibleCount + OVERSCAN);
-    setValue('list.visibleRows', slice);   // ≤ ~40 rows ever hit data-each
+    setValue('list.visibleRows', slice); // ≤ ~40 rows ever hit data-each
     setValue('list.padTop', Math.max(0, first - OVERSCAN) * ROW_H);
     setValue('list.padBottom', (allRows.length - first - visibleCount - OVERSCAN) * ROW_H);
 }
@@ -276,9 +280,9 @@ re-enriches the visible slice; everything else derives from it.
 ```ts
 setInterval(() => {
     const now = Date.now();
-    setValue('epg.tick', now);            // computed() values depending on the
-}, 30_000);                               // tick recalc; rows re-render only if
-                                          // their now/next actually changed
+    setValue('epg.tick', now); // computed() values depending on the
+}, 30_000); // tick recalc; rows re-render only if
+// their now/next actually changed
 ```
 
 ### 5.6 Credentials in the query string leak — fragment only
@@ -290,7 +294,7 @@ consuming — the bookmark keeps the secret, the address bar must not.
 ```ts
 const params = new URLSearchParams(location.hash.split('?')[1] ?? '');
 if (params.get('type')) {
-    await upsertSourceFromParams(params);          // idempotent: keyed on type+url+user
+    await upsertSourceFromParams(params); // idempotent: keyed on type+url+user
     history.replaceState(null, '', location.pathname + '#/'); // scrub BEFORE any 3rd-party request
 }
 ```
@@ -329,7 +333,7 @@ else configureHistory({ limit: 200 });
 // recorded state — keep it in module memory and publish derived slices.
 ```
 
-### 5.9 Mixed content is blocked *silently* — detect and say it
+### 5.9 Mixed content is blocked _silently_ — detect and say it
 
 An `https://` page cannot load `http://` streams; the browser just fails.
 Detect it before the player does and explain, including that the desktop app
@@ -351,7 +355,11 @@ chunk to storage as it arrives.
 // m3u/parser.worker.ts
 const CHUNK = 5_000;
 for (let i = 0; i < channels.length; i += CHUNK) {
-    postMessage({ type: 'chunk', rows: channels.slice(i, i + CHUNK), done: i + CHUNK >= channels.length });
+    postMessage({
+        type: 'chunk',
+        rows: channels.slice(i, i + CHUNK),
+        done: i + CHUNK >= channels.length,
+    });
 }
 postMessage({ type: 'summary', total: channels.length, groups });
 ```
@@ -362,7 +370,7 @@ postMessage({ type: 'summary', total: channels.length, groups });
 
 ### 6.1 Windowing math — fixed heights, no measuring, ever
 
-The whole virtual list stays trivial *because* row height is a constant per
+The whole virtual list stays trivial _because_ row height is a constant per
 density mode. Two spacer divs + one `data-each` container:
 
 ```html
@@ -374,13 +382,19 @@ density mode. Two spacer divs + one `data-each` container:
 ```
 
 ```ts
-const ROW_H = density === 'compact' ? 32 : 44;   // changing density = one re-publish
+const ROW_H = density === 'compact' ? 32 : 44; // changing density = one re-publish
 const OVERSCAN = 8;
 // onListScroll → publishWindow() from pitfall 5.4; rAF-throttled:
 let scheduled = false;
 function onListScroll(e: Event) {
     scrollTop = (e.target as HTMLElement).scrollTop;
-    if (!scheduled) { scheduled = true; requestAnimationFrame(() => { scheduled = false; publishWindow(); }); }
+    if (!scheduled) {
+        scheduled = true;
+        requestAnimationFrame(() => {
+            scheduled = false;
+            publishWindow();
+        });
+    }
 }
 ```
 
@@ -389,9 +403,9 @@ function onListScroll(e: Event) {
 ```ts
 // core/storage/index.ts
 export async function createStorage(): Promise<StorageAdapter> {
-    if (await probeIndexedDb()) return new IdbStorage();          // tier: full
-    if (probeLocalStorage())    return new LocalStorageStorage(); // tier: partial
-    return new MemoryStorage();                                   // tier: none
+    if (await probeIndexedDb()) return new IdbStorage(); // tier: full
+    if (probeLocalStorage()) return new LocalStorageStorage(); // tier: partial
+    return new MemoryStorage(); // tier: none
 }
 // MemoryStorage is the reference implementation: the other two must pass the
 // exact same test suite (the storage test matrix runs all tiers).
@@ -412,7 +426,8 @@ export function persist(key: string) {
     dirty.add(key);
     clearTimeout(timer);
     timer = window.setTimeout(async () => {
-        const batch = [...dirty]; dirty.clear();
+        const batch = [...dirty];
+        dirty.clear();
         await storage.setMany(batch.map((k) => [k, snapshot(k)]));
     }, 500);
 }
@@ -430,16 +445,21 @@ defineFn('setActiveChannel', (ch: Channel) => {
 
 The point of state caching: on boot, the last session's channel (a
 denormalized snapshot: name, stream URL, logo, group) is rehydrated into
-Spektrum state *before* any playlist loads. The UI renders it immediately and
+Spektrum state _before_ any playlist loads. The UI renders it immediately and
 it is playable; the full list streams in behind it.
 
 ```ts
 // main.ts boot order
 const storage = await createStorage();
-const saved = await storage.getMany(['settings', 'player.active', 'player.zapHistory', 'favorites']);
+const saved = await storage.getMany([
+    'settings',
+    'player.active',
+    'player.zapHistory',
+    'favorites',
+]);
 for (const [key, value] of saved) if (value !== undefined) setValue(key, value);
-run();                        // bind DOM — last channel + favorites visible NOW
-void loadActiveSource();      // heavy path: cached rows (full tier) or re-parse
+run(); // bind DOM — last channel + favorites visible NOW
+void loadActiveSource(); // heavy path: cached rows (full tier) or re-parse
 ```
 
 On the partial/none tiers this is what keeps the app feeling instant: the
@@ -453,15 +473,15 @@ localStorage and carry everything needed to render and play.
 export async function selectEngine(url: string): Promise<PlayerEngine> {
     const u = url.split('?')[0].toLowerCase();
     if (u.endsWith('.m3u8')) {
-        if (nativeHlsSupported()) return new NativeEngine();      // Safari
-        const { HlsEngine } = await import('./engines/hls');      // its own chunk
+        if (nativeHlsSupported()) return new NativeEngine(); // Safari
+        const { HlsEngine } = await import('./engines/hls'); // its own chunk
         return new HlsEngine();
     }
     if (u.endsWith('.ts')) {
         const { MpegtsEngine } = await import('./engines/mpegts');
         return new MpegtsEngine();
     }
-    return new NativeEngine();                                    // mp4/webm/unknown
+    return new NativeEngine(); // mp4/webm/unknown
 }
 ```
 
@@ -474,8 +494,8 @@ async function refreshPlaylist(src: PlaylistSource) {
     else if (src.lastModified) headers['If-Modified-Since'] = src.lastModified;
 
     const r = await http.get(src.url, { headers });
-    if (r.status === 304) return { unchanged: true };             // no parse, no writes
-    await parseInWorker(await r.text(), src.id);                  // chunked, §5.10
+    if (r.status === 304) return { unchanged: true }; // no parse, no writes
+    await parseInWorker(await r.text(), src.id); // chunked, §5.10
     await storage.updateSource(src.id, {
         etag: r.headers.get('etag') ?? undefined,
         lastModified: r.headers.get('last-modified') ?? undefined,
@@ -491,11 +511,15 @@ visible slice is 40 binary searches per tick — microseconds, no index rebuild.
 
 ```ts
 export function nowNext(programs: EpgProgram[], now: number) {
-    let lo = 0, hi = programs.length - 1, idx = -1;
+    let lo = 0,
+        hi = programs.length - 1,
+        idx = -1;
     while (lo <= hi) {
         const mid = (lo + hi) >> 1;
-        if (programs[mid].start <= now) { idx = mid; lo = mid + 1; }
-        else hi = mid - 1;
+        if (programs[mid].start <= now) {
+            idx = mid;
+            lo = mid + 1;
+        } else hi = mid - 1;
     }
     const cur = idx >= 0 && programs[idx].stop > now ? programs[idx] : undefined;
     return { now: cur, next: programs[idx + 1] };
@@ -523,7 +547,7 @@ export const liveStreamUrl = (s: XtreamSource, id: number, ext = 'm3u8') =>
 
 ```ts
 // m3u/worker-protocol.ts — imported by worker AND main thread
-export type WorkerIn  = { type: 'parse'; text: string; sourceId: string };
+export type WorkerIn = { type: 'parse'; text: string; sourceId: string };
 export type WorkerOut =
     | { type: 'progress'; parsed: number }
     | { type: 'chunk'; rows: Channel[]; done: boolean }
@@ -545,10 +569,7 @@ export type WorkerOut =
 ```js
 // scripts/package-target.mjs — run before electron-builder / ares-package:
 // rewrites the built dist/index.html import map to the local copy.
-html = html.replace(
-    /"spektrum":\s*"[^"]+"/,
-    '"spektrum": "./vendor/spektrum.min.js"'
-);
+html = html.replace(/"spektrum":\s*"[^"]+"/, '"spektrum": "./vendor/spektrum.min.js"');
 ```
 
 Old TV browsers (< Chromium 89) get `es-module-shims` injected in the webOS

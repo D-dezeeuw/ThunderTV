@@ -14,8 +14,8 @@ around four constraints:
    subscription (M3U URL or Xtream credentials) so one visit configures a
    device.
 
-The guiding idea: *minimalistic by default, all the information when you need
-it*. Information density on demand, not decoration.
+The guiding idea: _minimalistic by default, all the information when you need
+it_. Information density on demand, not decoration.
 
 ---
 
@@ -64,15 +64,15 @@ framework-independent, and worth porting as plain TypeScript:
 
 ## 2. Tech stack
 
-| Concern | Choice | Why |
-|---|---|---|
-| UI / reactivity | **Spektrum** (npm `spektrum`, loaded **from CDN via import map**, version-pinned) | Tiny reactive engine (~13 KB min / ~5.5 KB gz, zero deps): `setValue`/`computed`/`defineFn` for state, `{{expr}}`, `:attr`, `data-each`, `data-if`, `data-model`, `data-action` HTML bindings, synchronous and deterministic — no virtual DOM. Time-travel (`replay(n)`) is a free debugging tool during development. Spektrum is also the app's state layer — no extra state library. |
-| Build | **Vite + TypeScript** for app code; `spektrum` marked external and resolved at runtime by the import map | Instant dev server, one-command static build, `base: './'` works for GitHub Pages, Electron `file://`, and packaged webOS alike. (Spektrum's buildless nature keeps a no-build variant open, but workers + hls.js chunking + TS make one thin build step worth it.) |
-| Routing | **Hash-based** (hand-rolled, ~50 lines) | GitHub Pages has no server rewrites (deep links 404 otherwise), Electron serves `file://`, and the hash fragment doubles as the credential-carrying bookmark channel (§7) — one mechanism, three jobs. |
-| Storage | **Tiered `StorageAdapter`**: IndexedDB → localStorage (small data) → in-memory (§5) | IndexedDB is not a given on every target (TV browsers, private modes, embedded webviews) — capability is probed at boot and the app degrades gracefully instead of breaking. |
-| Live playback | **hls.js** (lazy-loaded), native HLS on Safari, **mpegts.js** (lazy) for raw `.ts` streams | Covers the overwhelming majority of IPTV sources. Loaded only when playback starts — the browse UI ships without any player code. |
-| Styling | Hand-rolled CSS with custom properties, system font stack, dark theme default | No CSS framework, no transitions/animations. |
-| Parsing | **Web Workers** for M3U and XMLTV | Main thread stays idle during 100 MB playlist/EPG imports. |
+| Concern         | Choice                                                                                                   | Why                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| UI / reactivity | **Spektrum** (npm `spektrum`, loaded **from CDN via import map**, version-pinned)                        | Tiny reactive engine (~13 KB min / ~5.5 KB gz, zero deps): `setValue`/`computed`/`defineFn` for state, `{{expr}}`, `:attr`, `data-each`, `data-if`, `data-model`, `data-action` HTML bindings, synchronous and deterministic — no virtual DOM. Time-travel (`replay(n)`) is a free debugging tool during development. Spektrum is also the app's state layer — no extra state library. |
+| Build           | **Vite + TypeScript** for app code; `spektrum` marked external and resolved at runtime by the import map | Instant dev server, one-command static build, `base: './'` works for GitHub Pages, Electron `file://`, and packaged webOS alike. (Spektrum's buildless nature keeps a no-build variant open, but workers + hls.js chunking + TS make one thin build step worth it.)                                                                                                                    |
+| Routing         | **Hash-based** (hand-rolled, ~50 lines)                                                                  | GitHub Pages has no server rewrites (deep links 404 otherwise), Electron serves `file://`, and the hash fragment doubles as the credential-carrying bookmark channel (§7) — one mechanism, three jobs.                                                                                                                                                                                 |
+| Storage         | **Tiered `StorageAdapter`**: IndexedDB → localStorage (small data) → in-memory (§5)                      | IndexedDB is not a given on every target (TV browsers, private modes, embedded webviews) — capability is probed at boot and the app degrades gracefully instead of breaking.                                                                                                                                                                                                           |
+| Live playback   | **hls.js** (lazy-loaded), native HLS on Safari, **mpegts.js** (lazy) for raw `.ts` streams               | Covers the overwhelming majority of IPTV sources. Loaded only when playback starts — the browse UI ships without any player code.                                                                                                                                                                                                                                                      |
+| Styling         | Hand-rolled CSS with custom properties, system font stack, dark theme default                            | No CSS framework, no transitions/animations.                                                                                                                                                                                                                                                                                                                                           |
+| Parsing         | **Web Workers** for M3U and XMLTV                                                                        | Main thread stays idle during 100 MB playlist/EPG imports.                                                                                                                                                                                                                                                                                                                             |
 
 **CDN details:** the import map in `index.html` pins an exact version
 (e.g. `unpkg.com/spektrum@1.1.0` or jsDelivr equivalent). Two portability
@@ -91,7 +91,7 @@ notes, handled up front:
 **Spektrum usage rules for this app:** templates live in `index.html` /
 per-view HTML partials with `data-*` bindings; app logic in TS modules calls
 `setValue`/`computed`/`defineFn`. The virtual list (§6) feeds `data-each` only
-the *windowed slice* (≤ ~40 rows) — Spektrum reconciles that slice; the full
+the _windowed slice_ (≤ ~40 rows) — Spektrum reconciles that slice; the full
 90 k array never reaches the DOM layer. Time-travel history is capped or
 disabled in production builds so 90 k-row mutations don't accumulate.
 
@@ -132,7 +132,7 @@ thundertv/
 `npx gh-pages -d dist` pushes `dist/` to the `gh-pages` branch from the local
 machine. (Alternative: build into `docs/` on `main` and point Pages at it —
 choose one, both are Actions-free.) `base: './'` makes the same `dist/` load
-from a Pages subpath *and* from `file://` in Electron later.
+from a Pages subpath _and_ from `file://` in Electron later.
 
 **File-size discipline:** adopt this repo's rule — files under 300 lines, hard
 max ~400. At the target scope the whole app should stay under ~40 source files.
@@ -146,12 +146,12 @@ here:
 
 ```ts
 interface PlatformAdapter {
-    storage: StorageAdapter;      // tiered browser storage now; SQLite-over-IPC later
-    http: HttpAdapter;            // fetch now; net.request via IPC later (no CORS)
-    files: FileAdapter;           // <input type=file> now; native dialogs later
+    storage: StorageAdapter; // tiered browser storage now; SQLite-over-IPC later
+    http: HttpAdapter; // fetch now; net.request via IPC later (no CORS)
+    files: FileAdapter; // <input type=file> now; native dialogs later
     capabilities: {
-        corsUnrestricted: boolean;   // false on web → drives UX in §8
-        externalPlayers: boolean;    // false on web
+        corsUnrestricted: boolean; // false on web → drives UX in §8
+        externalPlayers: boolean; // false on web
         durableStorage: 'full' | 'partial' | 'none'; // result of the boot probe (§5)
     };
 }
@@ -178,11 +178,11 @@ of one storage backend, `core/storage/` implements one interface with three
 tiers, selected by a **boot-time probe** (actually open a test DB and
 round-trip a value — presence of `window.indexedDB` alone is not proof):
 
-| Tier | Backend | What persists | When |
-|---|---|---|---|
-| **full** | IndexedDB (via `idb`, ~1 KB) | Everything: parsed channels, EPG programs, playlists, settings, favorites, recent | Normal browsers, GitHub Pages, Electron, recent webOS |
-| **partial** | localStorage (JSON, chunked, ~5 MB budget) | The *small, valuable* data only: settings, playlist/source definitions (URLs, Xtream credentials), favorites, recent | IDB probe fails but localStorage works |
-| **none** | In-memory only | Nothing across reloads; everything within the session | Both probes fail (last resort) |
+| Tier        | Backend                                    | What persists                                                                                                        | When                                                  |
+| ----------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **full**    | IndexedDB (via `idb`, ~1 KB)               | Everything: parsed channels, EPG programs, playlists, settings, favorites, recent                                    | Normal browsers, GitHub Pages, Electron, recent webOS |
+| **partial** | localStorage (JSON, chunked, ~5 MB budget) | The _small, valuable_ data only: settings, playlist/source definitions (URLs, Xtream credentials), favorites, recent | IDB probe fails but localStorage works                |
+| **none**    | In-memory only                             | Nothing across reloads; everything within the session                                                                | Both probes fail (last resort)                        |
 
 Design points:
 
@@ -190,7 +190,7 @@ Design points:
   on every tier.** The active playlist's channels always load into plain
   arrays (a 90 k-row array of small objects is a few MB); search, filtering,
   and group views run over memory. Durable tiers only decide what survives a
-  reload. This means tier degradation changes *boot behavior*, never feature
+  reload. This means tier degradation changes _boot behavior_, never feature
   behavior.
 - **Graceful degradation on `partial`:** source definitions survive, bulk data
   doesn't — so on boot the app re-fetches and re-parses URL/Xtream sources in
@@ -200,7 +200,7 @@ Design points:
   this device — playlists reload on start").
 - **Favorites/recent are denormalized snapshots** (name, stream URL, logo,
   group — not just channel ids). They fit comfortably in localStorage and stay
-  *instantly usable* after reboot on the partial tier, before any playlist has
+  _instantly usable_ after reboot on the partial tier, before any playlist has
   re-parsed — favorites become the fast path on constrained devices.
 - **Not in a worker:** keeping the store in a worker was considered and
   rejected — workers don't survive reloads (no persistence win) and every
@@ -213,14 +213,14 @@ Design points:
 
 ### IndexedDB layout (full tier)
 
-| Store | Key | Notes |
-|---|---|---|
-| `playlists` | `id` | Source meta: type (`m3u-url`, `m3u-file`, `m3u-text`, `xtream`), URL/credentials, name, counts, `lastRefresh`, HTTP `etag`/`lastModified`. |
-| `channels` | `[playlistId, index]` | **Parsed** channel rows (never re-parse raw text). Bulk `put` in chunks. |
-| `groups` | `[playlistId, name]` | Group → channel-count + first-index, for instant group view. |
-| `epgChannels` / `epgPrograms` | id / `[channelId, start]` | Programs range-queried by time via IDB index; old programs pruned on import. |
-| `favorites`, `recent` | composite | Denormalized (see above), capped (recent ≤ 100). |
-| `settings` | key | JSON blob per key, mirrored into Spektrum state at boot. |
+| Store                         | Key                       | Notes                                                                                                                                      |
+| ----------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `playlists`                   | `id`                      | Source meta: type (`m3u-url`, `m3u-file`, `m3u-text`, `xtream`), URL/credentials, name, counts, `lastRefresh`, HTTP `etag`/`lastModified`. |
+| `channels`                    | `[playlistId, index]`     | **Parsed** channel rows (never re-parse raw text). Bulk `put` in chunks.                                                                   |
+| `groups`                      | `[playlistId, name]`      | Group → channel-count + first-index, for instant group view.                                                                               |
+| `epgChannels` / `epgPrograms` | id / `[channelId, start]` | Programs range-queried by time via IDB index; old programs pruned on import.                                                               |
+| `favorites`, `recent`         | composite                 | Denormalized (see above), capped (recent ≤ 100).                                                                                           |
+| `settings`                    | key                       | JSON blob per key, mirrored into Spektrum state at boot.                                                                                   |
 
 ### Caching rules
 
@@ -230,7 +230,7 @@ Design points:
 - **Conditional refresh.** URL playlists refresh manually (button) or on a
   configurable staleness window — with `If-None-Match`/`If-Modified-Since`
   when the server cooperates; `304` → skip the parse entirely.
-- **EPG on demand.** Now/next for *visible* rows only, resolved in batch per
+- **EPG on demand.** Now/next for _visible_ rows only, resolved in batch per
   global tick; full-day timelines fetched only when a program panel is opened.
 
 ### Performance budgets (checked manually before each release)
@@ -269,10 +269,10 @@ TVs, where typing credentials is miserable). Mechanism:
   (nothing in GitHub Pages logs, proxies, or referrers) and the hash router
   already owns them. Format:
 
-  ```
-  https://<user>.github.io/thundertv/#/connect?type=xtream&url=http%3A%2F%2Fhost%3A8080&user=abc&pass=xyz&name=My%20Sub
-  https://<user>.github.io/thundertv/#/connect?type=m3u&url=<m3u-url>&epg=<xmltv-url>&name=Home
-  ```
+    ```
+    https://<user>.github.io/thundertv/#/connect?type=xtream&url=http%3A%2F%2Fhost%3A8080&user=abc&pass=xyz&name=My%20Sub
+    https://<user>.github.io/thundertv/#/connect?type=m3u&url=<m3u-url>&epg=<xmltv-url>&name=Home
+    ```
 
 - **Boot behavior:** `core/connect/` parses the fragment before first render.
   A matching existing source (keyed by `type+url+user`) is updated, otherwise
@@ -308,14 +308,14 @@ server, the plan is:
 1. **Always-working paths first:** file upload and paste-as-text import are the
    primary M3U flows and never hit CORS.
 2. **Direct URL fetch, classified failure.** Try the fetch; on a CORS-shaped
-   failure show a *specific* explanation (not a generic error) with the
+   failure show a _specific_ explanation (not a generic error) with the
    working alternatives: download-and-upload, or configure a proxy.
 3. **Optional user-configured proxy** (Settings → Streaming): a URL template
    like `https://my-proxy/{url}` applied by the `http` adapter to playlist,
    EPG, and Xtream API calls. Empty by default; we ship no public proxy and
-   make no promises. *Note: video segments themselves are fetched by
+   make no promises. _Note: video segments themselves are fetched by
    hls.js/mpegts.js and are CORS-bound too on the web — set expectations in
-   the UI.*
+   the UI._
 4. **Electron erases the limitation** (main-process requests have no CORS);
    `capabilities.corsUnrestricted` flips and the warnings disappear. A
    packaged webOS app similarly relaxes cross-origin rules relative to the
@@ -418,7 +418,7 @@ the §5 budgets.
   web app (`appinfo.json` + ares-cli), vendored Spektrum (or
   `es-module-shims` where import maps are missing), storage probe decides the
   tier, remote navigation already covered by keyboard-first UI. Validate MSE
-  + hls.js on real hardware early — this milestone is exploratory by design.
+    - hls.js on real hardware early — this milestone is exploratory by design.
 
 Non-goals for v1 (revisit only on real demand): Stalker portals, TMDB, DRM/DASH,
 downloads, remote control app, multi-user profiles, catchup/timeshift (the
@@ -428,19 +428,19 @@ ported `catchup.utils.ts` keeps the door open).
 
 ## 11. Risks and mitigations
 
-| Risk | Mitigation |
-|---|---|
-| CORS makes URL imports feel broken on the web | Designed-in UX (§8): file/paste first-class, specific errors, proxy setting, Electron as the advertised full-featured mode. |
-| Mixed content: Pages is HTTPS, many streams are HTTP | Detect `http://` streams on an `https://` origin and say so explicitly (browser will silently block). Electron/webOS-app modes unaffected. |
-| CDN dependency for the framework | Pinned version (reproducible), vendored copy for packaged targets, service worker caches it for PWA offline. A CDN outage degrades only first-visit web loads. |
-| Import maps unsupported on old TV browsers | `es-module-shims` polyfill or the vendored-file import path for the webOS target; plain web assumes evergreen browsers. |
-| Credentials in bookmark URLs leak | Fragment-only transport (never sent to servers), immediate `replaceState` scrub, `&save=0` session mode, explicit plain-words warning at link generation. Residual risk (bookmark sync stores) is the user's stated tradeoff. |
-| IndexedDB unavailable/broken on a target | Tiered storage (§5) with a real boot probe; app remains fully functional in-memory, sources re-parse on boot, favorites survive via localStorage snapshots. |
-| Storage probe misclassifies (IDB opens but writes fail later) | Writes go through the adapter; on runtime IDB failure it demotes to the partial tier for the session and re-probes next boot. |
-| 100 MB playlists blow up memory/IDB | Chunked worker → storage streaming writes; session array holds only active playlist; counts shown during import. |
-| Spektrum time-travel history grows with bulk mutations | History capped/disabled in production; bulk imports write through the storage layer, not through recorded UI state. |
-| EPG data growth | Prune programs older than 24 h on every import; cap per-channel horizon (e.g. 3 days). |
-| Scope creep back toward IPTVnator | The non-goals list above is part of the definition of done; new features must fit the §5 budgets or be lazy-loaded. |
+| Risk                                                          | Mitigation                                                                                                                                                                                                                    |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CORS makes URL imports feel broken on the web                 | Designed-in UX (§8): file/paste first-class, specific errors, proxy setting, Electron as the advertised full-featured mode.                                                                                                   |
+| Mixed content: Pages is HTTPS, many streams are HTTP          | Detect `http://` streams on an `https://` origin and say so explicitly (browser will silently block). Electron/webOS-app modes unaffected.                                                                                    |
+| CDN dependency for the framework                              | Pinned version (reproducible), vendored copy for packaged targets, service worker caches it for PWA offline. A CDN outage degrades only first-visit web loads.                                                                |
+| Import maps unsupported on old TV browsers                    | `es-module-shims` polyfill or the vendored-file import path for the webOS target; plain web assumes evergreen browsers.                                                                                                       |
+| Credentials in bookmark URLs leak                             | Fragment-only transport (never sent to servers), immediate `replaceState` scrub, `&save=0` session mode, explicit plain-words warning at link generation. Residual risk (bookmark sync stores) is the user's stated tradeoff. |
+| IndexedDB unavailable/broken on a target                      | Tiered storage (§5) with a real boot probe; app remains fully functional in-memory, sources re-parse on boot, favorites survive via localStorage snapshots.                                                                   |
+| Storage probe misclassifies (IDB opens but writes fail later) | Writes go through the adapter; on runtime IDB failure it demotes to the partial tier for the session and re-probes next boot.                                                                                                 |
+| 100 MB playlists blow up memory/IDB                           | Chunked worker → storage streaming writes; session array holds only active playlist; counts shown during import.                                                                                                              |
+| Spektrum time-travel history grows with bulk mutations        | History capped/disabled in production; bulk imports write through the storage layer, not through recorded UI state.                                                                                                           |
+| EPG data growth                                               | Prune programs older than 24 h on every import; cap per-channel horizon (e.g. 3 days).                                                                                                                                        |
+| Scope creep back toward IPTVnator                             | The non-goals list above is part of the definition of done; new features must fit the §5 budgets or be lazy-loaded.                                                                                                           |
 
 ---
 
