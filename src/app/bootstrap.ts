@@ -1,9 +1,11 @@
 import { bindDOM, run } from 'spektrum';
 import { createPlatform, setPlatform } from '../core/platform';
 import { sweepOrphanedPlaylistRows } from '../m3u/import-sweep';
+import { registerListBindings } from '../ui/list-bindings';
 import { installDevtools } from '../state/devtools';
 import {
     initState,
+    loadFavoriteIds,
     loadPlaylistSources,
     registerActions,
     registerPersistOnHide,
@@ -66,7 +68,9 @@ export async function bootstrap(): Promise<void> {
     if (import.meta.env.DEV) installDevtools();
 
     void sweepAndLoadPlaylistSources();
+    void loadFavoriteIds();
     registerImportDropzoneDragover();
+    registerListBindings();
 }
 
 /**

@@ -1,4 +1,5 @@
 import { EPG_TICK } from './epg';
+import { FAVORITES_IDS } from './favorites';
 import {
     IMPORT_ERROR_KIND,
     IMPORT_ERROR_MESSAGE,
@@ -8,6 +9,9 @@ import {
     IMPORT_SUMMARY,
     IMPORT_WRITTEN,
 } from './import';
+import { LIST_PAD_BOTTOM, LIST_PAD_TOP, LIST_SELECTED_ID, LIST_VISIBLE_ROWS } from './list';
+import { GROUPS_PANEL_CAP, LIST_GROUPS, LIST_GROUPS_TRUNCATED } from './list-groups';
+import { UI_ACTIVE_GROUP, UI_LIST_STATE, UI_VIEW_MODE } from './list-state';
 import { PLAYER_ACTIVE, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
 import { MAX_PLAYLIST_SOURCES, PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_DEMO_ROWS, PLAYLIST_SOURCES } from './playlist';
 import { SETTINGS_PROXY_ERROR, SETTINGS_PROXY_SAVED, SETTINGS_PROXY_TEMPLATE } from './settings';
@@ -28,7 +32,7 @@ import {
  * "what actually persists" and "what the docs claim persists".
  */
 export interface KeyMeta {
-    owner: 'playlist' | 'import' | 'player' | 'epg' | 'settings' | 'ui';
+    owner: 'playlist' | 'import' | 'player' | 'epg' | 'settings' | 'ui' | 'list' | 'favorites';
     persisted: boolean;
     /** Feature 05.8.5: the bulk-data guard's per-key ceiling, for keys holding an array. */
     maxItems?: number;
@@ -47,8 +51,8 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
     },
     [PLAYLIST_ACTIVE_SOURCE_ID]: {
         owner: 'playlist',
-        persisted: false,
-        description: 'The source the user last navigated into (Feature 05.6.2) — transient UI selection, not durable data.',
+        persisted: true,
+        description: 'The source the user last navigated into (Feature 05.6.2, persisted starting Feature 08.10.6) — a reload lands back in the same channel list instead of a source picker, matching Feature 08.6\'s "never left" framing.',
     },
     [PLAYLIST_DEMO_ROWS]: {
         owner: 'playlist',
@@ -91,6 +95,64 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         owner: 'import',
         persisted: false,
         description: 'Result panel data for the most recently completed import (Feature 07.6) — cleared on navigation away.',
+    },
+
+    // --- list (Feature 08.1/08.2/08.7) ---
+    [LIST_VISIBLE_ROWS]: {
+        owner: 'list',
+        persisted: false,
+        maxItems: 128,
+        description: 'The virtual-list windowed slice (masterplan §5.4) — published by src/ui/virtual-list.ts on every scroll-driven republish; ≤ ~40 rows by construction (overscan included), never the full playlist array.',
+    },
+    [LIST_PAD_TOP]: {
+        owner: 'list',
+        persisted: false,
+        description: 'Top spacer height (px) so the native scrollbar reflects the full virtual extent above the published window.',
+    },
+    [LIST_PAD_BOTTOM]: {
+        owner: 'list',
+        persisted: false,
+        description: 'Bottom spacer height (px) — same role as padTop, below the published window.',
+    },
+    [LIST_SELECTED_ID]: {
+        owner: 'list',
+        persisted: false,
+        description: 'The keyboard/click selection cursor (Feature 08.7.2) — distinct from player.active. Saved per source into ui.listState (Feature 08.7.8); this live key itself is not directly persisted.',
+    },
+    [LIST_GROUPS]: {
+        owner: 'list',
+        persisted: false,
+        maxItems: GROUPS_PANEL_CAP,
+        description: 'The groups panel\'s own row set (Feature 08.5.1) — built once per source entry from the `groups` storage table, capped independently of Phase 06\'s MAX_GROUPS=10000 extraction cap so the panel\'s own DOM cost stays bounded (Feature 08.5.9).',
+    },
+    [LIST_GROUPS_TRUNCATED]: {
+        owner: 'list',
+        persisted: false,
+        description: 'True when the groups panel dropped groups past GROUPS_PANEL_CAP — drives the "too many groups to list" note.',
+    },
+
+    // --- ui: per-source list state (Feature 08.6) ---
+    [UI_LIST_STATE]: {
+        owner: 'ui',
+        persisted: true,
+        description: 'Per-source list UI state map (scrollTop, groupScrollTop, viewMode, activeGroup, selectedId), LRU-capped to the last 20 touched sources (Feature 08.6.1/08.6.7) — what makes returning to a playlist feel like never having left.',
+    },
+    [UI_ACTIVE_GROUP]: {
+        owner: 'ui',
+        persisted: false,
+        description: 'The currently-open source\'s active group filter, if any (Feature 08.5.7) — restored from ui.listState on source entry, written live on every group toggle.',
+    },
+    [UI_VIEW_MODE]: {
+        owner: 'ui',
+        persisted: false,
+        description: '"all" | "groups" — the currently-open source\'s list view mode (Feature 08.5.5/08.6.1), same restore-on-entry pattern as ui.activeGroup.',
+    },
+
+    // --- favorites (Feature 08.8) ---
+    [FAVORITES_IDS]: {
+        owner: 'favorites',
+        persisted: false,
+        description: 'Live id -> true lookup for O(1) row-badge derivation (Feature 08.8.4) — a projection of the real `favorites` storage table, rebuilt at boot and on every toggle; the table (denormalized snapshots), not this map, is the source of truth and what actually persists.',
     },
 
     // --- player ---

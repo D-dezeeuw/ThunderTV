@@ -121,6 +121,16 @@ export const strings = {
         },
     },
 
+    list: {
+        chooseSource: 'Choose a playlist',
+        backToSources: '← Sources',
+        allChannels: 'All channels',
+        groupsHeading: 'Groups',
+        groupsTruncatedTemplate: 'Showing the first {count} groups.',
+        radioLabel: 'Radio station',
+        noChannels: 'No channels loaded for this source yet.',
+    },
+
     import: {
         stage: {
             fetching: 'Fetching…',

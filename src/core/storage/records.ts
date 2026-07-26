@@ -96,7 +96,13 @@ export interface EpgProgramRecord {
     description: string | null;
 }
 
-/** Denormalized snapshot (Feature 04.5.7) — playable without the source playlist loaded. */
+/**
+ * Denormalized snapshot (Feature 04.5.7, shape finalized by Feature 08.8.3
+ * per masterplan §5/§9) — playable and renderable without the source
+ * playlist loaded. `sourceId` lets a favorite be traced back to (and
+ * re-resolved against) its origin playlist; `addedAt` orders the Favorites
+ * view without a second lookup.
+ */
 export interface FavoriteRecord {
     v: 1;
     id: string;
@@ -104,6 +110,8 @@ export interface FavoriteRecord {
     streamUrl: string;
     logo: string | null;
     group: string | null;
+    sourceId: string;
+    addedAt: number;
 }
 
 /** Same denormalized shape as favorites, capped to the most recent 100 by the state layer (Phase 05). */

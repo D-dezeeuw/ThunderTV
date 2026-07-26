@@ -1,7 +1,7 @@
 import { resetState, tick } from 'spektrum';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
-import { get, set } from './typed';
+import { get, replace, set } from './typed';
 
 describe('typed set/get (Feature 05.9.2)', () => {
     afterEach(() => {
@@ -16,6 +16,42 @@ describe('typed set/get (Feature 05.9.2)', () => {
 
     it('get() returns undefined for a key nothing has set', () => {
         expect(get('probe.neverSet')).toBeUndefined();
+    });
+});
+
+describe('typed set() merges object values onto existing state (Spektrum engine behavior, Feature 08.6/08.8 finding)', () => {
+    afterEach(() => {
+        resetState();
+    });
+
+    it('a second set() with an object value leaves keys the new object omits untouched', () => {
+        set('probe.map', { a: 1, b: 2 });
+        tick();
+        set('probe.map', { a: 99 });
+        tick();
+        expect(get<Record<string, number>>('probe.map')).toEqual({ a: 99, b: 2 });
+    });
+});
+
+describe('typed replace() (Feature 08.6.7/08.8.6 — a true replace where set() would merge)', () => {
+    afterEach(() => {
+        resetState();
+    });
+
+    it('a shrunk object value actually loses the omitted key, unlike set()', () => {
+        set('probe.map', { a: 1, b: 2 });
+        tick();
+        replace('probe.map', { a: 99 });
+        tick();
+        expect(get<Record<string, number>>('probe.map')).toEqual({ a: 99 });
+    });
+
+    it('replacing with an empty object truly clears every key', () => {
+        set('probe.map', { a: 1, b: 2 });
+        tick();
+        replace('probe.map', {});
+        tick();
+        expect(get<Record<string, number>>('probe.map')).toEqual({});
     });
 });
 

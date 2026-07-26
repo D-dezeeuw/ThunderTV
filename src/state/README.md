@@ -9,11 +9,15 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 
 | Module              | Keys                                                                                                          | Persisted?                                  |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `playlist.ts`        | `playlist.sourceCount`, `playlist.demoRows`, `playlist.lastPickedLabel`                                              | No — all three are Phase 01-03 stub/demo state, superseded once Phase 07 lands `playlist.sources`/`activeSourceId`/`importProgress` |
+| `playlist.ts`        | `playlist.sources`, `playlist.activeSourceId`, `playlist.demoRows`                                                   | `activeSourceId` yes (Feature 08.10.6); `sources` is a live storage projection, `demoRows` is static demo data — neither persists |
 | `player.ts`          | `player.active`, `player.zapHistory`                                                                                 | Yes — the §6.4 instant-restore pair |
 | `epg.ts`             | `epg.tick`                                                                                                            | No — a heartbeat timestamp, recomputed every boot |
-| `settings.ts`        | `settings.proxyTemplate`                                                                                             | Yes |
+| `settings.ts`        | `settings.proxyTemplate`, `settings.proxyError`, `settings.proxySaved`                                               | `proxyTemplate` yes; the other two are transient save feedback |
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.storageNoticeDismissed` yes; the rest no |
+| `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
+| `list-state.ts`       | `ui.listState`, `ui.activeGroup`, `ui.viewMode`                                                                      | `ui.listState` yes (Feature 08.6, LRU-capped at 20 sources); the two live mirrors restore from it on source entry but aren't separately persisted |
+| `list-groups.ts`      | `list.groups`, `list.groupsTruncated`                                                                                | No — the groups panel's own row set, capped independently of Phase 06's `MAX_GROUPS` (Feature 08.5.9) |
+| `favorites.ts`        | `favorites.ids`                                                                                                       | No — a live projection of the real `favorites` storage table (Feature 08.8.4), exactly like `playlist.sources` |
 
 **The rule:** adding a Spektrum key means adding it to `registry.ts`'s
 `KEY_REGISTRY` (owner, `persisted`, optional `maxItems`/`version`,
@@ -48,10 +52,14 @@ action, because nothing user-triggered causes the write:
   by a 30s `setInterval` (masterplan §5.5's single global heartbeat, instead
   of a timer per visible row).
 
-A third, not yet built: Phase 08's virtual-list windowing controller will
-publish `list.visibleRows`/`list.padTop`/`list.padBottom` the same way —
-anything *derived* from that window (row count, empty-list flag) belongs in
-a `computed()` here instead (Feature 05.6.4).
+- **`list.visibleRows`/`list.padTop`/`list.padBottom`** — published by
+  `src/ui/virtual-list.ts`'s `publishWindow()` on every scroll-driven
+  republish, via `state/list-publish.ts`'s `publishListWindow()` (the actual
+  `setValue`/`set()` call site — `virtual-list.ts` itself never imports
+  `spektrum` directly, keeping the "no bare `setValue` outside `src/state/`"
+  rule intact without a fourth ESLint carve-out). Anything *derived* from
+  the window (row count, empty-list flag) belongs in a `computed()` instead
+  (Feature 05.6.4) — none exists yet, nothing has needed one.
 
 ## Naming rules
 
@@ -106,6 +114,48 @@ failed flush re-marks its batch dirty and retries on the next window —
 never a hot loop, never thrown into an action. `registerPersistOnHide()`
 forces a best-effort flush on `visibilitychange`/`pagehide` so closing the
 tab right after a mutation still persists it.
+
+## `setValue()` merges object values — it does not replace them (Feature 08 finding)
+
+Discovered the hard way while building the Phase 08 favorites/list-state
+maps: Spektrum's `setValue(path, value)` **deep-merges** an object-valued
+`value` onto whatever is already at `path`, rather than replacing it.
+Verified directly against the vendored engine:
+
+```ts
+setValue('probe.map', { a: 1, b: 2 });
+tick();
+setValue('probe.map', { a: 99 });
+tick();
+// appState.probe.map is { a: 99, b: 2} — "b" survived, even though the
+// second write never mentioned it.
+```
+
+Array values are unaffected — the engine's own merge function explicitly
+excludes arrays, so `list.visibleRows`/`list.groups`/etc. always replace
+cleanly. The hazard is specific to `Record<string, T>`-shaped state (a map
+you sometimes need to *shrink* a key out of): `favorites.ids` removing a
+favorite, or `ui.listState` evicting a source past its LRU cap
+(`state/list-state.ts`'s `upsertListState()`). A `delete` on the JS object
+before calling `set()` looks correct and compiles fine, but the removed key
+silently reappears in live state because `set()` merges the smaller object
+back onto the larger one still sitting in `appState`.
+
+**The fix, `state/typed.ts`'s `replace()`:** reset the path to `undefined`
+and drain that with one explicit `tick()` before writing the real
+(possibly-smaller) value — confirmed this forces a true replace instead of a
+merge. `favorites.actions.ts`'s toggle-off path and `list-state-sync.ts`'s
+`saveListState()` both use `replace()`, never `set()`, for exactly this
+reason; `set()` remains correct and cheaper for every write that only adds
+or updates keys (the favorite-on path, `upsertListState()`'s own per-source
+patch). Calling `tick()` from application code is otherwise unheard of in
+this codebase (production always relies on `run()`'s rAF loop to drain) —
+`replace()` is the one sanctioned exception, confined to `state/typed.ts`.
+
+**Any future phase adding a removable-key `Record<string, T>` to Spektrum
+state must use `replace()` for the removal path, not `set()`.** Phase 13
+(Favorites/Recent) and Phase 15 (Multi-playlist Management) are the most
+likely next places this matters.
 
 ## Boot order (masterplan §6.4)
 

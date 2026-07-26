@@ -1,0 +1,280 @@
+/*
+ * Phase 08 channel list & virtual scrolling: the source picker (sources
+ * exist, none active), the list shell (header/groups panel/list), the
+ * windowed `.list`/`.pad`/`.rows` structure per masterplan §6.1, and the
+ * channel row template. Token-only, no transitions (scripts/check-css.mjs
+ * enforces both) — the fixed row height is the load-bearing promise the
+ * windowing math depends on, so nothing here may grow a row taller than
+ * `--row-h`.
+ */
+
+/* ---- Source picker (sources exist, none active yet) ---- */
+
+.sources-picker__hint {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+}
+
+.sources-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--color-border);
+}
+
+.sources-list__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.sources-list__select {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--row-pad-x);
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.sources-list__select:hover {
+    background: var(--surface-hover);
+}
+
+.sources-list__name {
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
+.sources-list__meta {
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+.sources-list__reupload {
+    flex: none;
+    padding-inline-end: var(--row-pad-x);
+    font-size: var(--text-xs);
+    color: var(--color-danger);
+}
+
+/* ---- List shell (Feature 08.5/08.10) ---- */
+
+.list-shell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    height: 100%;
+    min-height: 0;
+}
+
+.list-shell__header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.list-shell__title {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: var(--text-md);
+}
+
+.list-shell__empty {
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+}
+
+/* A definite height (not the ancestor "fill remaining grid/flex space"
+   chain, which .view/.view__section don't provide — .view is a plain
+   scrolling block container per base.css's "only .scroll-y elements
+   scroll" model, Feature 02.5) — this is what makes .list a real bounded
+   viewport instead of growing to fit all 90k rows and defeating the whole
+   point of windowing (Feature 08.1/08.9's "DOM stays ~40 rows" contract
+   depends on this). */
+.list-shell__body {
+    display: flex;
+    gap: var(--space-4);
+    height: 60vh;
+    min-height: 20rem;
+}
+
+/* ---- Groups panel (Feature 08.5) ---- */
+
+.groups-panel {
+    flex: none;
+    width: 14rem;
+    max-height: 28rem;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+}
+
+.groups-panel__truncated {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.groups-panel__list {
+    display: flex;
+    flex-direction: column;
+}
+
+.groups-panel__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.groups-panel__item:hover,
+.groups-panel__item:focus-visible {
+    background: var(--surface-hover);
+}
+
+.groups-panel__item--active {
+    background: var(--surface-active);
+    color: var(--color-accent);
+}
+
+.groups-panel__name {
+    min-width: 0;
+}
+
+.groups-panel__count {
+    flex: none;
+    color: var(--color-text-dim);
+    font-size: var(--text-xs);
+}
+
+/* ---- Windowed list (masterplan §6.1) ---- */
+
+.list {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+}
+
+.pad {
+    /* height set inline via :style binding — the spacer that keeps the
+       native scrollbar reflecting the full virtual extent. */
+    flex: none;
+}
+
+.rows {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---- Channel row (Feature 08.3) ---- */
+
+.channel-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    height: var(--row-h);
+    padding-inline: var(--row-pad-x);
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+}
+
+.channel-row:hover {
+    background: var(--surface-hover);
+}
+
+.channel-row--selected {
+    background: var(--surface-active);
+}
+
+.channel-row--active {
+    color: var(--color-accent);
+}
+
+.channel-row__logo {
+    flex: none;
+    width: var(--logo-box);
+    height: var(--logo-box);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: var(--color-surface-raised);
+    overflow: hidden;
+}
+
+.channel-row__logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Feature 08.4.3/08.4.4: the broken-image fallback — a plain token-styled
+   glyph, no image request, no transition on the swap. */
+.channel-row__logo--broken .channel-row__logo-img {
+    display: none;
+}
+.channel-row__logo-placeholder,
+.channel-row__logo--broken::after {
+    display: block;
+    width: 60%;
+    height: 60%;
+    border-radius: 2px;
+    background: var(--color-border);
+}
+
+.channel-row__logo--radio {
+    background: var(--color-surface-raised);
+    position: relative;
+}
+.channel-row__logo--radio::after {
+    content: '';
+    width: 45%;
+    height: 45%;
+    border-radius: 50%;
+    background: var(--color-text-dim);
+}
+
+.channel-row__name {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
+.channel-row__favorite {
+    flex: none;
+    color: var(--color-accent);
+    font-size: var(--text-sm);
+}
+
+/* Feature 08.3.4: reserved, fixed-width — Phase 17 fills this with now/next
+   text and a progress bar without any row reflow or restructuring. */
+.channel-row__epg {
+    flex: none;
+    width: 6rem;
+}
