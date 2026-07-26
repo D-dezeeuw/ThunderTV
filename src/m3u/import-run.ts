@@ -1,5 +1,6 @@
 import type { PlaylistRecord, PlaylistType } from '../core/storage';
 import {
+    resetImportState,
     setImportError,
     setImportProgress,
     setImportStage,
@@ -116,6 +117,9 @@ export async function runImport(params: RunImportParams): Promise<ImportOutcome>
         if (raced.kind === 'cancelled') {
             client.cancel();
             await cleanupStaging(stagingId);
+            // Feature 07.9.5: cancel leaves the card exactly as it was
+            // before the attempt — idle, zero staged trace.
+            resetImportState();
             return { ok: false, cancelled: true };
         }
 

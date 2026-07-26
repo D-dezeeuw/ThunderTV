@@ -134,8 +134,12 @@ export const strings = {
             invalidM3u: 'This does not look like an M3U playlist.',
             duplicateTemplate: 'This looks identical to "{name}" — import anyway?',
             importAnyway: 'Import anyway',
+            largeConfirm: 'This is a large paste and may take a moment to parse.',
+            continueAnyway: 'Continue anyway',
         },
+        retry: 'Retry',
         retryViaProxy: 'Retry via proxy',
+        dismiss: 'Dismiss',
         summary: {
             heading: 'Import complete',
             updatedHeading: 'Playlist updated',

@@ -1,14 +1,14 @@
 import { defineFn, refs } from 'spektrum';
+import { resetImportState } from './import-setters';
 import {
-    cancelImport,
-    importPlaylistFile,
-    importPlaylistText,
-    importPlaylistUrl,
-    isImportInFlight,
-} from '../m3u/import';
-import { getPlatform } from '../core/platform';
-import { M3U_ACCEPT } from '../core/platform/web-file-adapter';
-import { resetImportState, setImportError, setImportSourceName, setImportStage } from './import-setters';
+    cancelCurrentImport,
+    retryAllowingDuplicate,
+    retryLastUrlImport,
+    triggerFileImport,
+    triggerFileImportFromFile,
+    triggerTextImport,
+    triggerUrlImport,
+} from './import-triggers';
 
 /**
  * The real Phase 07 import triggers (Feature 07.1.9/07.9.1), replacing the
@@ -16,8 +16,11 @@ import { resetImportState, setImportError, setImportSourceName, setImportStage }
  * and paste both read their input imperatively via `refs` on submit —
  * uncontrolled, no `data-model` binding (Feature 07.3.1) — so a 100k-line
  * paste never touches Spektrum state or its time-travel history (§5.8).
- * Every handler is single-flight-guarded here too (not just inside
- * `runImport()`) so a rapid double-click never even reaches the pipeline.
+ * The async orchestration itself lives in `import-triggers.ts`; this file
+ * stays thin `defineFn` registration + the DOM bits that need a raw event
+ * (paste's Ctrl/Cmd+Enter shortcut, Feature 07.3.10 — Spektrum's action
+ * modifiers cover Enter/Escape/Tab/Shift/Cmd but not Ctrl, so the Ctrl
+ * check happens by hand against the real `KeyboardEvent`).
  */
 export function registerPlaylistActions(): void {
     defineFn('playlist/importFile', () => {
@@ -29,55 +32,40 @@ export function registerPlaylistActions(): void {
     defineFn('playlist/importText', () => {
         void triggerTextImport(refValue('pasteTextarea'));
     });
+    defineFn('playlist/handlePasteKeydown', (el, _state, _delta, _value, event) => {
+        const ke = event as KeyboardEvent | undefined;
+        if (!ke || (!ke.ctrlKey && !ke.metaKey) || !(el instanceof HTMLTextAreaElement)) return;
+        ke.preventDefault();
+        void triggerTextImport(el.value);
+    });
+    // Feature 07.2.7: dragover's own preventDefault() (making the card a
+    // valid drop target at all) is wired once, globally, in bootstrap.ts —
+    // see that file's comment for why one element can't carry both.
+    defineFn('playlist/handleDrop', (_el, _state, _delta, _value, event) => {
+        const file = (event as DragEvent | undefined)?.dataTransfer?.files[0];
+        if (file) void triggerFileImportFromFile(file);
+    });
     defineFn('import/cancel', () => {
-        cancelImport();
+        cancelCurrentImport();
     });
     defineFn('import/clearSummary', () => {
         resetImportState();
+    });
+    defineFn('import/retry', () => {
+        void retryLastUrlImport();
+    });
+    defineFn('import/retryViaProxy', () => {
+        void retryLastUrlImport();
+    });
+    defineFn('import/confirmDuplicate', () => {
+        void retryAllowingDuplicate();
+    });
+    defineFn('import/confirmLargePaste', () => {
+        void triggerTextImport(refValue('pasteTextarea'), true);
     });
 }
 
 function refValue(name: string): string {
     const el = refs[name];
     return el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement ? el.value : '';
-}
-
-export async function triggerFileImport(): Promise<void> {
-    if (isImportInFlight()) return;
-    const picked = await getPlatform().files.pickFile(M3U_ACCEPT);
-    if (!picked) return;
-
-    setImportSourceName(picked.name);
-    setImportStage('reading');
-    const outcome = await importPlaylistFile(picked.file);
-    reportNonSummaryOutcome(outcome);
-}
-
-export async function triggerUrlImport(url: string): Promise<void> {
-    if (isImportInFlight() || !url.trim()) return;
-    setImportSourceName(url);
-    setImportStage('fetching');
-    const outcome = await importPlaylistUrl(url.trim());
-    reportNonSummaryOutcome(outcome);
-}
-
-export async function triggerTextImport(text: string): Promise<void> {
-    if (isImportInFlight() || !text.trim()) return;
-    setImportStage('parsing');
-    const outcome = await importPlaylistText(text);
-    reportNonSummaryOutcome(outcome);
-}
-
-/**
- * `runImport()` already sets `import.state`/`summary`/error scalars on
- * success/error/cancel — this only handles the outcome shape it *can't*
- * know about (the file/paste duplicate-fingerprint warning, Feature
- * 07.7.6). `errorMessage` carries the matched source's raw name, not a
- * formatted sentence — the UI template interpolates it into
- * `strings.import.errors.duplicateTemplate`.
- */
-function reportNonSummaryOutcome(outcome: { ok: boolean; duplicate?: { id: string; name: string } }): void {
-    if (!outcome.ok && outcome.duplicate) {
-        setImportError('duplicate', outcome.duplicate.name);
-    }
 }

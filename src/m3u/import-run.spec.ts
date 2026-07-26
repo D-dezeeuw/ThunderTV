@@ -1,7 +1,10 @@
+import { tick } from 'spektrum';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resetPlatformForTests } from '../core/platform';
 import { withFakePlatform } from '../core/platform/fake-platform';
 import { makePlaylistRecord } from '../core/storage/fixtures';
+import { IMPORT_STATE } from '../state/import';
+import { get } from '../state/typed';
 import { clearRows } from './channel-memory';
 import { cancelImport, isImportInFlight, runImport } from './import-run';
 
@@ -45,6 +48,10 @@ describe('runImport() (Feature 07.9/07.7)', () => {
             expect(await storage.count('channels')).toBe(0);
             expect(await storage.count('groups')).toBe(0);
             expect(isImportInFlight()).toBe(false);
+            // Feature 07.9.5: the card returns to idle, not stuck on
+            // whatever stage it was cancelled from.
+            tick();
+            expect(get<string>(IMPORT_STATE)).toBe('idle');
         });
     });
 

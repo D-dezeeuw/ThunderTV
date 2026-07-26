@@ -5,7 +5,7 @@ import { withFakePlatform } from '../core/platform/fake-platform';
 import { clearRows } from '../m3u/channel-memory';
 import { isImportInFlight } from '../m3u/import';
 import { initImportState } from './import';
-import { triggerFileImport, triggerTextImport, triggerUrlImport } from './playlist.actions';
+import { cancelCurrentImport, triggerFileImport, triggerTextImport, triggerUrlImport } from './import-triggers';
 
 const SAMPLE = '#EXTM3U\n#EXTINF:-1,One\nhttps://example.com/1.m3u8\n';
 
@@ -54,6 +54,63 @@ describe('playlist.actions — real import triggers (Feature 07.1.9)', () => {
             tick();
 
             expect(importState('state')).toBe('done');
+        });
+    });
+
+    it('triggerUrlImport(): a classified HTTP/CORS failure surfaces as import.errorKind, not a silent stall (regression: reportOutcome once swallowed every non-duplicate error)', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            initImportState();
+            http.onGet('https://example.com/blocked.m3u').reply({ kind: 'cors-or-network', crossOrigin: true });
+
+            await triggerUrlImport('https://example.com/blocked.m3u');
+            tick();
+
+            expect(importState('state')).toBe('error');
+            expect(importState('errorKind')).toBe('corsOrNetwork');
+        });
+    });
+
+    it('triggerUrlImport(): a 404 surfaces as httpNotFound', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            initImportState();
+            http.onGet('https://example.com/missing.m3u').reply({ kind: 'http', status: 404 });
+
+            await triggerUrlImport('https://example.com/missing.m3u');
+            tick();
+
+            expect(importState('state')).toBe('error');
+            expect(importState('errorKind')).toBe('httpNotFound');
+        });
+    });
+
+    it('triggerTextImport(): an unrecognizable paste surfaces as invalidM3u, not a silent stall', async () => {
+        await withFakePlatform({}, async () => {
+            initImportState();
+
+            await triggerTextImport('this is not a playlist');
+            tick();
+
+            expect(importState('state')).toBe('error');
+            expect(importState('errorKind')).toBe('invalidM3u');
+        });
+    });
+
+    it('cancelCurrentImport(): aborts an in-flight fetch and returns to idle with zero trace (Feature 07.9.1)', async () => {
+        await withFakePlatform({}, async ({ http, storage }) => {
+            initImportState();
+            http.onGet('https://example.com/slow.m3u').reply({ kind: 'pending' });
+
+            const inFlight = triggerUrlImport('https://example.com/slow.m3u');
+            await Promise.resolve();
+            tick();
+            expect(importState('state')).toBe('fetching');
+
+            cancelCurrentImport();
+            await inFlight;
+            tick();
+
+            expect(importState('state')).toBe('idle');
+            expect(await storage.count('playlists')).toBe(0);
         });
     });
 

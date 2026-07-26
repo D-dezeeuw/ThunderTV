@@ -14,6 +14,7 @@ import { registerPlaylistActions } from './playlist.actions';
 import { registerPlaylistSelectors } from './playlist.selectors';
 import { persistedKeys } from './registry';
 import { initSettingsState } from './settings';
+import { registerSettingsActions } from './settings.actions';
 import { initUiState } from './ui';
 import { registerUiActions } from './ui.actions';
 import { registerUiSelectors } from './ui.selectors';
@@ -47,6 +48,7 @@ export function initState(): void {
 /** Registers every `defineFn` action across all modules (Feature 05.2.1). */
 export function registerActions(): void {
     registerPlaylistActions();
+    registerSettingsActions();
     registerPlayerActions();
     registerUiActions();
 }

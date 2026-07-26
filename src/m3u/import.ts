@@ -83,6 +83,11 @@ export async function importPlaylistText(
     return importPlaylistTextInternal(text, 'm3u-text', name, options);
 }
 
+export interface ImportUrlOptions {
+    /** Feature 07.9.1: cancels the in-flight fetch — the one stage `runImport()`'s own cancel can't reach, since it hasn't been called yet during "fetching". An abort rejects rather than resolving a classified failure (see `classified-fetch.ts`'s own comment); the caller (`triggerUrlImport`) is expected to catch it. */
+    signal?: AbortSignal;
+}
+
 /**
  * Feature 07.4: URL import through `classifiedFetch` (via the platform's
  * `HttpAdapter`, which already applies the configured proxy — Feature
@@ -90,12 +95,12 @@ export async function importPlaylistText(
  * choose both the right copy and the right retry affordance without
  * re-deriving either from a message string.
  */
-export async function importPlaylistUrl(url: string): Promise<ImportEntryOutcome> {
+export async function importPlaylistUrl(url: string, options: ImportUrlOptions = {}): Promise<ImportEntryOutcome> {
     if (mixedContentBlocked(url)) {
         return { ok: false, cancelled: false, errorKind: 'mixedContent' };
     }
 
-    const result = await getPlatform().http.get(url);
+    const result = await getPlatform().http.get(url, options.signal ? { signal: options.signal } : {});
     if (result.kind !== 'ok') {
         return { ok: false, cancelled: false, errorKind: classifyHttpFailure(result) };
     }

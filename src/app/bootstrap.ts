@@ -66,6 +66,24 @@ export async function bootstrap(): Promise<void> {
     if (import.meta.env.DEV) installDevtools();
 
     void sweepAndLoadPlaylistSources();
+    registerImportDropzoneDragover();
+}
+
+/**
+ * Feature 07.2.7: the one piece of drag-and-drop wiring that can't be
+ * declarative — an HTML5 DnD spec requirement is that *some* listener along
+ * the drop target's ancestor chain calls `preventDefault()` on `dragover`,
+ * or the browser refuses the drop entirely (default: navigate to the
+ * file). Spektrum allows only one `data-action`/`data-fn` pair per element,
+ * and the import card's own pair is already spent on `drop` (see
+ * index.html) — so this is bound globally instead, once, here. It only
+ * ever prevents the default; it dispatches nothing, so a drop anywhere
+ * else in the app is inert rather than navigating the tab away.
+ */
+function registerImportDropzoneDragover(): void {
+    document.addEventListener('dragover', (event) => {
+        event.preventDefault();
+    });
 }
 
 /** Feature 07.9.7: the sweep runs before the sources list first loads, so a crash-orphaned row never flashes into view even briefly. */

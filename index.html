@@ -8,6 +8,7 @@
         <link rel="stylesheet" href="/src/styles/tokens.css" />
         <link rel="stylesheet" href="/src/styles/base.css" />
         <link rel="stylesheet" href="/src/styles/shell.css" />
+        <link rel="stylesheet" href="/src/styles/import-card.css" />
 
         <!--
           Spektrum is the app's only UI/state framework, resolved at runtime
@@ -174,54 +175,175 @@
                     data-testid="view-sources"
                 >
                     <h1 class="view__heading">{{ strings.views.sources.heading }}</h1>
-                    <div class="empty-state" data-if="hasNoSources" data-testid="empty-first-run">
-                        <svg class="icon icon--empty" aria-hidden="true">
-                            <use href="#icon-plus"></use>
-                        </svg>
-                        <p class="empty-state__heading">
-                            {{ strings.emptyStates.firstRun.heading }}
-                        </p>
-                        <div class="empty-state__actions">
-                            <!-- Feature 03.7.10 proof: wired to the real WebFileAdapter.pickFile()
-                                 through the platform accessor; TODO(phase-07) replaces this with
-                                 the real M3U import flow (parsing, worker handoff, source creation). -->
+
+                    <!-- Feature 07.6: result summary — replaces the card the moment an
+                         import lands, whether it created a new source or upserted one. -->
+                    <div class="import-summary" data-if="importDone" data-testid="import-summary">
+                        <h2 class="import-summary__heading">{{ importSummaryHeading }}</h2>
+                        <ul class="import-summary__lines" data-each="importSummaryLines">
+                            <li>{{ item }}</li>
+                        </ul>
+                        <!-- Feature 07.6.5: "Open channel list" is deferred — no per-source
+                             channel route exists until Phase 08 builds the virtual-scrolled
+                             list. Dismiss returns to the (now non-empty) sources view below. -->
+                        <div class="import-summary__actions">
+                            <button type="button" class="btn" data-action="click" data-fn="import/clearSummary" data-testid="import-summary-dismiss-btn">
+                                {{ strings.import.summary.dismiss }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Feature 07.1: first-run import card — the entire empty-state
+                         experience; every path funnels into src/m3u/import.ts. -->
+                    <!-- Feature 07.2.7: drag-and-drop target — drop.prevent stops the
+                         browser from navigating to the dropped file and hands it to the
+                         same file-import pipeline. dragover's own preventDefault (needed
+                         to make this a valid drop target at all — an HTML5 DnD spec
+                         requirement) is wired once, globally, in bootstrap.ts: Spektrum
+                         allows only one data-action/data-fn pair per element, so it can't
+                         also live here. -->
+                    <div
+                        class="import-card"
+                        data-if="!importDone && hasNoSources"
+                        data-testid="import-card"
+                        data-action="drop.prevent"
+                        data-fn="playlist/handleDrop"
+                    >
+                        <div data-if="!importBusy && !importHasError" data-testid="import-idle">
+                            <p class="empty-state__heading">{{ strings.emptyStates.firstRun.heading }}</p>
+
+                            <p class="storage-notice__message" data-if="storageNotice.visible" data-testid="import-card-storage-notice">
+                                {{ storage.tier === 'partial' ? strings.storageNotice.partial : strings.storageNotice.none }}
+                            </p>
+
+                            <!-- File (Feature 07.2) — always-working, CORS-free; also the
+                                 drag-and-drop target (Feature 07.2.7, see bootstrap.ts). -->
+                            <div class="import-card__section">
+                                <button type="button" class="btn" data-action="click" data-fn="playlist/importFile" data-testid="import-file-btn">
+                                    {{ strings.emptyStates.firstRun.file }}
+                                </button>
+                            </div>
+
+                            <hr class="import-card__divider" />
+
+                            <!-- Paste (Feature 07.3) — uncontrolled textarea, no data-model
+                                 (Feature 07.3.1): a 100k-line paste never touches Spektrum
+                                 state. Ctrl/Cmd+Enter submits without a pointer (07.3.10). -->
+                            <div class="import-card__section">
+                                <textarea
+                                    data-ref="pasteTextarea"
+                                    class="import-card__textarea"
+                                    :placeholder="strings.emptyStates.firstRun.pastePlaceholder"
+                                    data-testid="paste-textarea"
+                                    data-action="keydown.enter"
+                                    data-fn="playlist/handlePasteKeydown"
+                                ></textarea>
+                                <button type="button" class="btn" data-action="click" data-fn="playlist/importText" data-testid="paste-submit-btn">
+                                    {{ strings.emptyStates.firstRun.pasteSubmit }}
+                                </button>
+                            </div>
+
+                            <hr class="import-card__divider" />
+
+                            <!-- URL (Feature 07.4) — CORS/network/HTTP failures classify below. -->
+                            <div class="import-card__section">
+                                <div class="import-card__row">
+                                    <input
+                                        type="url"
+                                        data-ref="urlInput"
+                                        class="import-card__input"
+                                        :placeholder="strings.emptyStates.firstRun.urlPlaceholder"
+                                        data-testid="url-input"
+                                    />
+                                    <button type="button" class="btn" data-action="click" data-fn="playlist/importUrl" data-testid="url-submit-btn">
+                                        {{ strings.emptyStates.firstRun.urlSubmit }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <hr class="import-card__divider" />
+
+                            <!-- Feature 07.1.3: visible but disabled until Phase 19. -->
                             <button
                                 type="button"
                                 class="btn"
-                                data-action="click"
-                                data-fn="playlist/pickM3uFile"
+                                disabled
+                                :aria-label="strings.emptyStates.firstRun.xtream"
+                                data-testid="xtream-stub-btn"
                             >
-                                {{ strings.emptyStates.firstRun.file }}
+                                {{ strings.emptyStates.firstRun.xtreamComingSoon }}
                             </button>
-                            <button type="button" class="btn" disabled>
-                                {{ strings.emptyStates.firstRun.paste }}
-                            </button>
-                            <button type="button" class="btn" disabled>
-                                {{ strings.emptyStates.firstRun.url }}
-                            </button>
-                            <button type="button" class="btn" disabled>
-                                {{ strings.emptyStates.firstRun.xtream }}
-                            </button>
+
+                            <!-- Feature 07.1.4: the connect-bookmark shortcut hint. -->
+                            <p class="import-card__hint">{{ strings.emptyStates.firstRun.note }}</p>
+                            <!-- Feature 03.2.10/07.4.2: first real capabilities consumer. -->
+                            <p class="import-card__hint" data-if="!platform.capabilities.corsUnrestricted" data-testid="cors-hint">
+                                {{ strings.emptyStates.firstRun.corsHint }}
+                            </p>
                         </div>
-                        <!-- TODO(phase-07): temporary proof of Feature 03.7.10; removed once
-                             the real import flow renders picked files itself. -->
-                        <p
-                            class="empty-state__note"
-                            data-if="playlist.lastPickedLabel"
-                            data-testid="picked-file-note"
+
+                        <!-- Progress (Feature 07.5) -->
+                        <div
+                            class="import-progress"
+                            data-if="importBusy"
+                            data-ref="importProgress"
+                            tabindex="-1"
+                            role="status"
+                            data-testid="import-progress"
+                            data-action="keydown.esc"
+                            data-fn="import/cancel"
                         >
-                            {{ playlist.lastPickedLabel }}
-                        </p>
-                        <p class="empty-state__note">{{ strings.emptyStates.firstRun.note }}</p>
-                        <!-- Feature 03.2.10: first real capabilities consumer. -->
-                        <p
-                            class="empty-state__note empty-state__note--cors"
-                            data-if="!platform.capabilities.corsUnrestricted"
-                            data-testid="cors-hint"
-                        >
-                            {{ strings.emptyStates.firstRun.corsHint }}
-                        </p>
+                            <p class="import-progress__stage" data-testid="import-stage-label">{{ importStageLabel }}</p>
+                            <div class="import-progress__bar"><div class="import-progress__bar-fill"></div></div>
+                            <p class="import-progress__readout" data-if="importRowsReadout" data-testid="import-rows-readout">
+                                {{ importRowsReadout }}
+                            </p>
+                            <div>
+                                <button type="button" class="btn" data-action="click" data-fn="import/cancel" data-testid="import-cancel-btn">
+                                    {{ strings.import.cancel }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Error / confirm surface (Feature 07.4/07.7.6/07.9) — the
+                             duplicate and large-paste "confirm" prompts reuse this same
+                             surface rather than a second one: both are "attention needed
+                             before proceeding" states, exactly like a classified failure. -->
+                        <div class="import-error" data-if="importHasError" role="alert" data-testid="import-error">
+                            <p class="import-error__message">{{ importErrorMessage }}</p>
+                            <div class="import-error__actions">
+                                <button type="button" class="btn" data-if="showDuplicateConfirm" data-action="click" data-fn="import/confirmDuplicate" data-testid="import-anyway-btn">
+                                    {{ strings.import.errors.importAnyway }}
+                                </button>
+                                <button type="button" class="btn" data-if="showLargeConfirm" data-action="click" data-fn="import/confirmLargePaste" data-testid="continue-large-paste-btn">
+                                    {{ strings.import.errors.continueAnyway }}
+                                </button>
+                                <button type="button" class="btn" data-if="showRetry" data-action="click" data-fn="import/retry" data-testid="import-retry-btn">
+                                    {{ strings.import.retry }}
+                                </button>
+                                <button type="button" class="btn" data-if="showRetryViaProxy" data-action="click" data-fn="import/retryViaProxy" data-testid="import-retry-proxy-btn">
+                                    {{ strings.import.retryViaProxy }}
+                                </button>
+                                <button type="button" class="btn" data-action="click" data-fn="import/clearSummary" data-testid="import-dismiss-btn">
+                                    {{ strings.import.dismiss }}
+                                </button>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Feature 07.1.8: minimal sources list once a source exists — Phase 08
+                         replaces this row with the real virtual-scrolled channel view; there
+                         is deliberately no click-through yet (no per-source route exists). -->
+                    <ul class="sources-list" data-if="!importDone && !hasNoSources" data-each="playlist.sources" data-testid="sources-list">
+                        <li class="sources-list__row">
+                            <span class="sources-list__name truncate">{{ item.name }}</span>
+                            <span class="sources-list__meta">{{ item.channelCount }} channels</span>
+                            <span class="sources-list__reupload" data-if="item.needsReupload" data-testid="needs-reupload">
+                                {{ strings.import.sources.needsReupload }}
+                            </span>
+                        </li>
+                    </ul>
+
                     <!--
                       Feature 02.8.5 density demo: proves --row-h/--row-pad-x/
                       --logo-box render correctly in both density modes before
@@ -365,7 +487,33 @@
                         <h3 class="settings-section__title">
                             {{ strings.settings.sections.streaming }}
                         </h3>
-                        <!-- TODO(phase-22) -->
+                        <!-- Feature 07.8.1/07.8.3: the only real Settings → Streaming
+                             field so far — validated on Save, not live per-keystroke
+                             (see settings.actions.ts's header comment for why). -->
+                        <label class="settings-section__label" for="proxy-template-input">
+                            {{ strings.settings.streaming.proxyLabel }}
+                        </label>
+                        <input
+                            type="text"
+                            id="proxy-template-input"
+                            data-ref="proxyTemplateInput"
+                            class="settings-section__input"
+                            :value="settings.proxyTemplate ?? ''"
+                            :placeholder="strings.settings.streaming.proxyPlaceholder"
+                            data-testid="proxy-template-input"
+                            data-action="input"
+                            data-fn="settings/clearProxyFeedback"
+                        />
+                        <button type="button" class="btn" data-action="click" data-fn="settings/saveProxyTemplate" data-testid="proxy-save-btn">
+                            {{ strings.settings.streaming.proxySave }}
+                        </button>
+                        <p class="settings-section__error" data-if="settings.proxyError" data-testid="proxy-error">
+                            {{ settings.proxyError }}
+                        </p>
+                        <p class="settings-section__hint" data-if="settings.proxySaved" data-testid="proxy-saved">
+                            {{ strings.settings.streaming.proxySaved }}
+                        </p>
+                        <p class="settings-section__hint">{{ strings.settings.streaming.proxyHelp }}</p>
                     </section>
                     <section class="settings-section">
                         <h3 class="settings-section__title">

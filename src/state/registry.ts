@@ -10,7 +10,7 @@ import {
 } from './import';
 import { PLAYER_ACTIVE, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
 import { MAX_PLAYLIST_SOURCES, PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_DEMO_ROWS, PLAYLIST_SOURCES } from './playlist';
-import { SETTINGS_PROXY_TEMPLATE } from './settings';
+import { SETTINGS_PROXY_ERROR, SETTINGS_PROXY_SAVED, SETTINGS_PROXY_TEMPLATE } from './settings';
 import {
     PLATFORM_CAPABILITIES,
     PLATFORM_NAME,
@@ -118,6 +118,16 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: true,
         description: 'Optional user-configured proxy URL template (masterplan §8) — editable via Settings → Streaming (Feature 07.8.1); Phase 22 builds out the rest of that section.',
+    },
+    [SETTINGS_PROXY_ERROR]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'Inline validation message for the last proxy-template save attempt (Feature 07.8.3) — transient, cleared on next edit.',
+    },
+    [SETTINGS_PROXY_SAVED]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'True immediately after a successful proxy-template save (Feature 07.8.3) — transient, cleared on next edit.',
     },
 
     // --- ui (including the diagnostic mirrors documented as ui-owned — see state/README.md) ---
