@@ -12,6 +12,7 @@ import {
 import { IMPORT_SOURCE_NAME } from './import';
 import { resetImportState, setImportError, setImportSourceName, setImportStage } from './import-setters';
 import { setActiveSourceId } from './playlist.actions';
+import { clearXtreamRetry } from './xtream.actions';
 import { get } from './typed';
 
 /**
@@ -72,6 +73,9 @@ export async function triggerUrlImport(url: string): Promise<void> {
     setImportStage('fetching');
     focusImportProgress();
     lastDuplicateCandidate = null;
+    // The shared retry buttons now target this URL import, not a previously
+    // failed Xtream attempt (see xtream.actions.ts's lastXtreamParams).
+    clearXtreamRetry();
 
     const controller = new AbortController();
     activeFetchController = controller;

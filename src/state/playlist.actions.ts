@@ -11,6 +11,7 @@ import {
 } from './import-triggers';
 import { persist } from './persist';
 import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
+import { retryLastXtreamImport } from './xtream.actions';
 
 /**
  * The real Phase 07 import triggers (Feature 07.1.9/07.9.1), replacing the
@@ -53,10 +54,16 @@ export function registerPlaylistActions(): void {
     defineFn('import/clearSummary', () => {
         resetImportState();
     });
+    // Retry is shared between the M3U URL and Xtream pipelines — the
+    // Xtream retry payload wins when it exists (it's cleared whenever an
+    // M3U URL import starts), since `retryLastUrlImport()` would otherwise
+    // feed the Xtream server URL through the M3U pipeline.
     defineFn('import/retry', () => {
+        if (retryLastXtreamImport()) return;
         void retryLastUrlImport();
     });
     defineFn('import/retryViaProxy', () => {
+        if (retryLastXtreamImport()) return;
         void retryLastUrlImport();
     });
     defineFn('import/confirmDuplicate', () => {

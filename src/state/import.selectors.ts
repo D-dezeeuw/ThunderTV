@@ -89,11 +89,15 @@ export function registerImportSelectors(): void {
     computed('showLargeConfirm', [IMPORT_ERROR_KIND], (state: State) => errorKindIs(state, 'largeConfirm'));
     /** Feature 07.4.4: timeout is the one kind with a plain (non-proxy) one-click retry. */
     computed('showRetry', [IMPORT_ERROR_KIND], (state: State) => errorKindIs(state, 'timeout'));
-    /** Feature 07.8.5: "Retry via proxy" needs both a CORS-classified failure and a configured template. */
+    /** Feature 07.8.5: "Retry via proxy" needs both a CORS-classified failure and a configured template. The `xtream*` kinds are the same classifications reported by the Xtream import path with Xtream-specific copy. */
     computed('showRetryViaProxy', [IMPORT_ERROR_KIND, SETTINGS_PROXY_TEMPLATE], (state: State) => {
         const s = state as ImportSliceState;
         const kind = s.import?.errorKind;
-        const corsClassified = kind === 'corsOrNetwork' || kind === 'mixedContent';
+        const corsClassified =
+            kind === 'corsOrNetwork' ||
+            kind === 'mixedContent' ||
+            kind === 'xtreamCorsOrNetwork' ||
+            kind === 'xtreamMixedContent';
         return corsClassified && !!s.settings?.proxyTemplate;
     });
 }
