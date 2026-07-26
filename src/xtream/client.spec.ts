@@ -109,4 +109,12 @@ describe('xtream/client', () => {
             expect(result).toEqual({ ok: false, error: { kind: 'cors-or-network', action: 'get_live_streams' } });
         });
     });
+
+    it('authenticate keeps mixed-content distinct from cors-or-network (http provider on an https page)', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            http.onGet(apiUrl(source, '')).reply({ kind: 'mixed-content' });
+            const result = await authenticate(source);
+            expect(result).toEqual({ ok: false, error: { kind: 'mixed-content', action: '' } });
+        });
+    });
 });

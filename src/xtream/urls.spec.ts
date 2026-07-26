@@ -22,6 +22,13 @@ describe('xtream/urls', () => {
         expect(normalizeXtreamUrl('  http://example.com  ')).toBe('http://example.com');
     });
 
+    it('normalizeXtreamUrl prepends http:// when no scheme was typed', () => {
+        expect(normalizeXtreamUrl('provider.example:8080')).toBe('http://provider.example:8080');
+        expect(normalizeXtreamUrl('provider.example')).toBe('http://provider.example');
+        expect(normalizeXtreamUrl('https://provider.example')).toBe('https://provider.example');
+        expect(normalizeXtreamUrl('')).toBe('');
+    });
+
     it('redactUrl masks credentials in both the api and stream URL shapes', () => {
         expect(redactUrl(apiUrl(source, 'get_live_categories'))).toBe(
             'http://example.com:8080/player_api.php?username=***&password=***&action=get_live_categories',

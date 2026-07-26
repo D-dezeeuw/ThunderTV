@@ -92,6 +92,10 @@ export const strings = {
             mixedContent:
                 'This playlist uses an unencrypted (http://) address, which browsers block on a secure (https://) page. Configure a proxy in Settings → Streaming, or use the desktop app, which has no such restriction.',
             tooLarge: 'This is larger than expected and was stopped to protect memory.',
+            xtreamCorsOrNetwork:
+                "The provider blocked this request, or a network error occurred. Most Xtream providers don't allow direct browser access (CORS) — configure a proxy in Settings → Streaming, and double-check the server address.",
+            xtreamMixedContent:
+                'This provider uses an unencrypted (http://) address, which browsers block on a secure (https://) page. Configure a proxy in Settings → Streaming, or use the desktop app, which has no such restriction.',
         },
         proxy: {
             invalidTemplate: 'Proxy address must start with https:// (or http://localhost for local testing).',

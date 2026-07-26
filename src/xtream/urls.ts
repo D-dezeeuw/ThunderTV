@@ -14,9 +14,17 @@ export function liveStreamUrl(source: XtreamSource, streamId: number, ext = 'm3u
     return `${source.url}/live/${encodeURIComponent(source.user)}/${encodeURIComponent(source.pass)}/${String(streamId)}.${ext}`;
 }
 
-/** Strips a trailing slash and an accidentally pasted `/player_api.php` path (Feature 19.1.2). */
+/**
+ * Strips a trailing slash and an accidentally pasted `/player_api.php` path
+ * (Feature 19.1.2), and prepends `http://` when no scheme was typed —
+ * `provider.example:8080` would otherwise parse as a URL whose *scheme* is
+ * `provider.example`, making fetch throw an opaque TypeError that
+ * classifies as a CORS/network failure instead of ever reaching the
+ * provider.
+ */
 export function normalizeXtreamUrl(rawUrl: string): string {
     let url = rawUrl.trim();
+    if (url && !/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = `http://${url}`;
     url = url.replace(/\/player_api\.php.*$/i, '');
     url = url.replace(/\/+$/, '');
     return url;
