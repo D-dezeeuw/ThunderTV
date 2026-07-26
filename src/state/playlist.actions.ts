@@ -1,4 +1,4 @@
-import { defineFn, refs } from 'spektrum';
+import { defineFn, refs, setValue } from 'spektrum';
 import { resetImportState } from './import-setters';
 import {
     cancelCurrentImport,
@@ -9,6 +9,8 @@ import {
     triggerTextImport,
     triggerUrlImport,
 } from './import-triggers';
+import { persist } from './persist';
+import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
 
 /**
  * The real Phase 07 import triggers (Feature 07.1.9/07.9.1), replacing the
@@ -63,9 +65,32 @@ export function registerPlaylistActions(): void {
     defineFn('import/confirmLargePaste', () => {
         void triggerTextImport(refValue('pasteTextarea'), true);
     });
+
+    // Feature 08.10.6: source-switch entry points — the real load/publish
+    // work happens in state/list-load.ts's watch(['playlist.activeSourceId'])
+    // subscription, so this stays a plain id write.
+    defineFn('playlist/selectSource', (el) => {
+        const id = el.dataset['id'];
+        if (id) setActiveSourceId(id);
+    });
+    defineFn('playlist/clearActiveSource', () => {
+        setActiveSourceId(null);
+    });
 }
 
 function refValue(name: string): string {
     const el = refs[name];
     return el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement ? el.value : '';
+}
+
+/**
+ * The source the user is currently browsing (Feature 05.6.2's key, made real
+ * by Phase 08). Persisted — "coming back to a playlist should feel like
+ * never having left" (Feature 08.6's own framing) extends to *which*
+ * playlist, not just its scroll position; Phase 05 left this transient only
+ * because no real navigation existed yet to write it.
+ */
+export function setActiveSourceId(id: string | null): void {
+    setValue(PLAYLIST_ACTIVE_SOURCE_ID, id);
+    persist(PLAYLIST_ACTIVE_SOURCE_ID);
 }

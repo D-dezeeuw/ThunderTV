@@ -69,6 +69,8 @@ export function makeFavoriteRows(count: number): FavoriteRecord[] {
         streamUrl: `https://provider.example/stream/${String(index)}.m3u8`,
         logo: null,
         group: null,
+        sourceId: 'p1',
+        addedAt: index,
     }));
 }
 

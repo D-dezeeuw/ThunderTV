@@ -13,6 +13,7 @@ repeated here, to avoid the two drifting apart.
 | Key | Owner | Persisted | Max items | Envelope version | Description |
 | --- | --- | --- | --- | --- | --- |
 | `epg.tick` | epg | no | — | v1 | Global 30s heartbeat (masterplan §5.5) — a timestamp, recomputed every boot. |
+| `favorites.ids` | favorites | no | — | v1 | Live id -> true lookup for O(1) row-badge derivation (Feature 08.8.4) — a projection of the real `favorites` storage table, rebuilt at boot and on every toggle; the table (denormalized snapshots), not this map, is the source of truth and what actually persists. |
 | `import.errorKind` | import | no | — | v1 | Classified failure kind of the last import attempt (Feature 07.4/07.7.6) — drives which retry affordance the UI offers. |
 | `import.errorMessage` | import | no | — | v1 | Human-readable message for the last import failure. |
 | `import.parsed` | import | no | — | v1 | Rows parsed so far in the in-flight import — a scalar counter, never the rows themselves (§5.8). |
@@ -20,21 +21,30 @@ repeated here, to avoid the two drifting apart.
 | `import.state` | import | no | — | v1 | Current import pipeline stage (idle/fetching/reading/parsing/writing/done/error) — transient, reset to idle on every boot. |
 | `import.summary` | import | no | — | v1 | Result panel data for the most recently completed import (Feature 07.6) — cleared on navigation away. |
 | `import.written` | import | no | — | v1 | Rows durably written to storage so far in the in-flight import. |
+| `list.groups` | list | no | 500 | v1 | The groups panel\'s own row set (Feature 08.5.1) — built once per source entry from the `groups` storage table, capped independently of Phase 06\'s MAX_GROUPS=10000 extraction cap so the panel\'s own DOM cost stays bounded (Feature 08.5.9). |
+| `list.groupsTruncated` | list | no | — | v1 | True when the groups panel dropped groups past GROUPS_PANEL_CAP — drives the "too many groups to list" note. |
+| `list.padBottom` | list | no | — | v1 | Bottom spacer height (px) — same role as padTop, below the published window. |
+| `list.padTop` | list | no | — | v1 | Top spacer height (px) so the native scrollbar reflects the full virtual extent above the published window. |
+| `list.selectedId` | list | no | — | v1 | The keyboard/click selection cursor (Feature 08.7.2) — distinct from player.active. Saved per source into ui.listState (Feature 08.7.8); this live key itself is not directly persisted. |
+| `list.visibleRows` | list | no | 128 | v1 | The virtual-list windowed slice (masterplan §5.4) — published by src/ui/virtual-list.ts on every scroll-driven republish; ≤ ~40 rows by construction (overscan included), never the full playlist array. |
 | `platform.capabilities` | ui | no | — | v1 | Live-derived from storage.tier every boot (Feature 04.7.5) — never meaningfully cacheable. |
 | `platform.name` | ui | no | — | v1 | Diagnostics only (Feature 03.8.6) — recomputed fresh from real detection every boot. |
 | `player.active` | player | yes | — | v1 | Denormalized last-watched channel snapshot — the §6.4 instant-restore row. |
 | `player.zapHistory` | player | yes | 20 | v1 | Capped, deduped list of recently played channel snapshots. |
-| `playlist.activeSourceId` | playlist | no | — | v1 | The source the user last navigated into (Feature 05.6.2) — transient UI selection, not durable data. |
+| `playlist.activeSourceId` | playlist | yes | — | v1 | The source the user last navigated into (Feature 05.6.2, persisted starting Feature 08.10.6) — a reload lands back in the same channel list instead of a source picker, matching Feature 08.6\'s "never left" framing. |
 | `playlist.demoRows` | playlist | no | — | v1 | Phase 02 density-preview fixture rows — never real data, never persisted. |
 | `playlist.sources` | playlist | no | 200 | v1 | Live projection of the playlists storage table (Feature 07.1.8) — never itself persisted; rebuilt from storage at boot and after every import commit, so there is exactly one source of truth. |
 | `settings.proxyError` | settings | no | — | v1 | Inline validation message for the last proxy-template save attempt (Feature 07.8.3) — transient, cleared on next edit. |
 | `settings.proxySaved` | settings | no | — | v1 | True immediately after a successful proxy-template save (Feature 07.8.3) — transient, cleared on next edit. |
 | `settings.proxyTemplate` | settings | yes | — | v1 | Optional user-configured proxy URL template (masterplan §8) — editable via Settings → Streaming (Feature 07.8.1); Phase 22 builds out the rest of that section. |
 | `storage.tier` | ui | no | — | v1 | Set from the real boot-time probe (Phase 04) every session — persisting a stale tier would be actively wrong. |
+| `ui.activeGroup` | ui | no | — | v1 | The currently-open source\'s active group filter, if any (Feature 08.5.7) — restored from ui.listState on source entry, written live on every group toggle. |
 | `ui.activeView` | ui | no | — | v1 | Current route — driven by the URL hash, which is its own persistence mechanism. |
 | `ui.density` | ui | yes | — | v1 | Channel-list row density preference. |
+| `ui.listState` | ui | yes | — | v1 | Per-source list UI state map (scrollTop, groupScrollTop, viewMode, activeGroup, selectedId), LRU-capped to the last 20 touched sources (Feature 08.6.1/08.6.7) — what makes returning to a playlist feel like never having left. |
 | `ui.settingsOpen` | ui | no | — | v1 | Transient settings-panel open/closed state — reopening automatically on boot would be surprising. |
 | `ui.storageNoticeDismissed` | ui | yes | — | v1 | Storage-mode notice dismissal (Feature 04.8.5) — persists on tiers that can keep it, session-only on none by construction. |
+| `ui.viewMode` | ui | no | — | v1 | "all" | "groups" — the currently-open source\'s list view mode (Feature 08.5.5/08.6.1), same restore-on-entry pattern as ui.activeGroup. |
 
 ## Session-restore boot-critical set (Feature 05.9.5)
 

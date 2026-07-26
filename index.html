@@ -9,6 +9,7 @@
         <link rel="stylesheet" href="/src/styles/base.css" />
         <link rel="stylesheet" href="/src/styles/shell.css" />
         <link rel="stylesheet" href="/src/styles/import-card.css" />
+        <link rel="stylesheet" href="/src/styles/channel-list.css" />
 
         <!--
           Spektrum is the app's only UI/state framework, resolved at runtime
@@ -331,33 +332,140 @@
                         </div>
                     </div>
 
-                    <!-- Feature 07.1.8: minimal sources list once a source exists — Phase 08
-                         replaces this row with the real virtual-scrolled channel view; there
-                         is deliberately no click-through yet (no per-source route exists). -->
-                    <ul class="sources-list" data-if="!importDone && !hasNoSources" data-each="playlist.sources" data-testid="sources-list">
-                        <li class="sources-list__row">
-                            <span class="sources-list__name truncate">{{ item.name }}</span>
-                            <span class="sources-list__meta">{{ item.channelCount }} channels</span>
-                            <span class="sources-list__reupload" data-if="item.needsReupload" data-testid="needs-reupload">
-                                {{ strings.import.sources.needsReupload }}
-                            </span>
-                        </li>
-                    </ul>
+                    <!-- Feature 08: source picker — sources exist but none is active
+                         yet (a fresh boot with 2+ sources, or "← Sources" was clicked).
+                         Rows are clickable (Feature 08.10.6's playlist/selectSource);
+                         Phase 15 builds real multi-playlist management on top of this. -->
+                    <div data-if="!importDone && !hasNoSources && !activeSource" data-testid="sources-picker">
+                        <p class="sources-picker__hint">{{ strings.list.chooseSource }}</p>
+                        <ul class="sources-list" data-each="playlist.sources" data-testid="sources-list">
+                            <li class="sources-list__row">
+                                <button
+                                    type="button"
+                                    class="sources-list__select"
+                                    data-action="click"
+                                    data-fn="playlist/selectSource"
+                                    :data-id="item.id"
+                                    data-testid="source-select-btn"
+                                >
+                                    <span class="sources-list__name truncate">{{ item.name }}</span>
+                                    <span class="sources-list__meta">{{ item.channelCount }} channels</span>
+                                </button>
+                                <span class="sources-list__reupload" data-if="item.needsReupload" data-testid="needs-reupload">
+                                    {{ strings.import.sources.needsReupload }}
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
 
-                    <!--
-                      Feature 02.8.5 density demo: proves --row-h/--row-pad-x/
-                      --logo-box render correctly in both density modes before
-                      Phase 06/08 build the real, worker-parsed channel list.
-                      Shown unconditionally (not gated on hasNoSources) since
-                      its purpose is independent of real source state.
-                    -->
-                    <p class="demo-rows__label">{{ strings.emptyStates.demoRowsLabel }}</p>
-                    <ul class="demo-rows cv-auto" data-each="playlist.demoRows" aria-hidden="true">
-                        <li class="demo-row">
-                            <span class="demo-row__logo"></span>
-                            <span class="demo-row__name truncate">{{ item }}</span>
-                        </li>
-                    </ul>
+                    <!-- Feature 08.1-08.10: the real virtual-scrolled channel list —
+                         the surface Phases 09 (search) and 10 (playback) plug into. -->
+                    <div class="list-shell" data-if="!importDone && activeSource" data-testid="channel-list-shell">
+                        <div class="list-shell__header">
+                            <button type="button" class="btn" data-action="click" data-fn="playlist/clearActiveSource" data-testid="back-to-sources-btn">
+                                {{ strings.list.backToSources }}
+                            </button>
+                            <h2 class="list-shell__title truncate">{{ activeSource.name }}</h2>
+                            <button
+                                type="button"
+                                class="btn"
+                                data-if="ui.viewMode === 'groups'"
+                                data-action="click"
+                                data-fn="list/showAllChannels"
+                                data-testid="show-all-channels-btn"
+                            >
+                                {{ strings.list.allChannels }}
+                            </button>
+                        </div>
+
+                        <p class="list-shell__empty" data-if="activeSource.needsReupload" data-testid="list-needs-reupload">
+                            {{ strings.import.sources.needsReupload }}
+                        </p>
+                        <p class="list-shell__empty" data-if="!activeSource.needsReupload && activeSource.channelCount === 0" data-testid="list-empty">
+                            {{ strings.list.noChannels }}
+                        </p>
+
+                        <div class="list-shell__body" data-if="!activeSource.needsReupload && activeSource.channelCount > 0">
+                            <!-- Feature 08.5: groups panel — renders from GroupMeta alone
+                                 (list.groups), so it's ready before channel rows are even
+                                 streamed in. Hidden for single-group playlists (08.5.6). -->
+                            <nav
+                                class="groups-panel"
+                                data-if="groupsPanelVisible"
+                                role="listbox"
+                                tabindex="0"
+                                :aria-label="strings.list.groupsHeading"
+                                data-action="keydown"
+                                data-fn="list/handleGroupsPanelKeydown"
+                                data-testid="groups-panel"
+                            >
+                                <p class="groups-panel__truncated" data-if="list.groupsTruncated" data-testid="groups-truncated-note">
+                                    {{ groupsTruncatedMessage }}
+                                </p>
+                                <div class="groups-panel__list" data-each="list.groups">
+                                    <button
+                                        type="button"
+                                        class="groups-panel__item"
+                                        :class="{ 'groups-panel__item--active': item.name === ui.activeGroup }"
+                                        role="option"
+                                        :aria-selected="item.name === ui.activeGroup"
+                                        data-action="click"
+                                        data-fn="list/expandGroup"
+                                        :data-group="item.name"
+                                        data-testid="group-item"
+                                    >
+                                        <span class="groups-panel__name truncate">{{ item.name }}</span>
+                                        <span class="groups-panel__count">{{ item.count }}</span>
+                                    </button>
+                                </div>
+                            </nav>
+
+                            <!-- Feature 08.1/08.2/08.7: the windowed list itself — .pad
+                                 spacers reflect the full virtual extent, .rows carries only
+                                 the published slice (≤ ~40 rows), never the full array. -->
+                            <div
+                                class="list"
+                                data-ref="listContainer"
+                                data-testid="channel-list"
+                                tabindex="0"
+                                role="listbox"
+                                :aria-label="activeSource.name"
+                                data-action="keydown"
+                                data-fn="list/handleListKeydown"
+                            >
+                                <div class="pad" :style="'height:' + list.padTop + 'px'"></div>
+                                <div class="rows" data-ref="rowsContainer" data-each="list.visibleRows" data-action="click" data-fn="list/selectChannel">
+                                    <div
+                                        class="channel-row"
+                                        :class="{ 'channel-row--selected': item.id === list.selectedId, 'channel-row--active': player.active && player.active.id === item.id }"
+                                        role="option"
+                                        :aria-selected="item.id === list.selectedId"
+                                        :data-id="item.id"
+                                        data-testid="channel-row"
+                                    >
+                                        <span class="channel-row__logo" data-if="!item.radio">
+                                            <img
+                                                data-if="item.logo"
+                                                class="channel-row__logo-img"
+                                                :src="item.logo"
+                                                loading="lazy"
+                                                decoding="async"
+                                                referrerpolicy="no-referrer"
+                                                alt=""
+                                            />
+                                            <span class="channel-row__logo-placeholder" data-if="!item.logo" aria-hidden="true"></span>
+                                        </span>
+                                        <span class="channel-row__logo channel-row__logo--radio" data-if="item.radio" :title="strings.list.radioLabel" aria-hidden="true"></span>
+                                        <span class="channel-row__name truncate">{{ item.name }}</span>
+                                        <span class="channel-row__favorite" data-if="favorites.ids[item.id]" aria-hidden="true" data-testid="favorite-star">★</span>
+                                        <!-- Feature 08.3.4: reserved for Phase 17's now/next + progress bar. -->
+                                        <span class="channel-row__epg"></span>
+                                    </div>
+                                </div>
+                                <div class="pad" :style="'height:' + list.padBottom + 'px'"></div>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 <section

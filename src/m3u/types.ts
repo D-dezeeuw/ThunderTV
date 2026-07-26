@@ -46,5 +46,19 @@ export interface GroupMeta {
 /** The pseudo-group name for rows with a missing/blank `group-title` (Feature 06.6.3). */
 export const UNGROUPED = 'Ungrouped';
 
+/**
+ * Deterministic, reload-stable channel identity (Feature 08.10's
+ * requirement that selection/favorites survive a reload). A channel's real
+ * identity is its position in its playlist's parse — `ChannelRecord`
+ * (`src/core/storage/records.ts`) carries no separate `id` field; this
+ * formula computes it identically whether a row was just parsed
+ * (`parser-client.ts` overwrites `mapItemToChannelRow()`'s temporary
+ * `crypto.randomUUID()` with this once the row's real index is known) or
+ * reconstructed from storage on load (`src/state/list-load.ts`).
+ */
+export function makeChannelRowId(playlistId: string, index: number): string {
+    return `${playlistId}:${String(index)}`;
+}
+
 /** Distinct-group ceiling (Feature 06.6.7) — overflow group rows fold into `UNGROUPED` so the Phase 08 UI can trust the bound on a pathological playlist. */
 export const MAX_GROUPS = 10_000;

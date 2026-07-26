@@ -1,7 +1,7 @@
 import type { ChannelRecord } from '../core/storage';
 import { getPlatform } from '../core/platform';
 import { setRows } from './channel-memory';
-import type { ChannelRow, GroupMeta } from './types';
+import { makeChannelRowId, type ChannelRow, type GroupMeta } from './types';
 import type { WorkerIn, WorkerOut } from './worker-protocol';
 
 export interface ParseSummary {
@@ -99,11 +99,20 @@ export class ParserClient {
                     case 'chunk': {
                         const startIndex = nextIndex;
                         nextIndex += message.rows.length;
+                        // Feature 08.10: overwrite the worker's temporary
+                        // crypto.randomUUID() (Feature 06.5.3, session-only)
+                        // with the reload-stable `playlistId:index` id — the
+                        // row's real index is only known here, once chunks
+                        // are ordered against `sourceId`.
+                        const rows = message.rows.map((row, i) => ({
+                            ...row,
+                            id: makeChannelRowId(sourceId, startIndex + i),
+                        }));
                         chunkQueue = chunkQueue
-                            .then(() => writeChunkToStorage(sourceId, message.rows, startIndex))
+                            .then(() => writeChunkToStorage(sourceId, rows, startIndex))
                             .then(() => {
-                                allRows.push(...message.rows);
-                                callbacks.onChunk?.(message.rows, message.done);
+                                allRows.push(...rows);
+                                callbacks.onChunk?.(rows, message.done);
                             });
                         return;
                     }

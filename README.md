@@ -40,6 +40,7 @@ npm run format        # prettier --write .
 npm run typecheck       # tsc --noEmit
 npm run test         # vitest run
 npm run bench:m3u       # vitest run --config vitest.bench.config.ts — 100k-channel M3U parse budget (Feature 06.10)
+npm run bench:list       # vitest run --config vitest.bench.config.ts — 90k-row virtual-list scroll/setRows budget (Feature 08.9)
 npm run gen:m3u-fixture    # node scripts/gen-m3u-fixture.mjs — seeded M3U fixture generator (see --help-style usage in the script header)
 ```
 
@@ -138,7 +139,7 @@ ways depending on target, both pointing at the exact same pinned version
 | `src/epg/`           | Phases 16-18 — EPG Ingestion (Web Worker) / Display / Guide & Mapping                      |
 | `src/xtream/`        | Phases 19-21 — Xtream API Client / Live / VOD & Series                                     |
 | `src/player/`        | Phases 10-12 — Playback Foundation / Engines / Player UI                                   |
-| `src/ui/`            | Phase 08 onward — virtual list, view partials, bindings                                    |
+| `src/ui/`            | Phase 08 — Channel List & Virtual Scrolling (virtual-list controller, group filtering, lazy logos, long-press) and onward |
 | `src/app/`           | Shell wiring (sidebar, view switching, hash router, settings panel, density — Phase 02) plus the boot sequence (`createPlatform()`/`setPlatform()` — Phase 03) |
 | `src/state/`         | Phase 05 — Spektrum State Architecture                                                     |
 | `src/shared/testing/`| Test-only harnesses shared across phases (`bind-dom.ts`, Phase 05)                         |

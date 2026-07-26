@@ -2,9 +2,16 @@ import { appState, getPathObj, setValue } from 'spektrum';
 import { strings } from '../app/strings';
 import { getPlatform } from '../core/platform';
 import { initEpgState } from './epg';
+import { initFavoritesState } from './favorites';
+import { registerGroupActions } from './groups.actions';
 import { applyHistoryPolicy } from './history-policy';
 import { initImportState } from './import';
 import { registerImportSelectors } from './import.selectors';
+import { initListState } from './list';
+import { registerListActions } from './list.actions';
+import { registerListSelectors } from './list.selectors';
+import { initListGroupsState } from './list-groups';
+import { initListStateModule } from './list-state';
 import { unwrapPersisted } from './persist';
 import { initPlayerState } from './player';
 import { registerPlayerActions } from './player.actions';
@@ -21,6 +28,7 @@ import { registerUiSelectors } from './ui.selectors';
 
 export { flushNow, pendingKeys, persist, registerPersistOnHide } from './persist';
 export { setActiveChannel } from './player.actions';
+export { setActiveSourceId } from './playlist.actions';
 export { handleStorageDemotion } from './ui.actions';
 export { startEpgTick, stopEpgTick } from './epg';
 export { isPersistedKey, KEY_REGISTRY, persistedKeys } from './registry';
@@ -28,6 +36,8 @@ export type { KeyMeta } from './registry';
 export { pushCapped } from './collections';
 export type { ActiveChannelSnapshot } from './records';
 export { loadPlaylistSources } from './playlist-load';
+export { loadFavoriteIds } from './favorites-load';
+export { loadActiveSource } from './list-load';
 
 /**
  * Seeds every module's defaults (Feature 05.1.8) — called before
@@ -42,6 +52,10 @@ export function initState(): void {
     initEpgState();
     initSettingsState();
     initUiState();
+    initListState();
+    initListStateModule();
+    initListGroupsState();
+    initFavoritesState();
     applyHistoryPolicy();
 }
 
@@ -51,6 +65,8 @@ export function registerActions(): void {
     registerSettingsActions();
     registerPlayerActions();
     registerUiActions();
+    registerListActions();
+    registerGroupActions();
 }
 
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */
@@ -59,6 +75,7 @@ export function registerSelectors(): void {
     registerImportSelectors();
     registerPlayerSelectors();
     registerUiSelectors();
+    registerListSelectors();
 }
 
 /**

@@ -11,6 +11,7 @@ import {
 } from '../m3u/import';
 import { IMPORT_SOURCE_NAME } from './import';
 import { resetImportState, setImportError, setImportSourceName, setImportStage } from './import-setters';
+import { setActiveSourceId } from './playlist.actions';
 import { get } from './typed';
 
 /**
@@ -164,6 +165,11 @@ function reportOutcome(outcome: ImportEntryOutcome): void {
     if (outcome.ok) {
         clearPasteTextarea();
         lastDuplicateCandidate = null;
+        // Feature 07.6.5's deferred "Open channel list": a successful
+        // import navigates straight into its channel list (Feature 08.10.6's
+        // watch() on playlist.activeSourceId does the actual load) instead
+        // of leaving the user on the sources list with no way in yet.
+        setActiveSourceId(outcome.summary.sourceId);
         return;
     }
     lastDuplicateCandidate = null;
