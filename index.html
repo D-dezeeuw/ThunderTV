@@ -28,8 +28,8 @@
         <script type="importmap">
             { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
         </script>
-      <script type="module" crossorigin src="./assets/index-n0qAxztN.js"></script>
-      <link rel="stylesheet" crossorigin href="./assets/index-Cbl5mHzW.css">
+      <script type="module" crossorigin src="./assets/index-B5COJPpS.js"></script>
+      <link rel="stylesheet" crossorigin href="./assets/index-DwOl1T6y.css">
     </head>
     <body>
         <!--
@@ -262,16 +262,42 @@
 
                             <hr class="import-card__divider" />
 
-                            <!-- Feature 07.1.3: visible but disabled until Phase 19. -->
-                            <button
-                                type="button"
-                                class="btn"
-                                disabled
-                                :aria-label="strings.emptyStates.firstRun.xtream"
-                                data-testid="xtream-stub-btn"
-                            >
-                                {{ strings.emptyStates.firstRun.xtreamComingSoon }}
-                            </button>
+                            <!-- Xtream Codes MVP slice: server URL + username + password,
+                                 wired to src/xtream/import.ts via state/xtream.actions.ts.
+                                 Reuses the same import-progress/error/summary surfaces above. -->
+                            <div class="import-card__section">
+                                <p class="import-card__label">{{ strings.emptyStates.firstRun.xtream }}</p>
+                                <div class="import-card__row">
+                                    <input
+                                        type="text"
+                                        data-ref="xtreamUrlInput"
+                                        class="import-card__input"
+                                        :placeholder="strings.emptyStates.firstRun.xtreamUrlPlaceholder"
+                                        data-testid="xtream-url-input"
+                                    />
+                                </div>
+                                <div class="import-card__row">
+                                    <input
+                                        type="text"
+                                        data-ref="xtreamUserInput"
+                                        class="import-card__input"
+                                        :placeholder="strings.emptyStates.firstRun.xtreamUserPlaceholder"
+                                        data-testid="xtream-user-input"
+                                    />
+                                </div>
+                                <div class="import-card__row">
+                                    <input
+                                        type="password"
+                                        data-ref="xtreamPassInput"
+                                        class="import-card__input"
+                                        :placeholder="strings.emptyStates.firstRun.xtreamPassPlaceholder"
+                                        data-testid="xtream-pass-input"
+                                    />
+                                    <button type="button" class="btn" data-action="click" data-fn="xtream/import" data-testid="xtream-submit-btn">
+                                        {{ strings.emptyStates.firstRun.xtreamSubmit }}
+                                    </button>
+                                </div>
+                            </div>
 
                             <!-- Feature 07.1.4: the connect-bookmark shortcut hint. -->
                             <p class="import-card__hint">{{ strings.emptyStates.firstRun.note }}</p>
@@ -359,6 +385,19 @@
                     <!-- Feature 08.1-08.10: the real virtual-scrolled channel list —
                          the surface Phases 09 (search) and 10 (playback) plug into. -->
                     <div class="list-shell" data-if="!importDone && activeSource" data-testid="channel-list-shell">
+                        <!-- MVP playback slice: a single real <video> element driven by
+                             src/player/bindings.ts, watching player.active (already fully
+                             wired since Phase 05/08 — this is the piece that was missing). -->
+                        <div class="player-shell" data-if="player.active" data-testid="player-shell">
+                            <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
+                            <div class="player-shell__bar">
+                                <span class="player-shell__name truncate">{{ player.active.name }}</span>
+                                <button type="button" class="btn" data-action="click" data-fn="player/stop" data-testid="player-stop-btn">
+                                    {{ strings.list.playerStop }}
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="list-shell__header">
                             <button type="button" class="btn" data-action="click" data-fn="playlist/clearActiveSource" data-testid="back-to-sources-btn">
                                 {{ strings.list.backToSources }}
