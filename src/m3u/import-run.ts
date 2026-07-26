@@ -10,7 +10,7 @@ import {
 import type { ImportSummaryView } from '../state/import';
 import { loadPlaylistSources } from '../state/playlist-load';
 import { cleanupStaging, commitImport, findExistingByKey, sourceKeyFor } from './import-commit';
-import { ParserClient } from './parser-client';
+import { ParserClient, type ParseSummary } from './parser-client';
 
 export interface RunImportParams {
     type: PlaylistType;
@@ -123,6 +123,8 @@ export async function runImport(params: RunImportParams): Promise<ImportOutcome>
             return { ok: false, cancelled: true };
         }
 
+        assertGroupCountsConsistent(raced.summary);
+
         setImportStage('writing');
         const record = await commitImport(
             {
@@ -149,6 +151,24 @@ export async function runImport(params: RunImportParams): Promise<ImportOutcome>
         return { ok: false, cancelled: false, errorKind: 'm3u', errorMessage: message };
     } finally {
         active = null;
+    }
+}
+
+/**
+ * Feature 07.6.7: a dev-mode-only sanity check — every channel row belongs
+ * to exactly one group (including the synthetic `Ungrouped` bucket), so the
+ * counts must sum to the total. Never throws (matches `assertCompact`'s own
+ * convention, `state/bulk-policy.ts`): a loud dev warning catches
+ * mapper/group drift immediately without turning a display bug into a
+ * failed import for a real user.
+ */
+export function assertGroupCountsConsistent(summary: ParseSummary): void {
+    if (!import.meta.env.DEV) return;
+    const groupSum = summary.groups.reduce((sum, g) => sum + g.count, 0);
+    if (groupSum !== summary.total) {
+        console.warn(
+            `[ThunderTV] import: group counts (${String(groupSum)}) don't sum to the channel total (${String(summary.total)}) — mapper/group drift (Feature 07.6.7).`,
+        );
     }
 }
 

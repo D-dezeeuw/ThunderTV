@@ -15,6 +15,7 @@
         "deploy": "vite build && gh-pages -d dist --dotfiles",
         "lint": "eslint . --max-warnings 0",
         "lint:css": "node scripts/check-css.mjs",
+        "lint:file-access": "node scripts/check-file-access-fence.mjs",
         "format": "prettier --write .",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
