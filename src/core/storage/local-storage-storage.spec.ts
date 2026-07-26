@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { makeChannelRows, makeFavoriteRows } from './fixtures';
+import { makeChannelRows, makeFavoriteRows, makePlaylistRecord } from './fixtures';
 import { LocalStorageStorage } from './local-storage-storage';
 
 afterEach(() => {
@@ -78,20 +78,7 @@ describe('LocalStorageStorage — key isolation (Feature 04.5.8)', () => {
         const storage = new LocalStorageStorage();
         await storage.bulkPut(
             'playlists',
-            [
-                {
-                    v: 1,
-                    id: 'p1',
-                    type: 'xtream',
-                    name: 'Test',
-                    username: 'secretuser',
-                    password: 'secretpass',
-                    channelCount: 0,
-                    lastRefresh: null,
-                    etag: null,
-                    lastModified: null,
-                },
-            ],
+            [makePlaylistRecord({ type: 'xtream', name: 'Test', username: 'secretuser', password: 'secretpass' })],
             (r) => r.id,
         );
 

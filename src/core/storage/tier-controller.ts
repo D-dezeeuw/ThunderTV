@@ -78,6 +78,14 @@ export class StorageTierController implements StorageAdapter {
         return this.active.count(table);
     }
 
+    deleteRow<T extends TableName>(table: T, key: StorageKey): Promise<void> {
+        return this.active.deleteRow(table, key);
+    }
+
+    deleteByPlaylistId(table: 'channels' | 'groups', playlistId: string): Promise<void> {
+        return this.active.deleteByPlaylistId(table, playlistId);
+    }
+
     /** Every failing write routes here (Feature 04.7.2). Concurrent failures share one in-flight demotion — Feature 04.7.8's "no double-demotion storm" — rather than each independently walking the ladder. */
     private async runWrite(write: () => Promise<WriteResult>): Promise<WriteResult> {
         const result = await write();

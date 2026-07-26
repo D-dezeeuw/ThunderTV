@@ -1,4 +1,5 @@
 import { mapItemToChannelRow } from './channel-mapper';
+import { extractM3uEpgUrls } from './epg-urls.util';
 import { extractGroups } from './group-extractor';
 import { parseM3u } from './parse-m3u';
 import { CHUNK, type WorkerIn, type WorkerOut } from './worker-protocol';
@@ -63,6 +64,7 @@ function handleParse(input: WorkerIn & { type: 'parse' }): void {
         radioCount,
         drmCount,
         skipped,
+        detectedEpgUrls: extractM3uEpgUrls(parsed.playlist.header),
     });
 }
 

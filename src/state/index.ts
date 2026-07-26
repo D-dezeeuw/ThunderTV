@@ -3,6 +3,8 @@ import { strings } from '../app/strings';
 import { getPlatform } from '../core/platform';
 import { initEpgState } from './epg';
 import { applyHistoryPolicy } from './history-policy';
+import { initImportState } from './import';
+import { registerImportSelectors } from './import.selectors';
 import { unwrapPersisted } from './persist';
 import { initPlayerState } from './player';
 import { registerPlayerActions } from './player.actions';
@@ -24,6 +26,7 @@ export { isPersistedKey, KEY_REGISTRY, persistedKeys } from './registry';
 export type { KeyMeta } from './registry';
 export { pushCapped } from './collections';
 export type { ActiveChannelSnapshot } from './records';
+export { loadPlaylistSources } from './playlist-load';
 
 /**
  * Seeds every module's defaults (Feature 05.1.8) — called before
@@ -33,6 +36,7 @@ export type { ActiveChannelSnapshot } from './records';
  */
 export function initState(): void {
     initPlaylistState();
+    initImportState();
     initPlayerState();
     initEpgState();
     initSettingsState();
@@ -50,6 +54,7 @@ export function registerActions(): void {
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */
 export function registerSelectors(): void {
     registerPlaylistSelectors();
+    registerImportSelectors();
     registerPlayerSelectors();
     registerUiSelectors();
 }

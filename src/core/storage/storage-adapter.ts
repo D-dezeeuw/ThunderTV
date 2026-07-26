@@ -46,4 +46,15 @@ export interface StorageAdapter {
     getRange<T extends TableName>(table: T, lower: StorageKey, upper: StorageKey): Promise<TableRowMap[T][]>;
     clearTable(table: TableName): Promise<void>;
     count(table: TableName): Promise<number>;
+    /** Deletes exactly one table row by its exact key (Feature 07.7.4's swap step — removing a superseded `PlaylistRecord`). A no-op if the key isn't present. */
+    deleteRow<T extends TableName>(table: T, key: StorageKey): Promise<void>;
+    /**
+     * Deletes every row of a composite-keyed table (`channels`/`groups`)
+     * whose key's first part is `playlistId` — the single-ranged-delete
+     * Feature 07.9.3/07.9.5 needs for staging cleanup and Feature 07.9.7's
+     * boot-time orphan sweep. Never called with `playlists`/`favorites`/
+     * `recent` (single-string-keyed tables have no playlistId prefix to
+     * bound on) — callers pass only `'channels' | 'groups'`.
+     */
+    deleteByPlaylistId(table: 'channels' | 'groups', playlistId: string): Promise<void>;
 }

@@ -18,6 +18,11 @@ export function encodeKey(key: StorageKey): string {
     return key.map(encodeKeyPart).join(KEY_PART_SEPARATOR);
 }
 
+/** The encoded-key prefix every row for `playlistId` starts with in a composite-keyed table (`channels`/`groups`) — shared by `MemoryStorage`/`LocalStorageStorage`'s `deleteByPlaylistId` (Feature 07.9.3) so the separator stays defined in exactly one place. */
+export function playlistIdKeyPrefix(playlistId: string): string {
+    return `${playlistId}${KEY_PART_SEPARATOR}`;
+}
+
 function encodeKeyPart(part: string | number): string {
     if (typeof part === 'string') return part;
     if (part < 0) {

@@ -23,6 +23,8 @@ class FlakyStorage implements StorageAdapter {
     getRange = this.inner.getRange.bind(this.inner);
     clearTable = this.inner.clearTable.bind(this.inner);
     count = this.inner.count.bind(this.inner);
+    deleteRow = this.inner.deleteRow.bind(this.inner);
+    deleteByPlaylistId = this.inner.deleteByPlaylistId.bind(this.inner);
 
     setMany<T = unknown>(entries: [string, T][]): Promise<WriteResult> {
         if (this.failNextSetMany) {

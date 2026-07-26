@@ -11,14 +11,14 @@ import { mountTemplate } from './bind-dom';
 describe('mountTemplate isolation (Feature 05.10.2/05.10.9)', () => {
     it('a value set during one mount does not survive into the next mount', () => {
         const first = mountTemplate('<p data-if="hasNoSources">empty</p>');
-        expect(appState['playlist']).toMatchObject({ sourceCount: 0 });
+        expect(appState['playlist']).toMatchObject({ sources: [] });
         first.cleanup();
 
         const second = mountTemplate('<p></p>');
-        // A leaked mutation from the first mount (e.g. a stale sourceCount)
-        // would still be visible here if resetState()/state re-seeding
-        // didn't run between mounts.
-        expect(appState['playlist']).toMatchObject({ sourceCount: 0 });
+        // A leaked mutation from the first mount (e.g. a stale sources
+        // array) would still be visible here if resetState()/state
+        // re-seeding didn't run between mounts.
+        expect(appState['playlist']).toMatchObject({ sources: [] });
         second.cleanup();
     });
 

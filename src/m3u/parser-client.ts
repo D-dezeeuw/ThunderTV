@@ -10,6 +10,7 @@ export interface ParseSummary {
     radioCount: number;
     drmCount: number;
     skipped: number;
+    detectedEpgUrls: string[];
 }
 
 export interface ParserClientCallbacks {
@@ -22,16 +23,15 @@ export interface ParserClientCallbacks {
  * worker itself is Spektrum/DOM-free (Feature 06.3.5); this is the one
  * place that bridges its typed messages to storage writes and the
  * module-memory query layer. Deliberately no Spektrum import here either —
- * Phase 07's real import flow owns calling `setValue('playlist.importProgress', ...)`
- * from these callbacks (Feature 06.4.7's contract is "compact scalars
- * only," decided at the call site that actually owns that key; inventing
- * the write here would be exactly the speculative-shape problem Phase 05
- * already flagged for `playlist.importProgress`).
+ * `src/m3u/import-run.ts` (Feature 07.5.2) owns calling the typed
+ * `import.*` setters from its `onProgress`/`onChunk` callbacks; this class
+ * stays a pure worker/storage bridge with zero state-layer knowledge.
  *
  * Writing to storage never clears the `channels` table first — `clearTable`
  * has no playlist scoping (it would wipe every imported playlist's rows,
- * not just this one), so a real playlist-replace policy is Phase 07's
- * scope, not this client's.
+ * not just this one); `src/m3u/import-commit.ts`'s write-then-swap
+ * (Feature 07.7.4) is the real playlist-replace policy, layered above this
+ * client.
  */
 export class ParserClient {
     private worker: Worker;
@@ -117,6 +117,7 @@ export class ParserClient {
                                 radioCount: message.radioCount,
                                 drmCount: message.drmCount,
                                 skipped: message.skipped,
+                                detectedEpgUrls: message.detectedEpgUrls,
                             });
                         });
                         return;
