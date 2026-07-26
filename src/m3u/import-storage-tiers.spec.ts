@@ -18,6 +18,9 @@ import { resetPlatformForTests, setPlatform } from '../core/platform';
 import { FakeFileAdapter, FakeHttpAdapter } from '../core/platform/fake-platform';
 import { makeFavoriteRows } from '../core/storage/fixtures';
 import { IdbStorage } from '../core/storage/idb-storage';
+import { MemoryStorage } from '../core/storage/memory-storage';
+import type { StorageAdapter } from '../core/storage/storage-adapter';
+import { StorageTierController } from '../core/storage/tier-controller';
 import { clearRows } from './channel-memory';
 import { runImport } from './import-run';
 
@@ -86,5 +89,84 @@ describe('import pipeline — real IndexedDB tier via fake-indexeddb', () => {
 
         expect(await storage.count('favorites')).toBe(1);
         expect(await storage.getAll('favorites')).toEqual([favorite]);
+    });
+});
+
+/**
+ * Delegates everything to `inner` except `bulkPut`, which fails exactly
+ * once then behaves normally — simulating a transient budget/quota failure
+ * that clears up once `StorageTierController` demotes to a fresh, empty
+ * tier (Feature 04.7.2's own contract: the failing write's result surfaces
+ * to the caller, unretried, by design — proven directly in
+ * `tier-controller.spec.ts`). Written out explicitly, not spread, since a
+ * class instance's methods live on its prototype (`tier-controller.spec.ts`'s
+ * own `wrapWithFailingWrites` established this pattern first).
+ */
+function wrapFailingOnce(inner: StorageAdapter, tier: StorageAdapter['tier']): StorageAdapter {
+    let failed = false;
+    return {
+        tier,
+        get: inner.get.bind(inner),
+        set: inner.set.bind(inner),
+        getMany: inner.getMany.bind(inner),
+        setMany: inner.setMany.bind(inner),
+        delete: inner.delete.bind(inner),
+        bulkPut: (table, rows, keyOf) => {
+            if (!failed) {
+                failed = true;
+                return Promise.resolve({ ok: false, reason: 'budget' });
+            }
+            return inner.bulkPut(table, rows, keyOf);
+        },
+        getAll: inner.getAll.bind(inner),
+        getRange: inner.getRange.bind(inner),
+        clearTable: inner.clearTable.bind(inner),
+        count: inner.count.bind(inner),
+        deleteRow: inner.deleteRow.bind(inner),
+        deleteByPlaylistId: inner.deleteByPlaylistId.bind(inner),
+    };
+}
+
+describe('import pipeline — mid-import storage demotion (Feature 07.9.10)', () => {
+    it('a quota/budget failure during commit demotes the tier and the import still completes in-session', async () => {
+        const inner = new MemoryStorage();
+        const flaky = wrapFailingOnce(inner, 'partial');
+        const demotions: Array<[string, string, string]> = [];
+        const controller = new StorageTierController(flaky, {
+            onDemote: (from, to, reason) => demotions.push([from, to, reason]),
+        });
+        setPlatform({
+            name: 'web',
+            http: new FakeHttpAdapter(),
+            files: new FakeFileAdapter(),
+            storage: controller,
+            capabilities: { corsUnrestricted: false, externalPlayers: false, durableStorage: 'partial' },
+        });
+
+        const outcome = await runImport({ type: 'm3u-text', text: SAMPLE, name: 'Pasted playlist' });
+
+        expect(outcome.ok).toBe(true);
+        expect(demotions).toEqual([['partial', 'none', 'budget']]);
+        // The headline Feature 07.9.10 promise holds: no crash, no stuck
+        // 'writing' stage, a real browsable source lands on the demoted
+        // tier (commitImport's writes both land, since the demotion already
+        // happened as a side effect of the *first* bulkPut in the whole
+        // flow — the worker's own 'channels' chunk write, parser-client.ts).
+        expect(controller.tier).toBe('none');
+        expect(await controller.count('playlists')).toBe(1);
+        expect(await controller.count('groups')).toBe(1);
+        // Known, narrow gap (not fixed here): StorageTierController never
+        // retries the write that triggered a demotion (Feature 04.7.2's own
+        // tested contract — "the failure surfaces to the caller") — so the
+        // *specific* write mid-flight when the budget/quota failure hits is
+        // lost, not carried to the fresh tier. Here that's the one 'channels'
+        // chunk in flight, so the demoted-to source is created with real
+        // metadata (`channelCount: 1`) but zero actual channel rows — a
+        // real, if very narrow (localStorage's 5MB budget almost never
+        // trips mid-chunk in practice; a genuine device-storage
+        // QuotaExceededError is the more realistic trigger, and hits at
+        // the same granularity), follow-up. A StorageTierController-level
+        // fix (retry-after-demote) is Phase 04 territory, not Phase 07's.
+        expect(await controller.count('channels')).toBe(0);
     });
 });
