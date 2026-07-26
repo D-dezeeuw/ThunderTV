@@ -1,21 +1,41 @@
 import { setValue } from 'spektrum';
+import type { PlaylistType } from '../core/storage';
 
-export const PLAYLIST_SOURCE_COUNT = 'playlist.sourceCount';
+export const PLAYLIST_SOURCES = 'playlist.sources';
+export const PLAYLIST_ACTIVE_SOURCE_ID = 'playlist.activeSourceId';
 export const PLAYLIST_DEMO_ROWS = 'playlist.demoRows';
-export const PLAYLIST_LAST_PICKED_LABEL = 'playlist.lastPickedLabel';
+
+/** Registry `maxItems` ceiling for `playlist.sources` (Feature 05.8.5) — a real, generous bound (way more playlists than any real user imports), not the generic 1000-item bulk-data default. */
+export const MAX_PLAYLIST_SOURCES = 200;
 
 /**
- * Deliberately *not* the channel rows themselves (masterplan §5.4) — those
- * live in module memory (`src/state/bulk-policy.ts`'s stance, `src/m3u/`
- * once Phase 06 lands), never Spektrum state. `playlist.sources`/
- * `activeSourceId`/`importProgress` (the real Phase 07 shape) don't exist
- * yet; the three keys below are the Phase 01-03 stub/demo state they'll
- * eventually replace.
+ * The real Phase 07 shape (`playlist.sources`/`activeSourceId`) that
+ * Phase 05 deferred — a denormalized *summary* of each imported source
+ * (counts and meta only, never channel rows, per masterplan §5.4/§5.8).
+ * Field-for-field a subset of `PlaylistRecord` (`src/core/storage/records.ts`)
+ * with Xtream-only `username`/`password` deliberately omitted — those never
+ * belong in Spektrum state (Phase 19 decides how Xtream credentials are
+ * held once that source type is real).
  */
+export interface PlaylistSourceSummary {
+    id: string;
+    type: PlaylistType;
+    name: string;
+    url: string | null;
+    channelCount: number;
+    groupCount: number;
+    radioCount: number;
+    drmCount: number;
+    skipped: number;
+    importDate: number;
+    lastRefresh: number | null;
+    needsReupload: boolean;
+}
+
 export interface PlaylistState {
-    sourceCount: number;
+    sources: PlaylistSourceSummary[];
+    activeSourceId: string | null;
     demoRows: readonly string[];
-    lastPickedLabel: string | null;
 }
 
 const DEMO_ROWS = [
@@ -26,13 +46,13 @@ const DEMO_ROWS = [
 ] as const;
 
 export const PLAYLIST_DEFAULTS: PlaylistState = {
-    sourceCount: 0,
+    sources: [],
+    activeSourceId: null,
     demoRows: DEMO_ROWS,
-    lastPickedLabel: null,
 };
 
 export function initPlaylistState(): void {
-    setValue(PLAYLIST_SOURCE_COUNT, PLAYLIST_DEFAULTS.sourceCount);
+    setValue(PLAYLIST_SOURCES, PLAYLIST_DEFAULTS.sources);
+    setValue(PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_DEFAULTS.activeSourceId);
     setValue(PLAYLIST_DEMO_ROWS, PLAYLIST_DEFAULTS.demoRows);
-    setValue(PLAYLIST_LAST_PICKED_LABEL, PLAYLIST_DEFAULTS.lastPickedLabel);
 }

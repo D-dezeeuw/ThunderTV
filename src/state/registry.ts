@@ -1,7 +1,16 @@
 import { EPG_TICK } from './epg';
+import {
+    IMPORT_ERROR_KIND,
+    IMPORT_ERROR_MESSAGE,
+    IMPORT_PARSED,
+    IMPORT_SOURCE_NAME,
+    IMPORT_STATE,
+    IMPORT_SUMMARY,
+    IMPORT_WRITTEN,
+} from './import';
 import { PLAYER_ACTIVE, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
-import { PLAYLIST_DEMO_ROWS, PLAYLIST_LAST_PICKED_LABEL, PLAYLIST_SOURCE_COUNT } from './playlist';
-import { SETTINGS_PROXY_TEMPLATE } from './settings';
+import { MAX_PLAYLIST_SOURCES, PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_DEMO_ROWS, PLAYLIST_SOURCES } from './playlist';
+import { SETTINGS_PROXY_ERROR, SETTINGS_PROXY_SAVED, SETTINGS_PROXY_TEMPLATE } from './settings';
 import {
     PLATFORM_CAPABILITIES,
     PLATFORM_NAME,
@@ -19,7 +28,7 @@ import {
  * "what actually persists" and "what the docs claim persists".
  */
 export interface KeyMeta {
-    owner: 'playlist' | 'player' | 'epg' | 'settings' | 'ui';
+    owner: 'playlist' | 'import' | 'player' | 'epg' | 'settings' | 'ui';
     persisted: boolean;
     /** Feature 05.8.5: the bulk-data guard's per-key ceiling, for keys holding an array. */
     maxItems?: number;
@@ -30,20 +39,58 @@ export interface KeyMeta {
 
 export const KEY_REGISTRY: Record<string, KeyMeta> = {
     // --- playlist ---
-    [PLAYLIST_SOURCE_COUNT]: {
+    [PLAYLIST_SOURCES]: {
         owner: 'playlist',
         persisted: false,
-        description: 'Pre-Phase-07 stub source count; superseded by real playlist.sources once import lands.',
+        maxItems: MAX_PLAYLIST_SOURCES,
+        description: 'Live projection of the playlists storage table (Feature 07.1.8) — never itself persisted; rebuilt from storage at boot and after every import commit, so there is exactly one source of truth.',
+    },
+    [PLAYLIST_ACTIVE_SOURCE_ID]: {
+        owner: 'playlist',
+        persisted: false,
+        description: 'The source the user last navigated into (Feature 05.6.2) — transient UI selection, not durable data.',
     },
     [PLAYLIST_DEMO_ROWS]: {
         owner: 'playlist',
         persisted: false,
         description: 'Phase 02 density-preview fixture rows — never real data, never persisted.',
     },
-    [PLAYLIST_LAST_PICKED_LABEL]: {
-        owner: 'playlist',
+
+    // --- import (Feature 07.5.1) ---
+    [IMPORT_STATE]: {
+        owner: 'import',
         persisted: false,
-        description: 'Feature 03.7.10 temporary file-picker proof; removed once Phase 07 lands.',
+        description: 'Current import pipeline stage (idle/fetching/reading/parsing/writing/done/error) — transient, reset to idle on every boot.',
+    },
+    [IMPORT_PARSED]: {
+        owner: 'import',
+        persisted: false,
+        description: 'Rows parsed so far in the in-flight import — a scalar counter, never the rows themselves (§5.8).',
+    },
+    [IMPORT_WRITTEN]: {
+        owner: 'import',
+        persisted: false,
+        description: 'Rows durably written to storage so far in the in-flight import.',
+    },
+    [IMPORT_SOURCE_NAME]: {
+        owner: 'import',
+        persisted: false,
+        description: 'Display name of the in-flight import\'s source (filename/URL/"Pasted playlist"), for the stage label.',
+    },
+    [IMPORT_ERROR_KIND]: {
+        owner: 'import',
+        persisted: false,
+        description: 'Classified failure kind of the last import attempt (Feature 07.4/07.7.6) — drives which retry affordance the UI offers.',
+    },
+    [IMPORT_ERROR_MESSAGE]: {
+        owner: 'import',
+        persisted: false,
+        description: 'Human-readable message for the last import failure.',
+    },
+    [IMPORT_SUMMARY]: {
+        owner: 'import',
+        persisted: false,
+        description: 'Result panel data for the most recently completed import (Feature 07.6) — cleared on navigation away.',
     },
 
     // --- player ---
@@ -70,7 +117,17 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
     [SETTINGS_PROXY_TEMPLATE]: {
         owner: 'settings',
         persisted: true,
-        description: 'Optional user-configured proxy URL template (masterplan §8) — not yet editable; Phase 22 builds the UI.',
+        description: 'Optional user-configured proxy URL template (masterplan §8) — editable via Settings → Streaming (Feature 07.8.1); Phase 22 builds out the rest of that section.',
+    },
+    [SETTINGS_PROXY_ERROR]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'Inline validation message for the last proxy-template save attempt (Feature 07.8.3) — transient, cleared on next edit.',
+    },
+    [SETTINGS_PROXY_SAVED]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'True immediately after a successful proxy-template save (Feature 07.8.3) — transient, cleared on next edit.',
     },
 
     // --- ui (including the diagnostic mirrors documented as ui-owned — see state/README.md) ---

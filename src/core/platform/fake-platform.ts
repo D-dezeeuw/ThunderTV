@@ -14,7 +14,8 @@ import type { FileAdapter, PickedFile, ReadTextResult } from './file-adapter';
 import type { PlatformAdapter } from './platform-adapter';
 
 export interface ScriptedReply {
-    kind: FetchFailureKind | 'ok';
+    /** `'pending'` (Feature 07.9.1) never resolves on its own — it rejects with a real `AbortError`-named error the moment the call's `signal` aborts, exactly matching `fetch()`'s own contract, so specs can exercise mid-fetch cancellation without a real network gap. */
+    kind: FetchFailureKind | 'ok' | 'pending';
     body?: string;
     status?: number;
     headers?: Record<string, string>;
@@ -62,6 +63,15 @@ export class FakeHttpAdapter implements HttpAdapter {
                 res,
                 etag: res.headers.get('etag'),
                 lastModified: res.headers.get('last-modified'),
+            });
+        }
+        if (scripted.kind === 'pending') {
+            return new Promise((_resolve, reject) => {
+                options?.signal?.addEventListener('abort', () => {
+                    const err = new Error('The operation was aborted.');
+                    err.name = 'AbortError';
+                    reject(err);
+                });
             });
         }
         // scripted.kind !== 'ok' here (the branch above already returned for

@@ -66,6 +66,8 @@ export interface WorkerSummaryOut {
     radioCount: number;
     drmCount: number;
     skipped: number;
+    /** `#EXTM3U` header EPG URLs (Feature 07.6.4's "N EPG sources detected" tease) — computed once from the header the worker already parsed, never a second pass over the text. */
+    detectedEpgUrls: string[];
 }
 
 /** The worker never dies silently (Feature 06.3.2) — every failure path answers with this instead of an unhandled rejection/thrown error. */

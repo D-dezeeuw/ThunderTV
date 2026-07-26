@@ -35,6 +35,7 @@ npm run build        # tsc --noEmit && vite build -> dist/
 npm run preview       # serve the built dist/ locally (defaults to port 4173)
 npm run deploy        # build + publish dist/ to the gh-pages branch (no CI)
 npm run lint         # eslint . --max-warnings 0
+npm run lint:file-access   # node scripts/check-file-access-fence.mjs — no FileReader outside src/core/platform/ (Feature 07.2.10)
 npm run format        # prettier --write .
 npm run typecheck       # tsc --noEmit
 npm run test         # vitest run
@@ -131,9 +132,9 @@ ways depending on target, both pointing at the exact same pinned version
 | -------------------- | ------------------------------------------------------------------------------------------ |
 | `src/core/platform/` | Phase 03 — Platform Adapter Layer                                                          |
 | `src/core/storage/`  | Phase 04 — Tiered Storage Engine                                                           |
-| `src/core/connect/`  | Phase 14 — Connect Bookmark URLs                                                           |
+| `src/core/connect/`  | Phase 07 — Playlist Import Flows (`source-key.ts`'s `makeSourceKey`); Phase 14 — Connect Bookmark URLs reuses it |
 | `src/core/http/`     | Phase 03 — Platform Adapter Layer                                                          |
-| `src/m3u/`           | Phase 06 — M3U Parsing Engine (Web Worker)                                                 |
+| `src/m3u/`           | Phase 06 — M3U Parsing Engine (Web Worker); Phase 07 — Playlist Import Flows (`import*.ts`) |
 | `src/epg/`           | Phases 16-18 — EPG Ingestion (Web Worker) / Display / Guide & Mapping                      |
 | `src/xtream/`        | Phases 19-21 — Xtream API Client / Live / VOD & Series                                     |
 | `src/player/`        | Phases 10-12 — Playback Foundation / Engines / Player UI                                   |

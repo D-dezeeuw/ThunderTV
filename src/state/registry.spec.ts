@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER_ACTIVE, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
-import { PLAYLIST_SOURCE_COUNT } from './playlist';
+import { PLAYLIST_SOURCES } from './playlist';
 import { isPersistedKey, isRegisteredKey, keyVersion, KEY_REGISTRY, NON_REGISTRY_KEYS, persistedKeys } from './registry';
 
 describe('KEY_REGISTRY', () => {
-    it('registers every key with an owner from the five state modules', () => {
-        const owners = new Set(['playlist', 'player', 'epg', 'settings', 'ui']);
+    it('registers every key with an owner from the six state modules', () => {
+        const owners = new Set(['playlist', 'import', 'player', 'epg', 'settings', 'ui']);
         for (const meta of Object.values(KEY_REGISTRY)) {
             expect(owners.has(meta.owner)).toBe(true);
         }
@@ -18,7 +18,7 @@ describe('KEY_REGISTRY', () => {
 
     it('isPersistedKey reflects the registry, including for an unregistered key', () => {
         expect(isPersistedKey(PLAYER_ACTIVE)).toBe(true);
-        expect(isPersistedKey(PLAYLIST_SOURCE_COUNT)).toBe(false);
+        expect(isPersistedKey(PLAYLIST_SOURCES)).toBe(false);
         expect(isPersistedKey('not.a.real.key')).toBe(false);
     });
 

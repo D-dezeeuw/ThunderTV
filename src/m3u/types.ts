@@ -1,4 +1,4 @@
-import type { ChannelDrm, PlaylistType } from '../core/storage';
+import type { ChannelDrm } from '../core/storage';
 
 export type { ChannelDrm, ChannelDrmClearKeys } from '../core/storage';
 
@@ -29,23 +29,6 @@ export interface ChannelRow {
      */
     radio: boolean;
     drm?: ChannelDrm;
-}
-
-/** One playlist's meta record (Feature 06.5.2) — matches `PlaylistRecord`'s shape (`src/core/storage/records.ts`) plus the detected EPG URLs the parse pass found. */
-export interface PlaylistSource {
-    id: string;
-    name: string;
-    type: PlaylistType;
-    url?: string;
-    channelCount: number;
-    importDate: string;
-    detectedEpgUrls: string[];
-}
-
-/** The result of a single parse pass, before storage writes (Feature 06.5.2). */
-export interface ParsedPlaylistSource {
-    source: PlaylistSource;
-    rows: ChannelRow[];
 }
 
 /**

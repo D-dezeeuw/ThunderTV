@@ -3,6 +3,8 @@ import { strings } from '../app/strings';
 import { getPlatform } from '../core/platform';
 import { initEpgState } from './epg';
 import { applyHistoryPolicy } from './history-policy';
+import { initImportState } from './import';
+import { registerImportSelectors } from './import.selectors';
 import { unwrapPersisted } from './persist';
 import { initPlayerState } from './player';
 import { registerPlayerActions } from './player.actions';
@@ -12,6 +14,7 @@ import { registerPlaylistActions } from './playlist.actions';
 import { registerPlaylistSelectors } from './playlist.selectors';
 import { persistedKeys } from './registry';
 import { initSettingsState } from './settings';
+import { registerSettingsActions } from './settings.actions';
 import { initUiState } from './ui';
 import { registerUiActions } from './ui.actions';
 import { registerUiSelectors } from './ui.selectors';
@@ -24,6 +27,7 @@ export { isPersistedKey, KEY_REGISTRY, persistedKeys } from './registry';
 export type { KeyMeta } from './registry';
 export { pushCapped } from './collections';
 export type { ActiveChannelSnapshot } from './records';
+export { loadPlaylistSources } from './playlist-load';
 
 /**
  * Seeds every module's defaults (Feature 05.1.8) — called before
@@ -33,6 +37,7 @@ export type { ActiveChannelSnapshot } from './records';
  */
 export function initState(): void {
     initPlaylistState();
+    initImportState();
     initPlayerState();
     initEpgState();
     initSettingsState();
@@ -43,6 +48,7 @@ export function initState(): void {
 /** Registers every `defineFn` action across all modules (Feature 05.2.1). */
 export function registerActions(): void {
     registerPlaylistActions();
+    registerSettingsActions();
     registerPlayerActions();
     registerUiActions();
 }
@@ -50,6 +56,7 @@ export function registerActions(): void {
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */
 export function registerSelectors(): void {
     registerPlaylistSelectors();
+    registerImportSelectors();
     registerPlayerSelectors();
     registerUiSelectors();
 }

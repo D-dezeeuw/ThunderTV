@@ -104,6 +104,25 @@ export class IdbStorage implements StorageAdapter {
         return db.count(table);
     }
 
+    async deleteRow<T extends TableName>(table: T, key: StorageKey): Promise<void> {
+        const db = await this.db();
+        await db.delete(table, key as never);
+    }
+
+    async deleteByPlaylistId(table: 'channels' | 'groups', playlistId: string): Promise<void> {
+        const db = await this.db();
+        // The stored second key part is a number for `channels` (index) and
+        // a string for `groups` (name) — an empty array as the upper bound
+        // works for both without the caller needing to know which: IDB's
+        // key-comparison algorithm sorts arrays after every primitive type,
+        // and a shorter array sorts before a longer one that shares its
+        // prefix, so `[playlistId]` .. `[playlistId, []]` (upper exclusive)
+        // spans every `[playlistId, <number-or-string>]` row and nothing
+        // belonging to another playlist.
+        const range = IDBKeyRange.bound([playlistId], [playlistId, []], false, true);
+        await db.delete(table, range);
+    }
+
     private async write(fn: (db: IDBPDatabase<ThunderTvDb>) => Promise<void>): Promise<WriteResult> {
         try {
             const db = await this.db();

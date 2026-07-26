@@ -8,6 +8,17 @@ import { WebFileAdapter } from './web-file-adapter';
 export interface CreateWebPlatformOptions {
     /** Forwarded to the storage tier controller (Feature 04.7.5) — lets `main.ts` react to a mid-session demotion (e.g. re-mirror `platform.capabilities`/`storage.tier` into Spektrum state) without `src/core/` importing the state framework. */
     onStorageDemote?: TierControllerOptions['onDemote'];
+    /**
+     * Forwarded to `WebHttpAdapter` (Feature 07.8.1/03.6.3) — same
+     * dependency-injection shape as `onStorageDemote` above, so
+     * `src/core/` still never imports the state framework directly.
+     * `bootstrap.ts` passes a getter reading `settings.proxyTemplate`;
+     * it's only ever *called* well after `initState()` has run (the
+     * first real HTTP request happens from user interaction, not at
+     * platform-construction time), so the getter being wired before
+     * Spektrum state exists yet is safe.
+     */
+    getProxyTemplate?: () => string | undefined;
 }
 
 /**
@@ -23,10 +34,8 @@ export interface CreateWebPlatformOptions {
  * value that could drift from the real tier after a demotion.
  *
  * `WebHttpAdapter` defaults to "no proxy configured" (Feature 03.6.3) when
- * constructed without a `getProxyTemplate` getter, which is exactly this
- * platform's state until Settings (Phase 22) has a real template to read —
- * passing a getter that only ever returns `undefined` today would be dead
- * code, so none is passed here yet.
+ * constructed without a `getProxyTemplate` getter — `bootstrap.ts` now
+ * passes a real one (Feature 07.8.1).
  *
  * Feature 03.3.5 asks collaborator construction to degrade rather than
  * white-screen on failure. `WebHttpAdapter` and `WebFileAdapter`'s
@@ -41,7 +50,7 @@ export async function createWebPlatform(options: CreateWebPlatformOptions = {}):
     return {
         name: 'web',
         storage,
-        http: new WebHttpAdapter(),
+        http: new WebHttpAdapter(options.getProxyTemplate ? { getProxyTemplate: options.getProxyTemplate } : {}),
         files: new WebFileAdapter(),
         get capabilities() {
             return createWebCapabilities(storage.tier);

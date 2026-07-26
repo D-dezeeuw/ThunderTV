@@ -13,14 +13,23 @@ repeated here, to avoid the two drifting apart.
 | Key | Owner | Persisted | Max items | Envelope version | Description |
 | --- | --- | --- | --- | --- | --- |
 | `epg.tick` | epg | no | — | v1 | Global 30s heartbeat (masterplan §5.5) — a timestamp, recomputed every boot. |
+| `import.errorKind` | import | no | — | v1 | Classified failure kind of the last import attempt (Feature 07.4/07.7.6) — drives which retry affordance the UI offers. |
+| `import.errorMessage` | import | no | — | v1 | Human-readable message for the last import failure. |
+| `import.parsed` | import | no | — | v1 | Rows parsed so far in the in-flight import — a scalar counter, never the rows themselves (§5.8). |
+| `import.sourceName` | import | no | — | v1 | Display name of the in-flight import\'s source (filename/URL/"Pasted playlist"), for the stage label. |
+| `import.state` | import | no | — | v1 | Current import pipeline stage (idle/fetching/reading/parsing/writing/done/error) — transient, reset to idle on every boot. |
+| `import.summary` | import | no | — | v1 | Result panel data for the most recently completed import (Feature 07.6) — cleared on navigation away. |
+| `import.written` | import | no | — | v1 | Rows durably written to storage so far in the in-flight import. |
 | `platform.capabilities` | ui | no | — | v1 | Live-derived from storage.tier every boot (Feature 04.7.5) — never meaningfully cacheable. |
 | `platform.name` | ui | no | — | v1 | Diagnostics only (Feature 03.8.6) — recomputed fresh from real detection every boot. |
 | `player.active` | player | yes | — | v1 | Denormalized last-watched channel snapshot — the §6.4 instant-restore row. |
 | `player.zapHistory` | player | yes | 20 | v1 | Capped, deduped list of recently played channel snapshots. |
+| `playlist.activeSourceId` | playlist | no | — | v1 | The source the user last navigated into (Feature 05.6.2) — transient UI selection, not durable data. |
 | `playlist.demoRows` | playlist | no | — | v1 | Phase 02 density-preview fixture rows — never real data, never persisted. |
-| `playlist.lastPickedLabel` | playlist | no | — | v1 | Feature 03.7.10 temporary file-picker proof; removed once Phase 07 lands. |
-| `playlist.sourceCount` | playlist | no | — | v1 | Pre-Phase-07 stub source count; superseded by real playlist.sources once import lands. |
-| `settings.proxyTemplate` | settings | yes | — | v1 | Optional user-configured proxy URL template (masterplan §8) — not yet editable; Phase 22 builds the UI. |
+| `playlist.sources` | playlist | no | 200 | v1 | Live projection of the playlists storage table (Feature 07.1.8) — never itself persisted; rebuilt from storage at boot and after every import commit, so there is exactly one source of truth. |
+| `settings.proxyError` | settings | no | — | v1 | Inline validation message for the last proxy-template save attempt (Feature 07.8.3) — transient, cleared on next edit. |
+| `settings.proxySaved` | settings | no | — | v1 | True immediately after a successful proxy-template save (Feature 07.8.3) — transient, cleared on next edit. |
+| `settings.proxyTemplate` | settings | yes | — | v1 | Optional user-configured proxy URL template (masterplan §8) — editable via Settings → Streaming (Feature 07.8.1); Phase 22 builds out the rest of that section. |
 | `storage.tier` | ui | no | — | v1 | Set from the real boot-time probe (Phase 04) every session — persisting a stale tier would be actively wrong. |
 | `ui.activeView` | ui | no | — | v1 | Current route — driven by the URL hash, which is its own persistence mechanism. |
 | `ui.density` | ui | yes | — | v1 | Channel-list row density preference. |

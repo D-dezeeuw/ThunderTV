@@ -1,0 +1,224 @@
+/*
+ * Phase 07 import surfaces: the first-run card (Feature 07.1), its busy/
+ * error/confirm states (07.5/07.9), the result summary (07.6), and the
+ * minimal sources list that replaces the card once a source exists.
+ * Token-only, no transitions (scripts/check-css.mjs enforces both).
+ */
+
+.import-card {
+    max-width: 32rem;
+    margin: var(--space-6) auto 0;
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.import-card__section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.import-card__row {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.import-card__textarea {
+    width: 100%;
+    min-height: 6rem;
+    resize: vertical;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font: inherit;
+    font-size: var(--text-sm);
+}
+
+.import-card__input {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font: inherit;
+    font-size: var(--text-sm);
+}
+
+.import-card__hint {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+.import-card__divider {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: 0;
+}
+
+/* ---- Progress (Feature 07.5) ---- */
+
+.import-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.import-progress__stage {
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
+.import-progress__readout {
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+.import-progress__bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-surface-raised);
+    overflow: hidden;
+}
+
+/* Feature 07.5.4: totals are unknown mid-parse, so this is an indeterminate
+   activity indicator (a fixed-width segment), not a percentage fill. */
+.import-progress__bar-fill {
+    height: 100%;
+    width: 30%;
+    background: var(--color-accent);
+}
+
+/* ---- Error / confirm surface (Feature 07.4/07.7.6/07.9) ---- */
+
+.import-error {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--color-danger);
+    border-radius: 8px;
+    color: var(--color-text);
+}
+
+.import-error__message {
+    margin: 0;
+    font-size: var(--text-sm);
+}
+
+.import-error__actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+/* ---- Result summary (Feature 07.6) ---- */
+
+.import-summary {
+    max-width: 32rem;
+    margin: var(--space-6) auto 0;
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.import-summary__heading {
+    margin: 0;
+    font-size: var(--text-md);
+}
+
+.import-summary__lines {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+}
+
+.import-summary__actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* ---- Sources list placeholder (Feature 07.1.8; Phase 08 replaces the row
+   with the real virtual-scrolled channel view) ---- */
+
+.sources-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--color-border);
+}
+
+.sources-list__row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--row-pad-x);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.sources-list__name {
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
+.sources-list__meta {
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+.sources-list__reupload {
+    font-size: var(--text-xs);
+    color: var(--color-danger);
+}
+
+/* ---- Settings → Streaming (Feature 07.8) ---- */
+
+.settings-section__label {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    margin: 0 0 var(--space-2);
+}
+
+.settings-section__input {
+    display: block;
+    width: 100%;
+    margin-bottom: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font: inherit;
+    font-size: var(--text-sm);
+}
+
+.settings-section__hint {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+.settings-section__error {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-xs);
+    color: var(--color-danger);
+}

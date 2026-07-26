@@ -3,7 +3,29 @@
  * later, the Phase 06/16 worker tests — one place that knows what a
  * plausible channel/program/favorite row looks like.
  */
-import type { ChannelRecord, EpgProgramRecord, FavoriteRecord } from './records';
+import type { ChannelRecord, EpgProgramRecord, FavoriteRecord, PlaylistRecord } from './records';
+
+/** A plausible `m3u-url` playlist record (Feature 07.10.1) — every field overridable for the one test that cares about it. */
+export function makePlaylistRecord(overrides: Partial<PlaylistRecord> = {}): PlaylistRecord {
+    return {
+        v: 1,
+        id: 'p1',
+        type: 'm3u-url',
+        name: 'Test playlist',
+        url: 'https://provider.example/list.m3u',
+        channelCount: 0,
+        groupCount: 0,
+        radioCount: 0,
+        drmCount: 0,
+        skipped: 0,
+        importDate: 0,
+        lastRefresh: null,
+        etag: null,
+        lastModified: null,
+        contentFingerprint: null,
+        ...overrides,
+    };
+}
 
 export function makeChannelRows(playlistId: string, count: number): ChannelRecord[] {
     return Array.from({ length: count }, (_, index) => ({

@@ -6,6 +6,15 @@
  *
  * `channels`/`epgPrograms` rows deliberately carry no `v` (version) field —
  * they are re-parseable caches, not long-lived user data (Feature 04.9.2).
+ *
+ * `PlaylistRecord` deliberately has no `needsReupload` field (Feature
+ * 07.2.6/07.3.7): whether a `m3u-file`/`m3u-text` source's rows survived a
+ * reload depends on the *current* storage tier, which can change between
+ * boots (a demotion). Persisting that fact would let it go stale exactly
+ * like a persisted `storage.tier` would (Phase 04's own reasoning) — it's
+ * computed fresh from `channelCount` vs. the live `channels` row count for
+ * that playlist id whenever `playlist.sources` is built
+ * (`src/state/playlist-load.ts`).
  */
 
 export type PlaylistType = 'm3u-url' | 'm3u-file' | 'm3u-text' | 'xtream';
@@ -19,9 +28,25 @@ export interface PlaylistRecord {
     username?: string;
     password?: string;
     channelCount: number;
+    /** Group count including the `Ungrouped` bucket (Phase 06 `GroupMeta[]`). */
+    groupCount: number;
+    radioCount: number;
+    drmCount: number;
+    /** Unparseable/URL-less entries the Phase 06 tolerance policy dropped (Feature 06.7.2). */
+    skipped: number;
+    /** Set once, at creation — never touched by a re-import upsert (Feature 07.7.7). */
+    importDate: number;
     lastRefresh: number | null;
     etag: string | null;
     lastModified: string | null;
+    /**
+     * A `m3u-file`/`m3u-text` source's cheap content fingerprint (Feature
+     * 07.7.6) — `null` for `m3u-url`/`xtream`, which key on
+     * `makeSourceKey()` instead. Compared against a new file/paste
+     * import's own fingerprint to warn "this looks identical to
+     * &lt;name&gt;" rather than silently deduping.
+     */
+    contentFingerprint: string | null;
 }
 
 /** A channel's DRM configuration, extracted from `#KODIPROP` lines (Phase 06 `kodiprop.utils.ts`). */

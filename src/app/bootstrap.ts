@@ -1,8 +1,10 @@
 import { bindDOM, run } from 'spektrum';
 import { createPlatform, setPlatform } from '../core/platform';
+import { sweepOrphanedPlaylistRows } from '../m3u/import-sweep';
 import { installDevtools } from '../state/devtools';
 import {
     initState,
+    loadPlaylistSources,
     registerActions,
     registerPersistOnHide,
     registerSelectors,
@@ -10,6 +12,8 @@ import {
     seedStrings,
     startEpgTick,
 } from '../state';
+import { SETTINGS_PROXY_TEMPLATE } from '../state/settings';
+import { get } from '../state/typed';
 import { handleStorageDemotion } from '../state/ui.actions';
 import { seedPlatformDiagnostics } from '../state/ui';
 import { initRouter } from './router';
@@ -21,7 +25,7 @@ import { registerViewSwitching } from './views';
  *   2. storage   — probe IndexedDB/localStorage/memory, pick a tier (Phase 04, inside createPlatform)
  *   3. state     — seed module defaults, then rehydrate persisted keys (Phase 05)
  *   4. render    — bindDOM(), run() — the restored session renders NOW
- *   5. heavy     — only after render; playlist re-parse (stubbed until Phase 06)
+ *   5. heavy     — only after render; loads `playlist.sources` from storage (Phase 07)
  *
  * Step 3's ordering is the point of this phase: `initState()` seeds
  * defaults *before* `rehydrateState()` can overwrite them, and both finish
@@ -29,7 +33,13 @@ import { registerViewSwitching } from './views';
  * visible on first paint, with zero playlist data loaded (Feature 05.4.6).
  */
 export async function bootstrap(): Promise<void> {
-    const platform = await createPlatform({ onStorageDemote: handleStorageDemotion });
+    const platform = await createPlatform({
+        onStorageDemote: handleStorageDemotion,
+        // Feature 07.8.1: only ever *called* well after initState()/
+        // rehydrateState() below have run — see CreateWebPlatformOptions's
+        // own comment for why wiring the getter this early is still safe.
+        getProxyTemplate: () => get<string | null>(SETTINGS_PROXY_TEMPLATE) ?? undefined,
+    });
     setPlatform(platform);
     seedPlatformDiagnostics(platform.name, platform.capabilities, platform.storage.tier);
 
@@ -55,15 +65,29 @@ export async function bootstrap(): Promise<void> {
     registerPersistOnHide();
     if (import.meta.env.DEV) installDevtools();
 
-    void loadActiveSource();
+    void sweepAndLoadPlaylistSources();
+    registerImportDropzoneDragover();
 }
 
 /**
- * The heavy path (masterplan §6.4's `void loadActiveSource()`) — stubbed
- * until Phase 06's parser exists. Never awaited from `bootstrap()`: a slow
- * heavy load must not delay the restored-session render above (Feature
- * 05.4.9).
+ * Feature 07.2.7: the one piece of drag-and-drop wiring that can't be
+ * declarative — an HTML5 DnD spec requirement is that *some* listener along
+ * the drop target's ancestor chain calls `preventDefault()` on `dragover`,
+ * or the browser refuses the drop entirely (default: navigate to the
+ * file). Spektrum allows only one `data-action`/`data-fn` pair per element,
+ * and the import card's own pair is already spent on `drop` (see
+ * index.html) — so this is bound globally instead, once, here. It only
+ * ever prevents the default; it dispatches nothing, so a drop anywhere
+ * else in the app is inert rather than navigating the tab away.
  */
-function loadActiveSource(): Promise<void> {
-    return Promise.resolve();
+function registerImportDropzoneDragover(): void {
+    document.addEventListener('dragover', (event) => {
+        event.preventDefault();
+    });
+}
+
+/** Feature 07.9.7: the sweep runs before the sources list first loads, so a crash-orphaned row never flashes into view even briefly. */
+async function sweepAndLoadPlaylistSources(): Promise<void> {
+    await sweepOrphanedPlaylistRows();
+    await loadPlaylistSources();
 }

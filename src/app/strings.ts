@@ -28,14 +28,14 @@ export const strings = {
             heading: 'Add a source to get started',
             note: 'Or open a connect bookmark link to configure this device in one visit.',
             file: 'Upload M3U file',
-            paste: 'Paste playlist text',
-            url: 'Import from URL',
+            urlPlaceholder: 'https://provider.example/playlist.m3u',
+            urlSubmit: 'Import from URL',
+            pastePlaceholder: 'Paste your M3U playlist here…',
+            pasteSubmit: 'Import pasted text',
             xtream: 'Add Xtream Codes',
+            xtreamComingSoon: 'Xtream Codes — coming soon',
             corsHint:
                 "Browser security (CORS) blocks most providers from a direct URL import — file upload always works, and URL import will suggest a proxy if it's blocked.",
-            // TODO(phase-07): temporary proof of Feature 03.7.10 (WebFileAdapter
-            // wired to a real button) — removed once the real import flow lands.
-            pickedFileTemplate: 'Picked: {name} ({size} bytes)',
         },
         demoRowsLabel: 'Density preview (sample rows — no real channels yet)',
         favorites: {
@@ -77,14 +77,17 @@ export const strings = {
 
     http: {
         failure: {
-            http: 'The server responded with an error.',
-            timeout: 'The request took too long and timed out.',
+            httpAuth: 'This URL requires credentials, or access was blocked (401/403).',
+            httpNotFound: 'Nothing was found at this URL — double-check it (404).',
+            httpServer: 'The provider is having trouble right now — try again later (5xx).',
+            httpOther: 'The provider responded with an error.',
+            timeout: 'The provider took too long to respond and the request timed out.',
             corsOrNetwork:
                 "This provider's server blocked the request, or a network error occurred. Providers rarely allow direct browser access (CORS) — try downloading the playlist file and uploading it instead, or configure a proxy in Settings → Streaming.",
             offline: 'This device appears to be offline. Check the network connection and try again.',
             mixedContent:
                 'This playlist uses an unencrypted (http://) address, which browsers block on a secure (https://) page. Configure a proxy in Settings → Streaming, or use the desktop app, which has no such restriction.',
-            tooLarge: 'The response was larger than expected and was stopped to protect memory.',
+            tooLarge: 'This is larger than expected and was stopped to protect memory.',
         },
         proxy: {
             invalidTemplate: 'Proxy address must start with https:// (or http://localhost for local testing).',
@@ -102,10 +105,62 @@ export const strings = {
             playback: 'Playback',
             appearance: 'Appearance',
         },
+        streaming: {
+            proxyLabel: 'Proxy URL template',
+            proxyPlaceholder: 'https://my-proxy.example/{url}',
+            proxyHelp:
+                'Optional. Applied to playlist, EPG, and API requests when set. No public proxy is provided or promised — video segments are fetched separately by the player and remain CORS-bound on the web regardless.',
+            proxySave: 'Save',
+            proxyInvalid: 'Must be a valid https:// URL (or http://localhost for local testing).',
+            proxySaved: 'Saved.',
+        },
         appearance: {
             density: 'Density',
             densityCompact: 'Compact',
             densityComfortable: 'Comfortable',
+        },
+    },
+
+    import: {
+        stage: {
+            fetching: 'Fetching…',
+            reading: 'Reading…',
+            parsing: 'Parsing…',
+            writing: 'Saving…',
+        },
+        rowsReadout: '{count} channels…',
+        cancel: 'Cancel',
+        errors: {
+            invalidM3u: 'This does not look like an M3U playlist.',
+            duplicateTemplate: 'This looks identical to "{name}" — import anyway?',
+            importAnyway: 'Import anyway',
+            largeConfirm: 'This is a large paste and may take a moment to parse.',
+            continueAnyway: 'Continue anyway',
+        },
+        retry: 'Retry',
+        retryViaProxy: 'Retry via proxy',
+        dismiss: 'Dismiss',
+        summary: {
+            heading: 'Import complete',
+            updatedHeading: 'Playlist updated',
+            channelsTemplate: '{count} channels',
+            channelTemplate: '{count} channel',
+            groupsTemplate: '{count} groups',
+            groupTemplate: '{count} group',
+            radioTemplate: '{count} radio stations',
+            radioSingularTemplate: '{count} radio station',
+            skippedTemplate: '{count} unreadable entries skipped',
+            skippedSingularTemplate: '{count} unreadable entry skipped',
+            drmTemplate: '{count} DRM-protected channels detected (not playable yet)',
+            drmSingularTemplate: '{count} DRM-protected channel detected (not playable yet)',
+            epgTemplate: '{count} EPG sources detected',
+            epgSingularTemplate: '{count} EPG source detected',
+            openList: 'Open channel list',
+            dismiss: 'Dismiss',
+        },
+        sources: {
+            needsReupload: 'Needs re-upload — file contents did not persist on this device.',
+            lastRefreshTemplate: 'Last updated {date}',
         },
     },
 } as const;

@@ -101,6 +101,20 @@ export class LocalStorageStorage implements StorageAdapter {
         return Promise.resolve(this.readTableRows(table).length);
     }
 
+    deleteRow<T extends TableName>(table: T, key: StorageKey): Promise<void> {
+        if (!PERSISTED_TABLES.has(table)) return this.overlay.deleteRow(table, key);
+        const encoded = encodeKey(key);
+        const remaining = this.readTableRows(table).filter((row) => encodeKey((row as { id: string }).id) !== encoded);
+        this.writeLogical(TABLE_PREFIX + table, remaining);
+        return Promise.resolve();
+    }
+
+    deleteByPlaylistId(table: 'channels' | 'groups', playlistId: string): Promise<void> {
+        // `channels`/`groups` are never in PERSISTED_TABLES (Feature
+        // 04.5.2) — always the in-memory overlay on this tier.
+        return this.overlay.deleteByPlaylistId(table, playlistId);
+    }
+
     /** Sorted by `id` (Feature 04.10's cross-tier consistency): every persisted table's row type keys on a single string `id`, so this matches the key order `MemoryStorage`/`IdbStorage` naturally produce — `getAll` never depends on which tier answered it. */
     private readTableRows<T extends TableName>(table: T): TableRowMap[T][] {
         const raw = this.readLogical(TABLE_PREFIX + table);

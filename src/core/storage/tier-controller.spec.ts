@@ -36,6 +36,8 @@ function wrapWithFailingWrites(
         getRange: inner.getRange.bind(inner),
         clearTable: inner.clearTable.bind(inner),
         count: inner.count.bind(inner),
+        deleteRow: inner.deleteRow.bind(inner),
+        deleteByPlaylistId: inner.deleteByPlaylistId.bind(inner),
     };
     return { adapter, calls };
 }

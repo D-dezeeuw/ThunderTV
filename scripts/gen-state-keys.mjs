@@ -10,7 +10,7 @@
 //           nonzero on drift (Feature 05.9.4) — wire this into the standing
 //           verification checklist alongside lint/typecheck/test.
 //
-// Parses registry.ts and the five state modules as *source text* rather
+// Parses registry.ts and the state modules as *source text* rather
 // than executing them: their imports resolve `setValue` etc. from the bare
 // 'spektrum' specifier, which only exists via a browser import map or the
 // Vitest alias — not in plain Node. Same source-text-parsing convention as
@@ -24,7 +24,7 @@ const stateDir = `${repoRoot}src/state`;
 const outPath = `${repoRoot}masterplan/reference/state-keys.md`;
 const checkOnly = process.argv.includes('--check');
 
-const MODULE_FILES = ['playlist.ts', 'player.ts', 'epg.ts', 'settings.ts', 'ui.ts'];
+const MODULE_FILES = ['playlist.ts', 'import.ts', 'player.ts', 'epg.ts', 'settings.ts', 'ui.ts'];
 
 /** Every top-level `export const NAME = <value>;` across the five module files — key-string constants and the odd numeric one (e.g. ZAP_HISTORY_CAP) that registry.ts references for `maxItems`. */
 function collectConstants() {

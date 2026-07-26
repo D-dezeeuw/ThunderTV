@@ -1,4 +1,4 @@
-import { encodeKey, type StorageKey } from './keys';
+import { encodeKey, playlistIdKeyPrefix, type StorageKey } from './keys';
 import type { TableName, TableRowMap } from './records';
 import type { GetRangeOptions, StorageAdapter, WriteResult } from './storage-adapter';
 
@@ -69,6 +69,20 @@ export class MemoryStorage implements StorageAdapter {
 
     count(table: TableName): Promise<number> {
         return Promise.resolve(this.tableStore(table).size);
+    }
+
+    deleteRow<T extends TableName>(table: T, key: StorageKey): Promise<void> {
+        this.tableStore(table).delete(encodeKey(key));
+        return Promise.resolve();
+    }
+
+    deleteByPlaylistId(table: 'channels' | 'groups', playlistId: string): Promise<void> {
+        const store = this.tableStore(table);
+        const prefix = playlistIdKeyPrefix(playlistId);
+        for (const key of store.keys()) {
+            if (key.startsWith(prefix)) store.delete(key);
+        }
+        return Promise.resolve();
     }
 
     private tableStore(table: TableName): Map<string, unknown> {
