@@ -72,6 +72,16 @@ just `npm run preview`, which serves from the root) to catch any
 root-absolute asset reference before it reaches Pages — see
 `scripts/check-dist.mjs`.
 
+**Reaching http:// / CORS-blocking providers from the HTTPS site:** GitHub
+Pages is static-only and `github.io` is HSTS-preloaded, so the deployed app
+can never talk to an `http://` IPTV provider directly (mixed content), and
+most providers block cross-origin browser requests anyway (CORS). The
+cheapest fix is a free Cloudflare Worker: deploy
+`scripts/cloudflare-cors-proxy.mjs` (setup steps in its header comment) and
+set `https://<name>.<account>.workers.dev/{url}` as the proxy template in
+Settings → Streaming. The worker adds CORS headers, bridges http→https, and
+rewrites HLS manifests so video segments flow through it too.
+
 ## Standing conventions
 
 - **TypeScript files stay ≤300 lines**, hard ceiling 400
