@@ -34,6 +34,10 @@ export const strings = {
             pasteSubmit: 'Import pasted text',
             xtream: 'Add Xtream Codes',
             xtreamComingSoon: 'Xtream Codes — coming soon',
+            xtreamUrlPlaceholder: 'http://provider.example:8080',
+            xtreamUserPlaceholder: 'Username',
+            xtreamPassPlaceholder: 'Password',
+            xtreamSubmit: 'Connect',
             corsHint:
                 "Browser security (CORS) blocks most providers from a direct URL import — file upload always works, and URL import will suggest a proxy if it's blocked.",
         },
@@ -129,6 +133,7 @@ export const strings = {
         groupsTruncatedTemplate: 'Showing the first {count} groups.',
         radioLabel: 'Radio station',
         noChannels: 'No channels loaded for this source yet.',
+        playerStop: 'Stop',
     },
 
     import: {

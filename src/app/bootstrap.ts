@@ -2,6 +2,7 @@ import { bindDOM, run } from 'spektrum';
 import { createPlatform, setPlatform } from '../core/platform';
 import { sweepOrphanedPlaylistRows } from '../m3u/import-sweep';
 import { registerListBindings } from '../ui/list-bindings';
+import { registerPlayerBindings } from '../player/bindings';
 import { installDevtools } from '../state/devtools';
 import {
     initState,
@@ -71,6 +72,7 @@ export async function bootstrap(): Promise<void> {
     void loadFavoriteIds();
     registerImportDropzoneDragover();
     registerListBindings();
+    registerPlayerBindings();
 }
 
 /**

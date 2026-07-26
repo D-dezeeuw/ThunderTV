@@ -40,6 +40,7 @@
         "vitest": "4.1.10"
     },
     "dependencies": {
+        "hls.js": "^1.6.16",
         "idb": "8.0.3",
         "iptv-playlist-parser": "github:4gray/iptv-playlist-parser#v0.15.2-iptvnator.2"
     }
