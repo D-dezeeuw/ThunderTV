@@ -27,6 +27,14 @@ export function registerPlayerActions(): void {
     defineFn('player/setActiveChannel', (_el, _state, _delta, value: unknown) => {
         setActiveChannel(value as ActiveChannelSnapshot);
     });
+    defineFn('player/stop', () => {
+        stopPlayback();
+    });
+}
+
+/** MVP playback slice: clears `player.active`, which `src/player/bindings.ts`'s `watch()` reacts to by tearing the `<video>` element down — the `setValue()` fence (Feature 05.2.5) keeps that write here, not in `src/player/`. */
+export function stopPlayback(): void {
+    setValue(PLAYER_ACTIVE, null);
 }
 
 export function setActiveChannel(channel: ActiveChannelSnapshot): void {

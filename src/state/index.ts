@@ -25,6 +25,7 @@ import { registerSettingsActions } from './settings.actions';
 import { initUiState } from './ui';
 import { registerUiActions } from './ui.actions';
 import { registerUiSelectors } from './ui.selectors';
+import { registerXtreamActions } from './xtream.actions';
 
 export { flushNow, pendingKeys, persist, registerPersistOnHide } from './persist';
 export { setActiveChannel } from './player.actions';
@@ -67,6 +68,7 @@ export function registerActions(): void {
     registerUiActions();
     registerListActions();
     registerGroupActions();
+    registerXtreamActions();
 }
 
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */
