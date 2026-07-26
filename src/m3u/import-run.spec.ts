@@ -147,8 +147,12 @@ describe('runImport() (Feature 07.9/07.7)', () => {
             expect(await storage.count('groups')).toBe(0);
 
             // Same @vitest/web-worker shared-module-cache workaround as the
-            // smaller cancel test above.
-            await new Promise((resolve) => setTimeout(resolve, 10));
+            // smaller cancel test above — a longer margin here since this
+            // test runs later in a full suite pass, where cross-file worker
+            // contention (other *.spec.ts files' own real Worker instances,
+            // all sharing @vitest/web-worker's one module cache) makes the
+            // race window measurably less forgiving than in isolation.
+            await new Promise((resolve) => setTimeout(resolve, 50));
 
             const outcome = await runImport({ type: 'm3u-text', text: fixture.text, name: 'Big list' });
             expect(outcome.ok).toBe(true);

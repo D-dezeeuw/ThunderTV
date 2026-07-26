@@ -18,6 +18,7 @@ import { resetPlatformForTests, setPlatform } from '../core/platform';
 import { FakeFileAdapter, FakeHttpAdapter } from '../core/platform/fake-platform';
 import { makeFavoriteRows } from '../core/storage/fixtures';
 import { IdbStorage } from '../core/storage/idb-storage';
+import { LocalStorageStorage } from '../core/storage/local-storage-storage';
 import { MemoryStorage } from '../core/storage/memory-storage';
 import type { StorageAdapter } from '../core/storage/storage-adapter';
 import { StorageTierController } from '../core/storage/tier-controller';
@@ -90,6 +91,55 @@ describe('import pipeline — real IndexedDB tier via fake-indexeddb', () => {
         expect(await storage.count('favorites')).toBe(1);
         expect(await storage.getAll('favorites')).toEqual([favorite]);
     });
+});
+
+/** `LocalStorageStorage` writes real localStorage for `playlists` (a `PERSISTED_TABLES` entry) — clear it explicitly so runs don't leak into each other, through the adapter (not a bare `localStorage` reference) per the platform-API fence outside `src/core/**` (Feature 03.9). */
+let lastLocalStorage: LocalStorageStorage | null = null;
+
+afterEach(async () => {
+    await lastLocalStorage?.clearTable('playlists');
+    lastLocalStorage = null;
+});
+
+const TIERS: [string, () => StorageAdapter][] = [
+    ['memory (tier: none)', () => new MemoryStorage()],
+    [
+        'localStorage (tier: partial)',
+        () => {
+            const s = new LocalStorageStorage();
+            lastLocalStorage = s;
+            return s;
+        },
+    ],
+    ['IndexedDB via fake-indexeddb (tier: full)', () => new IdbStorage()],
+];
+
+describe('import pipeline — full run across all three storage tiers (Feature 07.10.2)', () => {
+    for (const [name, make] of TIERS) {
+        it(`imports a fixture end to end on ${name}, MemoryStorage's shape as the reference`, async () => {
+            const storage = make();
+            setPlatform({
+                name: 'web',
+                http: new FakeHttpAdapter(),
+                files: new FakeFileAdapter(),
+                storage,
+                capabilities: { corsUnrestricted: false, externalPlayers: false, durableStorage: storage.tier },
+            });
+
+            const outcome = await runImport({ type: 'm3u-text', text: SAMPLE, name: 'Pasted playlist' });
+
+            expect(outcome.ok).toBe(true);
+            if (outcome.ok) {
+                expect(outcome.summary.total).toBe(1);
+                expect(outcome.summary.groupCount).toBe(1);
+            }
+            expect(await storage.count('playlists')).toBe(1);
+            expect(await storage.count('channels')).toBe(1);
+            expect(await storage.count('groups')).toBe(1);
+
+            resetPlatformForTests();
+        });
+    }
 });
 
 /**
