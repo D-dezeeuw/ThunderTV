@@ -1,4 +1,5 @@
-import { appState, defineFn, getPathObj, setValue } from 'spektrum';
+import { appState, defineFn, getPathObj, refs, setValue } from 'spektrum';
+import { requestVideoFullscreen } from '../player/fullscreen';
 import { pushCapped } from './collections';
 import { persist } from './persist';
 import { PLAYER_ACTIVE, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
@@ -29,6 +30,13 @@ export function registerPlayerActions(): void {
     });
     defineFn('player/stop', () => {
         stopPlayback();
+    });
+    // No state involved — registered here anyway because every defineFn is
+    // registered before bindDOM() (registerActions()'s contract); the
+    // fullscreen mechanics live in src/player/fullscreen.ts.
+    defineFn('player/fullscreen', () => {
+        const video = refs['playerVideo'];
+        if (video instanceof HTMLVideoElement) requestVideoFullscreen(video);
     });
 }
 

@@ -137,7 +137,9 @@ export const strings = {
         groupsTruncatedTemplate: 'Showing the first {count} groups.',
         radioLabel: 'Radio station',
         noChannels: 'No channels loaded for this source yet.',
+        backToGroups: '← Groups',
         playerStop: 'Stop',
+        playerFullscreen: 'Full screen',
     },
 
     import: {

@@ -35,5 +35,21 @@ export function registerPlayerBindings(): () => void {
         }
         const template = get<string | null>(SETTINGS_PROXY_TEMPLATE) ?? undefined;
         void attachAndPlay(video, applyProxy(template, active.streamUrl));
+        revealPlayer(video);
+    });
+}
+
+/**
+ * The player sits above the list; on a phone the user who just tapped a
+ * channel is scrolled somewhere inside it. Double-rAF so the `data-if`
+ * reveal has applied (same pattern as `focusImportProgress()`), then a
+ * plain instant `scrollIntoView` — `block: 'nearest'` makes it a no-op when
+ * the player is already visible (desktop Enter-to-play stays still).
+ */
+function revealPlayer(video: HTMLVideoElement): void {
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            (video.closest('.player-shell') ?? video).scrollIntoView({ block: 'nearest' });
+        });
     });
 }
