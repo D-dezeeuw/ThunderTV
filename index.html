@@ -28,8 +28,8 @@
         <script type="importmap">
             { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
         </script>
-      <script type="module" crossorigin src="./assets/index-D1et7nrU.js"></script>
-      <link rel="stylesheet" crossorigin href="./assets/index-Cbjx9VnE.css">
+      <script type="module" crossorigin src="./assets/index-BwlUMeUb.js"></script>
+      <link rel="stylesheet" crossorigin href="./assets/index-BAQc8t9x.css">
     </head>
     <body>
         <!--
@@ -53,14 +53,52 @@
             <symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
             <symbol id="icon-alert" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><line x1="12" y1="10" x2="12" y2="14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1" fill="currentColor" stroke="none"/></symbol>
             <symbol id="icon-play" viewBox="0 0 24 24"><path d="M6 4.5v15l14-7.5z" fill="currentColor" stroke="none"/></symbol>
+            <symbol id="icon-live" viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><polyline points="8,3 12,7 16,3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="13.5" r="2.2" fill="currentColor" stroke="none"/></symbol>
+            <symbol id="icon-categories" viewBox="0 0 24 24"><line x1="9" y1="6" x2="20.5" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="18" x2="20.5" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.6" fill="currentColor" stroke="none"/></symbol>
         </svg>
 
         <div id="app">
             <nav class="rail" aria-label="Main">
+                <!-- Live is the app's home and the destination every empty
+                     state points at, so alone among these it has no
+                     visibility toggle: switching every button off must never
+                     strand the user with nowhere to go. -->
+                <button
+                    type="button"
+                    class="rail__btn"
+                    data-view="live"
+                    :class="{ 'rail__btn--active': view.live.active }"
+                    :aria-current="view.live.active ? 'page' : null"
+                    :aria-label="strings.rail.live"
+                    :title="strings.rail.live"
+                    data-action="click"
+                    data-fn="ui/navigate"
+                >
+                    <svg class="icon icon--m" aria-hidden="true">
+                        <use href="#icon-live"></use>
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    class="rail__btn"
+                    data-view="categories"
+                    data-if="rail.categories.visible"
+                    :class="{ 'rail__btn--active': view.categories.active }"
+                    :aria-current="view.categories.active ? 'page' : null"
+                    :aria-label="strings.rail.categories"
+                    :title="strings.rail.categories"
+                    data-action="click"
+                    data-fn="ui/navigate"
+                >
+                    <svg class="icon icon--m" aria-hidden="true">
+                        <use href="#icon-categories"></use>
+                    </svg>
+                </button>
                 <button
                     type="button"
                     class="rail__btn"
                     data-view="sources"
+                    data-if="rail.sources.visible"
                     :class="{ 'rail__btn--active': view.sources.active }"
                     :aria-current="view.sources.active ? 'page' : null"
                     :aria-label="strings.rail.sources"
@@ -76,6 +114,7 @@
                     type="button"
                     class="rail__btn"
                     data-view="favorites"
+                    data-if="rail.favorites.visible"
                     :class="{ 'rail__btn--active': view.favorites.active }"
                     :aria-current="view.favorites.active ? 'page' : null"
                     :aria-label="strings.rail.favorites"
@@ -91,6 +130,7 @@
                     type="button"
                     class="rail__btn"
                     data-view="recent"
+                    data-if="rail.recent.visible"
                     :class="{ 'rail__btn--active': view.recent.active }"
                     :aria-current="view.recent.active ? 'page' : null"
                     :aria-label="strings.rail.recent"
@@ -106,6 +146,7 @@
                     type="button"
                     class="rail__btn"
                     data-view="guide"
+                    data-if="rail.guide.visible"
                     :class="{ 'rail__btn--active': view.guide.active }"
                     :aria-current="view.guide.active ? 'page' : null"
                     :aria-label="strings.rail.guide"
@@ -382,12 +423,22 @@
                         </ul>
                     </div>
 
+                </section>
+
+                <!-- Live and Categories are two presentations of one
+                     virtual list: Live shows grouped, country-filtered
+                     channels; Categories shows the provider catalog
+                     untouched. Two list containers would collide on
+                     data-ref="listContainer", so the row set is
+                     republished on view change (src/state/live.actions.ts)
+                     instead of mounting a second list. -->
+                <section class="view__section" data-if="view.channelList.active">
                     <!-- Feature 08.1-08.10: the real virtual-scrolled channel list —
                          the surface Phases 09 (search) and 10 (playback) plug into. -->
                     <div
                         class="list-shell"
-                        :class="{ 'list-shell--group-view': ui.viewMode === 'groups', 'list-shell--has-groups': groupsPanelVisible }"
-                        data-if="!importDone && activeSource"
+                        :class="{ 'list-shell--group-view': view.categories.active && ui.viewMode === 'groups', 'list-shell--has-groups': view.categories.active && groupsPanelVisible }"
+                        data-if="activeSource"
                         data-testid="channel-list-shell"
                     >
                         <!-- MVP playback slice: a single real <video> element driven by
@@ -419,6 +470,33 @@
                                     {{ strings.list.playerStop }}
                                 </button>
                             </div>
+                            <!-- Variant switcher. Lives here rather than under
+                                 each list row on purpose: the list republishes
+                                 its window on every scroll frame, so a nested
+                                 data-each per row would rebuild these chips
+                                 continuously across a 90k-channel source. The
+                                 alternate feeds only matter for the channel
+                                 you are actually watching. -->
+                            <div class="variants" data-if="hasVariants" data-testid="variant-strip">
+                                <span class="variants__label">{{ strings.live.variants.label }}</span>
+                                <div
+                                    class="variants__chips"
+                                    data-each="player.variants"
+                                    data-action="click"
+                                    data-fn="live/playVariant"
+                                >
+                                    <button
+                                        type="button"
+                                        class="variants__chip"
+                                        :class="{ 'variants__chip--active': item.id === player.activeVariantId }"
+                                        :aria-pressed="item.id === player.activeVariantId"
+                                        :data-variant-id="item.id"
+                                        data-testid="variant-chip"
+                                    >
+                                        {{ item.label }}
+                                    </button>
+                                </div>
+                            </div>
                             <p class="player-shell__error" data-if="player.playbackError" data-testid="player-error">
                                 {{ strings.list.playerErrorPrefix }} {{ player.playbackError }}
                             </p>
@@ -429,10 +507,27 @@
                                 {{ strings.list.backToSources }}
                             </button>
                             <h2 class="list-shell__title truncate">{{ activeSource.name }}</h2>
+                            <!-- The Live filter is aggressive by design, so it
+                                 always states what it removed: a channel the
+                                 user cannot find must never look like the
+                                 provider's fault. -->
+                            <p
+                                class="list-shell__stats"
+                                data-if="view.live.active"
+                                :title="strings.live.statsTitle"
+                                data-testid="live-stats"
+                            >
+                                {{ live.stats.channels }} {{ strings.live.channelsLabel }} ·
+                                {{ liveHiddenCount }} {{ strings.live.hiddenLabel }} ·
+                                {{ live.stats.collapsed }} {{ strings.live.mergedLabel }}
+                            </p>
+                            <p class="list-shell__stats" data-if="view.categories.active" data-testid="categories-note">
+                                {{ strings.categories.note }}
+                            </p>
                             <button
                                 type="button"
                                 class="btn"
-                                data-if="ui.viewMode === 'groups'"
+                                data-if="view.categories.active && ui.viewMode === 'groups'"
                                 data-action="click"
                                 data-fn="list/showAllChannels"
                                 data-testid="show-all-channels-btn"
@@ -449,13 +544,44 @@
                             {{ strings.list.noChannels }}
                         </p>
 
-                        <div class="list-shell__body" data-if="!activeSource.needsReupload && activeSource.channelCount > 0">
+                        <!-- The provider shipped channels but none survived the
+                             Live filter — a distinct failure from an empty
+                             source, and the one case where the filter itself is
+                             probably wrong, so both escape hatches are offered. -->
+                        <div class="list-shell__empty" data-if="liveFilteredEverything" data-testid="live-empty">
+                            <p class="list-shell__empty-heading">{{ strings.live.empty.heading }}</p>
+                            <p>{{ strings.live.empty.message }}</p>
+                            <div class="list-shell__empty-actions">
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    data-view="categories"
+                                    data-action="click"
+                                    data-fn="ui/navigate"
+                                    data-testid="live-empty-categories-btn"
+                                >
+                                    {{ strings.live.empty.openCategories }}
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    data-view="sources"
+                                    data-action="click"
+                                    data-fn="ui/navigate"
+                                    data-testid="live-empty-sources-btn"
+                                >
+                                    {{ strings.live.empty.openSources }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="list-shell__body" data-if="!activeSource.needsReupload && activeSource.channelCount > 0 && !liveFilteredEverything">
                             <!-- Feature 08.5: groups panel — renders from GroupMeta alone
                                  (list.groups), so it's ready before channel rows are even
                                  streamed in. Hidden for single-group playlists (08.5.6). -->
                             <nav
                                 class="groups-panel"
-                                data-if="groupsPanelVisible"
+                                data-if="view.categories.active && groupsPanelVisible"
                                 role="listbox"
                                 tabindex="0"
                                 :aria-label="strings.list.groupsHeading"
@@ -655,6 +781,127 @@
                             {{ strings.storageNotice.userSectionTier }}: {{ storage.tier }}
                         </p>
                     </section>
+
+                    <!-- Live filter. Every control here can only ever *remove*
+                         rows from the Live view; Categories always shows the
+                         provider's catalog untouched, so none of this can hide
+                         a channel beyond recovery. -->
+                    <section class="settings-section">
+                        <h3 class="settings-section__title">
+                            {{ strings.settings.sections.liveFilter }}
+                        </h3>
+                        <label class="settings-section__label" for="live-country-select">
+                            {{ strings.settings.liveFilter.countryLabel }}
+                        </label>
+                        <select
+                            id="live-country-select"
+                            class="settings-section__input"
+                            data-action="change"
+                            data-fn="settings/setLiveCountry"
+                            data-testid="live-country-select"
+                        >
+                            <option value="" :selected="settings.liveCountry === ''">
+                                {{ strings.settings.liveFilter.countryAll }}
+                            </option>
+                            <option value="NL" :selected="settings.liveCountry === 'NL'">NL — Nederland</option>
+                            <option value="BE" :selected="settings.liveCountry === 'BE'">BE — België</option>
+                            <option value="DE" :selected="settings.liveCountry === 'DE'">DE — Deutschland</option>
+                            <option value="UK" :selected="settings.liveCountry === 'UK'">UK — United Kingdom</option>
+                            <option value="FR" :selected="settings.liveCountry === 'FR'">FR — France</option>
+                            <option value="ES" :selected="settings.liveCountry === 'ES'">ES — España</option>
+                            <option value="US" :selected="settings.liveCountry === 'US'">US — United States</option>
+                        </select>
+                        <p class="settings-section__hint">{{ strings.settings.liveFilter.countryHelp }}</p>
+
+                        <label class="settings-toggle">
+                            <input
+                                type="checkbox"
+                                data-setting="liveDropJunk"
+                                :checked="settings.liveDropJunk"
+                                data-action="change"
+                                data-fn="settings/toggle"
+                                data-testid="live-drop-junk-toggle"
+                            />
+                            <span>{{ strings.settings.liveFilter.dropJunk }}</span>
+                        </label>
+                        <p class="settings-section__hint">{{ strings.settings.liveFilter.dropJunkHelp }}</p>
+
+                        <label class="settings-toggle">
+                            <input
+                                type="checkbox"
+                                data-setting="liveKnownOnly"
+                                :checked="settings.liveKnownOnly"
+                                data-action="change"
+                                data-fn="settings/toggle"
+                                data-testid="live-known-only-toggle"
+                            />
+                            <span>{{ strings.settings.liveFilter.knownOnly }}</span>
+                        </label>
+                        <p class="settings-section__hint">{{ strings.settings.liveFilter.knownOnlyHelp }}</p>
+                    </section>
+
+                    <section class="settings-section">
+                        <h3 class="settings-section__title">
+                            {{ strings.settings.sections.navigation }}
+                        </h3>
+                        <p class="settings-section__hint">{{ strings.settings.navigation.help }}</p>
+                        <label class="settings-toggle">
+                            <input
+                                type="checkbox"
+                                data-setting="nav.categories"
+                                :checked="settings.nav.categories"
+                                data-action="change"
+                                data-fn="settings/toggle"
+                                data-testid="nav-categories-toggle"
+                            />
+                            <span>{{ strings.settings.navigation.categories }}</span>
+                        </label>
+                        <label class="settings-toggle">
+                            <input
+                                type="checkbox"
+                                data-setting="nav.sources"
+                                :checked="settings.nav.sources"
+                                data-action="change"
+                                data-fn="settings/toggle"
+                                data-testid="nav-sources-toggle"
+                            />
+                            <span>{{ strings.settings.navigation.sources }}</span>
+                        </label>
+                        <label class="settings-toggle">
+                            <input
+                                type="checkbox"
+                                data-setting="nav.starred"
+                                :checked="settings.nav.starred"
+                                data-action="change"
+                                data-fn="settings/toggle"
+                                data-testid="nav-starred-toggle"
+                            />
+                            <span>{{ strings.settings.navigation.starred }}</span>
+                        </label>
+                        <label class="settings-toggle">
+                            <input
+                                type="checkbox"
+                                data-setting="nav.recents"
+                                :checked="settings.nav.recents"
+                                data-action="change"
+                                data-fn="settings/toggle"
+                                data-testid="nav-recents-toggle"
+                            />
+                            <span>{{ strings.settings.navigation.recents }}</span>
+                        </label>
+                        <label class="settings-toggle">
+                            <input
+                                type="checkbox"
+                                data-setting="nav.guide"
+                                :checked="settings.nav.guide"
+                                data-action="change"
+                                data-fn="settings/toggle"
+                                data-testid="nav-guide-toggle"
+                            />
+                            <span>{{ strings.settings.navigation.guide }}</span>
+                        </label>
+                    </section>
+
                     <section class="settings-section">
                         <h3 class="settings-section__title">
                             {{ strings.settings.sections.streaming }}
