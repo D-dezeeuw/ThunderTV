@@ -12,9 +12,9 @@ import {
 import { LIST_PAD_BOTTOM, LIST_PAD_TOP, LIST_SELECTED_ID, LIST_VISIBLE_ROWS } from './list';
 import { GROUPS_PANEL_CAP, LIST_GROUPS, LIST_GROUPS_TRUNCATED } from './list-groups';
 import { UI_ACTIVE_GROUP, UI_LIST_STATE, UI_VIEW_MODE } from './list-state';
-import { PLAYER_ACTIVE, PLAYER_PLAYBACK_ERROR, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
+import { PLAYER_ACTIVE, PLAYER_PLAYBACK_ERROR, PLAYER_STREAM_HEALTH, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
 import { MAX_PLAYLIST_SOURCES, PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_DEMO_ROWS, PLAYLIST_SOURCES } from './playlist';
-import { SETTINGS_PLAYBACK_ENGINE, SETTINGS_PROXY_ERROR, SETTINGS_PROXY_SAVED, SETTINGS_PROXY_TEMPLATE, SETTINGS_REFRESH_STATE } from './settings';
+import { SETTINGS_BUFFERING, SETTINGS_PLAYBACK_ENGINE, SETTINGS_PROXY_ERROR, SETTINGS_PROXY_SAVED, SETTINGS_PROXY_TEMPLATE, SETTINGS_REFRESH_STATE } from './settings';
 import {
     PLATFORM_CAPABILITIES,
     PLATFORM_NAME,
@@ -161,6 +161,11 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         persisted: true,
         description: 'Denormalized last-watched channel snapshot — the §6.4 instant-restore row.',
     },
+    [PLAYER_STREAM_HEALTH]: {
+        owner: 'player',
+        persisted: false,
+        description: 'Live stream quality (good/fair/poor) derived from stall frequency — the player-bar signal indicator; null when idle.',
+    },
     [PLAYER_PLAYBACK_ERROR]: {
         owner: 'player',
         persisted: false,
@@ -205,6 +210,11 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: true,
         description: 'Preferred playback engine tried first (mpegts/hls/native) — Settings → Playback; each falls back to the others.',
+    },
+    [SETTINGS_BUFFERING]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'MPEG-TS buffering mode — auto (default, adapts to measured stalls), smooth (fixed deep buffer), or lowLatency.',
     },
 
     // --- ui (including the diagnostic mirrors documented as ui-owned — see state/README.md) ---

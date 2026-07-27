@@ -29,6 +29,23 @@ export type PlaybackEngine = 'mpegts' | 'hls' | 'native';
 
 export const PLAYBACK_ENGINES: readonly PlaybackEngine[] = ['mpegts', 'hls', 'native'];
 
+/**
+ * Buffering trade-off for the MPEG-TS engine.
+ *  - `auto` (default): start from the connection's own quality estimate and
+ *    grow the buffer whenever real stalls happen (`adaptive-buffer.ts`);
+ *  - `smooth`: a fixed deep buffer, no measurement;
+ *  - `lowLatency`: no stash, chase the live edge — solid networks only.
+ */
+export const SETTINGS_BUFFERING = 'settings.buffering';
+
+export type BufferingMode = 'auto' | 'smooth' | 'lowLatency';
+
+export const BUFFERING_MODES: readonly BufferingMode[] = ['auto', 'smooth', 'lowLatency'];
+
+export function isBufferingMode(value: unknown): value is BufferingMode {
+    return typeof value === 'string' && (BUFFERING_MODES as readonly string[]).includes(value);
+}
+
 export function isPlaybackEngine(value: unknown): value is PlaybackEngine {
     return typeof value === 'string' && (PLAYBACK_ENGINES as readonly string[]).includes(value);
 }
@@ -49,6 +66,7 @@ export interface SettingsState {
     proxySaved: boolean;
     refreshState: RefreshFeedbackState;
     playbackEngine: PlaybackEngine;
+    buffering: BufferingMode;
 }
 
 export const SETTINGS_DEFAULTS: SettingsState = {
@@ -57,6 +75,7 @@ export const SETTINGS_DEFAULTS: SettingsState = {
     proxySaved: false,
     refreshState: 'idle',
     playbackEngine: 'mpegts',
+    buffering: 'auto',
 };
 
 export function initSettingsState(): void {
@@ -65,4 +84,5 @@ export function initSettingsState(): void {
     setValue(SETTINGS_PROXY_SAVED, SETTINGS_DEFAULTS.proxySaved);
     setValue(SETTINGS_REFRESH_STATE, SETTINGS_DEFAULTS.refreshState);
     setValue(SETTINGS_PLAYBACK_ENGINE, SETTINGS_DEFAULTS.playbackEngine);
+    setValue(SETTINGS_BUFFERING, SETTINGS_DEFAULTS.buffering);
 }

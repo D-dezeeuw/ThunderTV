@@ -1,5 +1,6 @@
 import { computed, type State } from 'spektrum';
-import { PLAYER_ZAP_HISTORY } from './player';
+import { strings } from '../app/strings';
+import { PLAYER_STREAM_HEALTH, PLAYER_ZAP_HISTORY } from './player';
 
 /**
  * The third selector module named by Feature 05.6.1 alongside
@@ -12,5 +13,13 @@ export function registerPlayerSelectors(): void {
     computed('hasNoZapHistory', [PLAYER_ZAP_HISTORY], (state: State) => {
         const zapHistory = (state as { player?: { zapHistory?: unknown[] } }).player?.zapHistory;
         return !zapHistory || zapHistory.length === 0;
+    });
+
+    /** Tooltip/label for the player-bar signal bars — the readable half of `player.streamHealth`. */
+    computed('streamHealthLabel', [PLAYER_STREAM_HEALTH], (state: State) => {
+        const health = (state as { player?: { streamHealth?: string | null } }).player?.streamHealth;
+        if (health === 'poor') return strings.list.signalPoor;
+        if (health === 'fair') return strings.list.signalFair;
+        return strings.list.signalGood;
     });
 }

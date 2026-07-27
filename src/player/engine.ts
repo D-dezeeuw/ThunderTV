@@ -1,10 +1,11 @@
 import type Hls from 'hls.js';
 import { reportPlaybackError } from '../state/player.actions';
-import { SETTINGS_PLAYBACK_ENGINE, type PlaybackEngine } from '../state/settings';
+import { SETTINGS_BUFFERING, SETTINGS_PLAYBACK_ENGINE, type BufferingMode, type PlaybackEngine } from '../state/settings';
 import { get } from '../state/typed';
 import { refreshActiveXtreamSource } from '../state/xtream-refresh';
 import { attachMpegts, detachMpegts } from './mpegts-engine';
 import { alternateFormatUrl, describeStream } from './stream-probe';
+import { monitorStreamHealth, stopStreamHealthMonitor } from './stream-health';
 
 /**
  * Playback engine selection, as an ordered attempt chain. Three real
@@ -126,6 +127,7 @@ export async function attachAndPlay(video: HTMLVideoElement, streamUrl: string):
     chainIndex = 0;
     failures = [];
     attachNativeErrorReporting(video);
+    monitorStreamHealth(video);
     await runCurrentAttempt(video);
 }
 
@@ -138,8 +140,11 @@ async function runCurrentAttempt(video: HTMLVideoElement): Promise<void> {
     if (engine === 'mpegts') {
         const url = tsFormOf(base);
         lastStreamUrl = url;
-        const result = await attachMpegts(video, url, (detail) => {
-            void advanceChain(video, detail);
+        const result = await attachMpegts(video, url, {
+            buffering: get<BufferingMode | null>(SETTINGS_BUFFERING) ?? 'auto',
+            onFatalError: (detail) => {
+                void advanceChain(video, detail);
+            },
         });
         if (!result.ok) await advanceChain(video, result.reason ?? 'mpegts unavailable');
         return;
@@ -207,6 +212,7 @@ function detachEngines(): void {
 }
 
 export function detach(video: HTMLVideoElement): void {
+    stopStreamHealthMonitor();
     detachEngines();
     if (nativeErrorHandler && nativeErrorVideo) {
         nativeErrorVideo.removeEventListener('error', nativeErrorHandler);

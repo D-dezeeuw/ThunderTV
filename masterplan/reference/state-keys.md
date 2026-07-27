@@ -31,10 +31,12 @@ repeated here, to avoid the two drifting apart.
 | `platform.name` | ui | no | — | v1 | Diagnostics only (Feature 03.8.6) — recomputed fresh from real detection every boot. |
 | `player.active` | player | yes | — | v1 | Denormalized last-watched channel snapshot — the §6.4 instant-restore row. |
 | `player.playbackError` | player | no | — | v1 | Transient diagnostics: the last fatal playback failure (hls.js fatal kind or MediaError label), rendered in the player bar — cleared on every new attach/stop. |
+| `player.streamHealth` | player | no | — | v1 | Live stream quality (good/fair/poor) derived from stall frequency — the player-bar signal indicator; null when idle. |
 | `player.zapHistory` | player | yes | 20 | v1 | Capped, deduped list of recently played channel snapshots. |
 | `playlist.activeSourceId` | playlist | yes | — | v1 | The source the user last navigated into (Feature 05.6.2, persisted starting Feature 08.10.6) — a reload lands back in the same channel list instead of a source picker, matching Feature 08.6\'s "never left" framing. |
 | `playlist.demoRows` | playlist | no | — | v1 | Phase 02 density-preview fixture rows — never real data, never persisted. |
 | `playlist.sources` | playlist | no | 200 | v1 | Live projection of the playlists storage table (Feature 07.1.8) — never itself persisted; rebuilt from storage at boot and after every import commit, so there is exactly one source of truth. |
+| `settings.buffering` | settings | yes | — | v1 | MPEG-TS buffering mode — auto (default, adapts to measured stalls), smooth (fixed deep buffer), or lowLatency. |
 | `settings.playbackEngine` | settings | yes | — | v1 | Preferred playback engine tried first (mpegts/hls/native) — Settings → Playback; each falls back to the others. |
 | `settings.proxyError` | settings | no | — | v1 | Inline validation message for the last proxy-template save attempt (Feature 07.8.3) — transient, cleared on next edit. |
 | `settings.proxySaved` | settings | no | — | v1 | True immediately after a successful proxy-template save (Feature 07.8.3) — transient, cleared on next edit. |
