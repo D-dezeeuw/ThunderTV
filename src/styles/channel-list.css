@@ -278,3 +278,51 @@
     flex: none;
     width: 6rem;
 }
+
+/* ---- Narrow-screen labels (default: desktop) ---- */
+
+.list-shell__narrow-label {
+    display: none;
+}
+
+/* ---- Mobile drill-down (categories → channels → player) ----
+   On narrow screens the side-by-side groups panel + list becomes a
+   two-step flow driven by the same ui.viewMode state the desktop uses:
+   'all' shows the groups panel full-width as a category picker (when the
+   source has groups at all — list-shell--has-groups mirrors the
+   groupsPanelVisible computed), 'groups' swaps to the channel list with
+   the header button acting as "back to categories". Single-group sources
+   never enter the drill-down and just show the list. */
+@media (max-width: 700px) {
+    .list-shell__body {
+        flex-direction: column;
+    }
+
+    .groups-panel {
+        width: auto;
+        flex: 1;
+        min-height: 0;
+        max-height: none;
+    }
+
+    .list-shell--has-groups:not(.list-shell--group-view) .list-shell__body > .list {
+        display: none;
+    }
+
+    .list-shell--has-groups.list-shell--group-view .groups-panel {
+        display: none;
+    }
+
+    /* Reclaim the reserved EPG column — a phone-width row has no room for
+       it, and Phase 17 will design its own narrow treatment. */
+    .channel-row__epg {
+        display: none;
+    }
+
+    .list-shell__wide-label {
+        display: none;
+    }
+    .list-shell__narrow-label {
+        display: inline;
+    }
+}

@@ -1,11 +1,14 @@
-import { resetState, tick } from 'spektrum';
+import { resetState, setValue, tick } from 'spektrum';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChannelRow } from '../m3u/types';
 import { resetVirtualListForTests, setRows, setViewportHeight } from '../ui/virtual-list';
 import { LIST_SELECTED_ID } from './list';
-import { handleListKeydown, moveSelection, playSelected, selectChannel } from './list.actions';
+import { handleListKeydown, handleRowTap, moveSelection, playSelected, selectChannel } from './list.actions';
+import { resetPersistForTests } from './persist';
 import { PLAYER_ACTIVE } from './player';
+import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
 import { get } from './typed';
+import type { ActiveChannelSnapshot } from './records';
 
 function row(id: string): ChannelRow {
     return { id, name: `Channel ${id}`, url: `https://example.com/${id}.m3u8`, group: null, logo: null, tvgId: null, radio: false };
@@ -18,6 +21,7 @@ function keyEvent(key: string): KeyboardEvent {
 describe('list.actions.ts selection (Feature 08.7)', () => {
     afterEach(() => {
         resetVirtualListForTests();
+        resetPersistForTests();
         resetState();
     });
 
@@ -90,6 +94,30 @@ describe('list.actions.ts selection (Feature 08.7)', () => {
         playSelected();
         tick();
         expect(get(PLAYER_ACTIVE)).toBeUndefined();
+    });
+
+    describe('handleRowTap() (mobile tap-to-play)', () => {
+        it('on a coarse pointer, a tap selects AND plays the row', () => {
+            vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(pointer: coarse)' }));
+            setRows([row('a'), row('b')]);
+            setValue(PLAYLIST_ACTIVE_SOURCE_ID, 'src-1');
+            tick();
+            handleRowTap('b');
+            tick();
+            expect(get<string | null>(LIST_SELECTED_ID)).toBe('b');
+            expect(get<ActiveChannelSnapshot>(PLAYER_ACTIVE)).toMatchObject({ id: 'b', sourceId: 'src-1' });
+            vi.unstubAllGlobals();
+        });
+
+        it('without a coarse pointer (or matchMedia at all — jsdom), a tap only selects', () => {
+            setRows([row('a')]);
+            setValue(PLAYLIST_ACTIVE_SOURCE_ID, 'src-1');
+            tick();
+            handleRowTap('a');
+            tick();
+            expect(get<string | null>(LIST_SELECTED_ID)).toBe('a');
+            expect(get(PLAYER_ACTIVE)).toBeUndefined();
+        });
     });
 
     describe('handleListKeydown() dispatch table', () => {

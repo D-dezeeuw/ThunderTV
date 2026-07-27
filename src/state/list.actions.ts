@@ -25,7 +25,7 @@ export function registerListActions(): void {
     defineFn('list/selectChannel', (_el, _state, _delta, _value, event) => {
         const row = (event?.target as HTMLElement | undefined)?.closest<HTMLElement>('.channel-row[data-id]');
         const id = row?.dataset['id'];
-        if (id) selectChannel(id);
+        if (id) handleRowTap(id);
     });
 
     defineFn('list/handleListKeydown', (_el, _state, _delta, _value, event) => {
@@ -61,6 +61,26 @@ export function selectChannel(id: string | null): void {
     if (sourceId) saveListState(sourceId, { selectedId: id });
 }
 
+/**
+ * The row click/tap entry: always selects; on touch-first devices (coarse
+ * pointer) it also starts playback — there is no Enter key on a phone, and
+ * click-drag scrolling never fires `click`, so a deliberate tap is safe to
+ * treat as "watch this". Desktop pointer semantics are unchanged
+ * (click selects, Enter plays). `id` is passed explicitly rather than
+ * re-read from `LIST_SELECTED_ID` because `setValue` writes only become
+ * readable after the next tick (the established `set()`/`tick()` pitfall).
+ */
+export function handleRowTap(id: string): void {
+    selectChannel(id);
+    if (isCoarsePointer()) playChannelById(id);
+}
+
+function isCoarsePointer(): boolean {
+    // jsdom has no matchMedia — the optional call keeps unit tests on the
+    // desktop (select-only) path unless a spec stubs it explicitly.
+    return window.matchMedia?.('(pointer: coarse)').matches ?? false;
+}
+
 /** Feature 08.7.4: moves selection over the current row order (filtered or full) and scrolls only as needed to keep it visible. */
 export function moveSelection(delta: 1 | -1): void {
     const total = rowCount();
@@ -80,8 +100,13 @@ export function moveSelection(delta: 1 | -1): void {
 /** Feature 08.7.5: Enter plays the selected row via the real, already-built `setActiveChannel` action (Phase 05's §6.3 body — zap history + persistence already work, ahead of Phase 10's full player wiring). */
 export function playSelected(): void {
     const id = get<string | null>(LIST_SELECTED_ID);
+    if (id) playChannelById(id);
+}
+
+/** Builds and publishes the active-channel snapshot for a specific row id — shared by Enter-to-play and the mobile tap-to-play path. */
+export function playChannelById(id: string): void {
     const sourceId = get<string | null>(PLAYLIST_ACTIVE_SOURCE_ID);
-    if (!id || !sourceId) return;
+    if (!sourceId) return;
     const row = findRowById(id);
     if (!row) return;
     setActiveChannel({
