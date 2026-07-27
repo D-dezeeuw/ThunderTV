@@ -161,3 +161,8 @@ Thumbs.db
 # Generated M3U benchmark fixtures (Feature 06.10.2) — scripts/gen-m3u-fixture.mjs
 # is committed, its output (potentially 100k+ lines) never is.
 tests/fixtures/generated/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example

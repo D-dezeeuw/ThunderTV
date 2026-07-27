@@ -1,5 +1,7 @@
 import { defineConfig, type Plugin } from 'vite';
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 /**
  * Spektrum resolves through the browser's import map (index.html), never
  * through Vite. `build.rollupOptions.external` alone only covers the
@@ -39,7 +41,7 @@ export default defineConfig({
     // from all three consumers: a GitHub Pages subpath (/thundertv/), a
     // packaged Electron `file://` window, and a packaged webOS app.
     base: './',
-    plugins: [externalizeSpektrum()],
+    plugins: [externalizeSpektrum(), cloudflare()],
     build: {
         rollupOptions: {
             external: ['spektrum'],
