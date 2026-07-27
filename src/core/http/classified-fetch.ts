@@ -71,10 +71,16 @@ export interface ClassifiedFetchInit extends Omit<RequestInit, 'signal' | 'heade
 /**
  * An `https:` page cannot load `http:` streams; the browser just fails with
  * no visible error. Detect it before attempting the request (masterplan
- * §5.9) — ported verbatim from the reference sample.
+ * §5.9). `http://localhost`/`127.0.0.1` is exempt: it is a potentially
+ * trustworthy origin (W3C Secure Contexts), browsers allow it from https
+ * pages — which is exactly what makes a home proxy running on the same
+ * machine (`scripts/home-proxy.mjs`) testable against the deployed app.
  */
 export function mixedContentBlocked(streamUrl: string): boolean {
-    return location.protocol === 'https:' && new URL(streamUrl).protocol === 'http:';
+    if (location.protocol !== 'https:') return false;
+    const url = new URL(streamUrl);
+    if (url.protocol !== 'http:') return false;
+    return !(url.hostname === 'localhost' || url.hostname === '127.0.0.1');
 }
 
 export async function classifiedFetch(
