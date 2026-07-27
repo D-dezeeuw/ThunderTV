@@ -28,8 +28,8 @@
         <script type="importmap">
             { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
         </script>
-      <script type="module" crossorigin src="./assets/index-DdGnnW0W.js"></script>
-      <link rel="stylesheet" crossorigin href="./assets/index-Ci5ysdsK.css">
+      <script type="module" crossorigin src="./assets/index-D1et7nrU.js"></script>
+      <link rel="stylesheet" crossorigin href="./assets/index-Cbjx9VnE.css">
     </head>
     <body>
         <!--
@@ -397,6 +397,21 @@
                             <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
                             <div class="player-shell__bar">
                                 <span class="player-shell__name truncate">{{ player.active.name }}</span>
+                                <!-- Live stream-quality bars (src/player/stream-health.ts) —
+                                     lit count reflects stall frequency, engine-agnostic. -->
+                                <span
+                                    class="signal"
+                                    :class="'signal--' + (player.streamHealth ?? 'good')"
+                                    data-if="player.streamHealth"
+                                    :title="streamHealthLabel"
+                                    :aria-label="streamHealthLabel"
+                                    role="img"
+                                    data-testid="stream-health"
+                                >
+                                    <span class="signal__bar signal__bar--1"></span>
+                                    <span class="signal__bar signal__bar--2"></span>
+                                    <span class="signal__bar signal__bar--3"></span>
+                                </span>
                                 <button type="button" class="btn" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
                                     {{ strings.list.playerFullscreen }}
                                 </button>
@@ -729,6 +744,44 @@
                             </button>
                         </div>
                         <p class="settings-section__hint">{{ strings.settings.playback.engineHelp }}</p>
+
+                        <p class="settings-section__label">{{ strings.settings.playback.buffering }}</p>
+                        <div class="density-toggle" role="group" :aria-label="strings.settings.playback.buffering">
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': settings.buffering === 'auto' }"
+                                data-buffering="auto"
+                                data-action="click"
+                                data-fn="settings/setBuffering"
+                                data-testid="buffering-auto-btn"
+                            >
+                                {{ strings.settings.playback.bufferingAuto }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': settings.buffering === 'smooth' }"
+                                data-buffering="smooth"
+                                data-action="click"
+                                data-fn="settings/setBuffering"
+                                data-testid="buffering-smooth-btn"
+                            >
+                                {{ strings.settings.playback.bufferingSmooth }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': settings.buffering === 'lowLatency' }"
+                                data-buffering="lowLatency"
+                                data-action="click"
+                                data-fn="settings/setBuffering"
+                                data-testid="buffering-low-latency-btn"
+                            >
+                                {{ strings.settings.playback.bufferingLowLatency }}
+                            </button>
+                        </div>
+                        <p class="settings-section__hint">{{ strings.settings.playback.bufferingHelp }}</p>
                     </section>
                     <section class="settings-section">
                         <h3 class="settings-section__title">
