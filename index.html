@@ -28,7 +28,7 @@
         <script type="importmap">
             { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
         </script>
-      <script type="module" crossorigin src="./assets/index-u2GL3OiE.js"></script>
+      <script type="module" crossorigin src="./assets/index-D79y97Ng.js"></script>
       <link rel="stylesheet" crossorigin href="./assets/index-Ci5ysdsK.css">
     </head>
     <body>
@@ -671,6 +671,22 @@
                             {{ strings.settings.streaming.proxySaved }}
                         </p>
                         <p class="settings-section__hint">{{ strings.settings.streaming.proxyHelp }}</p>
+
+                        <!-- Manual channel-list refresh (also automatic: 6h TTL on
+                             load + on a 404 during playback — state/xtream-refresh.ts). -->
+                        <button type="button" class="btn" data-action="click" data-fn="settings/refreshChannels" data-testid="refresh-channels-btn">
+                            {{ strings.settings.streaming.refreshNow }}
+                        </button>
+                        <p class="settings-section__hint" data-if="settings.refreshState === 'busy'" data-testid="refresh-busy">
+                            {{ strings.settings.streaming.refreshBusy }}
+                        </p>
+                        <p class="settings-section__hint" data-if="settings.refreshState === 'done'" data-testid="refresh-done">
+                            {{ strings.settings.streaming.refreshDone }}
+                        </p>
+                        <p class="settings-section__error" data-if="settings.refreshState === 'failed'" data-testid="refresh-failed">
+                            {{ strings.settings.streaming.refreshFailed }}
+                        </p>
+                        <p class="settings-section__hint">{{ strings.settings.streaming.refreshHelp }}</p>
                     </section>
                     <section class="settings-section">
                         <h3 class="settings-section__title">
