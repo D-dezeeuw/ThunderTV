@@ -96,9 +96,8 @@ describe('list.actions.ts selection (Feature 08.7)', () => {
         expect(get(PLAYER_ACTIVE)).toBeUndefined();
     });
 
-    describe('handleRowTap() (mobile tap-to-play)', () => {
-        it('on a coarse pointer, a tap selects AND plays the row', () => {
-            vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(pointer: coarse)' }));
+    describe('handleRowTap() (click/tap-to-play, every pointer type)', () => {
+        it('a click/tap selects AND plays the row', () => {
             setRows([row('a'), row('b')]);
             setValue(PLAYLIST_ACTIVE_SOURCE_ID, 'src-1');
             tick();
@@ -106,13 +105,10 @@ describe('list.actions.ts selection (Feature 08.7)', () => {
             tick();
             expect(get<string | null>(LIST_SELECTED_ID)).toBe('b');
             expect(get<ActiveChannelSnapshot>(PLAYER_ACTIVE)).toMatchObject({ id: 'b', sourceId: 'src-1' });
-            vi.unstubAllGlobals();
         });
 
-        it('without a coarse pointer (or matchMedia at all — jsdom), a tap only selects', () => {
+        it('with no active source, a tap still selects and playing is a safe no-op', () => {
             setRows([row('a')]);
-            setValue(PLAYLIST_ACTIVE_SOURCE_ID, 'src-1');
-            tick();
             handleRowTap('a');
             tick();
             expect(get<string | null>(LIST_SELECTED_ID)).toBe('a');
