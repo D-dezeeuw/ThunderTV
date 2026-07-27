@@ -62,23 +62,20 @@ export function selectChannel(id: string | null): void {
 }
 
 /**
- * The row click/tap entry: always selects; on touch-first devices (coarse
- * pointer) it also starts playback — there is no Enter key on a phone, and
- * click-drag scrolling never fires `click`, so a deliberate tap is safe to
- * treat as "watch this". Desktop pointer semantics are unchanged
- * (click selects, Enter plays). `id` is passed explicitly rather than
- * re-read from `LIST_SELECTED_ID` because `setValue` writes only become
- * readable after the next tick (the established `set()`/`tick()` pitfall).
+ * The row click/tap entry: selects AND plays, on every pointer type. This
+ * was originally gated to coarse (touch) pointers with desktop kept on
+ * click-selects/Enter-plays — which left mouse users with a click that
+ * visibly did nothing and no discoverable way to start a stream. Click-to-
+ * play is the universal IPTV convention; keyboard users keep Arrow/Enter
+ * (`handleListKeydown`), and click-drag scrolling never fires `click`, so
+ * a deliberate click is safe to treat as "watch this". `id` is passed
+ * explicitly rather than re-read from `LIST_SELECTED_ID` because `setValue`
+ * writes only become readable after the next tick (the established
+ * `set()`/`tick()` pitfall).
  */
 export function handleRowTap(id: string): void {
     selectChannel(id);
-    if (isCoarsePointer()) playChannelById(id);
-}
-
-function isCoarsePointer(): boolean {
-    // jsdom has no matchMedia — the optional call keeps unit tests on the
-    // desktop (select-only) path unless a spec stubs it explicitly.
-    return window.matchMedia?.('(pointer: coarse)').matches ?? false;
+    playChannelById(id);
 }
 
 /** Feature 08.7.4: moves selection over the current row order (filtered or full) and scrolls only as needed to keep it visible. */
