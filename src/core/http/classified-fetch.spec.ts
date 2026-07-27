@@ -185,4 +185,10 @@ describe('mixedContentBlocked', () => {
         vi.stubGlobal('location', { ...location, protocol: 'http:' });
         expect(mixedContentBlocked('http://provider.example/stream')).toBe(false);
     });
+
+    it('exempts http://localhost and 127.0.0.1 (potentially trustworthy origins — the home-proxy same-machine test)', () => {
+        vi.stubGlobal('location', { ...location, protocol: 'https:' });
+        expect(mixedContentBlocked('http://localhost:8899/stream')).toBe(false);
+        expect(mixedContentBlocked('http://127.0.0.1:8899/stream')).toBe(false);
+    });
 });
