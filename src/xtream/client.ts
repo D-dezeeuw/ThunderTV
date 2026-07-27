@@ -35,9 +35,12 @@ export async function authenticate(source: XtreamSource): Promise<XtreamResult<A
     }
 
     const expRaw = asNumber(info['exp_date']);
+    const allowedOutputFormats = asArray<unknown>(info['allowed_output_formats'])
+        .map((f) => asString(f))
+        .filter((f): f is string => f !== undefined);
     return {
         ok: true,
-        data: { authenticated, status, expiresAt: expRaw ? expRaw * 1000 : null },
+        data: { authenticated, status, expiresAt: expRaw ? expRaw * 1000 : null, allowedOutputFormats },
     };
 }
 

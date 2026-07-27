@@ -28,4 +28,6 @@ export interface AccountStatus {
     authenticated: boolean;
     status: string;
     expiresAt: number | null;
+    /** From `user_info.allowed_output_formats` — empty when the provider omits it. Drives the live-URL extension pick at import (m3u8 preferred). */
+    allowedOutputFormats: string[];
 }

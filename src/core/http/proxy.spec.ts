@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { applyProxy, isValidProxyTemplate } from './proxy';
+import { applyProxy, isValidProxyTemplate, proxyImageUrl } from './proxy';
 
 afterEach(() => {
     vi.unstubAllGlobals();
@@ -57,5 +57,22 @@ describe('isValidProxyTemplate', () => {
 
     it('rejects an unparseable template', () => {
         expect(isValidProxyTemplate('not a url')).toBe(false);
+    });
+});
+
+describe('proxyImageUrl (mixed-content logo fix)', () => {
+    const template = 'https://proxy.example/{url}';
+
+    it('routes an http:// image through the template on an https page', () => {
+        expect(proxyImageUrl(template, 'http://cdn.example/logo.png', 'https:')).toBe(
+            'https://proxy.example/' + encodeURIComponent('http://cdn.example/logo.png'),
+        );
+    });
+
+    it('leaves https images, http pages, null logos, and no-template setups untouched', () => {
+        expect(proxyImageUrl(template, 'https://cdn.example/logo.png', 'https:')).toBe('https://cdn.example/logo.png');
+        expect(proxyImageUrl(template, 'http://cdn.example/logo.png', 'http:')).toBe('http://cdn.example/logo.png');
+        expect(proxyImageUrl(template, null, 'https:')).toBeNull();
+        expect(proxyImageUrl(undefined, 'http://cdn.example/logo.png', 'https:')).toBe('http://cdn.example/logo.png');
     });
 });

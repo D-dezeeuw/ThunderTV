@@ -1,7 +1,9 @@
 import { setValue } from 'spektrum';
+import { proxyImageUrl } from '../core/http/proxy';
 import type { ChannelRow } from '../m3u/types';
 import { LIST_PAD_BOTTOM, LIST_PAD_TOP, LIST_VISIBLE_ROWS } from './list';
-import { set } from './typed';
+import { SETTINGS_PROXY_TEMPLATE } from './settings';
+import { get, set } from './typed';
 
 /**
  * The fourth sanctioned non-`defineFn` publisher (state/README.md's
@@ -18,7 +20,17 @@ import { set } from './typed';
  * import — see `list.ts`'s own header comment for the ESM cycle that avoids.
  */
 export function publishListWindow(visibleRows: readonly ChannelRow[], padTop: number, padBottom: number): void {
-    set(LIST_VISIBLE_ROWS, visibleRows as ChannelRow[]);
+    // Mixed-content logo fix: http:// provider logos on the https-deployed
+    // page silently fail (empty boxes) — route just the visible window's
+    // logos through the configured proxy (proxyImageUrl is a no-op when
+    // nothing would be blocked). Per-window mapping keeps it on-demand: at
+    // most ~40 rows per publish, and the worker edge-caches image responses.
+    const template = get<string | null>(SETTINGS_PROXY_TEMPLATE) ?? undefined;
+    const rows = visibleRows.map((row) => {
+        const logo = proxyImageUrl(template, row.logo);
+        return logo === row.logo ? row : { ...row, logo };
+    });
+    set(LIST_VISIBLE_ROWS, rows);
     setValue(LIST_PAD_TOP, padTop);
     setValue(LIST_PAD_BOTTOM, padBottom);
 }
