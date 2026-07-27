@@ -35,6 +35,7 @@ repeated here, to avoid the two drifting apart.
 | `playlist.activeSourceId` | playlist | yes | — | v1 | The source the user last navigated into (Feature 05.6.2, persisted starting Feature 08.10.6) — a reload lands back in the same channel list instead of a source picker, matching Feature 08.6\'s "never left" framing. |
 | `playlist.demoRows` | playlist | no | — | v1 | Phase 02 density-preview fixture rows — never real data, never persisted. |
 | `playlist.sources` | playlist | no | 200 | v1 | Live projection of the playlists storage table (Feature 07.1.8) — never itself persisted; rebuilt from storage at boot and after every import commit, so there is exactly one source of truth. |
+| `settings.playbackEngine` | settings | yes | — | v1 | Preferred playback engine tried first (mpegts/hls/native) — Settings → Playback; each falls back to the others. |
 | `settings.proxyError` | settings | no | — | v1 | Inline validation message for the last proxy-template save attempt (Feature 07.8.3) — transient, cleared on next edit. |
 | `settings.proxySaved` | settings | no | — | v1 | True immediately after a successful proxy-template save (Feature 07.8.3) — transient, cleared on next edit. |
 | `settings.proxyTemplate` | settings | yes | — | v1 | Optional user-configured proxy URL template (masterplan §8) — editable via Settings → Streaming (Feature 07.8.1); Phase 22 builds out the rest of that section. |

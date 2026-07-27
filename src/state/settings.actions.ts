@@ -2,7 +2,7 @@ import { defineFn, refs } from 'spektrum';
 import { isValidProxyTemplate } from '../core/http';
 import { strings } from '../app/strings';
 import { persist } from './persist';
-import { SETTINGS_PROXY_ERROR, SETTINGS_PROXY_SAVED, SETTINGS_PROXY_TEMPLATE, SETTINGS_REFRESH_STATE } from './settings';
+import { isPlaybackEngine, SETTINGS_PLAYBACK_ENGINE, SETTINGS_PROXY_ERROR, SETTINGS_PROXY_SAVED, SETTINGS_PROXY_TEMPLATE, SETTINGS_REFRESH_STATE } from './settings';
 import { refreshActiveXtreamSource } from './xtream-refresh';
 import { set } from './typed';
 
@@ -27,6 +27,14 @@ export function registerSettingsActions(): void {
     // user-initiated refresh always enqueues fresh — no TTL, no rate limit).
     defineFn('settings/refreshChannels', () => {
         void runManualRefresh();
+    });
+    // Same `data-*` button-group shape as ui/setDensity (Feature 02.8).
+    defineFn('settings/setPlaybackEngine', (el) => {
+        const engine = el.dataset['engine'];
+        if (isPlaybackEngine(engine)) {
+            set(SETTINGS_PLAYBACK_ENGINE, engine);
+            persist(SETTINGS_PLAYBACK_ENGINE);
+        }
     });
 }
 
