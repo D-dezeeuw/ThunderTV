@@ -18,6 +18,7 @@ import {
 import { SETTINGS_PROXY_TEMPLATE } from '../state/settings';
 import { get } from '../state/typed';
 import { handleStorageDemotion } from '../state/ui.actions';
+import { refreshActiveXtreamSource } from '../state/xtream-refresh';
 import { seedPlatformDiagnostics } from '../state/ui';
 import { initRouter } from './router';
 import { registerViewSwitching } from './views';
@@ -73,6 +74,9 @@ export async function bootstrap(): Promise<void> {
     registerImportDropzoneDragover();
     registerListBindings();
     registerPlayerBindings();
+    // Xtream catalogs rot (panels renumber stream ids) — silently re-import
+    // the active source when its snapshot is older than the 6h TTL.
+    void refreshActiveXtreamSource();
 }
 
 /**

@@ -5,6 +5,10 @@ export const SETTINGS_PROXY_TEMPLATE = 'settings.proxyTemplate';
 export const SETTINGS_PROXY_ERROR = 'settings.proxyError';
 /** Feature 07.8.3 success feedback — transient, never persisted; cleared the moment the field is edited again. */
 export const SETTINGS_PROXY_SAVED = 'settings.proxySaved';
+/** Manual channel-list refresh feedback — transient, never persisted. */
+export const SETTINGS_REFRESH_STATE = 'settings.refreshState';
+
+export type RefreshFeedbackState = 'idle' | 'busy' | 'done' | 'failed';
 
 /**
  * Mirrors the stored settings blob (masterplan §6.3's `settings` key
@@ -20,16 +24,19 @@ export interface SettingsState {
     proxyTemplate: string | null;
     proxyError: string | null;
     proxySaved: boolean;
+    refreshState: RefreshFeedbackState;
 }
 
 export const SETTINGS_DEFAULTS: SettingsState = {
     proxyTemplate: null,
     proxyError: null,
     proxySaved: false,
+    refreshState: 'idle',
 };
 
 export function initSettingsState(): void {
     setValue(SETTINGS_PROXY_TEMPLATE, SETTINGS_DEFAULTS.proxyTemplate);
     setValue(SETTINGS_PROXY_ERROR, SETTINGS_DEFAULTS.proxyError);
     setValue(SETTINGS_PROXY_SAVED, SETTINGS_DEFAULTS.proxySaved);
+    setValue(SETTINGS_REFRESH_STATE, SETTINGS_DEFAULTS.refreshState);
 }

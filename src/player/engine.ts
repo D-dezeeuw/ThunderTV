@@ -15,6 +15,7 @@
 import type Hls from 'hls.js';
 import { getPlatform } from '../core/platform';
 import { reportPlaybackError } from '../state/player.actions';
+import { refreshActiveXtreamSource } from '../state/xtream-refresh';
 
 let hls: Hls | null = null;
 let nativeErrorHandler: (() => void) | null = null;
@@ -60,8 +61,17 @@ function attachNativeErrorReporting(video: HTMLVideoElement): void {
 function appendStreamProbe(baseDetail: string): void {
     const url = lastStreamUrl;
     if (!url) return;
-    void describeStream(url).then((summary) => {
+    void describeStream(url).then(async (summary) => {
         reportPlaybackError(`${baseDetail} — ${summary}`);
+        // A 404 from the provider is the signature of a stale catalog
+        // (panels renumber stream ids routinely) — refresh it on the spot,
+        // rate-limited inside refreshActiveXtreamSource().
+        if (summary.includes('HTTP 404')) {
+            const refreshed = await refreshActiveXtreamSource('error');
+            if (refreshed) {
+                reportPlaybackError(`${baseDetail} — ${summary}; channel list was stale and has been refreshed — try the channel again`);
+            }
+        }
     });
 }
 

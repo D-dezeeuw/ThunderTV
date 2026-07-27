@@ -38,6 +38,7 @@ repeated here, to avoid the two drifting apart.
 | `settings.proxyError` | settings | no | — | v1 | Inline validation message for the last proxy-template save attempt (Feature 07.8.3) — transient, cleared on next edit. |
 | `settings.proxySaved` | settings | no | — | v1 | True immediately after a successful proxy-template save (Feature 07.8.3) — transient, cleared on next edit. |
 | `settings.proxyTemplate` | settings | yes | — | v1 | Optional user-configured proxy URL template (masterplan §8) — editable via Settings → Streaming (Feature 07.8.1); Phase 22 builds out the rest of that section. |
+| `settings.refreshState` | settings | no | — | v1 | Feedback for the manual channel-list refresh button (idle/busy/done/failed) — transient, reset on each attempt. |
 | `storage.tier` | ui | no | — | v1 | Set from the real boot-time probe (Phase 04) every session — persisting a stale tier would be actively wrong. |
 | `ui.activeGroup` | ui | no | — | v1 | The currently-open source\'s active group filter, if any (Feature 08.5.7) — restored from ui.listState on source entry, written live on every group toggle. |
 | `ui.activeView` | ui | no | — | v1 | Current route — driven by the URL hash, which is its own persistence mechanism. |
