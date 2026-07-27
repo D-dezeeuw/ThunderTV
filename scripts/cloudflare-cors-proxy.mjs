@@ -85,6 +85,10 @@ function upstreamHeadersFor(request) {
     const headers = {};
     const range = request.headers.get('range');
     if (range) headers['range'] = range;
+    // Many Xtream panels reject requests without a recognized player
+    // User-Agent (403/458) — identify as VLC, the most widely whitelisted
+    // IPTV client. Workers' fetch sends no UA at all otherwise.
+    headers['user-agent'] = 'VLC/3.0.20 LibVLC/3.0.20';
     return headers;
 }
 
