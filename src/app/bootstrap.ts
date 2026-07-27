@@ -1,5 +1,6 @@
 import { bindDOM, run } from 'spektrum';
 import { createPlatform, setPlatform } from '../core/platform';
+import { effectiveProxyTemplate } from '../core/platform/desktop-proxy';
 import { sweepOrphanedPlaylistRows } from '../m3u/import-sweep';
 import { registerListBindings } from '../ui/list-bindings';
 import { registerPlayerBindings } from '../player/bindings';
@@ -15,8 +16,6 @@ import {
     seedStrings,
     startEpgTick,
 } from '../state';
-import { SETTINGS_PROXY_TEMPLATE } from '../state/settings';
-import { get } from '../state/typed';
 import { handleStorageDemotion } from '../state/ui.actions';
 import { refreshActiveXtreamSource } from '../state/xtream-refresh';
 import { seedPlatformDiagnostics } from '../state/ui';
@@ -42,7 +41,7 @@ export async function bootstrap(): Promise<void> {
         // Feature 07.8.1: only ever *called* well after initState()/
         // rehydrateState() below have run — see CreateWebPlatformOptions's
         // own comment for why wiring the getter this early is still safe.
-        getProxyTemplate: () => get<string | null>(SETTINGS_PROXY_TEMPLATE) ?? undefined,
+        getProxyTemplate: () => effectiveProxyTemplate(),
     });
     setPlatform(platform);
     seedPlatformDiagnostics(platform.name, platform.capabilities, platform.storage.tier);

@@ -1,8 +1,7 @@
 import { refs, watch } from 'spektrum';
 import { applyProxy } from '../core/http/proxy';
+import { effectiveProxyTemplate } from '../core/platform/desktop-proxy';
 import { PLAYER_ACTIVE } from '../state/player';
-import { SETTINGS_PROXY_TEMPLATE } from '../state/settings';
-import { get } from '../state/typed';
 import { attachAndPlay, detach } from './engine';
 
 /**
@@ -33,8 +32,7 @@ export function registerPlayerBindings(): () => void {
             detach(video);
             return;
         }
-        const template = get<string | null>(SETTINGS_PROXY_TEMPLATE) ?? undefined;
-        void attachAndPlay(video, applyProxy(template, active.streamUrl));
+        void attachAndPlay(video, applyProxy(effectiveProxyTemplate(), active.streamUrl));
         revealPlayer(video);
     });
 }

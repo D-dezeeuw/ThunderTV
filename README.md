@@ -82,6 +82,23 @@ set `https://<name>.<account>.workers.dev/{url}` as the proxy template in
 Settings → Streaming. The worker adds CORS headers, bridges http→https, and
 rewrites HLS manifests so video segments flow through it too.
 
+**Desktop app (macOS/Windows/Linux, no browser):** `desktop/` wraps the
+built web app in an Electron window with the proxy embedded on 127.0.0.1 —
+zero proxy setup, every provider request leaves from the machine's own IP,
+and the renderer keeps all browser security defaults. From a fresh clone:
+
+```bash
+npm install
+cd desktop
+npm install
+npm start   # builds the web app, swaps the import map to the vendored
+            # Spektrum copy (scripts/package-target.mjs), launches Electron
+```
+
+A user-saved proxy template still wins over the embedded default (Settings →
+Streaming). Packaging/signing installers is Phase 29's scope — `npm start`
+is the supported way to run it today.
+
 **When the provider blocks datacenter IPs:** many panels serve their API to
 anything but 404 all stream endpoints for cloud IPs (Cloudflare included) as
 anti-restream protection — streams then need a residential IP. Run the same

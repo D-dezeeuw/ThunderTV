@@ -56,7 +56,7 @@ export default tseslint.config(
                 // fall back to a default (non-type-checked) project instead of
                 // erroring.
                 projectService: {
-                    allowDefaultProject: ['*.js', '*.mjs', '*.cjs', 'scripts/*.mjs'],
+                    allowDefaultProject: ['*.js', '*.mjs', '*.cjs', 'scripts/*.mjs', 'desktop/*.mjs', 'desktop/*.cjs'],
                 },
                 tsconfigRootDir: import.meta.dirname,
             },
@@ -84,7 +84,7 @@ export default tseslint.config(
         // Root config/script files run under the allowDefaultProject fallback
         // (untyped), so type-aware rules don't apply — the recommended
         // typescript-eslint pattern for files outside tsconfig's "include".
-        files: ['*.js', '*.mjs', '*.cjs', 'scripts/*.mjs'],
+        files: ['*.js', '*.mjs', '*.cjs', 'scripts/*.mjs', 'desktop/*.mjs', 'desktop/*.cjs'],
         extends: [tseslint.configs.disableTypeChecked],
     },
     {

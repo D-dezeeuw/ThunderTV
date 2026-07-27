@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * ThunderTV home proxy — the exact same logic as the Cloudflare Worker
- * (`cloudflare-cors-proxy.mjs`, imported below, one source of truth), but
- * running on your own hardware and therefore your own residential IP.
+ * (`cloudflare-cors-proxy.mjs`, one source of truth, wrapped by
+ * `proxy-server.mjs`), but running on your own hardware and therefore your
+ * own residential IP.
  *
  * Why it exists: many IPTV panels serve their API to anything but block
  * stream endpoints for datacenter IPs (Cloudflare included) as
@@ -13,59 +14,33 @@
  * Run:
  *   PORT=8899 ALLOWED_HOSTS=provider.example:8080 node scripts/home-proxy.mjs
  *
- * The deployed app (HTTPS) can only call an https:// proxy, so expose this
- * over HTTPS. The easiest no-domain-needed option is Tailscale Funnel:
- *   1. Install Tailscale on the box (free tier is fine), `tailscale up`.
- *   2. `tailscale funnel 8899`
- *      → prints a stable public URL like https://mybox.tail1234.ts.net
- *   3. Set PUBLIC_ORIGIN to that URL and restart:
- *      PUBLIC_ORIGIN=https://mybox.tail1234.ts.net node scripts/home-proxy.mjs
- *      (PUBLIC_ORIGIN is what rewritten HLS manifest URIs point back at —
- *      without it they'd point at localhost and playback would break.)
- *   4. In ThunderTV: Settings → Streaming → proxy template =
- *      https://mybox.tail1234.ts.net/{url}
- * Cloudflare Tunnel (`cloudflared`) works the same way if you prefer it.
+ * Same-machine test (deployed app in Chrome on this computer): set the
+ * proxy template to `http://localhost:8899/{url}` — localhost is exempt
+ * from mixed-content blocking, so no HTTPS tunnel is needed.
  *
- * ALLOWED_HOSTS is strongly recommended — the funnel URL is public, and
- * without an allowlist this is an open proxy for whoever finds it.
+ * For other devices (your phone), the deployed HTTPS app needs an https://
+ * proxy URL. Easiest no-domain option is Tailscale Funnel:
+ *   1. Install Tailscale on this box (free tier), `tailscale up`.
+ *   2. `tailscale funnel 8899` → prints https://mybox.tail1234.ts.net
+ *   3. Restart with PUBLIC_ORIGIN set to that URL (it is what rewritten
+ *      HLS manifest URIs point back at):
+ *      PUBLIC_ORIGIN=https://mybox.tail1234.ts.net node scripts/home-proxy.mjs
+ *   4. ThunderTV → Settings → Streaming → https://mybox.tail1234.ts.net/{url}
+ * Cloudflare Tunnel (`cloudflared`) works the same way.
+ *
+ * ALLOWED_HOSTS is strongly recommended when tunneled — the funnel URL is
+ * public, and without an allowlist this is an open proxy.
  */
-import http from 'node:http';
-import worker from './cloudflare-cors-proxy.mjs';
+import { createProxyServer } from './proxy-server.mjs';
 
-const PORT = Number(process.env.PORT ?? 8899);
-const PUBLIC_ORIGIN = (process.env.PUBLIC_ORIGIN ?? `http://localhost:${String(PORT)}`).replace(/\/+$/, '');
-const env = { ALLOWED_HOSTS: process.env.ALLOWED_HOSTS ?? '' };
+const options = {
+    port: Number(process.env.PORT ?? 8899),
+    allowedHosts: process.env.ALLOWED_HOSTS ?? '',
+    ...(process.env.PUBLIC_ORIGIN ? { publicOrigin: process.env.PUBLIC_ORIGIN } : {}),
+};
 
-http.createServer((req, res) => {
-    const headers = new Headers();
-    if (req.headers.range) headers.set('range', String(req.headers.range));
-    const request = new Request(`${PUBLIC_ORIGIN}${req.url ?? '/'}`, { method: req.method ?? 'GET', headers });
-
-    worker
-        .fetch(request, env)
-        .then(async (response) => {
-            res.writeHead(response.status, Object.fromEntries(response.headers.entries()));
-            if (!response.body) {
-                res.end();
-                return;
-            }
-            // Stream, never buffer — a live TS feed is endless.
-            const reader = response.body.getReader();
-            res.on('close', () => {
-                void reader.cancel().catch(() => undefined);
-            });
-            for (;;) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                if (!res.write(value)) await new Promise((resolve) => res.once('drain', resolve));
-            }
-            res.end();
-        })
-        .catch((err) => {
-            res.writeHead(502);
-            res.end(String(err));
-        });
-}).listen(PORT, '0.0.0.0', () => {
-    console.log(`ThunderTV home proxy listening on http://0.0.0.0:${String(PORT)} (public origin: ${PUBLIC_ORIGIN})`);
-    if (!env.ALLOWED_HOSTS) console.log('WARNING: ALLOWED_HOSTS not set — this is an open proxy; set it to your provider host.');
-});
+const { port, origin } = await createProxyServer(options);
+console.log(`ThunderTV home proxy listening on http://0.0.0.0:${String(port)} (public origin: ${origin})`);
+if (!options.allowedHosts) {
+    console.log('WARNING: ALLOWED_HOSTS not set — this is an open proxy; set it to your provider host.');
+}
