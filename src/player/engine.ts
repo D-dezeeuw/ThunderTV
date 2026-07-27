@@ -65,9 +65,26 @@ function appendStreamProbe(baseDetail: string): void {
     });
 }
 
+/** Probes the played URL, and — when it carries a recognizable stream extension — the alternate Xtream output format too, so one error line settles "is it this format, or the provider refusing streams entirely". */
 async function describeStream(url: string): Promise<string> {
+    const primary = await describeOneUrl(url);
+    const alt = alternateFormatUrl(url);
+    if (!alt) return primary;
+    const altVerdict = await describeOneUrl(alt.url);
+    return `${primary}; ${alt.label} variant: ${altVerdict}`;
+}
+
+/** Swaps `.m3u8` ↔ `.ts` on the URL tail — works on the proxied form too, since `encodeURIComponent` leaves dots and letters intact. */
+function alternateFormatUrl(url: string): { url: string; label: string } | null {
+    if (url.endsWith('.m3u8')) return { url: `${url.slice(0, -'.m3u8'.length)}.ts`, label: '.ts' };
+    if (url.endsWith('.ts')) return { url: `${url.slice(0, -'.ts'.length)}.m3u8`, label: '.m3u8' };
+    return null;
+}
+
+async function describeOneUrl(url: string): Promise<string> {
     try {
         const result = await getPlatform().http.get(url, { timeoutMs: 8000 });
+        if (result.kind === 'http') return `HTTP ${String(result.status)} from provider`;
         if (result.kind !== 'ok') return `stream fetch failed (${result.kind})`;
         const body = result.res.body;
         if (!body) return 'empty response';
@@ -87,9 +104,9 @@ async function describeStream(url: string): Promise<string> {
             }
             return 'HLS manifest OK — segment format or codec unsupported on this device';
         }
-        if (value[0] === 0x47) return 'provider sent a raw MPEG-TS stream instead of HLS — browsers cannot play this';
-        if (text.trimStart().startsWith('<')) return 'provider sent an HTML page (login/error) instead of a stream';
-        if (text.trimStart().startsWith('{') || text.trimStart().startsWith('[')) return 'provider sent a JSON error instead of a stream';
+        if (value[0] === 0x47) return 'raw MPEG-TS stream — browsers cannot play this';
+        if (text.trimStart().startsWith('<')) return 'HTML page (login/error) instead of a stream';
+        if (text.trimStart().startsWith('{') || text.trimStart().startsWith('[')) return 'JSON error instead of a stream';
         return 'unrecognized stream data';
     } catch {
         return 'stream probe failed';
