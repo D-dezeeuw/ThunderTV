@@ -12,7 +12,7 @@ import {
 import { LIST_PAD_BOTTOM, LIST_PAD_TOP, LIST_SELECTED_ID, LIST_VISIBLE_ROWS } from './list';
 import { GROUPS_PANEL_CAP, LIST_GROUPS, LIST_GROUPS_TRUNCATED } from './list-groups';
 import { UI_ACTIVE_GROUP, UI_LIST_STATE, UI_VIEW_MODE } from './list-state';
-import { PLAYER_ACTIVE, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
+import { PLAYER_ACTIVE, PLAYER_PLAYBACK_ERROR, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
 import { MAX_PLAYLIST_SOURCES, PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_DEMO_ROWS, PLAYLIST_SOURCES } from './playlist';
 import { SETTINGS_PROXY_ERROR, SETTINGS_PROXY_SAVED, SETTINGS_PROXY_TEMPLATE } from './settings';
 import {
@@ -160,6 +160,11 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         owner: 'player',
         persisted: true,
         description: 'Denormalized last-watched channel snapshot — the §6.4 instant-restore row.',
+    },
+    [PLAYER_PLAYBACK_ERROR]: {
+        owner: 'player',
+        persisted: false,
+        description: 'Transient diagnostics: the last fatal playback failure (hls.js fatal kind or MediaError label), rendered in the player bar — cleared on every new attach/stop.',
     },
     [PLAYER_ZAP_HISTORY]: {
         owner: 'player',

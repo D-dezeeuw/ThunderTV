@@ -2,7 +2,7 @@ import { appState, defineFn, getPathObj, refs, setValue } from 'spektrum';
 import { requestVideoFullscreen } from '../player/fullscreen';
 import { pushCapped } from './collections';
 import { persist } from './persist';
-import { PLAYER_ACTIVE, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
+import { PLAYER_ACTIVE, PLAYER_PLAYBACK_ERROR, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
 import type { ActiveChannelSnapshot } from './records';
 import { set } from './typed';
 
@@ -43,10 +43,17 @@ export function registerPlayerActions(): void {
 /** MVP playback slice: clears `player.active`, which `src/player/bindings.ts`'s `watch()` reacts to by tearing the `<video>` element down — the `setValue()` fence (Feature 05.2.5) keeps that write here, not in `src/player/`. */
 export function stopPlayback(): void {
     setValue(PLAYER_ACTIVE, null);
+    setValue(PLAYER_PLAYBACK_ERROR, null);
+}
+
+/** Called by `src/player/engine.ts` when a stream dies (hls.js fatal error or the native element's `error` event) — the one visible diagnostic a phone user can screenshot. `null` clears it on a fresh attach. */
+export function reportPlaybackError(detail: string | null): void {
+    setValue(PLAYER_PLAYBACK_ERROR, detail);
 }
 
 export function setActiveChannel(channel: ActiveChannelSnapshot): void {
     setValue(PLAYER_ACTIVE, channel);
+    setValue(PLAYER_PLAYBACK_ERROR, null);
     const zapHistory = getPathObj<ActiveChannelSnapshot[]>(appState, PLAYER_ZAP_HISTORY) ?? [];
     // Array-bearing write — routed through the typed `set()` (Feature
     // 05.9.2) so the dev-mode bulk-data guard (Feature 05.8.2) actually

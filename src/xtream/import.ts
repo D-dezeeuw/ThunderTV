@@ -39,6 +39,7 @@ export async function importXtreamSource(params: XtreamImportParams): Promise<Xt
 
     const auth = await authenticate(source);
     if (!auth.ok) return { ok: false, error: auth.error };
+    const liveExt = pickLiveExtension(auth.data.allowedOutputFormats);
 
     const categoriesResult = await getLiveCategories(source);
     if (!categoriesResult.ok) return { ok: false, error: categoriesResult.error };
@@ -47,7 +48,7 @@ export async function importXtreamSource(params: XtreamImportParams): Promise<Xt
     if (!streamsResult.ok) return { ok: false, error: streamsResult.error };
 
     const orderedCategories = sortCategoriesNlFirst(categoriesResult.data);
-    const { rows, groups } = buildRows(source, orderedCategories, streamsResult.data);
+    const { rows, groups } = buildRows(source, orderedCategories, streamsResult.data, liveExt);
 
     const stagingId = crypto.randomUUID();
     const storage = getPlatform().storage;
@@ -108,11 +109,24 @@ export async function importXtreamSource(params: XtreamImportParams): Promise<Xt
     };
 }
 
-/** Builds channel rows in Dutch-first category order (Feature-driving NL priority) and their matching `GroupMeta[]`, in one pass so `firstIndex` stays consistent with row order. */
+/**
+ * m3u8 (HLS) is preferred — it is the only format both hls.js and iOS's
+ * native player handle. `.ts` is baked only when the provider explicitly
+ * does NOT allow m3u8 output: requesting .m3u8 from such a panel yields a
+ * 404 or a raw MPEG-TS body, both dead ends. An absent/empty list means
+ * the provider didn't say — assume m3u8, the de-facto default.
+ */
+function pickLiveExtension(allowedOutputFormats: readonly string[]): string {
+    if (allowedOutputFormats.length === 0 || allowedOutputFormats.includes('m3u8')) return 'm3u8';
+    return allowedOutputFormats.includes('ts') ? 'ts' : (allowedOutputFormats[0] ?? 'm3u8');
+}
+
+/** Builds channel rows in Dutch-first category order and their matching `GroupMeta[]`, in one pass so `firstIndex` stays consistent with row order. */
 function buildRows(
     source: XtreamSource,
     orderedCategories: readonly XtreamCategory[],
     streams: readonly XtreamLiveStream[],
+    liveExt: string,
 ): { rows: ChannelRow[]; groups: GroupMeta[] } {
     const byCategory = new Map<string, XtreamLiveStream[]>();
     for (const stream of streams) {
@@ -129,11 +143,11 @@ function buildRows(
         const categoryStreams = byCategory.get(category.id);
         if (!categoryStreams || categoryStreams.length === 0) continue;
         seenCategoryIds.add(category.id);
-        appendGroup(rows, groups, category.name, categoryStreams, source);
+        appendGroup(rows, groups, category.name, categoryStreams, source, liveExt);
     }
 
     const ungrouped = streams.filter((s) => !seenCategoryIds.has(s.categoryId));
-    if (ungrouped.length > 0) appendGroup(rows, groups, UNGROUPED, ungrouped, source);
+    if (ungrouped.length > 0) appendGroup(rows, groups, UNGROUPED, ungrouped, source, liveExt);
 
     return { rows, groups };
 }
@@ -144,13 +158,14 @@ function appendGroup(
     groupName: string,
     streams: readonly XtreamLiveStream[],
     source: XtreamSource,
+    liveExt: string,
 ): void {
     const firstIndex = rows.length;
     for (const stream of streams) {
         rows.push({
             id: crypto.randomUUID(),
             name: stream.name,
-            url: liveStreamUrl(source, stream.streamId),
+            url: liveStreamUrl(source, stream.streamId, liveExt),
             group: groupName,
             logo: stream.icon ?? null,
             tvgId: stream.epgChannelId ?? null,

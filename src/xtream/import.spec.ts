@@ -55,6 +55,28 @@ describe('xtream/import', () => {
         });
     });
 
+    it('bakes .ts stream URLs when the provider does not allow m3u8 output', async () => {
+        await withFakePlatform({}, async ({ http, storage }) => {
+            http.onGet(apiUrl(source, '')).reply({
+                kind: 'ok',
+                body: JSON.stringify({ user_info: { auth: 1, status: 'Active', allowed_output_formats: ['ts'] } }),
+            });
+            http.onGet(apiUrl(source, 'get_live_categories')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ category_id: '1', category_name: 'NL' }]),
+            });
+            http.onGet(apiUrl(source, 'get_live_streams')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ stream_id: 7, name: 'NPO 1', category_id: '1' }]),
+            });
+            const outcome = await importXtreamSource({ url: source.url, user: source.user, pass: source.pass, name: 'X' });
+            expect(outcome.ok).toBe(true);
+            if (!outcome.ok) return;
+            const channels = await storage.getRange('channels', [outcome.summary.sourceId, 0], [outcome.summary.sourceId, 9]);
+            expect(channels[0]?.url).toBe('http://example.com/live/bob/secret/7.ts');
+        });
+    });
+
     it('re-importing the same url+user upserts in place instead of creating a second source', async () => {
         await withFakePlatform({}, async ({ http, storage }) => {
             scriptHappyPath(http);

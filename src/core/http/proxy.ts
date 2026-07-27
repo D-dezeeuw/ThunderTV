@@ -50,3 +50,21 @@ function isSameOrigin(url: string): boolean {
         return false;
     }
 }
+
+/**
+ * Routes an image URL (channel logo) through the proxy template only when
+ * the page would otherwise block it: an `http://` image on an `https:` page
+ * is mixed content and silently fails, which is why provider logos render
+ * as empty boxes on the deployed site. Anything already loadable stays
+ * direct — no proxy quota spent on it. `pageProtocol` is injectable for
+ * tests; callers pass nothing.
+ */
+export function proxyImageUrl(
+    template: string | undefined,
+    imageUrl: string | null,
+    pageProtocol: string = location.protocol,
+): string | null {
+    if (!imageUrl || !template) return imageUrl;
+    if (!(pageProtocol === 'https:' && imageUrl.startsWith('http://'))) return imageUrl;
+    return applyProxy(template, imageUrl);
+}

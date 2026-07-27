@@ -14,7 +14,7 @@ describe('xtream/client', () => {
                 body: JSON.stringify({ user_info: { auth: 1, status: 'Active', exp_date: '2000000000' } }),
             });
             const result = await authenticate(source);
-            expect(result).toEqual({ ok: true, data: { authenticated: true, status: 'Active', expiresAt: 2_000_000_000_000 } });
+            expect(result).toEqual({ ok: true, data: { authenticated: true, status: 'Active', expiresAt: 2_000_000_000_000, allowedOutputFormats: [] } });
         });
     });
 
@@ -25,7 +25,18 @@ describe('xtream/client', () => {
                 body: JSON.stringify({ user_info: { auth: '1', status: 'Active', exp_date: null } }),
             });
             const result = await authenticate(source);
-            expect(result).toEqual({ ok: true, data: { authenticated: true, status: 'Active', expiresAt: null } });
+            expect(result).toEqual({ ok: true, data: { authenticated: true, status: 'Active', expiresAt: null, allowedOutputFormats: [] } });
+        });
+    });
+
+    it('authenticate parses allowed_output_formats when the provider sends it', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            http.onGet(apiUrl(source, '')).reply({
+                kind: 'ok',
+                body: JSON.stringify({ user_info: { auth: 1, status: 'Active', allowed_output_formats: ['m3u8', 'ts'] } }),
+            });
+            const result = await authenticate(source);
+            expect(result.ok && result.data.allowedOutputFormats).toEqual(['m3u8', 'ts']);
         });
     });
 

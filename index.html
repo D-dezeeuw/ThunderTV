@@ -407,6 +407,9 @@
                                     {{ strings.list.playerStop }}
                                 </button>
                             </div>
+                            <p class="player-shell__error" data-if="player.playbackError" data-testid="player-error">
+                                {{ strings.list.playerErrorPrefix }} {{ player.playbackError }}
+                            </p>
                         </div>
 
                         <div class="list-shell__header">

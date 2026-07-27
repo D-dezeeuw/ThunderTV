@@ -30,6 +30,7 @@ repeated here, to avoid the two drifting apart.
 | `platform.capabilities` | ui | no | — | v1 | Live-derived from storage.tier every boot (Feature 04.7.5) — never meaningfully cacheable. |
 | `platform.name` | ui | no | — | v1 | Diagnostics only (Feature 03.8.6) — recomputed fresh from real detection every boot. |
 | `player.active` | player | yes | — | v1 | Denormalized last-watched channel snapshot — the §6.4 instant-restore row. |
+| `player.playbackError` | player | no | — | v1 | Transient diagnostics: the last fatal playback failure (hls.js fatal kind or MediaError label), rendered in the player bar — cleared on every new attach/stop. |
 | `player.zapHistory` | player | yes | 20 | v1 | Capped, deduped list of recently played channel snapshots. |
 | `playlist.activeSourceId` | playlist | yes | — | v1 | The source the user last navigated into (Feature 05.6.2, persisted starting Feature 08.10.6) — a reload lands back in the same channel list instead of a source picker, matching Feature 08.6\'s "never left" framing. |
 | `playlist.demoRows` | playlist | no | — | v1 | Phase 02 density-preview fixture rows — never real data, never persisted. |

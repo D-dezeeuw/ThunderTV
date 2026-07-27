@@ -140,6 +140,7 @@ export const strings = {
         backToGroups: '← Groups',
         playerStop: 'Stop',
         playerFullscreen: 'Full screen',
+        playerErrorPrefix: 'Playback failed:',
     },
 
     import: {
