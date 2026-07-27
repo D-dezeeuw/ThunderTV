@@ -47,7 +47,7 @@ describe('xtream-refresh (stale-catalog auto-refresh)', () => {
             setValue(PLAYLIST_ACTIVE_SOURCE_ID, 'src-old');
             tick();
 
-            expect(await refreshActiveXtreamSource('boot')).toBe(true);
+            expect(await refreshActiveXtreamSource('boot')).toBe('refreshed');
             tick();
             const activeId = get<string | null>(PLAYLIST_ACTIVE_SOURCE_ID);
             expect(activeId).not.toBe('src-old');
@@ -64,10 +64,10 @@ describe('xtream-refresh (stale-catalog auto-refresh)', () => {
             setValue(PLAYLIST_ACTIVE_SOURCE_ID, 'src-old');
             tick();
 
-            expect(await refreshActiveXtreamSource('boot')).toBe(false);
+            expect(await refreshActiveXtreamSource('boot')).toBe('skipped');
             expect(http.calls).toHaveLength(0);
 
-            expect(await refreshActiveXtreamSource('manual')).toBe(true);
+            expect(await refreshActiveXtreamSource('manual')).toBe('refreshed');
             expect(http.calls.length).toBeGreaterThan(0);
         });
     });
@@ -77,7 +77,7 @@ describe('xtream-refresh (stale-catalog auto-refresh)', () => {
             await storage.bulkPut('playlists', [makePlaylistRecord({ id: 'm3u-1', type: 'm3u-url' })], (r) => r.id);
             setValue(PLAYLIST_ACTIVE_SOURCE_ID, 'm3u-1');
             tick();
-            expect(await refreshActiveXtreamSource('manual')).toBe(false);
+            expect(await refreshActiveXtreamSource('manual')).toBe('unavailable');
         });
     });
 });

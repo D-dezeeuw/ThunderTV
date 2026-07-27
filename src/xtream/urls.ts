@@ -14,6 +14,11 @@ export function liveStreamUrl(source: XtreamSource, streamId: number, ext = 'm3u
     return `${source.url}/live/${encodeURIComponent(source.user)}/${encodeURIComponent(source.pass)}/${String(streamId)}.${ext}`;
 }
 
+/** The original Xtream live URL shape — no `/live/` prefix, no extension. Some panels serve ONLY this form (404ing `/live/...`), and many 302 it to their real HLS URL. */
+export function legacyLiveStreamUrl(source: XtreamSource, streamId: number): string {
+    return `${source.url}/${encodeURIComponent(source.user)}/${encodeURIComponent(source.pass)}/${String(streamId)}`;
+}
+
 /**
  * Strips a trailing slash and an accidentally pasted `/player_api.php` path
  * (Feature 19.1.2), and prepends `http://` when no scheme was typed —

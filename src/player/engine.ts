@@ -63,13 +63,20 @@ function appendStreamProbe(baseDetail: string): void {
     if (!url) return;
     void describeStream(url).then(async (summary) => {
         reportPlaybackError(`${baseDetail} — ${summary}`);
-        // A 404 from the provider is the signature of a stale catalog
-        // (panels renumber stream ids routinely) — refresh it on the spot,
-        // rate-limited inside refreshActiveXtreamSource().
+        // A 404 from the provider is either a stale catalog (panels
+        // renumber stream ids routinely) or the panel refusing streams to
+        // cloud/proxy IPs while allowing the API — refresh distinguishes
+        // them: fresh ids that still 404 point at IP blocking.
         if (summary.includes('HTTP 404')) {
-            const refreshed = await refreshActiveXtreamSource('error');
-            if (refreshed) {
-                reportPlaybackError(`${baseDetail} — ${summary}; channel list was stale and has been refreshed — try the channel again`);
+            const outcome = await refreshActiveXtreamSource('error');
+            if (outcome === 'refreshed') {
+                reportPlaybackError(`${baseDetail} — ${summary}; channel list refreshed — try the channel again`);
+            } else if (outcome === 'skipped') {
+                reportPlaybackError(
+                    `${baseDetail} — ${summary}; list was refreshed recently, so these 404s suggest the provider blocks cloud-proxy IPs for streams — a home-hosted proxy (same script on a NAS/Pi) or the desktop app would be needed`,
+                );
+            } else if (outcome === 'failed') {
+                reportPlaybackError(`${baseDetail} — ${summary}; automatic channel-list refresh failed`);
             }
         }
     });
