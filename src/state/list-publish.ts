@@ -1,9 +1,9 @@
 import { setValue } from 'spektrum';
 import { proxyImageUrl } from '../core/http/proxy';
+import { effectiveProxyTemplate } from '../core/platform/desktop-proxy';
 import type { ChannelRow } from '../m3u/types';
 import { LIST_PAD_BOTTOM, LIST_PAD_TOP, LIST_VISIBLE_ROWS } from './list';
-import { SETTINGS_PROXY_TEMPLATE } from './settings';
-import { get, set } from './typed';
+import { set } from './typed';
 
 /**
  * The fourth sanctioned non-`defineFn` publisher (state/README.md's
@@ -25,7 +25,7 @@ export function publishListWindow(visibleRows: readonly ChannelRow[], padTop: nu
     // logos through the configured proxy (proxyImageUrl is a no-op when
     // nothing would be blocked). Per-window mapping keeps it on-demand: at
     // most ~40 rows per publish, and the worker edge-caches image responses.
-    const template = get<string | null>(SETTINGS_PROXY_TEMPLATE) ?? undefined;
+    const template = effectiveProxyTemplate();
     const rows = visibleRows.map((row) => {
         const logo = proxyImageUrl(template, row.logo);
         return logo === row.logo ? row : { ...row, logo };
