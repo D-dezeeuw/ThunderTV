@@ -39,3 +39,43 @@
     font-size: var(--text-xs);
     color: var(--color-danger);
 }
+
+/* Stream-quality bars: three rising bars, lit according to
+   `player.streamHealth` (good = 3, fair = 2, poor = 1). Token colours
+   only, no transitions — the state changes are meaningful, not decorative. */
+.signal {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 0.85rem;
+    flex: none;
+}
+
+.signal__bar {
+    width: 3px;
+    border-radius: 1px;
+    background: var(--color-border);
+}
+
+.signal__bar--1 {
+    height: 40%;
+}
+.signal__bar--2 {
+    height: 70%;
+}
+.signal__bar--3 {
+    height: 100%;
+}
+
+.signal--good .signal__bar {
+    background: var(--color-accent);
+}
+
+.signal--fair .signal__bar--1,
+.signal--fair .signal__bar--2 {
+    background: var(--color-text-dim);
+}
+
+.signal--poor .signal__bar--1 {
+    background: var(--color-danger);
+}

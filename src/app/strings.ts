@@ -135,6 +135,12 @@ export const strings = {
             engineNative: 'Browser',
             engineHelp:
                 'Which engine to try first — each falls back to the others, so a wrong choice costs a retry, never playback. Most Xtream providers send a raw MPEG-TS stream (the default). Pick HLS if your provider sends real segmented playlists; Browser hands the stream straight to the OS player (the only option on iPhone/iPad).',
+            buffering: 'Buffering',
+            bufferingAuto: 'Auto',
+            bufferingSmooth: 'Smooth',
+            bufferingLowLatency: 'Low latency',
+            bufferingHelp:
+                'Auto sizes the buffer from your connection and grows it whenever playback actually stalls. Smooth always keeps a few seconds buffered. Low latency stays closest to live but rebuffers on any hiccup — solid networks only.',
         },
         appearance: {
             density: 'Density',
@@ -155,6 +161,9 @@ export const strings = {
         playerStop: 'Stop',
         playerFullscreen: 'Full screen',
         playerErrorPrefix: 'Playback failed:',
+        signalGood: 'Stream steady',
+        signalFair: 'Stream buffering occasionally',
+        signalPoor: 'Stream struggling — connection too slow or unstable',
     },
 
     import: {

@@ -2,7 +2,7 @@ import { appState, defineFn, getPathObj, refs, setValue } from 'spektrum';
 import { requestVideoFullscreen } from '../player/fullscreen';
 import { pushCapped } from './collections';
 import { persist } from './persist';
-import { PLAYER_ACTIVE, PLAYER_PLAYBACK_ERROR, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
+import { PLAYER_ACTIVE, PLAYER_PLAYBACK_ERROR, PLAYER_STREAM_HEALTH, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
 import type { ActiveChannelSnapshot } from './records';
 import { set } from './typed';
 
@@ -44,11 +44,17 @@ export function registerPlayerActions(): void {
 export function stopPlayback(): void {
     setValue(PLAYER_ACTIVE, null);
     setValue(PLAYER_PLAYBACK_ERROR, null);
+    setValue(PLAYER_STREAM_HEALTH, null);
 }
 
 /** Called by `src/player/engine.ts` when a stream dies (hls.js fatal error or the native element's `error` event) — the one visible diagnostic a phone user can screenshot. `null` clears it on a fresh attach. */
 export function reportPlaybackError(detail: string | null): void {
     setValue(PLAYER_PLAYBACK_ERROR, detail);
+}
+
+/** Called by `src/player/stream-health.ts` as stalls come and go — drives the player-bar signal indicator. */
+export function reportStreamHealth(health: string | null): void {
+    setValue(PLAYER_STREAM_HEALTH, health);
 }
 
 export function setActiveChannel(channel: ActiveChannelSnapshot): void {
