@@ -28,8 +28,8 @@
         <script type="importmap">
             { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
         </script>
-      <script type="module" crossorigin src="./assets/index-DvlH8ewz.js"></script>
-      <link rel="stylesheet" crossorigin href="./assets/index-C4sodKco.css">
+      <script type="module" crossorigin src="./assets/index-7a4YtxM_.js"></script>
+      <link rel="stylesheet" crossorigin href="./assets/index-Ci5ysdsK.css">
     </head>
     <body>
         <!--
@@ -404,6 +404,9 @@
                                     {{ strings.list.playerStop }}
                                 </button>
                             </div>
+                            <p class="player-shell__error" data-if="player.playbackError" data-testid="player-error">
+                                {{ strings.list.playerErrorPrefix }} {{ player.playbackError }}
+                            </p>
                         </div>
 
                         <div class="list-shell__header">
