@@ -28,8 +28,8 @@
         <script type="importmap">
             { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
         </script>
-      <script type="module" crossorigin src="./assets/index-86fKHFgA.js"></script>
-      <link rel="stylesheet" crossorigin href="./assets/index-DwOl1T6y.css">
+      <script type="module" crossorigin src="./assets/index-DvlH8ewz.js"></script>
+      <link rel="stylesheet" crossorigin href="./assets/index-C4sodKco.css">
     </head>
     <body>
         <!--
@@ -384,7 +384,12 @@
 
                     <!-- Feature 08.1-08.10: the real virtual-scrolled channel list —
                          the surface Phases 09 (search) and 10 (playback) plug into. -->
-                    <div class="list-shell" data-if="!importDone && activeSource" data-testid="channel-list-shell">
+                    <div
+                        class="list-shell"
+                        :class="{ 'list-shell--group-view': ui.viewMode === 'groups', 'list-shell--has-groups': groupsPanelVisible }"
+                        data-if="!importDone && activeSource"
+                        data-testid="channel-list-shell"
+                    >
                         <!-- MVP playback slice: a single real <video> element driven by
                              src/player/bindings.ts, watching player.active (already fully
                              wired since Phase 05/08 — this is the piece that was missing). -->
@@ -392,6 +397,9 @@
                             <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
                             <div class="player-shell__bar">
                                 <span class="player-shell__name truncate">{{ player.active.name }}</span>
+                                <button type="button" class="btn" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
+                                    {{ strings.list.playerFullscreen }}
+                                </button>
                                 <button type="button" class="btn" data-action="click" data-fn="player/stop" data-testid="player-stop-btn">
                                     {{ strings.list.playerStop }}
                                 </button>
@@ -411,7 +419,8 @@
                                 data-fn="list/showAllChannels"
                                 data-testid="show-all-channels-btn"
                             >
-                                {{ strings.list.allChannels }}
+                                <span class="list-shell__wide-label">{{ strings.list.allChannels }}</span
+                                ><span class="list-shell__narrow-label">{{ strings.list.backToGroups }}</span>
                             </button>
                         </div>
 
