@@ -3,6 +3,7 @@ import { toggleFavoriteById } from '../state/favorites.actions';
 import { handleRowContextMenu } from '../state/list.actions';
 import { loadActiveSource, registerActiveSourceWatch } from '../state/list-load';
 import { UI_VIEW_MODE } from '../state/list-state';
+import { registerViewRowsWatch } from '../state/live.actions';
 import { saveListState } from '../state/list-state-sync';
 import { PLAYLIST_ACTIVE_SOURCE_ID } from '../state/playlist';
 import { get } from '../state/typed';
@@ -70,6 +71,10 @@ export function registerListBindings(): () => void {
 
     void loadActiveSource();
     cleanups.push(registerActiveSourceWatch());
+    // Live and Categories share this one virtual list, so moving between
+    // them — or changing a Live filter setting — republishes a different
+    // row set into it rather than mounting a second list.
+    cleanups.push(registerViewRowsWatch());
 
     return () => cleanups.forEach((cleanup) => cleanup());
 }

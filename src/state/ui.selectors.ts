@@ -1,5 +1,12 @@
 import { computed, type State } from 'spektrum';
 import { parseHash, ROUTE_VALUES, type Route } from '../app/router';
+import {
+    SETTINGS_NAV_CATEGORIES,
+    SETTINGS_NAV_GUIDE,
+    SETTINGS_NAV_RECENTS,
+    SETTINGS_NAV_SOURCES,
+    SETTINGS_NAV_STARRED,
+} from './settings';
 import { UI_ACTIVE_VIEW, UI_STORAGE_NOTICE_DISMISSED } from './ui';
 
 /**
@@ -11,6 +18,53 @@ export function registerUiSelectors(): void {
     registerViewActiveComputeds();
     registerConnectDetectedComputed();
     registerStorageNoticeVisibleComputed();
+    registerChannelListViewComputed();
+    registerRailVisibilityComputeds();
+}
+
+/**
+ * Live and Categories are two presentations of the same virtual list (see
+ * `live.actions.ts`), so the list shell's `data-if` binds to this rather
+ * than repeating a two-way route comparison in markup.
+ */
+function registerChannelListViewComputed(): void {
+    computed('view.channelList.active', [UI_ACTIVE_VIEW], (state: State) => {
+        const active = (state as { ui?: { activeView?: Route } }).ui?.activeView;
+        return active === 'live' || active === 'categories';
+    });
+}
+
+/**
+ * Rail visibility. Live has no entry here on purpose: it is the app's home
+ * and the fallback every empty state points at, so it must always be
+ * reachable — hiding every destination would strand the user with no way
+ * back except the settings gear.
+ */
+const RAIL_TOGGLES: ReadonlyArray<{ name: string; key: string }> = [
+    { name: 'categories', key: SETTINGS_NAV_CATEGORIES },
+    { name: 'sources', key: SETTINGS_NAV_SOURCES },
+    { name: 'favorites', key: SETTINGS_NAV_STARRED },
+    { name: 'recent', key: SETTINGS_NAV_RECENTS },
+    { name: 'guide', key: SETTINGS_NAV_GUIDE },
+];
+
+function registerRailVisibilityComputeds(): void {
+    for (const { name, key } of RAIL_TOGGLES) {
+        computed(`rail.${name}.visible`, [key, UI_ACTIVE_VIEW], (state: State) => {
+            const enabled = readPath(state, key) !== false;
+            // A hidden button still shows while its own view is open —
+            // otherwise switching the toggle off from Settings would leave
+            // the user standing in a view with no highlighted rail entry
+            // and no obvious way back.
+            return enabled || (state as { ui?: { activeView?: Route } }).ui?.activeView === name;
+        });
+    }
+}
+
+function readPath(state: State, key: string): unknown {
+    return key.split('.').reduce<unknown>((acc, part) => {
+        return acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[part] : undefined;
+    }, state);
 }
 
 /** One `computed('view.<route>.active', ...)` per route (Feature 02.5.2/05.6.5) — index.html's per-section `data-if` binds to these, never to a raw `ui.activeView === '...'` comparison repeated in markup. */

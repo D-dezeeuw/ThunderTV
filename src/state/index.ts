@@ -8,6 +8,9 @@ import { applyHistoryPolicy } from './history-policy';
 import { initImportState } from './import';
 import { registerImportSelectors } from './import.selectors';
 import { initListState } from './list';
+import { initLiveState } from './live';
+import { registerLiveActions } from './live.actions';
+import { registerLiveSelectors } from './live.selectors';
 import { registerListActions } from './list.actions';
 import { registerListSelectors } from './list.selectors';
 import { initListGroupsState } from './list-groups';
@@ -39,6 +42,7 @@ export type { ActiveChannelSnapshot } from './records';
 export { loadPlaylistSources } from './playlist-load';
 export { loadFavoriteIds } from './favorites-load';
 export { loadActiveSource } from './list-load';
+export { registerViewRowsWatch } from './live.actions';
 
 /**
  * Seeds every module's defaults (Feature 05.1.8) — called before
@@ -56,6 +60,7 @@ export function initState(): void {
     initListState();
     initListStateModule();
     initListGroupsState();
+    initLiveState();
     initFavoritesState();
     applyHistoryPolicy();
 }
@@ -68,6 +73,7 @@ export function registerActions(): void {
     registerUiActions();
     registerListActions();
     registerGroupActions();
+    registerLiveActions();
     registerXtreamActions();
 }
 
@@ -78,6 +84,7 @@ export function registerSelectors(): void {
     registerPlayerSelectors();
     registerUiSelectors();
     registerListSelectors();
+    registerLiveSelectors();
 }
 
 /**

@@ -170,6 +170,7 @@ ways depending on target, both pointing at the exact same pinned version
 | `src/core/connect/`  | Phase 07 — Playlist Import Flows (`source-key.ts`'s `makeSourceKey`); Phase 14 — Connect Bookmark URLs reuses it |
 | `src/core/http/`     | Phase 03 — Platform Adapter Layer                                                          |
 | `src/m3u/`           | Phase 06 — M3U Parsing Engine (Web Worker); Phase 07 — Playlist Import Flows (`import*.ts`) |
+| `src/channels/`      | Live-view channel filtering — name parsing, curated Dutch catalog, junk detection, variant grouping (see `src/channels/README.md`) |
 | `src/epg/`           | Phases 16-18 — EPG Ingestion (Web Worker) / Display / Guide & Mapping                      |
 | `src/xtream/`        | Phases 19-21 — Xtream API Client / Live / VOD & Series                                     |
 | `src/player/`        | Phases 10-12 — Playback Foundation / Engines / Player UI                                   |

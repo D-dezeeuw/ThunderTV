@@ -29,6 +29,22 @@ export interface ChannelRow {
      */
     radio: boolean;
     drm?: ChannelDrm;
+    /**
+     * Quality/provider/catch-up alternatives of the same channel, attached
+     * by `src/channels/grouping.ts` when the list is showing grouped
+     * channels. Absent on raw (ungrouped) rows.
+     */
+    variants?: ChannelVariant[];
+}
+
+/** One playable alternative of a grouped channel — see `src/channels/grouping.ts`. */
+export interface ChannelVariant {
+    id: string;
+    url: string;
+    label: string;
+    quality: string | null;
+    isRecording: boolean;
+    provider: string | null;
 }
 
 /**

@@ -51,6 +51,33 @@ export function isPlaybackEngine(value: unknown): value is PlaybackEngine {
 }
 
 /**
+ * Rail visibility. The point of the Live view is that one screen answers
+ * "what can I watch"; every other destination is optional weight, so each
+ * rail button can be switched off. All default **on** — a fresh install
+ * must not hide the import flow — and Live itself is never hideable, since
+ * hiding every entry would strand the user.
+ */
+export const SETTINGS_NAV_SOURCES = 'settings.nav.sources';
+export const SETTINGS_NAV_CATEGORIES = 'settings.nav.categories';
+export const SETTINGS_NAV_STARRED = 'settings.nav.starred';
+export const SETTINGS_NAV_RECENTS = 'settings.nav.recents';
+export const SETTINGS_NAV_GUIDE = 'settings.nav.guide';
+
+/**
+ * Live-view filter. `liveCountry` is the country token kept from the
+ * `| NL |` prefix providers put on both channels and categories; `''`
+ * disables country filtering entirely (show everything, still grouped).
+ */
+export const SETTINGS_LIVE_COUNTRY = 'settings.liveCountry';
+/** Strict mode — keep only channels the curated catalog knows. Off by default; see `src/channels/dutch-catalog.ts` for why a whitelist is not the primary filter. */
+export const SETTINGS_LIVE_KNOWN_ONLY = 'settings.liveKnownOnly';
+/** Drop event-slot placeholders, separators and adult rows. On by default. */
+export const SETTINGS_LIVE_DROP_JUNK = 'settings.liveDropJunk';
+
+/** Countries offered in Settings. Anything else can still be typed into the field — this is a shortlist, not a validation gate. */
+export const LIVE_COUNTRIES: readonly string[] = ['NL', 'BE', 'DE', 'UK', 'FR', 'ES', 'US'];
+
+/**
  * Mirrors the stored settings blob (masterplan §6.3's `settings` key
  * family). `proxyTemplate` is the only persisted field — density lives
  * under `ui.density` (kept there for continuity with Phase 02 rather than
@@ -67,6 +94,18 @@ export interface SettingsState {
     refreshState: RefreshFeedbackState;
     playbackEngine: PlaybackEngine;
     buffering: BufferingMode;
+    nav: NavVisibility;
+    liveCountry: string;
+    liveKnownOnly: boolean;
+    liveDropJunk: boolean;
+}
+
+export interface NavVisibility {
+    sources: boolean;
+    categories: boolean;
+    starred: boolean;
+    recents: boolean;
+    guide: boolean;
 }
 
 export const SETTINGS_DEFAULTS: SettingsState = {
@@ -76,6 +115,10 @@ export const SETTINGS_DEFAULTS: SettingsState = {
     refreshState: 'idle',
     playbackEngine: 'mpegts',
     buffering: 'auto',
+    nav: { sources: true, categories: true, starred: true, recents: true, guide: true },
+    liveCountry: 'NL',
+    liveKnownOnly: false,
+    liveDropJunk: true,
 };
 
 export function initSettingsState(): void {
@@ -85,4 +128,12 @@ export function initSettingsState(): void {
     setValue(SETTINGS_REFRESH_STATE, SETTINGS_DEFAULTS.refreshState);
     setValue(SETTINGS_PLAYBACK_ENGINE, SETTINGS_DEFAULTS.playbackEngine);
     setValue(SETTINGS_BUFFERING, SETTINGS_DEFAULTS.buffering);
+    setValue(SETTINGS_NAV_SOURCES, SETTINGS_DEFAULTS.nav.sources);
+    setValue(SETTINGS_NAV_CATEGORIES, SETTINGS_DEFAULTS.nav.categories);
+    setValue(SETTINGS_NAV_STARRED, SETTINGS_DEFAULTS.nav.starred);
+    setValue(SETTINGS_NAV_RECENTS, SETTINGS_DEFAULTS.nav.recents);
+    setValue(SETTINGS_NAV_GUIDE, SETTINGS_DEFAULTS.nav.guide);
+    setValue(SETTINGS_LIVE_COUNTRY, SETTINGS_DEFAULTS.liveCountry);
+    setValue(SETTINGS_LIVE_KNOWN_ONLY, SETTINGS_DEFAULTS.liveKnownOnly);
+    setValue(SETTINGS_LIVE_DROP_JUNK, SETTINGS_DEFAULTS.liveDropJunk);
 }

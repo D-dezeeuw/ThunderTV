@@ -1,4 +1,5 @@
 import { watch } from 'spektrum';
+import type { Route } from '../app/router';
 import type { ChannelRecord } from '../core/storage';
 import { CHUNK_ROWS } from '../core/storage';
 import { getPlatform } from '../core/platform';
@@ -9,8 +10,10 @@ import { resetGroupsForSourceSwitch } from './groups.actions';
 import { publishGroups } from './list-groups';
 import { setDisplayedRows } from './list-rows';
 import { restoreListState } from './list-state-sync';
+import { publishRowsForCurrentView, resetLiveForSourceSwitch } from './live.actions';
 import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
 import { get } from './typed';
+import { UI_ACTIVE_VIEW } from './ui';
 
 const GROUP_NAME_UPPER_SENTINEL = '￿';
 
@@ -25,6 +28,7 @@ export async function loadActiveSource(): Promise<void> {
     const sourceId = get<string | null>(PLAYLIST_ACTIVE_SOURCE_ID);
 
     resetGroupsForSourceSwitch();
+    resetLiveForSourceSwitch();
     clearRows();
 
     if (!sourceId) {
@@ -38,6 +42,14 @@ export async function loadActiveSource(): Promise<void> {
     await streamChannelsFor(sourceId);
 
     if (get<string | null>(PLAYLIST_ACTIVE_SOURCE_ID) !== sourceId) return; // superseded mid-stream
+
+    // The Live view derives its own row set from the now-complete catalog
+    // (one row per real channel), so it never uses the restored group /
+    // scroll position — those describe the raw, ungrouped list.
+    if (get<Route>(UI_ACTIVE_VIEW) === 'live') {
+        publishRowsForCurrentView();
+        return;
+    }
 
     if (restored.viewMode === 'groups' && restored.activeGroup) {
         setDisplayedRows(rowsForGroup(getRows(), restored.activeGroup), {

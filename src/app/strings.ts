@@ -8,19 +8,46 @@ export const strings = {
     appName: 'ThunderTV',
 
     rail: {
+        live: 'Live',
+        categories: 'Categories',
         sources: 'Sources',
-        favorites: 'Favorites',
-        recent: 'Recent',
+        favorites: 'Starred',
+        recent: 'Recents',
         guide: 'Guide',
         settings: 'Settings',
     },
 
     views: {
+        live: { title: 'Live', heading: 'Live' },
+        categories: { title: 'Categories', heading: 'Categories' },
         sources: { title: 'Sources', heading: 'Sources' },
-        favorites: { title: 'Favorites', heading: 'Favorites' },
-        recent: { title: 'Recent', heading: 'Recent' },
+        favorites: { title: 'Starred', heading: 'Starred' },
+        recent: { title: 'Recents', heading: 'Recents' },
         guide: { title: 'Guide', heading: 'Guide' },
         connect: { title: 'Connect', heading: 'Connect' },
+    },
+
+    live: {
+        channelsLabel: 'channels',
+        hiddenLabel: 'hidden',
+        mergedLabel: 'merged',
+        /** The filter is aggressive by design, so the header always states what it removed — a missing channel must never look like the provider's fault. */
+        statsTitle: 'Live filter: grouped variants and hid rows that did not match',
+        empty: {
+            heading: 'No channels match the Live filter',
+            message:
+                'Your provider may label its channels differently. Try another country, switch off "Known channels only", or browse the untouched catalog under Categories.',
+            openCategories: 'Browse all categories',
+            openSources: 'Add a source',
+        },
+        variants: {
+            label: 'Other feeds',
+            catchUp: 'catch-up',
+        },
+    },
+
+    categories: {
+        note: 'Every category and channel exactly as your provider ships them — unfiltered and ungrouped.',
     },
 
     emptyStates: {
@@ -109,9 +136,31 @@ export const strings = {
         close: 'Close settings',
         sections: {
             user: 'User',
+            liveFilter: 'Live filter',
+            navigation: 'Navigation',
             streaming: 'Streaming',
             playback: 'Playback',
             appearance: 'Appearance',
+        },
+        liveFilter: {
+            countryLabel: 'Country',
+            countryAll: 'All countries',
+            countryHelp:
+                'Matched against the "| NL |"-style prefix your provider puts on channels and categories. Choose "All countries" to keep every channel while still merging duplicates.',
+            knownOnly: 'Known channels only',
+            knownOnlyHelp:
+                'Strict: show only channels in the built-in Dutch/Flemish list. Off by default — a whitelist silently hides regional and newly launched channels the list has never heard of.',
+            dropJunk: 'Hide filler channels',
+            dropJunkHelp:
+                'Removes numbered event slots (VIAPLAY 07, PPV 12…), separator rows and adult entries. Judged on the channel name only — nothing here checks whether a stream is actually alive.',
+        },
+        navigation: {
+            help: 'Choose which buttons appear in the sidebar. Live is always shown.',
+            sources: 'Sources',
+            categories: 'Categories',
+            starred: 'Starred',
+            recents: 'Recents',
+            guide: 'Guide',
         },
         streaming: {
             proxyLabel: 'Proxy URL template',

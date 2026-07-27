@@ -5,9 +5,11 @@ import { setValue } from 'spektrum';
  * is written from exactly one place — `applyRoute()` below — so no other
  * module may set that key (Feature 02.4.3).
  */
-export type Route = 'sources' | 'favorites' | 'recent' | 'guide' | 'connect';
+export type Route = 'live' | 'categories' | 'sources' | 'favorites' | 'recent' | 'guide' | 'connect';
 
 export const ROUTE_VALUES: readonly Route[] = [
+    'live',
+    'categories',
     'sources',
     'favorites',
     'recent',
@@ -15,7 +17,14 @@ export const ROUTE_VALUES: readonly Route[] = [
     'connect',
 ];
 
-export const DEFAULT_ROUTE: Route = 'sources';
+/**
+ * `live` — the filtered, deduplicated channel list — is the app's home.
+ * `sources` remains reachable (and is the rail's default-visible entry) so
+ * a first run with nothing imported still has an obvious next step; the
+ * Live view's empty state links straight there even when its rail button
+ * has been hidden.
+ */
+export const DEFAULT_ROUTE: Route = 'live';
 
 function isRoute(value: string): value is Route {
     return (ROUTE_VALUES as readonly string[]).includes(value);
@@ -46,7 +55,7 @@ function applyRoute(): void {
     if (path === '') {
         // Bare "#/" or no hash: redirect to the default route without an
         // extra history entry (Feature 02.4.5).
-        history.replaceState(null, '', '#/sources');
+        history.replaceState(null, '', `#/${DEFAULT_ROUTE}`);
         setValue('ui.activeView', DEFAULT_ROUTE);
         return;
     }

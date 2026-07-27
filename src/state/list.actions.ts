@@ -4,6 +4,7 @@ import { ensureIndexVisible, findRowById, indexOfRow, rowAt, rowCount } from '..
 import { toggleFavoriteById } from './favorites.actions';
 import { LIST_SELECTED_ID } from './list';
 import { saveListState } from './list-state-sync';
+import { publishVariantsFor } from './live.actions';
 import { setActiveChannel } from './player.actions';
 import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
 import { get } from './typed';
@@ -106,6 +107,10 @@ export function playChannelById(id: string): void {
     if (!sourceId) return;
     const row = findRowById(id);
     if (!row) return;
+    // Publish the alternate feeds first: the player dock reacts to
+    // `setActiveChannel`, so the variant strip must already be correct by
+    // the time the new channel paints.
+    publishVariantsFor(id, row.url);
     setActiveChannel({
         id: row.id,
         sourceId,

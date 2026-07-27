@@ -228,3 +228,23 @@
     font-size: var(--text-xs);
     color: var(--color-danger);
 }
+
+/* Checkbox rows in Settings (Live filter flags, rail visibility). The
+   whole label is the hit target — a bare 13px checkbox is unusable on a
+   phone. */
+.settings-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    min-height: 2.75rem;
+    cursor: pointer;
+    font-size: var(--text-sm);
+}
+
+.settings-toggle input {
+    flex: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    accent-color: var(--color-accent);
+}
