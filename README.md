@@ -82,6 +82,13 @@ set `https://<name>.<account>.workers.dev/{url}` as the proxy template in
 Settings → Streaming. The worker adds CORS headers, bridges http→https, and
 rewrites HLS manifests so video segments flow through it too.
 
+**When the provider blocks datacenter IPs:** many panels serve their API to
+anything but 404 all stream endpoints for cloud IPs (Cloudflare included) as
+anti-restream protection — streams then need a residential IP. Run the same
+proxy at home instead: `scripts/home-proxy.mjs` (Node 20+, wraps the worker
+script unchanged) on a NAS/Pi/always-on PC, exposed over HTTPS with
+Tailscale Funnel or Cloudflare Tunnel — setup steps in its header comment.
+
 ## Standing conventions
 
 - **TypeScript files stay ≤300 lines**, hard ceiling 400
