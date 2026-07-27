@@ -28,7 +28,7 @@
         <script type="importmap">
             { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
         </script>
-      <script type="module" crossorigin src="./assets/index-DNeMmg_o.js"></script>
+      <script type="module" crossorigin src="./assets/index-DdGnnW0W.js"></script>
       <link rel="stylesheet" crossorigin href="./assets/index-Ci5ysdsK.css">
     </head>
     <body>
@@ -692,7 +692,43 @@
                         <h3 class="settings-section__title">
                             {{ strings.settings.sections.playback }}
                         </h3>
-                        <!-- TODO(phase-22) -->
+                        <p class="settings-section__label">{{ strings.settings.playback.engine }}</p>
+                        <div class="density-toggle" role="group" :aria-label="strings.settings.playback.engine">
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': settings.playbackEngine === 'mpegts' }"
+                                data-engine="mpegts"
+                                data-action="click"
+                                data-fn="settings/setPlaybackEngine"
+                                data-testid="engine-mpegts-btn"
+                            >
+                                {{ strings.settings.playback.engineMpegts }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': settings.playbackEngine === 'hls' }"
+                                data-engine="hls"
+                                data-action="click"
+                                data-fn="settings/setPlaybackEngine"
+                                data-testid="engine-hls-btn"
+                            >
+                                {{ strings.settings.playback.engineHls }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': settings.playbackEngine === 'native' }"
+                                data-engine="native"
+                                data-action="click"
+                                data-fn="settings/setPlaybackEngine"
+                                data-testid="engine-native-btn"
+                            >
+                                {{ strings.settings.playback.engineNative }}
+                            </button>
+                        </div>
+                        <p class="settings-section__hint">{{ strings.settings.playback.engineHelp }}</p>
                     </section>
                     <section class="settings-section">
                         <h3 class="settings-section__title">
