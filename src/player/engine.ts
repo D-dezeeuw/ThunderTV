@@ -13,11 +13,13 @@
  * actually plays.
  */
 import type Hls from 'hls.js';
+import { getPlatform } from '../core/platform';
 import { reportPlaybackError } from '../state/player.actions';
 
 let hls: Hls | null = null;
 let nativeErrorHandler: (() => void) | null = null;
 let nativeErrorVideo: HTMLVideoElement | null = null;
+let lastStreamUrl: string | null = null;
 
 function supportsNativeHls(video: HTMLVideoElement): boolean {
     return video.canPlayType('application/vnd.apple.mpegurl') !== '';
@@ -38,15 +40,66 @@ function attachNativeErrorReporting(video: HTMLVideoElement): void {
         const detail = err?.message ? `${label} — ${err.message}` : label;
         console.error('[ThunderTV] native playback error:', detail);
         reportPlaybackError(detail);
+        appendStreamProbe(detail);
     };
     video.addEventListener('error', handler);
     nativeErrorHandler = handler;
     nativeErrorVideo = video;
 }
 
+/**
+ * "Source not supported" alone cannot distinguish the two realities behind
+ * a dead IPTV stream: a panel answering the HLS URL with something that
+ * is not HLS at all, vs. a perfectly valid manifest whose codecs this
+ * device refuses (iOS rejects HEVC in TS segments, the common "4K"
+ * channel setup). On failure, fetch the stream's first bytes and say
+ * which — the message is the diagnostic a phone screenshot can carry.
+ * Dynamic technical detail, same central-strings exemption as the 'm3u'
+ * error kind (Feature 07.4.3's documented exception).
+ */
+function appendStreamProbe(baseDetail: string): void {
+    const url = lastStreamUrl;
+    if (!url) return;
+    void describeStream(url).then((summary) => {
+        reportPlaybackError(`${baseDetail} — ${summary}`);
+    });
+}
+
+async function describeStream(url: string): Promise<string> {
+    try {
+        const result = await getPlatform().http.get(url, { timeoutMs: 8000 });
+        if (result.kind !== 'ok') return `stream fetch failed (${result.kind})`;
+        const body = result.res.body;
+        if (!body) return 'empty response';
+        // First chunk only, then cancel — a raw live TS feed is endless and
+        // must never be buffered whole (the exact bug the proxy had).
+        const reader = body.getReader();
+        const { value } = await reader.read();
+        void reader.cancel().catch(() => undefined);
+        if (!value || value.byteLength === 0) return 'empty response';
+
+        const text = new TextDecoder().decode(value.slice(0, 4096));
+        if (text.trimStart().startsWith('#EXTM3U')) {
+            const codecs = /CODECS="([^"]+)"/.exec(text)?.[1];
+            if (codecs) {
+                const hevc = /hvc1|hev1/i.test(codecs) ? ' (HEVC — iPhones only accept HEVC in fMP4 segments, not TS)' : '';
+                return `HLS manifest OK, codecs ${codecs}${hevc}`;
+            }
+            return 'HLS manifest OK — segment format or codec unsupported on this device';
+        }
+        if (value[0] === 0x47) return 'provider sent a raw MPEG-TS stream instead of HLS — browsers cannot play this';
+        if (text.trimStart().startsWith('<')) return 'provider sent an HTML page (login/error) instead of a stream';
+        if (text.trimStart().startsWith('{') || text.trimStart().startsWith('[')) return 'provider sent a JSON error instead of a stream';
+        return 'unrecognized stream data';
+    } catch {
+        return 'stream probe failed';
+    }
+}
+
 export async function attachAndPlay(video: HTMLVideoElement, streamUrl: string): Promise<void> {
     detach(video);
     reportPlaybackError(null);
+    lastStreamUrl = streamUrl;
     attachNativeErrorReporting(video);
 
     if (supportsNativeHls(video)) {
@@ -75,6 +128,7 @@ export async function attachAndPlay(video: HTMLVideoElement, streamUrl: string):
         if (!data.fatal) return;
         console.error('[ThunderTV] hls.js fatal error:', data.type, data.details);
         reportPlaybackError(`${data.type}: ${data.details}`);
+        appendStreamProbe(`${data.type}: ${data.details}`);
     });
 }
 
@@ -97,4 +151,5 @@ export function resetPlayerEngineForTests(): void {
     hls = null;
     nativeErrorHandler = null;
     nativeErrorVideo = null;
+    lastStreamUrl = null;
 }
