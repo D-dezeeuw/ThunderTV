@@ -128,6 +128,14 @@ export const strings = {
             refreshDone: 'Channel list refreshed.',
             refreshFailed: 'Could not refresh — open the source first, or check its connection details.',
         },
+        playback: {
+            engine: 'Playback engine',
+            engineMpegts: 'MPEG-TS',
+            engineHls: 'HLS',
+            engineNative: 'Browser',
+            engineHelp:
+                'Which engine to try first — each falls back to the others, so a wrong choice costs a retry, never playback. Most Xtream providers send a raw MPEG-TS stream (the default). Pick HLS if your provider sends real segmented playlists; Browser hands the stream straight to the OS player (the only option on iPhone/iPad).',
+        },
         appearance: {
             density: 'Density',
             densityCompact: 'Compact',

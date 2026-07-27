@@ -1,26 +1,42 @@
-/**
- * MVP playback engine: a single `<video>` element driven by hls.js
- * (dynamically imported so the ~150 kB library never lands in the initial
- * bundle) with a native-HLS path for Safari/iOS, which refuses a second
- * decoder for a format it already ships natively.
- *
- * Fatal failures on either path report through `reportPlaybackError()`
- * (rendered in the player bar) — on a phone there is no devtools console,
- * so a dead stream must say why on screen.
- *
- * Full multi-engine selection (native/hls.js/mpegts.js) is Phase 11's
- * scope — this is the minimum real player needed to prove a channel
- * actually plays.
- */
 import type Hls from 'hls.js';
-import { getPlatform } from '../core/platform';
 import { reportPlaybackError } from '../state/player.actions';
+import { SETTINGS_PLAYBACK_ENGINE, type PlaybackEngine } from '../state/settings';
+import { get } from '../state/typed';
 import { refreshActiveXtreamSource } from '../state/xtream-refresh';
+import { attachMpegts, detachMpegts } from './mpegts-engine';
+import { alternateFormatUrl, describeStream } from './stream-probe';
 
+/**
+ * Playback engine selection, as an ordered attempt chain. Three real
+ * formats show up in IPTV:
+ *
+ *  - raw MPEG-TS    → mpegts.js (`mpegts-engine.ts`). The DEFAULT: most
+ *    Xtream panels serve an endless transport stream whose `.m3u8` is only
+ *    a wrapper, which hls.js rejects outright (`levelParsingError`) and no
+ *    browser decodes natively. mpegts.js demuxes it to MSE.
+ *  - segmented HLS  → hls.js, or the browser's own native HLS on
+ *    Safari/iOS, which refuses a second decoder for a format it ships.
+ *  - anything else  → hand the URL to the browser and let its pipeline try.
+ *
+ * `settings.playbackEngine` picks which is tried FIRST; the others follow
+ * as fallbacks, so a wrong preference costs one retry rather than
+ * playback. Each attempt uses the URL form its engine expects — the
+ * `.ts`/`.m3u8` sibling of what the catalog baked (`alternateFormatUrl`),
+ * since Xtream serves the same channel under both.
+ *
+ * Fatal failures report through `reportPlaybackError()` (rendered in the
+ * player bar) with a probe of what the provider actually sent — on a phone
+ * there is no devtools console, so a dead stream must say why on screen.
+ */
 let hls: Hls | null = null;
 let nativeErrorHandler: (() => void) | null = null;
 let nativeErrorVideo: HTMLVideoElement | null = null;
 let lastStreamUrl: string | null = null;
+/** The URL as baked in the catalog; each attempt derives its own `.ts`/`.m3u8` form from it. */
+let baseStreamUrl: string | null = null;
+let chain: PlaybackEngine[] = [];
+let chainIndex = 0;
+let failures: string[] = [];
 
 function supportsNativeHls(video: HTMLVideoElement): boolean {
     return video.canPlayType('application/vnd.apple.mpegurl') !== '';
@@ -34,30 +50,25 @@ const MEDIA_ERROR_LABELS: Record<number, string> = {
     4: 'source not supported',
 };
 
+/**
+ * A `<video>` element error covers both the native attempts and the
+ * MSE-fed ones (mpegts.js/hls.js push into the same element), so it routes
+ * through `advanceChain()` like any other engine failure — which reports
+ * and probes once the chain is exhausted.
+ */
 function attachNativeErrorReporting(video: HTMLVideoElement): void {
     const handler = (): void => {
         const err = video.error;
         const label = err ? (MEDIA_ERROR_LABELS[err.code] ?? `code ${String(err.code)}`) : 'unknown';
         const detail = err?.message ? `${label} — ${err.message}` : label;
         console.error('[ThunderTV] native playback error:', detail);
-        reportPlaybackError(detail);
-        appendStreamProbe(detail);
+        void advanceChain(video, detail);
     };
     video.addEventListener('error', handler);
     nativeErrorHandler = handler;
     nativeErrorVideo = video;
 }
 
-/**
- * "Source not supported" alone cannot distinguish the two realities behind
- * a dead IPTV stream: a panel answering the HLS URL with something that
- * is not HLS at all, vs. a perfectly valid manifest whose codecs this
- * device refuses (iOS rejects HEVC in TS segments, the common "4K"
- * channel setup). On failure, fetch the stream's first bytes and say
- * which — the message is the diagnostic a phone screenshot can carry.
- * Dynamic technical detail, same central-strings exemption as the 'm3u'
- * error kind (Feature 07.4.3's documented exception).
- */
 function appendStreamProbe(baseDetail: string): void {
     const url = lastStreamUrl;
     if (!url) return;
@@ -82,78 +93,82 @@ function appendStreamProbe(baseDetail: string): void {
     });
 }
 
-/** Probes the played URL, and — when it carries a recognizable stream extension — the alternate Xtream output format too, so one error line settles "is it this format, or the provider refusing streams entirely". */
-async function describeStream(url: string): Promise<string> {
-    const primary = await describeOneUrl(url);
+/** The `.ts` form of a stream URL — Xtream serves the same channel under both extensions. */
+function tsFormOf(url: string): string {
+    if (url.endsWith('.ts')) return url;
     const alt = alternateFormatUrl(url);
-    if (!alt) return primary;
-    const altVerdict = await describeOneUrl(alt.url);
-    return `${primary}; ${alt.label} variant: ${altVerdict}`;
+    return alt?.label === '.ts' ? alt.url : url;
 }
 
-/** Swaps `.m3u8` ↔ `.ts` on the URL tail — works on the proxied form too, since `encodeURIComponent` leaves dots and letters intact. */
-function alternateFormatUrl(url: string): { url: string; label: string } | null {
-    if (url.endsWith('.m3u8')) return { url: `${url.slice(0, -'.m3u8'.length)}.ts`, label: '.ts' };
-    if (url.endsWith('.ts')) return { url: `${url.slice(0, -'.ts'.length)}.m3u8`, label: '.m3u8' };
-    return null;
+/** The `.m3u8` form of a stream URL. */
+function hlsFormOf(url: string): string {
+    if (url.endsWith('.m3u8')) return url;
+    const alt = alternateFormatUrl(url);
+    return alt?.label === '.m3u8' ? alt.url : url;
 }
 
-async function describeOneUrl(url: string): Promise<string> {
-    try {
-        const result = await getPlatform().http.get(url, { timeoutMs: 8000 });
-        if (result.kind === 'http') return `HTTP ${String(result.status)} from provider`;
-        if (result.kind !== 'ok') return `stream fetch failed (${result.kind})`;
-        const body = result.res.body;
-        if (!body) return 'empty response';
-        // First chunk only, then cancel — a raw live TS feed is endless and
-        // must never be buffered whole (the exact bug the proxy had).
-        const reader = body.getReader();
-        const { value } = await reader.read();
-        void reader.cancel().catch(() => undefined);
-        if (!value || value.byteLength === 0) return 'empty response';
+function preferredEngine(): PlaybackEngine {
+    const configured = get<PlaybackEngine | null>(SETTINGS_PLAYBACK_ENGINE);
+    return configured ?? 'mpegts';
+}
 
-        const text = new TextDecoder().decode(value.slice(0, 4096));
-        if (text.trimStart().startsWith('#EXTM3U')) {
-            const codecs = /CODECS="([^"]+)"/.exec(text)?.[1];
-            if (codecs) {
-                const hevc = /hvc1|hev1/i.test(codecs) ? ' (HEVC — iPhones only accept HEVC in fMP4 segments, not TS)' : '';
-                return `HLS manifest OK, codecs ${codecs}${hevc}`;
-            }
-            return 'HLS manifest OK — segment format or codec unsupported on this device';
-        }
-        if (value[0] === 0x47) return 'raw MPEG-TS stream — browsers cannot play this';
-        if (text.trimStart().startsWith('<')) return 'HTML page (login/error) instead of a stream';
-        if (text.trimStart().startsWith('{') || text.trimStart().startsWith('[')) return 'JSON error instead of a stream';
-        return 'unrecognized stream data';
-    } catch {
-        return 'stream probe failed';
-    }
+/** Preference first, then the remaining engines as fallbacks — every stream gets all three before giving up. */
+function attemptChain(preference: PlaybackEngine): PlaybackEngine[] {
+    const rest = (['mpegts', 'hls', 'native'] as PlaybackEngine[]).filter((e) => e !== preference);
+    return [preference, ...rest];
 }
 
 export async function attachAndPlay(video: HTMLVideoElement, streamUrl: string): Promise<void> {
     detach(video);
     reportPlaybackError(null);
-    lastStreamUrl = streamUrl;
+    baseStreamUrl = streamUrl;
+    chain = attemptChain(preferredEngine());
+    chainIndex = 0;
+    failures = [];
     attachNativeErrorReporting(video);
+    await runCurrentAttempt(video);
+}
 
+/** Runs `chain[chainIndex]`; engine failures call `advanceChain()`, which re-enters here until the chain is exhausted. */
+async function runCurrentAttempt(video: HTMLVideoElement): Promise<void> {
+    const engine = chain[chainIndex];
+    const base = baseStreamUrl;
+    if (!engine || !base) return;
+
+    if (engine === 'mpegts') {
+        const url = tsFormOf(base);
+        lastStreamUrl = url;
+        const result = await attachMpegts(video, url, (detail) => {
+            void advanceChain(video, detail);
+        });
+        if (!result.ok) await advanceChain(video, result.reason ?? 'mpegts unavailable');
+        return;
+    }
+
+    if (engine === 'native') {
+        lastStreamUrl = base;
+        video.src = base;
+        await video.play().catch(() => undefined);
+        return;
+    }
+
+    const url = hlsFormOf(base);
+    lastStreamUrl = url;
     if (supportsNativeHls(video)) {
-        video.src = streamUrl;
+        video.src = url;
         await video.play().catch(() => undefined);
         return;
     }
 
     const { default: HlsCtor } = await import('hls.js');
     if (!HlsCtor.isSupported()) {
-        // Last-resort fallback (e.g. a raw .ts MPEG-TS URL) — let the
-        // browser's own media pipeline try rather than failing outright.
-        video.src = streamUrl;
-        await video.play().catch(() => undefined);
+        await advanceChain(video, 'hls.js unsupported on this device');
         return;
     }
 
     const instance = new HlsCtor();
     hls = instance;
-    instance.loadSource(streamUrl);
+    instance.loadSource(url);
     instance.attachMedia(video);
     instance.on(HlsCtor.Events.MANIFEST_PARSED, () => {
         void video.play().catch(() => undefined);
@@ -161,16 +176,38 @@ export async function attachAndPlay(video: HTMLVideoElement, streamUrl: string):
     instance.on(HlsCtor.Events.ERROR, (_event, data) => {
         if (!data.fatal) return;
         console.error('[ThunderTV] hls.js fatal error:', data.type, data.details);
-        reportPlaybackError(`${data.type}: ${data.details}`);
-        appendStreamProbe(`${data.type}: ${data.details}`);
+        void advanceChain(video, `${String(data.type)}: ${String(data.details)}`);
     });
 }
 
-export function detach(video: HTMLVideoElement): void {
+/**
+ * One engine failed: tear it down and try the next in the chain. Only the
+ * last failure is reported (with a probe) — the intermediate ones are
+ * expected noise when the preference does not match the provider's format.
+ */
+async function advanceChain(video: HTMLVideoElement, detail: string): Promise<void> {
+    failures.push(detail);
+    detachEngines();
+    chainIndex += 1;
+    if (chainIndex < chain.length) {
+        await runCurrentAttempt(video);
+        return;
+    }
+    const summary = failures.join('; ');
+    reportPlaybackError(summary);
+    appendStreamProbe(summary);
+}
+
+function detachEngines(): void {
     if (hls) {
         hls.destroy();
         hls = null;
     }
+    detachMpegts();
+}
+
+export function detach(video: HTMLVideoElement): void {
+    detachEngines();
     if (nativeErrorHandler && nativeErrorVideo) {
         nativeErrorVideo.removeEventListener('error', nativeErrorHandler);
         nativeErrorHandler = null;
@@ -186,4 +223,8 @@ export function resetPlayerEngineForTests(): void {
     nativeErrorHandler = null;
     nativeErrorVideo = null;
     lastStreamUrl = null;
+    baseStreamUrl = null;
+    chain = [];
+    chainIndex = 0;
+    failures = [];
 }
