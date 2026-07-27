@@ -14,7 +14,7 @@ import { GROUPS_PANEL_CAP, LIST_GROUPS, LIST_GROUPS_TRUNCATED } from './list-gro
 import { UI_ACTIVE_GROUP, UI_LIST_STATE, UI_VIEW_MODE } from './list-state';
 import { PLAYER_ACTIVE, PLAYER_PLAYBACK_ERROR, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
 import { MAX_PLAYLIST_SOURCES, PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_DEMO_ROWS, PLAYLIST_SOURCES } from './playlist';
-import { SETTINGS_PROXY_ERROR, SETTINGS_PROXY_SAVED, SETTINGS_PROXY_TEMPLATE } from './settings';
+import { SETTINGS_PROXY_ERROR, SETTINGS_PROXY_SAVED, SETTINGS_PROXY_TEMPLATE, SETTINGS_REFRESH_STATE } from './settings';
 import {
     PLATFORM_CAPABILITIES,
     PLATFORM_NAME,
@@ -195,6 +195,11 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: false,
         description: 'True immediately after a successful proxy-template save (Feature 07.8.3) — transient, cleared on next edit.',
+    },
+    [SETTINGS_REFRESH_STATE]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'Feedback for the manual channel-list refresh button (idle/busy/done/failed) — transient, reset on each attempt.',
     },
 
     // --- ui (including the diagnostic mirrors documented as ui-owned — see state/README.md) ---

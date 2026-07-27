@@ -2,6 +2,7 @@ import { defineFn, refs } from 'spektrum';
 import { importXtreamSource } from '../xtream/import';
 import { normalizeXtreamUrl } from '../xtream/urls';
 import { setImportError, setImportSourceName, setImportStage, setImportSummary } from './import-setters';
+import { loadPlaylistSources } from './playlist-load';
 import { setActiveSourceId } from './playlist.actions';
 import { isImportInFlight } from '../m3u/import';
 
@@ -62,6 +63,7 @@ export async function triggerXtreamImport(params: { url: string; user: string; p
         const outcome = await importXtreamSource({ url, user: params.user.trim(), pass: params.pass, name: url });
         if (outcome.ok) {
             lastXtreamParams = null;
+            await loadPlaylistSources();
             setImportSummary({
                 sourceId: outcome.summary.sourceId,
                 total: outcome.summary.total,

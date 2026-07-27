@@ -121,6 +121,12 @@ export const strings = {
             proxySave: 'Save',
             proxyInvalid: 'Must be a valid https:// URL (or http://localhost for local testing).',
             proxySaved: 'Saved.',
+            refreshNow: 'Refresh channel list',
+            refreshHelp:
+                'Providers renumber their streams regularly — the list also refreshes itself when older than 6 hours, and after a channel 404s.',
+            refreshBusy: 'Refreshing…',
+            refreshDone: 'Channel list refreshed.',
+            refreshFailed: 'Could not refresh — open the source first, or check its connection details.',
         },
         appearance: {
             density: 'Density',
