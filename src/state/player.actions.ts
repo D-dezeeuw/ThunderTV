@@ -2,9 +2,17 @@ import { appState, defineFn, getPathObj, refs, setValue } from 'spektrum';
 import { requestVideoFullscreen } from '../player/fullscreen';
 import { pushCapped } from './collections';
 import { persist } from './persist';
-import { PLAYER_ACTIVE, PLAYER_PLAYBACK_ERROR, PLAYER_STREAM_HEALTH, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
+import {
+    PLAYER_ACTIVE,
+    PLAYER_ACTIVE_VARIANT_ID,
+    PLAYER_PLAYBACK_ERROR,
+    PLAYER_STREAM_HEALTH,
+    PLAYER_VARIANTS,
+    PLAYER_ZAP_HISTORY,
+    ZAP_HISTORY_CAP,
+} from './player';
 import type { ActiveChannelSnapshot } from './records';
-import { set } from './typed';
+import { replace, set } from './typed';
 
 /**
  * The reference action from masterplan §6.3, ported exactly: sets the
@@ -45,6 +53,11 @@ export function stopPlayback(): void {
     setValue(PLAYER_ACTIVE, null);
     setValue(PLAYER_PLAYBACK_ERROR, null);
     setValue(PLAYER_STREAM_HEALTH, null);
+    setValue(PLAYER_ACTIVE_VARIANT_ID, null);
+    // Array-bearing write: `replace()` rather than `setValue`, since
+    // Spektrum deep-merges objects and would otherwise leave the previous
+    // channel's variants behind.
+    replace(PLAYER_VARIANTS, []);
 }
 
 /** Called by `src/player/engine.ts` when a stream dies (hls.js fatal error or the native element's `error` event) — the one visible diagnostic a phone user can screenshot. `null` clears it on a fresh attach. */

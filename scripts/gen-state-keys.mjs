@@ -24,7 +24,7 @@ const stateDir = `${repoRoot}src/state`;
 const outPath = `${repoRoot}masterplan/reference/state-keys.md`;
 const checkOnly = process.argv.includes('--check');
 
-const MODULE_FILES = ['playlist.ts', 'import.ts', 'player.ts', 'epg.ts', 'settings.ts', 'ui.ts', 'list.ts', 'list-state.ts', 'list-groups.ts', 'favorites.ts'];
+const MODULE_FILES = ['playlist.ts', 'import.ts', 'player.ts', 'epg.ts', 'settings.ts', 'ui.ts', 'list.ts', 'list-state.ts', 'list-groups.ts', 'live.ts', 'favorites.ts'];
 
 /** Every top-level `export const NAME = <value>;` across the five module files — key-string constants and the odd numeric one (e.g. ZAP_HISTORY_CAP) that registry.ts references for `maxItems`. */
 function collectConstants() {

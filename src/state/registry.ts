@@ -12,9 +12,34 @@ import {
 import { LIST_PAD_BOTTOM, LIST_PAD_TOP, LIST_SELECTED_ID, LIST_VISIBLE_ROWS } from './list';
 import { GROUPS_PANEL_CAP, LIST_GROUPS, LIST_GROUPS_TRUNCATED } from './list-groups';
 import { UI_ACTIVE_GROUP, UI_LIST_STATE, UI_VIEW_MODE } from './list-state';
-import { PLAYER_ACTIVE, PLAYER_PLAYBACK_ERROR, PLAYER_STREAM_HEALTH, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
+import {
+    PLAYER_ACTIVE,
+    PLAYER_ACTIVE_VARIANT_ID,
+    PLAYER_PLAYBACK_ERROR,
+    PLAYER_STREAM_HEALTH,
+    PLAYER_VARIANTS,
+    PLAYER_ZAP_HISTORY,
+    VARIANTS_CAP,
+    ZAP_HISTORY_CAP,
+} from './player';
 import { MAX_PLAYLIST_SOURCES, PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_DEMO_ROWS, PLAYLIST_SOURCES } from './playlist';
-import { SETTINGS_BUFFERING, SETTINGS_PLAYBACK_ENGINE, SETTINGS_PROXY_ERROR, SETTINGS_PROXY_SAVED, SETTINGS_PROXY_TEMPLATE, SETTINGS_REFRESH_STATE } from './settings';
+import { LIVE_STATS } from './live';
+import {
+    SETTINGS_BUFFERING,
+    SETTINGS_LIVE_COUNTRY,
+    SETTINGS_LIVE_DROP_JUNK,
+    SETTINGS_LIVE_KNOWN_ONLY,
+    SETTINGS_NAV_CATEGORIES,
+    SETTINGS_NAV_GUIDE,
+    SETTINGS_NAV_RECENTS,
+    SETTINGS_NAV_SOURCES,
+    SETTINGS_NAV_STARRED,
+    SETTINGS_PLAYBACK_ENGINE,
+    SETTINGS_PROXY_ERROR,
+    SETTINGS_PROXY_SAVED,
+    SETTINGS_PROXY_TEMPLATE,
+    SETTINGS_REFRESH_STATE,
+} from './settings';
 import {
     PLATFORM_CAPABILITIES,
     PLATFORM_NAME,
@@ -166,6 +191,17 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         persisted: false,
         description: 'Live stream quality (good/fair/poor) derived from stall frequency — the player-bar signal indicator; null when idle.',
     },
+    [PLAYER_VARIANTS]: {
+        owner: 'player',
+        persisted: false,
+        maxItems: VARIANTS_CAP,
+        description: 'The playing channel\'s alternate feeds (other qualities, a provider bundle\'s copy, catch-up) — rebuilt from the loaded catalog on every channel change, so never persisted: a stale copy would offer stream ids the provider may already have rotated.',
+    },
+    [PLAYER_ACTIVE_VARIANT_ID]: {
+        owner: 'player',
+        persisted: false,
+        description: 'Which variant is currently playing, so the dock strip can mark one chip active. Derived alongside player.variants.',
+    },
     [PLAYER_PLAYBACK_ERROR]: {
         owner: 'player',
         persisted: false,
@@ -215,6 +251,53 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: true,
         description: 'MPEG-TS buffering mode — auto (default, adapts to measured stalls), smooth (fixed deep buffer), or lowLatency.',
+    },
+    [SETTINGS_NAV_SOURCES]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'Show the Sources button in the nav rail. Default on — hiding it on a fresh install would bury the import flow.',
+    },
+    [SETTINGS_NAV_CATEGORIES]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'Show the Categories button in the nav rail — the provider\'s catalog exactly as shipped, unfiltered and ungrouped.',
+    },
+    [SETTINGS_NAV_STARRED]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'Show the Starred button in the nav rail.',
+    },
+    [SETTINGS_NAV_RECENTS]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'Show the Recents button in the nav rail.',
+    },
+    [SETTINGS_NAV_GUIDE]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'Show the Guide button in the nav rail.',
+    },
+    [SETTINGS_LIVE_COUNTRY]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'Country token the Live view keeps, matched against the "| NL |"-style prefix providers put on channels and categories. Empty string disables country filtering.',
+    },
+    [SETTINGS_LIVE_KNOWN_ONLY]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'Live view strict mode — show only channels the curated catalog knows. Off by default; a whitelist silently hides legitimate regional and newly launched channels.',
+    },
+    [SETTINGS_LIVE_DROP_JUNK]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'Drop event-slot placeholders (VIAPLAY 07 and friends), separator rows and adult entries from the Live view. On by default.',
+    },
+
+    // --- live ---
+    [LIVE_STATS]: {
+        owner: 'list',
+        persisted: false,
+        description: 'Live-view filter readout (rows in, channels kept, how many hidden and why) — derived from the loaded catalog on every rebuild, so never persisted. Exists so a user who thinks a channel is missing can see that the list filtered rather than that the provider did.',
     },
 
     // --- ui (including the diagnostic mirrors documented as ui-owned — see state/README.md) ---

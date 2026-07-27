@@ -79,3 +79,55 @@
 .signal--poor .signal__bar--1 {
     background: var(--color-danger);
 }
+
+/* Variant strip — the playing channel's other feeds (quality, provider
+   bundle, catch-up). Scrolls horizontally rather than wrapping, so a
+   channel carried by several bundles never pushes the video up the page. */
+.variants {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-top: 1px solid var(--color-border);
+    min-width: 0;
+}
+
+.variants__label {
+    flex: none;
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+.variants__chips {
+    display: flex;
+    gap: var(--space-2);
+    overflow-x: auto;
+    /* Touch targets stay reachable on a phone without a visible bar. */
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.variants__chips::-webkit-scrollbar {
+    display: none;
+}
+
+.variants__chip {
+    flex: none;
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-bg);
+    color: var(--color-text-dim);
+    font: inherit;
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    cursor: pointer;
+    /* 44px hit target on touch without inflating the visual pill. */
+    min-height: 2rem;
+}
+
+.variants__chip--active {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: var(--color-bg);
+}

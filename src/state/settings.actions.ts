@@ -2,9 +2,26 @@ import { defineFn, refs } from 'spektrum';
 import { isValidProxyTemplate } from '../core/http';
 import { strings } from '../app/strings';
 import { persist } from './persist';
-import { isBufferingMode, isPlaybackEngine, SETTINGS_BUFFERING, SETTINGS_PLAYBACK_ENGINE, SETTINGS_PROXY_ERROR, SETTINGS_PROXY_SAVED, SETTINGS_PROXY_TEMPLATE, SETTINGS_REFRESH_STATE } from './settings';
+import {
+    isBufferingMode,
+    isPlaybackEngine,
+    SETTINGS_BUFFERING,
+    SETTINGS_LIVE_COUNTRY,
+    SETTINGS_LIVE_DROP_JUNK,
+    SETTINGS_LIVE_KNOWN_ONLY,
+    SETTINGS_NAV_CATEGORIES,
+    SETTINGS_NAV_GUIDE,
+    SETTINGS_NAV_RECENTS,
+    SETTINGS_NAV_SOURCES,
+    SETTINGS_NAV_STARRED,
+    SETTINGS_PLAYBACK_ENGINE,
+    SETTINGS_PROXY_ERROR,
+    SETTINGS_PROXY_SAVED,
+    SETTINGS_PROXY_TEMPLATE,
+    SETTINGS_REFRESH_STATE,
+} from './settings';
 import { refreshActiveXtreamSource } from './xtream-refresh';
-import { set } from './typed';
+import { get, set } from './typed';
 
 /**
  * Settings → Streaming's proxy template field (Feature 07.8.1/07.8.3) — an
@@ -43,6 +60,46 @@ export function registerSettingsActions(): void {
             persist(SETTINGS_BUFFERING);
         }
     });
+    // One handler for every boolean switch (rail visibility + the two Live
+    // filter flags) rather than six near-identical `defineFn`s. The key
+    // comes from `data-setting`, resolved through an allowlist so markup can
+    // never name an arbitrary state path.
+    defineFn('settings/toggle', (el) => {
+        toggleSetting(el.dataset['setting']);
+    });
+    defineFn('settings/setLiveCountry', (el) => {
+        if (el instanceof HTMLSelectElement) setLiveCountry(el.value);
+    });
+}
+
+/** `data-setting` token → the state key it may write. An allowlist, not a prefix rule: markup must never be able to name an arbitrary path. */
+const TOGGLEABLE: Record<string, string> = {
+    'nav.sources': SETTINGS_NAV_SOURCES,
+    'nav.categories': SETTINGS_NAV_CATEGORIES,
+    'nav.starred': SETTINGS_NAV_STARRED,
+    'nav.recents': SETTINGS_NAV_RECENTS,
+    'nav.guide': SETTINGS_NAV_GUIDE,
+    liveKnownOnly: SETTINGS_LIVE_KNOWN_ONLY,
+    liveDropJunk: SETTINGS_LIVE_DROP_JUNK,
+};
+
+/** Exported for direct testing without a DOM element. */
+export function toggleSetting(token: string | undefined): void {
+    const key = token ? TOGGLEABLE[token] : undefined;
+    if (!key) return;
+    set(key, !(get<boolean>(key) ?? false));
+    persist(key);
+}
+
+/**
+ * `''` is meaningful: it turns country filtering off entirely, so the Live
+ * view still groups and de-duplicates but shows every country the provider
+ * carries. Anything else is normalized to the uppercase token the parser
+ * produces from a `| NL |` prefix.
+ */
+export function setLiveCountry(raw: string): void {
+    set(SETTINGS_LIVE_COUNTRY, raw.trim().toUpperCase());
+    persist(SETTINGS_LIVE_COUNTRY);
 }
 
 async function runManualRefresh(): Promise<void> {

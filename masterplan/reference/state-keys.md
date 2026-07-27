@@ -27,16 +27,27 @@ repeated here, to avoid the two drifting apart.
 | `list.padTop` | list | no | — | v1 | Top spacer height (px) so the native scrollbar reflects the full virtual extent above the published window. |
 | `list.selectedId` | list | no | — | v1 | The keyboard/click selection cursor (Feature 08.7.2) — distinct from player.active. Saved per source into ui.listState (Feature 08.7.8); this live key itself is not directly persisted. |
 | `list.visibleRows` | list | no | 128 | v1 | The virtual-list windowed slice (masterplan §5.4) — published by src/ui/virtual-list.ts on every scroll-driven republish; ≤ ~40 rows by construction (overscan included), never the full playlist array. |
+| `live.stats` | list | no | — | v1 | Live-view filter readout (rows in, channels kept, how many hidden and why) — derived from the loaded catalog on every rebuild, so never persisted. Exists so a user who thinks a channel is missing can see that the list filtered rather than that the provider did. |
 | `platform.capabilities` | ui | no | — | v1 | Live-derived from storage.tier every boot (Feature 04.7.5) — never meaningfully cacheable. |
 | `platform.name` | ui | no | — | v1 | Diagnostics only (Feature 03.8.6) — recomputed fresh from real detection every boot. |
 | `player.active` | player | yes | — | v1 | Denormalized last-watched channel snapshot — the §6.4 instant-restore row. |
+| `player.activeVariantId` | player | no | — | v1 | Which variant is currently playing, so the dock strip can mark one chip active. Derived alongside player.variants. |
 | `player.playbackError` | player | no | — | v1 | Transient diagnostics: the last fatal playback failure (hls.js fatal kind or MediaError label), rendered in the player bar — cleared on every new attach/stop. |
 | `player.streamHealth` | player | no | — | v1 | Live stream quality (good/fair/poor) derived from stall frequency — the player-bar signal indicator; null when idle. |
+| `player.variants` | player | no | 12 | v1 | The playing channel\'s alternate feeds (other qualities, a provider bundle\'s copy, catch-up) — rebuilt from the loaded catalog on every channel change, so never persisted: a stale copy would offer stream ids the provider may already have rotated. |
 | `player.zapHistory` | player | yes | 20 | v1 | Capped, deduped list of recently played channel snapshots. |
 | `playlist.activeSourceId` | playlist | yes | — | v1 | The source the user last navigated into (Feature 05.6.2, persisted starting Feature 08.10.6) — a reload lands back in the same channel list instead of a source picker, matching Feature 08.6\'s "never left" framing. |
 | `playlist.demoRows` | playlist | no | — | v1 | Phase 02 density-preview fixture rows — never real data, never persisted. |
 | `playlist.sources` | playlist | no | 200 | v1 | Live projection of the playlists storage table (Feature 07.1.8) — never itself persisted; rebuilt from storage at boot and after every import commit, so there is exactly one source of truth. |
 | `settings.buffering` | settings | yes | — | v1 | MPEG-TS buffering mode — auto (default, adapts to measured stalls), smooth (fixed deep buffer), or lowLatency. |
+| `settings.liveCountry` | settings | yes | — | v1 | Country token the Live view keeps, matched against the "| NL |"-style prefix providers put on channels and categories. Empty string disables country filtering. |
+| `settings.liveDropJunk` | settings | yes | — | v1 | Drop event-slot placeholders (VIAPLAY 07 and friends), separator rows and adult entries from the Live view. On by default. |
+| `settings.liveKnownOnly` | settings | yes | — | v1 | Live view strict mode — show only channels the curated catalog knows. Off by default; a whitelist silently hides legitimate regional and newly launched channels. |
+| `settings.nav.categories` | settings | yes | — | v1 | Show the Categories button in the nav rail — the provider\'s catalog exactly as shipped, unfiltered and ungrouped. |
+| `settings.nav.guide` | settings | yes | — | v1 | Show the Guide button in the nav rail. |
+| `settings.nav.recents` | settings | yes | — | v1 | Show the Recents button in the nav rail. |
+| `settings.nav.sources` | settings | yes | — | v1 | Show the Sources button in the nav rail. Default on — hiding it on a fresh install would bury the import flow. |
+| `settings.nav.starred` | settings | yes | — | v1 | Show the Starred button in the nav rail. |
 | `settings.playbackEngine` | settings | yes | — | v1 | Preferred playback engine tried first (mpegts/hls/native) — Settings → Playback; each falls back to the others. |
 | `settings.proxyError` | settings | no | — | v1 | Inline validation message for the last proxy-template save attempt (Feature 07.8.3) — transient, cleared on next edit. |
 | `settings.proxySaved` | settings | no | — | v1 | True immediately after a successful proxy-template save (Feature 07.8.3) — transient, cleared on next edit. |
