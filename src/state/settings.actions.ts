@@ -32,8 +32,8 @@ export function registerSettingsActions(): void {
 
 async function runManualRefresh(): Promise<void> {
     set(SETTINGS_REFRESH_STATE, 'busy');
-    const refreshed = await refreshActiveXtreamSource('manual').catch(() => false);
-    set(SETTINGS_REFRESH_STATE, refreshed ? 'done' : 'failed');
+    const outcome = await refreshActiveXtreamSource('manual').catch(() => 'failed' as const);
+    set(SETTINGS_REFRESH_STATE, outcome === 'refreshed' ? 'done' : 'failed');
 }
 
 function refValue(name: string): string {

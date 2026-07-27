@@ -6,7 +6,7 @@ import { authenticate, getLiveCategories, getLiveStreams } from './client';
 import type { XtreamError } from './errors';
 import { sortCategoriesNlFirst } from './nl-priority';
 import type { XtreamCategory, XtreamLiveStream, XtreamSource } from './types';
-import { liveStreamUrl } from './urls';
+import { legacyLiveStreamUrl, liveStreamUrl } from './urls';
 
 export interface XtreamImportParams {
     url: string;
@@ -48,7 +48,8 @@ export async function importXtreamSource(params: XtreamImportParams): Promise<Xt
     if (!streamsResult.ok) return { ok: false, error: streamsResult.error };
 
     const orderedCategories = sortCategoriesNlFirst(categoriesResult.data);
-    const { rows, groups } = buildRows(source, orderedCategories, streamsResult.data, liveExt);
+    const buildStreamUrl = await detectStreamUrlShape(source, streamsResult.data, liveExt);
+    const { rows, groups } = buildRows(orderedCategories, streamsResult.data, buildStreamUrl);
 
     const stagingId = crypto.randomUUID();
     const storage = getPlatform().storage;
@@ -121,12 +122,55 @@ function pickLiveExtension(allowedOutputFormats: readonly string[]): string {
     return allowedOutputFormats.includes('ts') ? 'ts' : (allowedOutputFormats[0] ?? 'm3u8');
 }
 
-/** Builds channel rows in Dutch-first category order and their matching `GroupMeta[]`, in one pass so `firstIndex` stays consistent with row order. */
-function buildRows(
+/**
+ * Not every panel serves the modern `/live/user/pass/id.ext` URLs — some
+ * answer only the original `/user/pass/id` form (404ing `/live/...`
+ * entirely, which reads like a dead account), and many 302 that legacy form
+ * to their real HLS URL. One first-chunkless probe per candidate against a
+ * real stream id picks the shape that actually answers before thousands of
+ * URLs get baked; every probe rides the same proxied HTTP adapter the
+ * player uses, so it sees exactly what playback would. All-404 falls back
+ * to the preferred modern shape — the player's own failure probe then
+ * carries the diagnosis.
+ */
+async function detectStreamUrlShape(
     source: XtreamSource,
-    orderedCategories: readonly XtreamCategory[],
     streams: readonly XtreamLiveStream[],
     liveExt: string,
+): Promise<(streamId: number) => string> {
+    const candidates: Array<(streamId: number) => string> =
+        liveExt === 'm3u8'
+            ? [
+                  (id) => liveStreamUrl(source, id, 'm3u8'),
+                  (id) => legacyLiveStreamUrl(source, id),
+                  (id) => liveStreamUrl(source, id, 'ts'),
+              ]
+            : [(id) => liveStreamUrl(source, id, liveExt), (id) => legacyLiveStreamUrl(source, id)];
+
+    const probe = streams[0];
+    const fallback = candidates[0] as (streamId: number) => string;
+    if (!probe) return fallback;
+
+    for (const build of candidates) {
+        try {
+            const result = await getPlatform().http.get(build(probe.streamId), { timeoutMs: 8000 });
+            if (result.kind === 'ok') {
+                void result.res.body?.cancel().catch(() => undefined);
+                return build;
+            }
+        } catch {
+            // Hard transport failure — try the next shape; the loop's
+            // fallback keeps import functional either way.
+        }
+    }
+    return fallback;
+}
+
+/** Builds channel rows in Dutch-first category order and their matching `GroupMeta[]`, in one pass so `firstIndex` stays consistent with row order. */
+function buildRows(
+    orderedCategories: readonly XtreamCategory[],
+    streams: readonly XtreamLiveStream[],
+    buildStreamUrl: (streamId: number) => string,
 ): { rows: ChannelRow[]; groups: GroupMeta[] } {
     const byCategory = new Map<string, XtreamLiveStream[]>();
     for (const stream of streams) {
@@ -143,11 +187,11 @@ function buildRows(
         const categoryStreams = byCategory.get(category.id);
         if (!categoryStreams || categoryStreams.length === 0) continue;
         seenCategoryIds.add(category.id);
-        appendGroup(rows, groups, category.name, categoryStreams, source, liveExt);
+        appendGroup(rows, groups, category.name, categoryStreams, buildStreamUrl);
     }
 
     const ungrouped = streams.filter((s) => !seenCategoryIds.has(s.categoryId));
-    if (ungrouped.length > 0) appendGroup(rows, groups, UNGROUPED, ungrouped, source, liveExt);
+    if (ungrouped.length > 0) appendGroup(rows, groups, UNGROUPED, ungrouped, buildStreamUrl);
 
     return { rows, groups };
 }
@@ -157,15 +201,14 @@ function appendGroup(
     groups: GroupMeta[],
     groupName: string,
     streams: readonly XtreamLiveStream[],
-    source: XtreamSource,
-    liveExt: string,
+    buildStreamUrl: (streamId: number) => string,
 ): void {
     const firstIndex = rows.length;
     for (const stream of streams) {
         rows.push({
             id: crypto.randomUUID(),
             name: stream.name,
-            url: liveStreamUrl(source, stream.streamId, liveExt),
+            url: buildStreamUrl(stream.streamId),
             group: groupName,
             logo: stream.icon ?? null,
             tvgId: stream.epgChannelId ?? null,

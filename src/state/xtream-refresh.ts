@@ -42,20 +42,23 @@ export function isXtreamCatalogStale(lastRefresh: number | null, now: number): b
  */
 export type XtreamRefreshTrigger = 'boot' | 'error' | 'manual';
 
-export async function refreshActiveXtreamSource(trigger: XtreamRefreshTrigger = 'boot'): Promise<boolean> {
-    if (busy) return false;
+/** `skipped` = fresh-enough (boot) or refreshed-too-recently (error); `unavailable` = the active source is not a refreshable Xtream record. */
+export type XtreamRefreshOutcome = 'refreshed' | 'skipped' | 'unavailable' | 'failed';
+
+export async function refreshActiveXtreamSource(trigger: XtreamRefreshTrigger = 'boot'): Promise<XtreamRefreshOutcome> {
+    if (busy) return 'skipped';
     const sourceId = get<string | null>(PLAYLIST_ACTIVE_SOURCE_ID);
-    if (!sourceId) return false;
+    if (!sourceId) return 'unavailable';
 
     const record = (await getPlatform().storage.getAll('playlists')).find((p) => p.id === sourceId);
-    if (!record || record.type !== 'xtream' || !record.url || !record.username || !record.password) return false;
+    if (!record || record.type !== 'xtream' || !record.url || !record.username || !record.password) return 'unavailable';
 
     const now = Date.now();
     // boot honors the TTL; a 404-triggered refresh bypasses it but is
     // rate-limited; a user-initiated one always enqueues fresh (Feature
     // 19.6.4's rule).
-    if (trigger === 'boot' && !isXtreamCatalogStale(record.lastRefresh, now)) return false;
-    if (trigger === 'error' && now - lastForcedAt < FORCED_REFRESH_MIN_INTERVAL_MS) return false;
+    if (trigger === 'boot' && !isXtreamCatalogStale(record.lastRefresh, now)) return 'skipped';
+    if (trigger === 'error' && now - lastForcedAt < FORCED_REFRESH_MIN_INTERVAL_MS) return 'skipped';
 
     busy = true;
     if (trigger !== 'boot') lastForcedAt = now;
@@ -66,12 +69,12 @@ export async function refreshActiveXtreamSource(trigger: XtreamRefreshTrigger = 
             pass: record.password,
             name: record.name,
         });
-        if (!outcome.ok) return false;
+        if (!outcome.ok) return 'failed';
         await loadPlaylistSources();
         if (get<string | null>(PLAYLIST_ACTIVE_SOURCE_ID) === sourceId) {
             setActiveSourceId(outcome.summary.sourceId);
         }
-        return true;
+        return 'refreshed';
     } finally {
         busy = false;
     }
