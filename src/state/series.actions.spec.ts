@@ -9,6 +9,7 @@ import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
 import { PLAYER_ACTIVE } from './player';
 import type { ActiveChannelSnapshot } from './records';
 import {
+    closeSeriesDetail,
     openSeriesCatalog,
     openSeriesDetail,
     playSeriesEpisode,
@@ -19,6 +20,8 @@ import {
     SERIES_CATEGORIES,
     SERIES_COUNT,
     SERIES_DETAIL,
+    SERIES_DETAIL_ERROR_REASON,
+    SERIES_DETAIL_STATUS,
     SERIES_ERROR_REASON,
     SERIES_STATUS,
     type SeriesCategoryRow,
@@ -86,6 +89,24 @@ describe('series.actions', () => {
         });
     });
 
+    it('strips a leading provider decoration tag from published category names (Issue 1)', async () => {
+        await withFakePlatform({}, async ({ http, storage }) => {
+            initSeriesState();
+            await activateXtreamSource(storage);
+            http.onGet(apiUrl(source, 'get_series_categories')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ category_id: '1', category_name: '| NL | WK 2026' }]),
+            });
+            http.onGet(apiUrl(source, 'get_series', '&category_id=1')).reply({ kind: 'ok', body: JSON.stringify([]) });
+
+            await openSeriesCatalog();
+            tick();
+
+            const categories = get<SeriesCategoryRow[]>(SERIES_CATEGORIES);
+            expect(categories).toEqual([{ id: '1', name: 'WK 2026' }]);
+        });
+    });
+
     it('caches a selected category within the TTL — a second selectCategory call does not refetch', async () => {
         await withFakePlatform({}, async ({ http, storage }) => {
             initSeriesState();
@@ -105,7 +126,7 @@ describe('series.actions', () => {
         });
     });
 
-    it('openSeriesDetail publishes a partial snapshot immediately, then fills in seasons/episodes', async () => {
+    it('openSeriesDetail publishes a partial snapshot immediately, then fills in flattened season/episode rows', async () => {
         await withFakePlatform({}, async ({ http, storage }) => {
             initSeriesState();
             await activateXtreamSource(storage);
@@ -127,9 +148,82 @@ describe('series.actions', () => {
 
             const detail = get<SeriesDetail>(SERIES_DETAIL);
             expect(detail?.name).toBe('Show B');
-            expect(detail?.seasons).toEqual([
-                { season: 1, episodes: [{ episodeId: 100, episode: 1, title: 'Pilot', containerExtension: 'mp4', durationSecs: null }] },
+            expect(detail?.rows).toEqual([
+                { kind: 'season', season: 1 },
+                { kind: 'episode', episodeId: 100, episode: 1, title: 'Pilot', durationMins: null },
             ]);
+            expect(get<string>(SERIES_DETAIL_STATUS)).toBe('ready');
+            expect(get<string | null>(SERIES_DETAIL_ERROR_REASON)).toBeNull();
+        });
+    });
+
+    it('sets series.detailStatus/error (fetch-failed) when get_series_info fails, instead of silently leaving the panel looking empty', async () => {
+        await withFakePlatform({}, async ({ http, storage }) => {
+            initSeriesState();
+            await activateXtreamSource(storage);
+            http.onGet(apiUrl(source, 'get_series', '&category_id=1')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ series_id: 7, name: 'Show B', category_id: '1' }]),
+            });
+            http.onGet(apiUrl(source, 'get_series_info', '&series_id=7')).reply({ kind: 'http', status: 500 });
+
+            await selectSeriesCategory('1');
+            tick();
+            await openSeriesDetail(7);
+            tick();
+
+            expect(get<string>(SERIES_DETAIL_STATUS)).toBe('error');
+            expect(get<string | null>(SERIES_DETAIL_ERROR_REASON)).toBe('fetch-failed');
+            // The partial snapshot (name/poster) survives — only the episode
+            // list itself is affected, so the poster/title area doesn't
+            // disappear alongside the error message.
+            expect(get<SeriesDetail>(SERIES_DETAIL)?.name).toBe('Show B');
+        });
+    });
+
+    it('sets series.detailStatus/error (no-source) when the active Xtream account disappears between selecting a category and opening its detail', async () => {
+        await withFakePlatform({}, async ({ http, storage }) => {
+            initSeriesState();
+            await activateXtreamSource(storage);
+            http.onGet(apiUrl(source, 'get_series', '&category_id=1')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ series_id: 7, name: 'Show B', category_id: '1' }]),
+            });
+
+            await selectSeriesCategory('1'); // populates seriesMemory with series 7
+            tick();
+            setValue(PLAYLIST_ACTIVE_SOURCE_ID, null); // account gone
+            tick();
+
+            await openSeriesDetail(7);
+            tick();
+
+            expect(get<string>(SERIES_DETAIL_STATUS)).toBe('error');
+            expect(get<string | null>(SERIES_DETAIL_ERROR_REASON)).toBe('no-source');
+        });
+    });
+
+    it('closeSeriesDetail resets detailStatus/detailErrorReason back to idle', async () => {
+        await withFakePlatform({}, async ({ http, storage }) => {
+            initSeriesState();
+            await activateXtreamSource(storage);
+            http.onGet(apiUrl(source, 'get_series', '&category_id=1')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ series_id: 7, name: 'Show B', category_id: '1' }]),
+            });
+            http.onGet(apiUrl(source, 'get_series_info', '&series_id=7')).reply({ kind: 'http', status: 500 });
+
+            await selectSeriesCategory('1');
+            tick();
+            await openSeriesDetail(7);
+            tick();
+            expect(get<string>(SERIES_DETAIL_STATUS)).toBe('error');
+
+            closeSeriesDetail();
+            tick();
+
+            expect(get<string>(SERIES_DETAIL_STATUS)).toBe('idle');
+            expect(get<string | null>(SERIES_DETAIL_ERROR_REASON)).toBeNull();
         });
     });
 

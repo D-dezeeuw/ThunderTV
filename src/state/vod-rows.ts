@@ -2,6 +2,7 @@ import type { ChannelRow } from '../m3u/types';
 import { normalizeForSearch } from '../search/normalize';
 import type { XtreamSource, XtreamVodInfo, XtreamVodStream } from '../xtream/types';
 import { vodStreamUrl } from '../xtream/urls';
+import { cleanCatalogDisplayName } from './catalog-clean-name';
 import { createCatalogMemory } from './catalog-memory';
 import { get } from './typed';
 import { VOD_CATEGORIES, type VodCategoryRow, type VodDetail, type VodItem } from './vod';
@@ -67,7 +68,7 @@ export function makeVodRowId(streamId: number): string {
 export function vodItemToRow(item: VodItem, source: XtreamSource | null, categoryName: string | null): ChannelRow {
     return {
         id: makeVodRowId(item.streamId),
-        name: item.name,
+        name: cleanCatalogDisplayName(item.name),
         url: source ? vodStreamUrl(source, item.streamId, item.containerExtension) : '',
         group: categoryName,
         logo: item.icon ?? null,
@@ -79,7 +80,7 @@ export function vodItemToRow(item: VodItem, source: XtreamSource | null, categor
 export function toVodDetail(item: VodItem, categoryName: string | null, info?: XtreamVodInfo): VodDetail {
     return {
         streamId: item.streamId,
-        name: item.name,
+        name: cleanCatalogDisplayName(item.name),
         categoryId: item.categoryId,
         categoryName,
         logo: item.icon ?? null,

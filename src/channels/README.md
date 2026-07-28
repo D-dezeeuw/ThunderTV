@@ -19,7 +19,7 @@ the variant strip in the player dock.
 
 | File                | Responsibility                                                                   |
 | ------------------- | -------------------------------------------------------------------------------- |
-| `name-parse.ts`     | Splits `\| NL \| NPO 1 HD rec` into country / base / quality / recording flag.    |
+| `name-parse.ts`     | Splits `\| NL \| NPO 1 HD rec` into country / base / quality / recording flag. Live/Radio/Categories only — the Movies/Series catalog's own, simpler decoration-stripping lives in `src/state/catalog-clean-name.ts` instead (see `src/state/README.md`'s "Movies/Series/Search catalogs" section for why they're separate). |
 | `dutch-catalog.ts`  | ~70 curated Dutch + Flemish channels: canonical name, broadcast-order rank, aliases. |
 | `junk-filter.ts`    | Name-shape junk detection (event slots, separators, dummies, adult).              |
 | `grouping.ts`       | The collapse engine: country filter → junk filter → bucket by identity → sort.    |

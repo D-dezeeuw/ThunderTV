@@ -10,6 +10,7 @@ export const deCatalog = {
         emptyCategory: 'Noch nichts in dieser Kategorie.',
         close: 'Schließen',
         play: 'Abspielen',
+        retry: 'Erneut versuchen',
     },
 
     movies: {

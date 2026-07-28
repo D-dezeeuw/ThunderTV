@@ -849,11 +849,24 @@
                                 </div>
                             </div>
 
-                            <!-- Series detail (Phase 21): same overlay chrome as Movies,
-                                 plus season/episode groups off series.detail.seasons — no
-                                 season-tab selection exists in state, so every season
-                                 renders as its own collapsed-by-nothing group (simplest
-                                 convention-respecting choice; see final report). -->
+                            <!-- Series detail (Phase 21, Issue 2 follow-up): same overlay
+                                 chrome as Movies, plus a flattened season-header/episode row
+                                 list off series.detail.rows. Deliberately ONE flat data-each,
+                                 not seasons[].episodes[] nested two levels: Spektrum's
+                                 data-each clones an element's own *first element child* into
+                                 its container, so a season block that itself carries
+                                 data-each (the original markup here) treats its own nested
+                                 episode-list as a static, never-cloned sibling — it binds
+                                 once and never again, which is why episode lines used to
+                                 render literal "{{ }}" text. series.detail.rows
+                                 (series-rows.ts's buildSeriesDetailRows()) is pre-flattened
+                                 and pre-formatted (durationMins rounded in state, not via
+                                 Math.round() in a template expression) so this can be a
+                                 single-level data-each + data-if per row kind, the exact
+                                 pattern every other list in the app already uses. No
+                                 season-tab selection exists in state, so every season still
+                                 renders as its own collapsed-by-nothing header + episode
+                                 rows. -->
                             <div
                                 class="catalog-detail"
                                 data-if="view.series.active && series.detailId"
@@ -881,27 +894,66 @@
                                     </p>
                                     <p class="catalog-detail__plot" data-if="series.detail.plot">{{ series.detail.plot }}</p>
 
-                                    <p class="catalog-detail__empty" data-if="series.detail.seasons.length === 0" data-testid="series-no-episodes">
+                                    <!-- Issue 2's "make failure visible" fix: openSeriesDetail()
+                                         now always resolves series.detailStatus to something the
+                                         panel can show — loading/ready/error — instead of a
+                                         failed get_series_info silently leaving the row list
+                                         looking the same as a genuinely-empty series. -->
+                                    <p class="catalog-detail__empty" data-if="series.detailStatus === 'loading'" data-testid="series-detail-loading">
+                                        {{ strings.catalog.loading }}
+                                    </p>
+                                    <div class="list-shell__empty" data-if="series.detailStatus === 'error' && series.detailErrorReason === 'no-source'" data-testid="series-detail-no-source">
+                                        <p>{{ strings.catalog.noSource }}</p>
+                                        <div class="list-shell__empty-actions">
+                                            <button type="button" class="btn" data-action="click" data-fn="ui/toggleSettings" data-testid="series-detail-no-source-settings-btn">
+                                                {{ strings.catalog.noSourceAction }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="list-shell__empty" data-if="series.detailStatus === 'error' && series.detailErrorReason === 'fetch-failed'" data-testid="series-detail-fetch-failed">
+                                        <p>{{ strings.catalog.fetchFailed }}</p>
+                                        <div class="list-shell__empty-actions">
+                                            <button
+                                                type="button"
+                                                class="btn"
+                                                data-action="click"
+                                                data-fn="series/openDetail"
+                                                :data-series-id="series.detailId"
+                                                data-testid="series-detail-retry"
+                                            >
+                                                {{ strings.catalog.retry }}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <p class="catalog-detail__empty" data-if="series.detailStatus === 'ready' && series.detail.rows.length === 0" data-testid="series-no-episodes">
                                         {{ strings.series.noEpisodes }}
                                     </p>
-                                    <div class="catalog-seasons" data-if="series.detail.seasons.length > 0">
-                                        <div class="catalog-season" data-each="series.detail.seasons" data-testid="series-season">
-                                            <h3 class="catalog-season__title">{{ strings.series.seasonPrefix }} {{ item.season }}</h3>
-                                            <div class="catalog-episode-list" data-each="item.episodes" data-as="episode">
-                                                <button
-                                                    type="button"
-                                                    class="catalog-episode"
-                                                    data-action="click"
-                                                    data-fn="series/playEpisode"
-                                                    :data-series-id="series.detailId"
-                                                    :data-episode-id="episode.episodeId"
-                                                    data-testid="series-episode"
-                                                >
-                                                    <span class="catalog-episode__num">{{ strings.series.episodePrefix }}{{ episode.episode }}</span>
-                                                    <span class="catalog-episode__title truncate">{{ episode.title }}</span>
-                                                    <span class="catalog-episode__duration" data-if="episode.durationSecs">{{ Math.round(episode.durationSecs / 60) }} {{ strings.series.minutesSuffix }}</span>
-                                                </button>
-                                            </div>
+                                    <div
+                                        class="catalog-seasons"
+                                        data-if="series.detailStatus === 'ready' && series.detail.rows.length > 0"
+                                        data-each="series.detail.rows"
+                                        data-as="row"
+                                        data-testid="series-rows"
+                                    >
+                                        <div class="catalog-detail-row">
+                                            <h3 class="catalog-season__title" data-if="row.kind === 'season'" data-testid="series-season">
+                                                {{ strings.series.seasonPrefix }} {{ row.season }}
+                                            </h3>
+                                            <button
+                                                type="button"
+                                                class="catalog-episode"
+                                                data-if="row.kind === 'episode'"
+                                                data-action="click"
+                                                data-fn="series/playEpisode"
+                                                :data-series-id="series.detailId"
+                                                :data-episode-id="row.episodeId"
+                                                data-testid="series-episode"
+                                            >
+                                                <span class="catalog-episode__num">{{ strings.series.episodePrefix }}{{ row.episode }}</span>
+                                                <span class="catalog-episode__title truncate">{{ row.title }}</span>
+                                                <span class="catalog-episode__duration" data-if="row.durationMins !== null">{{ row.durationMins }} {{ strings.series.minutesSuffix }}</span>
+                                            </button>
                                         </div>
                                     </div>
 

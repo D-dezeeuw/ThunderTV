@@ -70,6 +70,24 @@ describe('vod.actions', () => {
         });
     });
 
+    it('strips a leading provider decoration tag from published category names (Issue 1)', async () => {
+        await withFakePlatform({}, async ({ http, storage }) => {
+            initVodState();
+            await activateXtreamSource(storage);
+            http.onGet(apiUrl(source, 'get_vod_categories')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ category_id: '1', category_name: '| NL | TOP 100' }]),
+            });
+            http.onGet(apiUrl(source, 'get_vod_streams', '&category_id=1')).reply({ kind: 'ok', body: JSON.stringify([]) });
+
+            await openVodCatalog();
+            tick();
+
+            const categories = get<VodCategoryRow[]>(VOD_CATEGORIES);
+            expect(categories).toEqual([{ id: '1', name: 'TOP 100' }]);
+        });
+    });
+
     it('caches a selected category within the TTL — a second selectCategory call does not refetch', async () => {
         await withFakePlatform({}, async ({ http, storage }) => {
             initVodState();

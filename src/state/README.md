@@ -171,6 +171,52 @@ recording once rather than re-discovering per call site:
   click path. A VOD row's `url`, by contrast, is the real playable stream
   URL (`vod-rows.ts`'s `vodItemToRow()`), so it works whether a future click
   handler reuses the generic list-click path or `vod/play`'s own action.
+- **Display-name cleaning (`catalog-clean-name.ts`)**: real Xtream
+  categories/titles carry a repeated pipe-/bracket-delimited decoration tag
+  (`| NL | WK 2026`, `┃NL┃ Show`) on every entry — noise once every
+  chip/row in a Movies/Series list shows it. `cleanCatalogDisplayName()` is
+  a new, small, pure module living beside the catalog state helpers rather
+  than an extension of `src/channels/name-parse.ts`: that module's
+  `COUNTRY_PREFIX` strips exactly one leading tag as part of a
+  country/quality/recording-flag parse feeding Live/Radio's grouping —
+  behavior this must not touch. The catalog cleaner instead strips a
+  *repeated* run of tags and nothing else, called only at the display
+  boundary — `vod-rows.ts`/`series-rows.ts`'s row/detail builders
+  (`vodItemToRow()`/`toVodDetail()`/`seriesItemToRow()`/`toSeriesDetail()`)
+  and `vod.actions.ts`'s/`series.actions.ts`'s category-row builders.
+  Stored catalog memory and search keys keep the raw name; a category's
+  cleaned name cascades into every row's `group` field and every detail's
+  `categoryName` for free, since those are looked up back out of the
+  already-cleaned `vod.categories`/`series.categories` state rather than
+  re-derived from the raw `XtreamCategory`.
+- **`series.detail.rows` replaces a nested `seasons[].episodes[]`
+  structure**: Spektrum's `data-each` clones an element's own *first
+  element child* into its container, so a season block that itself carries
+  `data-each` (the original markup) treats its nested episode-list as a
+  static sibling that only binds once, never rebinding per season — the
+  literal `{{ }}` episode lines a user reported. `series-rows.ts`'s
+  `buildSeriesDetailRows()` flattens seasons/episodes into one ordered
+  `SeriesDetailRow[]` (season-header rows and episode rows interleaved,
+  `series.ts`) so the panel can use a single-level `data-each` + `data-if`
+  per row kind — the same pattern every other list in the app already
+  uses. `durationMins` is rounded when the row is built, never via
+  `Math.round()` inside a `{{ }}` expression (the evaluator has no
+  guaranteed access to `Math` beyond incidental global scope-chain
+  fallthrough — not worth relying on).
+- **`series.detailStatus`/`series.detailErrorReason`**: the open series'
+  own `get_series_info` fetch status, distinct from `series.status` (the
+  *category* list's — reusing it would hide the whole detail overlay on a
+  failed detail fetch, since `series.status === 'ready'` also gates
+  `list-shell__body`). `openSeriesDetail()` previously left a failed fetch
+  completely silent — the panel kept showing its immediate partial
+  snapshot with zero episodes, indistinguishable from a series that
+  genuinely has none. Every code path through `openSeriesDetail()` now
+  resolves this pair to something the panel can show: `'loading'` while in
+  flight, `'error'` + `'no-source'`/`'fetch-failed'` on a real failure with
+  nothing to fall back on (driving a classified message + a Retry button
+  that re-dispatches `series/openDetail`), or `'ready'` — including when a
+  failure still had a stale cached result to fall back on, since slightly
+  stale episodes beat an alarming error the user can't act on.
 
 ### Row publication — which action feeds the shared virtual list
 
@@ -185,11 +231,13 @@ Every catalog/search row set reaches the DOM through the same
 | Search results (any scope)  | `search.actions.ts`'s `setSearchQuery()`/`setSearchScope()`, via the internal `recomputeSearch()` — also exported directly for the UI stage to force a re-publish (e.g. after a catalog fetch completes) |
 
 One deliberate non-goal: a currently-open series' episode list does **not**
-go through `setDisplayedRows()`. `series.detail.seasons[].episodes[]` is
-already bounded (`SERIES_DETAIL_EPISODES_CAP`) and belongs to exactly one
-open series, so the UI stage should template it directly off `series.detail`
-rather than route a small, fixed list through virtual-list windowing built
-for a 90k-row catalog.
+go through `setDisplayedRows()`. `series.detail.rows` (the flattened
+season-header/episode row array — see "`series.detail.rows` replaces a
+nested `seasons[].episodes[]` structure" above) is already bounded
+(`SERIES_DETAIL_EPISODES_CAP`) and belongs to exactly one open series, so
+the UI stage should template it directly off `series.detail` rather than
+route a small, fixed list through virtual-list windowing built for a
+90k-row catalog.
 
 One known, harmless side effect: `setDisplayedRows()` also invalidates/saves
 the shared `list.selectedId` cursor into the active source's `ui.listState`
