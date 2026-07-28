@@ -251,7 +251,7 @@ describe('variant switcher', () => {
         mounted.cleanup();
     });
 
-    it('falls back to a localized "alt" caption for a feed with no parsed quality', () => {
+    it('falls back to a localized "alt" caption for a feed with no parsed quality', async () => {
         const mounted = mountTemplate(`
             <div data-each="player.variants" data-action="click" data-fn="live/playVariant">
                 <button data-testid="chip">
@@ -260,7 +260,7 @@ describe('variant switcher', () => {
                 </button>
             </div>
         `);
-        seedStrings();
+        await seedStrings();
 
         setActiveChannel(NPO);
         setValue(PLAYER_VARIANTS, [

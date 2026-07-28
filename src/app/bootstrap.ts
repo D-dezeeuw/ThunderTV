@@ -60,7 +60,7 @@ export async function bootstrap(): Promise<void> {
 
     initState();
     await rehydrateState();
-    seedStrings();
+    await seedStrings();
 
     registerActions();
     registerSelectors();

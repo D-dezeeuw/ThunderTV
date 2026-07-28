@@ -1,7 +1,7 @@
 import { appState, defineFn, getPathObj, refs, setValue } from 'spektrum';
 import { getPlatform } from '../core/platform';
 import { currentFullscreenElement, exitFullscreen, requestElementFullscreen, requestVideoFullscreen } from '../player/fullscreen';
-import { cycleRadioVisualizerPreset } from '../player/visualizer';
+import { cycleRadioVisualizerPreset } from '../player/visualizer-lazy';
 import { pushCapped } from './collections';
 import { persist } from './persist';
 import {

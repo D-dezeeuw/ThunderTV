@@ -19,9 +19,6 @@ export function registerWizardActions(): void {
     defineFn('wizard/open', () => {
         openWizard();
     });
-    defineFn('wizard/close', () => {
-        closeWizard();
-    });
     defineFn('wizard/skip', () => {
         closeWizard();
     });

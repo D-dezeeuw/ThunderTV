@@ -110,7 +110,7 @@ export function registerSettingsActions(): void {
         if (el instanceof HTMLSelectElement) setSubtitleLanguage(el.value);
     });
     defineFn('settings/setLocale', (el) => {
-        if (el instanceof HTMLSelectElement) setLocale(el.value);
+        if (el instanceof HTMLSelectElement) void setLocale(el.value);
     });
     defineFn('settings/exportConfig', () => {
         exportConfiguration();
@@ -233,11 +233,14 @@ export function setSubtitleLanguage(raw: string): void {
  * `seedStrings()` keeps in sync at boot. An unrecognised value is a no-op,
  * since the `<select>`'s own options are the only way to reach here.
  */
-export function setLocale(raw: string): void {
+export async function setLocale(raw: string): Promise<void> {
     if (!isLocale(raw)) return;
     set(SETTINGS_LOCALE, raw);
     persist(SETTINGS_LOCALE);
-    applyLocale(raw);
+    // The chosen locale's dictionary is a lazily-imported chunk, so both
+    // halves of the mirror are written only once it has actually resolved —
+    // otherwise `strings` would still hold the previous language here.
+    await applyLocale(raw);
     set('strings', strings);
 }
 

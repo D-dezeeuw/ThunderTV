@@ -34,12 +34,68 @@ function externalizeSpektrum(): Plugin {
     };
 }
 
+/**
+ * `KeyMeta.description` is documentation, not behaviour: nothing in `src/`
+ * reads it at runtime, and `scripts/gen-state-keys.mjs` parses the registry
+ * as *source text* rather than importing it, so the generated reference doc
+ * is unaffected by dropping the strings from the bundle. Together the two
+ * registry files carried ~15 kB of prose into every user's initial download.
+ *
+ * Deliberately strict: the plugin asserts it stripped at least
+ * `MIN_EXPECTED_STRIPS` properties from each file and throws otherwise, so a
+ * reformat that silently stops matching fails the build instead of quietly
+ * putting 15 kB back. Only value lines match — `KeyMeta`'s own
+ * `description: string;` declaration has no quotes and is left alone.
+ */
+function stripRegistryDescriptions(): Plugin {
+    const TARGETS = ['src/state/registry-keys.ts', 'src/state/registry-overflow.ts'];
+    const MIN_EXPECTED_STRIPS: Record<string, number> = {
+        'src/state/registry-keys.ts': 50,
+        'src/state/registry-overflow.ts': 25,
+    };
+    // A whole `description: '…',` line, single- or double-quoted, honouring
+    // backslash escapes so an apostrophe inside the prose cannot end the match.
+    const pattern = /^[ \t]*description: (['"])(?:\\.|(?!\1)[^\\])*\1,\r?\n/gm;
+
+    return {
+        name: 'strip-registry-descriptions',
+        apply: 'build',
+        transform: {
+            // Must run before the TypeScript→JS transform: afterwards the
+            // object literals have been reformatted and the line-anchored
+            // pattern below no longer matches (verified — it silently found
+            // zero, which is exactly what the strict count guard caught).
+            order: 'pre',
+            handler(code, id) {
+                const normalized = id.replaceAll('\\', '/');
+                const target = TARGETS.find((t) => normalized.endsWith(t));
+                if (target === undefined) return null;
+
+                let stripped = 0;
+                const out = code.replace(pattern, () => {
+                    stripped += 1;
+                    return '';
+                });
+
+                const min = MIN_EXPECTED_STRIPS[target] ?? 1;
+                if (stripped < min) {
+                    throw new Error(
+                        `strip-registry-descriptions: only stripped ${String(stripped)} description(s) from ${target}, expected at least ${String(min)}. ` +
+                            'The registry format changed — update the pattern in vite.config.ts rather than shipping the prose.',
+                    );
+                }
+                return { code: out, map: null };
+            },
+        },
+    };
+}
+
 export default defineConfig({
     // Relative asset URLs, not root-absolute. One dist/ then loads correctly
     // from all three consumers: a GitHub Pages subpath (/thundertv/), a
     // packaged Electron `file://` window, and a packaged webOS app.
     base: './',
-    plugins: [externalizeSpektrum()],
+    plugins: [externalizeSpektrum(), stripRegistryDescriptions()],
     build: {
         /**
          * The default 500 kB warning fires on one chunk, and it is a chunk
