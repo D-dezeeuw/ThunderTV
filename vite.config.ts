@@ -41,14 +41,30 @@ export default defineConfig({
     base: './',
     plugins: [externalizeSpektrum()],
     build: {
+        /**
+         * The default 500 kB warning fires on one chunk, and it is a chunk
+         * that is already doing the right thing: hls.js (~509 kB) is a
+         * third-party decoder reached only through `await import('hls.js')`
+         * in src/player/engine.ts, so it is fetched when a stream actually
+         * needs the HLS engine and never on load. There is nothing left to
+         * split — the advice in the warning (code-split with dynamic
+         * import) is what put it in its own chunk in the first place.
+         *
+         * Raised to 600 rather than switched off, so the warning still
+         * fires on a real regression, and paired with scripts/check-dist.mjs
+         * which enforces the thing that actually matters: the entry chunk
+         * stays small and neither engine leaks into it.
+         */
+        chunkSizeWarningLimit: 600,
         rollupOptions: {
             external: ['spektrum'],
-            // `output.manualChunks` is reserved for Phase 10/11: player
-            // engines (hls.js, mpegts.js) get their own lazy-loaded chunks
-            // so the browse UI never pays for them up front. Nothing to
-            // split yet, so it's left unset rather than an empty stub —
-            // Rollup's `manualChunks` type rejects `{}` as ambiguous
-            // between its function and Record<string, string[]> overloads.
+            // No `output.manualChunks`: both player engines (hls.js,
+            // mpegts.js) already split themselves out via `await import()`
+            // at their use sites, which is what keeps the browse UI from
+            // paying for them up front. Rollup's `manualChunks` type
+            // rejects `{}` as ambiguous between its function and
+            // Record<string, string[]> overloads, so it is left unset
+            // rather than stubbed.
         },
     },
     worker: {
