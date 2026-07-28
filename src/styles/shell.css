@@ -397,6 +397,14 @@
     margin: 0 0 var(--space-2);
 }
 
+/* A second-level heading within a section — e.g. the Xtream account fields
+   nested under Settings → Streaming's proxy/refresh controls. */
+.settings-section__subtitle {
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    margin: var(--space-4) 0 var(--space-2);
+}
+
 .density-toggle {
     display: flex;
     gap: var(--space-2);

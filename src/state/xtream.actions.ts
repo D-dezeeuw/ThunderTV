@@ -98,7 +98,8 @@ function refValue(name: string): string {
  * (an http:// provider on the https-deployed page — the overwhelmingly
  * common Xtream setup) deserves its precise explanation, not a CORS story.
  */
-function toImportErrorKind(kind: string): string {
+/** Exported for reuse by `settings.actions.ts`'s Settings-panel Xtream account save. */
+export function toImportErrorKind(kind: string): string {
     switch (kind) {
         case 'auth-failed':
             return 'httpAuth';

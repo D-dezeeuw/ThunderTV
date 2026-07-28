@@ -1227,6 +1227,74 @@
                             {{ strings.settings.streaming.refreshFailed }}
                         </p>
                         <p class="settings-section__hint">{{ strings.settings.streaming.refreshHelp }}</p>
+
+                        <!-- The Xtream account fields also usable directly from the
+                             Connect-card import form (index.html's import-empty-state
+                             card) — this is the same credential set, read on Save and
+                             persisted through the same `importXtreamSource()` upsert
+                             (settings.actions.ts's `saveXtreamAccount`). The password
+                             is never prefilled: it stays blank on load, with a
+                             placeholder noting a stored value is kept unless replaced. -->
+                        <h4 class="settings-section__subtitle">{{ strings.settings.streaming.xtreamTitle }}</h4>
+                        <label class="settings-section__label" for="xtream-account-url-input">
+                            {{ strings.settings.streaming.xtreamUrlLabel }}
+                        </label>
+                        <input
+                            type="text"
+                            id="xtream-account-url-input"
+                            data-ref="xtreamAccountUrlInput"
+                            class="settings-section__input"
+                            :value="settings.xtreamUrl"
+                            :placeholder="strings.settings.streaming.xtreamUrlPlaceholder"
+                            data-testid="xtream-account-url-input"
+                            data-action="input"
+                            data-fn="settings/clearXtreamFeedback"
+                        />
+                        <label class="settings-section__label" for="xtream-account-user-input">
+                            {{ strings.settings.streaming.xtreamUserLabel }}
+                        </label>
+                        <input
+                            type="text"
+                            id="xtream-account-user-input"
+                            data-ref="xtreamAccountUserInput"
+                            class="settings-section__input"
+                            :value="settings.xtreamUsername"
+                            data-testid="xtream-account-user-input"
+                            data-action="input"
+                            data-fn="settings/clearXtreamFeedback"
+                        />
+                        <label class="settings-section__label" for="xtream-account-pass-input">
+                            {{ strings.settings.streaming.xtreamPassLabel }}
+                        </label>
+                        <input
+                            type="password"
+                            id="xtream-account-pass-input"
+                            data-ref="xtreamAccountPassInput"
+                            class="settings-section__input"
+                            :placeholder="strings.settings.streaming.xtreamPassPlaceholder"
+                            data-testid="xtream-account-pass-input"
+                            data-action="input"
+                            data-fn="settings/clearXtreamFeedback"
+                        />
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="settings/saveXtreamAccount"
+                            data-testid="xtream-account-save-btn"
+                        >
+                            {{ strings.settings.streaming.xtreamSave }}
+                        </button>
+                        <p class="settings-section__error" data-if="settings.xtreamError" data-testid="xtream-account-error">
+                            {{ settings.xtreamError }}
+                        </p>
+                        <p class="settings-section__hint" data-if="settings.xtreamSaved" data-testid="xtream-account-saved">
+                            {{ strings.settings.streaming.xtreamSaved }}
+                        </p>
+                        <p class="settings-section__hint" data-if="settings.xtreamBusy" data-testid="xtream-account-busy">
+                            {{ strings.settings.streaming.refreshBusy }}
+                        </p>
+                        <p class="settings-section__hint">{{ strings.settings.streaming.xtreamHelp }}</p>
                     </section>
                     <section class="settings-section">
                         <h3 class="settings-section__title">
