@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Untouched provider responses captured during this browser session.
+  Bodies are byte-for-byte as received, with one exception: Xtream
+  echoes the account username and password back inside user_info, so
+  those two JSON fields are replaced with REDACTED. Nothing else is
+  altered. Request URLs are credential-redacted.
+
+  Captures live in memory only, so a page reload empties this file.
+  Re-import the source, or use Settings > Streaming > Refresh, then
+  export again.
+-->
+<thundertv-raw-responses version="1" generatedAt="2026-07-28T08:57:27.864Z" count="0">
+</thundertv-raw-responses>

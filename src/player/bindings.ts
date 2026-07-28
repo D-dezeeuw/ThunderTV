@@ -1,6 +1,6 @@
 import { refs, watch } from 'spektrum';
 import { applyProxy } from '../core/http/proxy';
-import { effectiveProxyTemplate } from '../core/platform/desktop-proxy';
+import { effectiveProxyTemplate } from '../core/platform/electron-platform';
 import { PLAYER_ACTIVE, PLAYER_VISUALIZER_PAUSED, PLAYER_VISUALIZER_PRESET } from '../state/player';
 import { UI_ACTIVE_VIEW } from '../state/ui';
 import { attachAndPlay, detach } from './engine';

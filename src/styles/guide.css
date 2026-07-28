@@ -1,0 +1,152 @@
+/*
+ * Guide view: a horizontal-time-axis timetable (masterplan Phase 18) —
+ * rows are channels, columns are time, one absolutely-positioned block per
+ * program. Token-only colors/spacing per src/styles/tokens.css; no
+ * transitions/animations per the standing no-animation policy.
+ */
+
+.guide {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    height: 100%;
+    min-height: 0;
+}
+
+.guide__header {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 var(--space-2);
+    color: var(--color-text-dim);
+    font-size: var(--text-xs);
+}
+
+.guide__rows {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--space-2);
+    background: var(--color-surface);
+}
+
+/* The "now" indicator — a vertical line positioned by guide.view.nowPercent
+   (src/state/guide.selectors.ts), recomputed every epg.tick beat. */
+.guide__now-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--color-accent);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.guide__row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    min-height: var(--row-h);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.guide__row:last-child {
+    border-bottom: none;
+}
+
+.guide__channel {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0 var(--row-pad-x);
+    border-right: 1px solid var(--color-border);
+    background: var(--color-surface-raised);
+    position: sticky;
+    left: 0;
+    z-index: 1;
+}
+
+.guide__channel-logo {
+    width: var(--logo-box);
+    height: var(--logo-box);
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.guide__channel-name {
+    font-size: var(--text-sm);
+}
+
+.guide__timeline {
+    position: relative;
+}
+
+.guide__program {
+    position: absolute;
+    top: var(--space-1);
+    bottom: var(--space-1);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--space-1);
+    background: var(--color-surface-raised);
+    color: var(--color-text);
+    font-size: var(--text-xs);
+    text-align: left;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.guide__program:hover,
+.guide__program:focus-visible {
+    background: var(--surface-hover);
+    outline: none;
+}
+
+.guide__program:focus-visible {
+    box-shadow: var(--focus-ring);
+}
+
+.guide__program--now {
+    border-color: var(--color-accent);
+}
+
+.guide__program--selected {
+    background: var(--surface-active);
+    border-color: var(--color-accent);
+}
+
+.guide__program-title {
+    display: block;
+}
+
+.guide__detail {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--space-2);
+    background: var(--color-surface);
+}
+
+.guide__detail-empty {
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+}
+
+.guide__detail-title {
+    margin: 0 0 var(--space-1);
+    font-size: var(--text-lg);
+}
+
+.guide__detail-time {
+    margin: 0 0 var(--space-2);
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+}
+
+.guide__detail-description {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+}

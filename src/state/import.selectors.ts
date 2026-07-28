@@ -9,7 +9,7 @@ import {
     IMPORT_WRITTEN,
     type ImportSummaryView,
 } from './import';
-import { SETTINGS_PROXY_TEMPLATE } from './settings';
+import { SETTINGS_LOCALE, SETTINGS_PROXY_TEMPLATE } from './settings';
 
 interface ImportSliceState {
     import?: {
@@ -24,8 +24,10 @@ interface ImportSliceState {
 
 const BUSY_STAGES = new Set(['fetching', 'reading', 'parsing', 'writing']);
 
-/** `strings.http.failure`'s keys, indexed dynamically — every `ImportErrorKind` but `invalidM3u`/`m3u`/`duplicate`/`largeConfirm` names one of these (Feature 07.4.2/07.4.3). */
-const HTTP_FAILURE_STRINGS: Record<string, string> = strings.http.failure;
+/** `strings.http.failure`'s keys, indexed dynamically — every `ImportErrorKind` but `invalidM3u`/`m3u`/`duplicate`/`largeConfirm` names one of these (Feature 07.4.2/07.4.3). Read live (not hoisted into a module-scope constant) so a locale switch is reflected immediately — `strings` is a reassigned singleton, see `app/strings.ts`. */
+function httpFailureStrings(): Record<string, string> {
+    return strings.http.failure;
+}
 
 /**
  * Every selector here mirrors a raw `import.*` scalar into a safe,
@@ -48,7 +50,7 @@ export function registerImportSelectors(): void {
 
     computed('importHasError', [IMPORT_STATE], (state: State) => (state as ImportSliceState).import?.state === 'error');
 
-    computed('importStageLabel', [IMPORT_STATE], (state: State) => {
+    computed('importStageLabel', [IMPORT_STATE, SETTINGS_LOCALE], (state: State) => {
         const stage = (state as ImportSliceState).import?.state;
         const s = strings.import.stage;
         if (stage === 'fetching') return s.fetching;
@@ -58,12 +60,12 @@ export function registerImportSelectors(): void {
     });
 
     /** Feature 07.5.4: durable (written), not just parsed, progress — empty until at least one chunk has landed. */
-    computed('importRowsReadout', [IMPORT_WRITTEN], (state: State) => {
+    computed('importRowsReadout', [IMPORT_WRITTEN, SETTINGS_LOCALE], (state: State) => {
         const written = (state as ImportSliceState).import?.written ?? 0;
         return written > 0 ? strings.import.rowsReadout.replace('{count}', String(written)) : '';
     });
 
-    computed('importErrorMessage', [IMPORT_ERROR_KIND, IMPORT_ERROR_MESSAGE], (state: State) => {
+    computed('importErrorMessage', [IMPORT_ERROR_KIND, IMPORT_ERROR_MESSAGE, SETTINGS_LOCALE], (state: State) => {
         const imp = (state as ImportSliceState).import;
         const kind = imp?.errorKind;
         if (!kind) return '';
@@ -71,16 +73,16 @@ export function registerImportSelectors(): void {
         if (kind === 'duplicate') return strings.import.errors.duplicateTemplate.replace('{name}', imp?.errorMessage ?? '');
         if (kind === 'invalidM3u') return strings.import.errors.invalidM3u;
         if (kind === 'largeConfirm') return strings.import.errors.largeConfirm;
-        return HTTP_FAILURE_STRINGS[kind] ?? '';
+        return httpFailureStrings()[kind] ?? '';
     });
 
-    computed('importSummaryHeading', [IMPORT_SUMMARY], (state: State) => {
+    computed('importSummaryHeading', [IMPORT_SUMMARY, SETTINGS_LOCALE], (state: State) => {
         const summary = (state as ImportSliceState).import?.summary;
         const s = strings.import.summary;
         return summary?.updated ? s.updatedHeading : s.heading;
     });
 
-    computed('importSummaryLines', [IMPORT_SUMMARY], (state: State) => {
+    computed('importSummaryLines', [IMPORT_SUMMARY, SETTINGS_LOCALE], (state: State) => {
         const summary = (state as ImportSliceState).import?.summary;
         return summary ? buildSummaryLines(summary) : [];
     });

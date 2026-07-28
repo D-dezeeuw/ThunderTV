@@ -1,6 +1,6 @@
 import { bindDOM, run } from 'spektrum';
 import { createPlatform, setPlatform } from '../core/platform';
-import { effectiveProxyTemplate } from '../core/platform/desktop-proxy';
+import { effectiveProxyTemplate } from '../core/platform/electron-platform';
 import { sweepOrphanedPlaylistRows } from '../m3u/import-sweep';
 import { registerListBindings } from '../ui/list-bindings';
 import { registerPlayerBindings } from '../player/bindings';
@@ -9,8 +9,11 @@ import { registerDebugShortcut } from '../state/debug.actions';
 import { installDevtools } from '../state/devtools';
 import {
     initState,
+    loadDefaultEpg,
     loadFavoriteIds,
+    loadGuideChannels,
     loadPlaylistSources,
+    openWizardIfNoSources,
     registerActions,
     registerPersistOnHide,
     registerSelectors,
@@ -78,6 +81,12 @@ export async function bootstrap(): Promise<void> {
     void sweepAndLoadPlaylistSources();
     void loadXtreamAccountPrefill();
     void loadFavoriteIds();
+    // Paint whatever EPG data already survived from a previous session
+    // immediately, then kick off the (TTL-guarded) bulk XMLTV fetch —
+    // loadDefaultEpg() itself republishes guide.channels once it writes
+    // anything new (src/state/epg-load.ts).
+    void loadGuideChannels();
+    void loadDefaultEpg();
     registerImportDropzoneDragover();
     registerDebugShortcut();
     registerListBindings();
@@ -104,8 +113,16 @@ function registerImportDropzoneDragover(): void {
     });
 }
 
-/** Feature 07.9.7: the sweep runs before the sources list first loads, so a crash-orphaned row never flashes into view even briefly. */
+/**
+ * Feature 07.9.7: the sweep runs before the sources list first loads, so a
+ * crash-orphaned row never flashes into view even briefly. The first-run
+ * wizard's "zero sources" check runs right after — never before, since
+ * `playlist.sources` is a live storage projection that's empty by default
+ * until this load actually resolves (state/README.md's "First-run setup
+ * wizard" section).
+ */
 async function sweepAndLoadPlaylistSources(): Promise<void> {
     await sweepOrphanedPlaylistRows();
     await loadPlaylistSources();
+    openWizardIfNoSources();
 }

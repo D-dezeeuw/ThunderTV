@@ -12,8 +12,9 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `playlist.ts`        | `playlist.sources`, `playlist.activeSourceId`, `playlist.demoRows`                                                   | `activeSourceId` yes (Feature 08.10.6); `sources` is a live storage projection, `demoRows` is static demo data — neither persists |
 | `player.ts`          | `player.active`, `player.zapHistory`, `player.visualizerPreset`, `player.visualizerPaused`                            | Yes — the §6.4 instant-restore pair; `visualizerPreset` also persists (the listener's Radio visualizer choice); `visualizerPaused` does not (always false on a fresh Radio visit) |
 | `epg.ts`             | `epg.tick`                                                                                                            | No — a heartbeat timestamp, recomputed every boot |
-| `settings.ts`        | `settings.proxyTemplate`, `settings.proxyError`, `settings.proxySaved`                                               | `proxyTemplate` yes; the other two are transient save feedback |
+| `settings.ts`        | `settings.locale`, `settings.proxyTemplate`, `settings.proxyError`, `settings.proxySaved`                            | `locale` yes (Settings → User language switcher, i18n follow-up); `proxyTemplate` yes; the other two are transient save feedback |
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.storageNoticeDismissed` yes; the rest no |
+| `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`                                                                                      | No — both transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen` |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
 | `list-state.ts`       | `ui.listState`, `ui.activeGroup`, `ui.viewMode`                                                                      | `ui.listState` yes (Feature 08.6, LRU-capped at 20 sources); the two live mirrors restore from it on source entry but aren't separately persisted |
 | `list-groups.ts`      | `list.groups`, `list.groupsTruncated`                                                                                | No — the groups panel's own row set, capped independently of Phase 06's `MAX_GROUPS` (Feature 08.5.9) |
@@ -167,6 +168,26 @@ register actions/selectors → `initRouter()` → `bindDOM()`/`run()`. Only
 *after* the restored session is rendering does `void loadActiveSource()`
 (the heavy playlist path, stubbed until Phase 06) start — never awaited, so
 a slow parse can never delay first paint.
+
+## First-run setup wizard (`wizard.ts`/`wizard.actions.ts`)
+
+`ui.wizardOpen` is set by `wizard.actions.ts`'s `openWizardIfNoSources()`,
+called from `bootstrap.ts` right after `loadPlaylistSources()` resolves (not
+before — `playlist.sources` is a live storage projection, empty by default
+until that load actually completes, so checking any earlier would flash the
+wizard open for every returning user for one frame). The "should it open"
+decision itself is a pure function, `wizard.ts`'s `shouldOpenWizard()`
+(`sources.length === 0`), unit-tested without touching Spektrum state.
+
+The wizard's two steps reuse existing settings rather than inventing
+parallel ones: step 1's language/country `<select>`s are wired to the exact
+same `settings/setLocale`/`settings/setLiveCountry` `data-fn`s the Settings
+panel's own controls use, and step 2's Xtream form calls
+`settings.actions.ts`'s `saveXtreamAccount()` directly through a thin
+wrapper (`wizard/saveXtreamAccount`) that only adds closing the wizard on a
+successful save. `wizard/open` (bound to a "Run setup wizard again" link in
+Settings → Streaming) is the sole manual reopen path, so the wizard is never
+a one-shot dead end.
 
 ## Bulk-data bypass rules (Feature 05.8)
 

@@ -1,14 +1,17 @@
+import type { ElectronBridge } from '../core/platform/electron-bridge.types';
+
 export {};
 
 declare global {
     interface Window {
         /**
-         * Presence (not shape) is all Phase 03 needs: `window.electron`
-         * truthy selects the Electron platform adapter in `createPlatform()`
-         * (`src/core/platform/create-platform.ts`). The real preload bridge
-         * type arrives in Phase 28 — kept opaque here so detection compiles
-         * strictly without inventing an API surface early (Feature 03.8.2).
+         * Presence *and* shape now matter: `window.electron` truthy selects
+         * the Electron platform adapter in `createPlatform()`
+         * (`src/core/platform/create-platform.ts`), and the adapter reads
+         * `proxyOrigin`/`appVersion` off it — see `ElectronBridge`'s own
+         * comment for the preload/adapter contract this type pins down
+         * (Phase 28's MVP slice, formalized).
          */
-        electron?: unknown;
+        electron?: ElectronBridge;
     }
 }

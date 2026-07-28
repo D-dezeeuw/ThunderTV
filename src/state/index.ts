@@ -1,5 +1,6 @@
 import { appState, getPathObj, setValue } from 'spektrum';
-import { strings } from '../app/strings';
+import { applyLocale, isLocale, strings } from '../app/strings';
+import { SETTINGS_LOCALE } from './settings';
 import { getPlatform } from '../core/platform';
 import { initEpgState } from './epg';
 import { initFavoritesState } from './favorites';
@@ -21,6 +22,9 @@ import { registerDebugActions } from './debug.actions';
 import { initDebugState } from './debug';
 import { registerPlayerActions } from './player.actions';
 import { registerRecentActions } from './recent.actions';
+import { registerGuideActions } from './guide.actions';
+import { registerGuideSelectors } from './guide.selectors';
+import { initGuideState } from './guide';
 import { registerPlayerSelectors } from './player.selectors';
 import { initPlaylistState } from './playlist';
 import { registerPlaylistActions } from './playlist.actions';
@@ -32,6 +36,8 @@ import { initUiState } from './ui';
 import { registerUiActions } from './ui.actions';
 import { registerUiSelectors } from './ui.selectors';
 import { registerXtreamActions } from './xtream.actions';
+import { initWizardState } from './wizard';
+import { registerWizardActions } from './wizard.actions';
 
 export { flushNow, pendingKeys, persist, registerPersistOnHide } from './persist';
 export { setActiveChannel } from './player.actions';
@@ -46,6 +52,10 @@ export { loadPlaylistSources } from './playlist-load';
 export { loadFavoriteIds } from './favorites-load';
 export { loadActiveSource } from './list-load';
 export { registerViewRowsWatch } from './live.actions';
+export { loadGuideChannels } from './guide-load';
+export { loadDefaultEpg } from './epg-load';
+export { openWizard, openWizardIfNoSources } from './wizard.actions';
+export { shouldOpenWizard } from './wizard';
 
 /**
  * Seeds every module's defaults (Feature 05.1.8) — called before
@@ -66,6 +76,8 @@ export function initState(): void {
     initLiveState();
     initFavoritesState();
     initDebugState();
+    initGuideState();
+    initWizardState();
     applyHistoryPolicy();
 }
 
@@ -81,6 +93,8 @@ export function registerActions(): void {
     registerRecentActions();
     registerDebugActions();
     registerXtreamActions();
+    registerGuideActions();
+    registerWizardActions();
 }
 
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */
@@ -91,6 +105,7 @@ export function registerSelectors(): void {
     registerUiSelectors();
     registerListSelectors();
     registerLiveSelectors();
+    registerGuideSelectors();
 }
 
 /**
@@ -119,14 +134,20 @@ export function debugReadState<T>(key: string): T | undefined {
 }
 
 /**
- * Mirrors the static `strings.ts` module into state once at boot, since
+ * Mirrors the active locale's copy into state once at boot, since
  * `:attr`/`{{}}` bindings can only reach Spektrum state, not a plain TS
  * import. Not a KEY_REGISTRY entry (Feature 05.9.1) — `strings` is static
- * reference data, never a persistence candidate. Kept here (rather than in
- * `bootstrap.ts`) so every `setValue` call in the app stays inside
- * `src/state/`, with `router.ts`'s `ui.activeView` writes the only
- * sanctioned exception (Feature 05.2.5).
+ * reference data, never itself a persistence candidate (unlike
+ * `settings.locale`, which picks it). Called after `rehydrateState()` so
+ * a persisted `settings.locale` value is already live in state, and reads
+ * it via the same `applyLocale()` the live language switcher uses
+ * (`settings.actions.ts`'s `setLocale()`) — the two paths never diverge.
+ * Kept here (rather than in `bootstrap.ts`) so every `setValue` call in the
+ * app stays inside `src/state/`, with `router.ts`'s `ui.activeView` writes
+ * the only sanctioned exception (Feature 05.2.5).
  */
 export function seedStrings(): void {
+    const locale = getPathObj<string>(appState, SETTINGS_LOCALE);
+    applyLocale(isLocale(locale) ? locale : 'en');
     setValue('strings', strings);
 }
