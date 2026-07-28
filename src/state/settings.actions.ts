@@ -389,7 +389,10 @@ export async function applyDefaultConfigIfFirstRun(): Promise<void> {
     const defaults = await getPlatform().getDefaultConfig?.();
     if (!defaults) return;
 
-    if (defaults.locale) setLocale(defaults.locale);
+    // Awaited: `setLocale()` resolves a lazily-imported dictionary chunk
+    // (app/strings.ts), and the wizard this pre-fills renders right after —
+    // firing and forgetting would show step 1 in the previous language.
+    if (defaults.locale) await setLocale(defaults.locale);
     if (defaults.liveCountry) setLiveCountry(defaults.liveCountry);
     if (defaults.xtream) {
         await saveXtreamAccount({ url: defaults.xtream.url, user: defaults.xtream.username, pass: defaults.xtream.password });
