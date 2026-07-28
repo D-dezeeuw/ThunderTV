@@ -1,8 +1,9 @@
 import { refs } from 'spektrum';
+import { AudioFeatures } from './audio-features';
 import { BeatDetector } from './beat-detector';
+import { CrossFader } from './crossfade';
 import { createRadioVisualizerPresets } from './presets/index';
-import { bandAverage } from './presets/preset-utils';
-import type { FrameContext, VisualizerPreset } from './types';
+import type { VisualizerPreset } from './types';
 
 /**
  * Fullscreen radio visualizer: canvas 2D, a small rotation of presets (see
@@ -26,13 +27,13 @@ import type { FrameContext, VisualizerPreset } from './types';
 
 /** How long each preset plays before auto-advancing — long enough to actually look at, short enough that an unattended TV doesn't stall on one preset all evening. */
 const AUTO_CYCLE_MS = 25_000;
-/** Crossfade duration for every preset switch (auto-advance, "Next visual", or picking one from the dropdown) — long enough to read as a transition, short enough not to feel sluggish on demand. */
-const TRANSITION_MS = 700;
 
 let audioCtx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
 let sourceVideo: HTMLVideoElement | null = null;
 let freqData: Uint8Array<ArrayBuffer> | null = null;
+let waveData: Uint8Array<ArrayBuffer> | null = null;
+let sampleRate = 48_000;
 let rafId: number | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let observedCanvas: HTMLCanvasElement | null = null;
@@ -40,6 +41,7 @@ let observedCanvas: HTMLCanvasElement | null = null;
 let paused = false;
 
 const beatDetector = new BeatDetector();
+const audioFeatures = new AudioFeatures();
 let presets: VisualizerPreset[] = createRadioVisualizerPresets();
 let presetIndex = 0;
 let presetElapsedMs = 0;
@@ -47,23 +49,26 @@ let activePresetCanvas: HTMLCanvasElement | null = null;
 /** Non-null when the listener picked a specific preset (e.g. a genre) rather than "Auto" — see `setRadioVisualizerPreset()`. */
 let pinnedPresetId: string | null = null;
 
-/**
- * A crossfade in progress: the outgoing preset (`fromIndex`, left running —
- * never reset — so it keeps evolving normally while it fades out) and the
- * incoming one (`toIndex`, freshly reset) each render into their own
- * offscreen buffer every frame; the visible canvas is just the two buffers
- * alpha-blended by `elapsed / TRANSITION_MS`.
- */
-interface Transition {
-    fromIndex: number;
-    toIndex: number;
-    elapsed: number;
-}
-let transition: Transition | null = null;
-let bufferA: HTMLCanvasElement | null = null;
-let bufferB: HTMLCanvasElement | null = null;
+const crossFader = new CrossFader();
 
 let lastTs: number | null = null;
+
+/**
+ * fftSize 2048 (not 1024): at 48 kHz that's ~23 Hz per bin, enough low-end
+ * resolution for the log-spaced bars to separate kick from bassline.
+ * smoothing 0.7 (not 0.82): the old value pre-smeared onsets so much the
+ * beat detector had nothing to detect. min/max decibels widened from the
+ * -100/-30 defaults: -30 as the ceiling clips loud radio streams' bass
+ * bins flat at 255, which broke both the bars and beat detection — the
+ * auto-gain in audio-features.ts handles quiet streams, so the analyser
+ * itself just needs to not clip.
+ */
+function configureAnalyser(node: AnalyserNode): void {
+    node.fftSize = 2048;
+    node.smoothingTimeConstant = 0.7;
+    node.minDecibels = -90;
+    node.maxDecibels = -15;
+}
 
 /**
  * (Re)creates the Web Audio graph against `video`, reusing it across
@@ -74,16 +79,23 @@ let lastTs: number | null = null;
  */
 function ensureAudioGraph(video: HTMLVideoElement): AnalyserNode | null {
     if (sourceVideo === video && audioCtx && analyser) {
+        configureAnalyser(analyser);
+        if (freqData?.length !== analyser.frequencyBinCount) {
+            freqData = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
+        }
+        if (waveData?.length !== analyser.fftSize) {
+            waveData = new Uint8Array(new ArrayBuffer(analyser.fftSize));
+        }
         if (audioCtx.state === 'suspended') void audioCtx.resume();
         return analyser;
     }
     try {
         const ctx = audioCtx ?? new AudioContext();
         audioCtx = ctx;
+        sampleRate = ctx.sampleRate;
         const node = ctx.createMediaElementSource(video);
         const analyserNode = ctx.createAnalyser();
-        analyserNode.fftSize = 1024;
-        analyserNode.smoothingTimeConstant = 0.82;
+        configureAnalyser(analyserNode);
         node.connect(analyserNode);
         // A MediaElementAudioSourceNode routes the element's audio
         // exclusively through the graph it's connected to (spec behavior) —
@@ -93,6 +105,7 @@ function ensureAudioGraph(video: HTMLVideoElement): AnalyserNode | null {
         analyser = analyserNode;
         sourceVideo = video;
         freqData = new Uint8Array(new ArrayBuffer(analyserNode.frequencyBinCount));
+        waveData = new Uint8Array(new ArrayBuffer(analyserNode.fftSize));
         if (ctx.state === 'suspended') void ctx.resume();
         return analyserNode;
     } catch (err) {
@@ -120,13 +133,10 @@ function observeSize(canvas: HTMLCanvasElement): void {
         // (particle bounds, the kaleidoscope wedge, the fractal tunnel's
         // history frame) — every preset's `reset()` re-derives from the new
         // dimensions, not just the one currently active. A resize mid-
-        // crossfade would need the transition's own buffers re-sized too;
-        // simplest and unnoticeable is to just land on the incoming preset.
+        // crossfade abandons the fade and lands on the incoming preset
+        // (`presetIndex` already points at it).
         if (sizeCanvas(canvas)) {
-            if (transition) {
-                presetIndex = transition.toIndex;
-                transition = null;
-            }
+            crossFader.cancel();
             presets[presetIndex]?.reset(canvas.width, canvas.height);
         }
     });
@@ -134,29 +144,18 @@ function observeSize(canvas: HTMLCanvasElement): void {
     observedCanvas = canvas;
 }
 
-function ensureTransitionBuffers(width: number, height: number): void {
-    if (!bufferA || bufferA.width !== width || bufferA.height !== height) {
-        bufferA = document.createElement('canvas');
-        bufferA.width = width;
-        bufferA.height = height;
-    }
-    if (!bufferB || bufferB.width !== width || bufferB.height !== height) {
-        bufferB = document.createElement('canvas');
-        bufferB.width = width;
-        bufferB.height = height;
-    }
-}
-
 function render(
     ts: number,
     canvas: HTMLCanvasElement,
     node: AnalyserNode,
     data: Uint8Array<ArrayBuffer>,
+    wave: Uint8Array<ArrayBuffer>,
 ): void {
-    rafId = requestAnimationFrame((next) => render(next, canvas, node, data));
+    rafId = requestAnimationFrame((next) => render(next, canvas, node, data, wave));
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     node.getByteFrequencyData(data);
+    node.getByteTimeDomainData(wave);
 
     const dt = lastTs === null ? 16 : Math.min(ts - lastTs, 64);
     lastTs = ts;
@@ -164,60 +163,42 @@ function render(
     presetElapsedMs += dt;
     // A pinned preset (the listener picked a genre explicitly) never
     // auto-advances away — only "Auto" in the picker keeps the rotation
-    // going. Never starts a second transition on top of one already playing.
-    if (!transition && !pinnedPresetId && presetElapsedMs >= AUTO_CYCLE_MS) {
+    // going. Never starts a second fade on top of one already playing.
+    if (!crossFader.running && !pinnedPresetId && presetElapsedMs >= AUTO_CYCLE_MS) {
         beginTransition(canvas, (presetIndex + 1) % presets.length);
     }
 
-    const bass = bandAverage(data, 0, 0.12);
-    const mid = bandAverage(data, 0.12, 0.5);
-    const treble = bandAverage(data, 0.5, 1);
-    const beat = beatDetector.update(bass, dt);
-    const shared = { width: canvas.width, height: canvas.height, ts, dt, data, bass, mid, treble, beat };
+    const { bass, mid, treble, energy } = audioFeatures.update(data, dt, sampleRate);
+    const { beat, intensity: beatIntensity } = beatDetector.update(bass, dt);
+    const shared = {
+        width: canvas.width,
+        height: canvas.height,
+        ts,
+        dt,
+        data,
+        wave,
+        bars: audioFeatures.bars,
+        bass,
+        mid,
+        treble,
+        energy,
+        beat,
+        beatIntensity,
+    };
 
-    if (transition) {
-        renderTransition(ctx, canvas, transition, shared);
-        return;
-    }
-    presets[presetIndex]?.frame({ ...shared, ctx });
+    const blended = crossFader.render(ctx, canvas, dt, (index, target) => {
+        presets[index]?.frame({ ...shared, ctx: target });
+    });
+    if (!blended) presets[presetIndex]?.frame({ ...shared, ctx });
 }
 
-function renderTransition(
-    ctx: CanvasRenderingContext2D,
-    canvas: HTMLCanvasElement,
-    active: Transition,
-    shared: Omit<FrameContext, 'ctx'>,
-): void {
-    ensureTransitionBuffers(canvas.width, canvas.height);
-    const actxA = bufferA?.getContext('2d');
-    const actxB = bufferB?.getContext('2d');
-    if (!actxA || !actxB) {
-        transition = null;
-        return;
-    }
-    presets[active.fromIndex]?.frame({ ...shared, ctx: actxA });
-    presets[active.toIndex]?.frame({ ...shared, ctx: actxB });
-
-    active.elapsed += shared.dt;
-    const t = Math.min(1, active.elapsed / TRANSITION_MS);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.globalAlpha = 1;
-    ctx.drawImage(bufferA as HTMLCanvasElement, 0, 0);
-    ctx.globalAlpha = t;
-    ctx.drawImage(bufferB as HTMLCanvasElement, 0, 0);
-    ctx.globalAlpha = 1;
-
-    if (t >= 1) transition = null;
-}
-
-/** Starts a crossfade to `toIndex`, leaving the outgoing preset running (untouched) so it keeps animating while it fades out; the incoming preset is reset immediately so it starts clean. A no-op if already there or mid-transition to it. */
+/** Starts a crossfade to `toIndex`, leaving the outgoing preset running (untouched) so it keeps animating while it fades out; the incoming preset is reset immediately so it starts clean. A no-op if already there or mid-fade to it. */
 function beginTransition(canvas: HTMLCanvasElement, toIndex: number): void {
-    if (toIndex === presetIndex || (transition && transition.toIndex === toIndex)) return;
+    if (toIndex === presetIndex || (crossFader.running && crossFader.target === toIndex)) return;
     presets[toIndex]?.reset(canvas.width, canvas.height);
-    transition = { fromIndex: presetIndex, toIndex, elapsed: 0 };
+    crossFader.begin(canvas, presetIndex, toIndex);
     presetIndex = toIndex;
     presetElapsedMs = 0;
-    beatDetector.reset();
 }
 
 /**
@@ -257,7 +238,6 @@ export function setRadioVisualizerPreset(preference: string): void {
     // land on it directly next time `startRadioVisualizer()` runs.
     presetIndex = index;
     presetElapsedMs = 0;
-    beatDetector.reset();
 }
 
 /** Pauses or resumes the render loop — freezing the last drawn frame in place rather than blanking the canvas. `startRadioVisualizer()` respects a pause already in effect (e.g. set before Radio became active) and stays frozen until resumed. */
@@ -267,12 +247,13 @@ export function setRadioVisualizerPaused(value: boolean): void {
         stopRadioVisualizerLoop();
         return;
     }
-    if (!activePresetCanvas || !analyser || !freqData || rafId !== null) return;
+    if (!activePresetCanvas || !analyser || !freqData || !waveData || rafId !== null) return;
     lastTs = null;
     const canvas = activePresetCanvas;
     const node = analyser;
     const data = freqData;
-    rafId = requestAnimationFrame((ts) => render(ts, canvas, node, data));
+    const wave = waveData;
+    rafId = requestAnimationFrame((ts) => render(ts, canvas, node, data, wave));
 }
 
 /**
@@ -290,27 +271,29 @@ export function startRadioVisualizer(video: HTMLVideoElement): void {
     if (!(canvas instanceof HTMLCanvasElement)) return;
     if (activePresetCanvas === canvas && sourceVideo === video) return;
     const node = ensureAudioGraph(video);
-    if (!node || !freqData) return;
+    if (!node || !freqData || !waveData) return;
 
     stopRadioVisualizerLoop();
     sizeCanvas(canvas);
     observeSize(canvas);
     activePresetCanvas = canvas;
-    transition = null;
+    crossFader.cancel();
     lastTs = null;
     presetElapsedMs = 0;
     beatDetector.reset();
+    audioFeatures.reset();
     presets[presetIndex]?.reset(canvas.width, canvas.height);
     if (paused) return;
     const data = freqData;
-    rafId = requestAnimationFrame((ts) => render(ts, canvas, node, data));
+    const wave = waveData;
+    rafId = requestAnimationFrame((ts) => render(ts, canvas, node, data, wave));
 }
 
 /** Stops the render loop only — the audio graph stays connected (sound keeps playing, and the source node can't be recreated) so a later `startRadioVisualizer()` just resumes drawing, on whichever preset was active. Also drops any pause/transition in progress — leaving Radio and coming back starts clean rather than silently still-paused. */
 export function stopRadioVisualizer(): void {
     stopRadioVisualizerLoop();
     activePresetCanvas = null;
-    transition = null;
+    crossFader.cancel();
     paused = false;
 }
 
@@ -331,15 +314,16 @@ export function resetRadioVisualizerForTests(): void {
     analyser = null;
     sourceVideo = null;
     freqData = null;
+    waveData = null;
+    sampleRate = 48_000;
     activePresetCanvas = null;
     paused = false;
-    transition = null;
-    bufferA = null;
-    bufferB = null;
+    crossFader.reset();
     presets = createRadioVisualizerPresets();
     presetIndex = 0;
     presetElapsedMs = 0;
     pinnedPresetId = null;
     beatDetector.reset();
+    audioFeatures.reset();
     lastTs = null;
 }
