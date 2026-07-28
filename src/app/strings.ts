@@ -284,6 +284,7 @@ export const strings = {
         backToGroups: '← Groups',
         playerStop: 'Stop',
         playerFullscreen: 'Full screen',
+        playerNextVisual: 'Next visual',
         playerErrorPrefix: 'Playback failed:',
         signalGood: 'Stream steady',
         signalFair: 'Stream buffering occasionally',

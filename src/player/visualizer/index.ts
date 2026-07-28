@@ -1,12 +1,16 @@
 import { refs } from 'spektrum';
+import { BeatDetector } from './beat-detector';
+import { createRadioVisualizerPresets } from './presets/index';
+import type { VisualizerPreset } from './types';
 
 /**
- * Fullscreen radio visualizer: canvas 2D, one preset — a rotating, zoom-
- * pulsing, hue-cycling radial spectrum, in the spirit of a 90s Winamp
- * Milkdrop preset — for "something to look at" while a radio station plays
- * on a TV. `startRadioVisualizer()`/`stopRadioVisualizer()` are called from
- * `src/player/bindings.ts` whenever `view.radio.active` and `player.active`
- * change; this module owns only the Web Audio graph and the render loop.
+ * Fullscreen radio visualizer: canvas 2D, a small rotation of presets (see
+ * `presets/index.ts`) driven by the shared `<video>` element's Web Audio
+ * output — Radio's answer to "something to look at on a TV" while a station
+ * plays. `bindings.ts` starts/stops it whenever `view.radio.active` and
+ * `player.active` change; this module owns the Web Audio graph, canvas
+ * sizing, beat detection, and preset cycling, and leaves each preset's own
+ * visuals to its own file.
  *
  * CORS caveat: a `MediaElementAudioSourceNode` reads real frequency data
  * only when the element's audio is same-origin or CORS-clean.
@@ -15,9 +19,12 @@ import { refs } from 'spektrum';
  * same-origin, so the analyser sees real data for the common case. The
  * native-engine fallback assigns the raw cross-origin stream URL directly to
  * `video.src`; there the browser zeroes analyser output as a fingerprinting
- * guard, and the preset just idles (still animated, at rest) instead of
+ * guard, and every preset just idles (still animated, at rest) instead of
  * erroring.
  */
+
+/** How long each preset plays before auto-advancing — long enough to actually look at, short enough that an unattended TV doesn't stall on one preset all evening. */
+const AUTO_CYCLE_MS = 25_000;
 
 let audioCtx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
@@ -27,11 +34,13 @@ let rafId: number | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let observedCanvas: HTMLCanvasElement | null = null;
 
-let angle = 0;
-let zoom = 1;
-let lastTs: number | null = null;
+const beatDetector = new BeatDetector();
+let presets: VisualizerPreset[] = createRadioVisualizerPresets();
+let presetIndex = 0;
+let presetElapsedMs = 0;
+let activePresetCanvas: HTMLCanvasElement | null = null;
 
-const BAR_COUNT = 96;
+let lastTs: number | null = null;
 
 /**
  * (Re)creates the Web Audio graph against `video`, reusing it across
@@ -69,21 +78,27 @@ function ensureAudioGraph(video: HTMLVideoElement): AnalyserNode | null {
     }
 }
 
-function sizeCanvas(canvas: HTMLCanvasElement): void {
+function sizeCanvas(canvas: HTMLCanvasElement): boolean {
     const rect = canvas.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const width = Math.max(1, Math.round(rect.width * dpr));
     const height = Math.max(1, Math.round(rect.height * dpr));
-    if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-    }
+    if (canvas.width === width && canvas.height === height) return false;
+    canvas.width = width;
+    canvas.height = height;
+    return true;
 }
 
 function observeSize(canvas: HTMLCanvasElement): void {
     if (observedCanvas === canvas) return;
     resizeObserver?.disconnect();
-    resizeObserver = new ResizeObserver(() => sizeCanvas(canvas));
+    resizeObserver = new ResizeObserver(() => {
+        // A resized canvas invalidates any preset's offscreen buffers
+        // (particle bounds, the kaleidoscope wedge, the fractal tunnel's
+        // history frame) — every preset's `reset()` re-derives from the new
+        // dimensions, not just the one currently active.
+        if (sizeCanvas(canvas)) presets[presetIndex]?.reset(canvas.width, canvas.height);
+    });
     resizeObserver.observe(canvas);
     observedCanvas = canvas;
 }
@@ -95,13 +110,6 @@ function average(data: Uint8Array<ArrayBuffer>, start: number, end: number): num
     return sum / (end - start);
 }
 
-/**
- * One frame: bass drives the zoom pulse, mid drives rotation speed, treble
- * drives the center glow — coarse frequency bands rather than per-genre
- * tuning, but enough to read as "reacting to the music." A translucent fill
- * instead of a hard clear leaves a fading trail each frame, the cheapest
- * approximation of Milkdrop's feedback-buffer look canvas 2D can do.
- */
 function render(ts: number, canvas: HTMLCanvasElement, node: AnalyserNode, data: Uint8Array<ArrayBuffer>): void {
     rafId = requestAnimationFrame((next) => render(next, canvas, node, data));
     const ctx = canvas.getContext('2d');
@@ -111,56 +119,43 @@ function render(ts: number, canvas: HTMLCanvasElement, node: AnalyserNode, data:
     const dt = lastTs === null ? 16 : Math.min(ts - lastTs, 64);
     lastTs = ts;
 
+    presetElapsedMs += dt;
+    if (presetElapsedMs >= AUTO_CYCLE_MS) {
+        advancePreset(canvas);
+    }
+
     const bassEnd = Math.floor(data.length * 0.12);
     const midEnd = Math.floor(data.length * 0.5);
     const bass = average(data, 0, bassEnd);
     const mid = average(data, bassEnd, midEnd);
     const treble = average(data, midEnd, data.length);
+    const beat = beatDetector.update(bass, dt);
 
-    const targetZoom = 1 + (bass / 255) * 0.35;
-    zoom += (targetZoom - zoom) * 0.12;
-    angle += (0.0006 + (mid / 255) * 0.0025) * dt;
+    presets[presetIndex]?.frame({
+        ctx,
+        width: canvas.width,
+        height: canvas.height,
+        ts,
+        dt,
+        data,
+        bass,
+        mid,
+        treble,
+        beat,
+    });
+}
 
-    const { width, height } = canvas;
-    const cx = width / 2;
-    const cy = height / 2;
-    const baseRadius = Math.min(width, height) * 0.16;
-    const maxBarLength = Math.min(width, height) * 0.34;
+function advancePreset(canvas: HTMLCanvasElement): void {
+    presetIndex = (presetIndex + 1) % presets.length;
+    presetElapsedMs = 0;
+    beatDetector.reset();
+    presets[presetIndex]?.reset(canvas.width, canvas.height);
+}
 
-    ctx.fillStyle = 'rgba(6, 8, 16, 0.22)';
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(angle);
-    ctx.scale(zoom, zoom);
-
-    const hueBase = (ts / 40) % 360;
-    for (let i = 0; i < BAR_COUNT; i++) {
-        const bin = Math.floor((i / BAR_COUNT) * data.length);
-        const value = data[bin] ?? 0;
-        const pct = value / 255;
-        const barLength = baseRadius * 0.1 + pct * maxBarLength;
-        const theta = (i / BAR_COUNT) * Math.PI * 2;
-        const hue = (hueBase + (i / BAR_COUNT) * 180) % 360;
-        const lightness = 45 + pct * 25;
-
-        ctx.strokeStyle = `hsl(${hue.toFixed(1)} 85% ${lightness.toFixed(1)}%)`;
-        ctx.lineWidth = Math.max(1.5, (Math.min(width, height) / BAR_COUNT) * 0.9);
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(theta) * baseRadius, Math.sin(theta) * baseRadius);
-        ctx.lineTo(Math.cos(theta) * (baseRadius + barLength), Math.sin(theta) * (baseRadius + barLength));
-        ctx.stroke();
-    }
-
-    // A soft inner glow whose brightness tracks treble, so the center
-    // doesn't read as a dead hole during quiet passages.
-    ctx.beginPath();
-    ctx.arc(0, 0, baseRadius * 0.7, 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${hueBase.toFixed(1)}, 70%, ${(30 + (treble / 255) * 30).toFixed(1)}%, 0.35)`;
-    ctx.fill();
-
-    ctx.restore();
+/** Manual "next preset" — the `player/nextVisualizerPreset` action's entry point. A no-op while the visualizer isn't running. */
+export function cycleRadioVisualizerPreset(): void {
+    if (!activePresetCanvas) return;
+    advancePreset(activePresetCanvas);
 }
 
 /** Starts (or resumes) the visualizer against `[data-ref="radioVisualizer"]`. A no-op if that canvas isn't mounted or the audio graph can't be created (e.g. an unsupported browser). */
@@ -173,14 +168,19 @@ export function startRadioVisualizer(video: HTMLVideoElement): void {
     stopRadioVisualizerLoop();
     sizeCanvas(canvas);
     observeSize(canvas);
+    activePresetCanvas = canvas;
     lastTs = null;
+    presetElapsedMs = 0;
+    beatDetector.reset();
+    presets[presetIndex]?.reset(canvas.width, canvas.height);
     const data = freqData;
     rafId = requestAnimationFrame((ts) => render(ts, canvas, node, data));
 }
 
-/** Stops the render loop only — the audio graph stays connected (sound keeps playing, and the source node can't be recreated) so a later `startRadioVisualizer()` just resumes drawing. */
+/** Stops the render loop only — the audio graph stays connected (sound keeps playing, and the source node can't be recreated) so a later `startRadioVisualizer()` just resumes drawing, on whichever preset was active. */
 export function stopRadioVisualizer(): void {
     stopRadioVisualizerLoop();
+    activePresetCanvas = null;
 }
 
 function stopRadioVisualizerLoop(): void {
@@ -200,7 +200,10 @@ export function resetRadioVisualizerForTests(): void {
     analyser = null;
     sourceVideo = null;
     freqData = null;
-    angle = 0;
-    zoom = 1;
+    activePresetCanvas = null;
+    presets = createRadioVisualizerPresets();
+    presetIndex = 0;
+    presetElapsedMs = 0;
+    beatDetector.reset();
     lastTs = null;
 }

@@ -1,5 +1,6 @@
 import { appState, defineFn, getPathObj, refs, setValue } from 'spektrum';
 import { requestElementFullscreen, requestVideoFullscreen } from '../player/fullscreen';
+import { cycleRadioVisualizerPreset } from '../player/visualizer';
 import { pushCapped } from './collections';
 import { persist } from './persist';
 import {
@@ -55,6 +56,12 @@ export function registerPlayerActions(): void {
         }
         const video = refs['playerVideo'];
         if (video instanceof HTMLVideoElement) requestVideoFullscreen(video);
+    });
+    // Manual skip alongside the visualizer's own auto-cycle
+    // (src/player/visualizer/index.ts's AUTO_CYCLE_MS) — a no-op if the
+    // visualizer isn't currently running.
+    defineFn('player/nextVisualizerPreset', () => {
+        cycleRadioVisualizerPreset();
     });
 }
 
