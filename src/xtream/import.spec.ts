@@ -118,7 +118,7 @@ describe('xtream/import', () => {
         });
     });
 
-    it('flags a stream as radio when its category or its own name carries the word "radio"', async () => {
+    it('flags a stream as radio from its category, its own name, or the shape of its bundle', async () => {
         await withFakePlatform({}, async ({ http, storage }) => {
             http.onGet(apiUrl(source, '')).reply({ kind: 'ok', body: JSON.stringify({ user_info: { auth: 1, status: 'Active' } }) });
             http.onGet(apiUrl(source, 'get_live_categories')).reply({
@@ -126,6 +126,10 @@ describe('xtream/import', () => {
                 body: JSON.stringify([
                     { category_id: '1', category_name: 'NL RADIO' },
                     { category_id: '2', category_name: 'NL | ENTERTAINMENT' },
+                    // The case that left the Radio view empty: a station
+                    // bundle filed under a genre name, holding names that
+                    // never say "radio" themselves.
+                    { category_id: '3', category_name: 'NL | MUZIEK' },
                 ]),
             });
             http.onGet(apiUrl(source, 'get_live_streams')).reply({
@@ -133,20 +137,33 @@ describe('xtream/import', () => {
                 body: JSON.stringify([
                     { stream_id: 1, name: 'Radio 10', category_id: '1' },
                     { stream_id: 2, name: 'NPO 1', category_id: '2' },
+                    // Italian television, not a station — the quality marker
+                    // is what separates the two.
                     { stream_id: 3, name: 'Radio Zeta HD', category_id: '2' },
+                    { stream_id: 4, name: 'SLAM!', category_id: '3' },
+                    { stream_id: 5, name: 'QMUSIC', category_id: '3' },
+                    { stream_id: 6, name: 'WILD FM', category_id: '3' },
+                    { stream_id: 7, name: 'NPO RADIO 2', category_id: '3' },
+                    { stream_id: 8, name: 'SKY RADIO 101 FM', category_id: '3' },
                 ]),
             });
             const outcome = await importXtreamSource({ url: source.url, user: source.user, pass: source.pass, name: 'X' });
             expect(outcome.ok).toBe(true);
             if (!outcome.ok) return;
-            const channels = await storage.getRange('channels', [outcome.summary.sourceId, 0], [outcome.summary.sourceId, 9]);
+            const channels = await storage.getRange('channels', [outcome.summary.sourceId, 0], [outcome.summary.sourceId, 99]);
             expect(channels.map((c) => [c.name, c.radio])).toEqual(
                 expect.arrayContaining([
                     ['Radio 10', true],
                     ['NPO 1', false],
-                    ['Radio Zeta HD', true],
+                    ['Radio Zeta HD', false],
+                    ['SLAM!', true],
+                    ['QMUSIC', true],
+                    ['WILD FM', true],
                 ]),
             );
+
+            const playlist = (await storage.getAll('playlists'))[0];
+            expect(playlist?.radioCount).toBe(6);
         });
     });
 

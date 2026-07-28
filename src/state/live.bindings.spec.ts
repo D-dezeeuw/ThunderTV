@@ -1,7 +1,7 @@
 import { setValue, tick } from 'spektrum';
 import { describe, expect, it } from 'vitest';
 import { mountTemplate } from '../shared/testing/bind-dom';
-import { LIVE_STATS } from './live';
+import { LIVE_STATS, RADIO_COUNT } from './live';
 import { playVariantById, publishVariantsFor } from './live.actions';
 import { PLAYER_ACTIVE, PLAYER_ACTIVE_VARIANT_ID, PLAYER_VARIANTS } from './player';
 import { setActiveChannel } from './player.actions';
@@ -126,6 +126,43 @@ describe('live stats readout', () => {
         setValue(LIVE_STATS, { inputRows: 0, channels: 0, hiddenByCountry: 0, hiddenAsJunk: 0, hiddenAsUnknown: 0, collapsed: 0 });
         tick();
         expect(mounted.query('[data-testid="empty"]')?.style.display).toBe('none');
+
+        mounted.cleanup();
+    });
+});
+
+describe('radio empty state', () => {
+    it('explains an empty Radio list instead of rendering a blank box', () => {
+        const mounted = mountTemplate(`
+            <div data-if="radioIsEmpty" data-testid="radio-empty"></div>
+            <div data-if="!radioIsEmpty" data-testid="radio-list"></div>
+        `);
+        const empty = (): string | undefined => mounted.query('[data-testid="radio-empty"]')?.style.display;
+
+        setValue('activeSource', { id: 's', name: 'Provider', channelCount: 26232 });
+        setValue(RADIO_COUNT, 0);
+        setValue(UI_ACTIVE_VIEW, 'radio');
+        tick();
+        expect(empty()).toBe('');
+        expect(mounted.query('[data-testid="radio-list"]')?.style.display).toBe('none');
+
+        // Stations found: back to the list, no notice.
+        setValue(RADIO_COUNT, 131);
+        tick();
+        expect(empty()).toBe('none');
+
+        // The notice belongs to Radio alone — Live has its own.
+        setValue(RADIO_COUNT, 0);
+        setValue(UI_ACTIVE_VIEW, 'live');
+        tick();
+        expect(empty()).toBe('none');
+
+        // And a source with nothing in it at all is a different failure,
+        // already covered by the generic "no channels" line.
+        setValue('activeSource', { id: 's', name: 'Provider', channelCount: 0 });
+        setValue(UI_ACTIVE_VIEW, 'radio');
+        tick();
+        expect(empty()).toBe('none');
 
         mounted.cleanup();
     });

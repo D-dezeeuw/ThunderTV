@@ -556,7 +556,28 @@
                             </div>
                         </div>
 
-                        <div class="list-shell__body" data-if="!activeSource.needsReupload && activeSource.channelCount > 0 && !liveFilteredEverything">
+                        <!-- The source has channels but none of them are radio.
+                             Without this the Radio view was a silent empty box
+                             with a header above it, which reads as a broken app
+                             rather than "this provider ships no stations". -->
+                        <div class="list-shell__empty" data-if="radioIsEmpty" data-testid="radio-empty">
+                            <p class="list-shell__empty-heading">{{ strings.radio.empty }}</p>
+                            <p>{{ strings.radio.emptyHint }}</p>
+                            <div class="list-shell__empty-actions">
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    data-view="categories"
+                                    data-action="click"
+                                    data-fn="ui/navigate"
+                                    data-testid="radio-empty-categories-btn"
+                                >
+                                    {{ strings.live.empty.openCategories }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="list-shell__body" data-if="!activeSource.needsReupload && activeSource.channelCount > 0 && !liveFilteredEverything && !radioIsEmpty">
                             <!-- Feature 08.5: groups panel — renders from GroupMeta alone
                                  (list.groups), so it's ready before channel rows are even
                                  streamed in. Hidden for single-group playlists (08.5.6). -->

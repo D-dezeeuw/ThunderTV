@@ -57,7 +57,9 @@ export const strings = {
 
     radio: {
         note: 'Audio-only stations from this source. Radio has no EPG and no curated list, so only country and filler filtering apply.',
-        empty: 'No radio stations found in this source.',
+        empty: 'No radio stations found in this source',
+        emptyHint:
+            'Your provider ships no audio-only stations, or labels them in a way this list did not recognise — the untouched catalog under Categories shows everything it sent.',
     },
 
     emptyStates: {
