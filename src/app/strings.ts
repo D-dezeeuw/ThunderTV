@@ -113,7 +113,7 @@ export const strings = {
         },
         guide: {
             heading: 'No EPG data yet',
-            message: 'Favorite some channels to see their program guide here.',
+            message: 'Still fetching the program guide, or nothing matched your channels yet — check back shortly.',
         },
         error: {
             heading: 'Something went wrong',
@@ -123,6 +123,11 @@ export const strings = {
 
     connect: {
         detected: 'Connect link detected — this device will be configured shortly.',
+    },
+
+    guide: {
+        nowLabel: 'Now',
+        detailEmpty: 'Select a programme to see its details here.',
     },
 
     recent: {

@@ -11,6 +11,7 @@
         <link rel="stylesheet" href="/src/styles/import-card.css" />
         <link rel="stylesheet" href="/src/styles/channel-list.css" />
         <link rel="stylesheet" href="/src/styles/player.css" />
+        <link rel="stylesheet" href="/src/styles/guide.css" />
 
         <!--
           Spektrum is the app's only UI/state framework, resolved at runtime
@@ -898,12 +899,73 @@
                     data-testid="view-guide"
                 >
                     <h1 class="view__heading">{{ strings.views.guide.heading }}</h1>
-                    <div class="empty-state">
+
+                    <div class="empty-state" data-if="!guide.view.hasData" data-testid="guide-empty">
                         <svg class="icon icon--empty" aria-hidden="true">
                             <use href="#icon-guide"></use>
                         </svg>
                         <p class="empty-state__heading">{{ strings.emptyStates.guide.heading }}</p>
                         <p class="empty-state__message">{{ strings.emptyStates.guide.message }}</p>
+                    </div>
+
+                    <div class="guide" data-if="guide.view.hasData" data-testid="guide-grid">
+                        <div class="guide__header">
+                            <span>{{ guide.view.rangeStartLabel }}</span>
+                            <span>{{ guide.view.rangeEndLabel }}</span>
+                        </div>
+
+                        <div class="guide__rows" data-testid="guide-rows">
+                            <div
+                                class="guide__now-line"
+                                :style="'left:' + guide.view.nowPercent + '%'"
+                                :aria-label="strings.guide.nowLabel"
+                                role="img"
+                                data-testid="guide-now-line"
+                            ></div>
+
+                            <div class="guide__row" data-each="guide.view.channels" data-testid="guide-row">
+                                <div class="guide__channel">
+                                    <img
+                                        data-if="item.icon"
+                                        class="guide__channel-logo"
+                                        :src="item.icon"
+                                        loading="lazy"
+                                        decoding="async"
+                                        referrerpolicy="no-referrer"
+                                        alt=""
+                                    />
+                                    <span class="guide__channel-name truncate">{{ item.displayName }}</span>
+                                </div>
+                                <div
+                                    class="guide__timeline"
+                                    data-each="item.programs"
+                                    data-as="program"
+                                    data-action="click"
+                                    data-fn="guide/selectProgram"
+                                >
+                                    <button
+                                        type="button"
+                                        class="guide__program"
+                                        :class="{ 'guide__program--now': program.isNow, 'guide__program--selected': program.isSelected }"
+                                        :style="'left:' + program.leftPercent + '%; width:' + program.widthPercent + '%'"
+                                        :data-program-key="program.key"
+                                        :title="program.title"
+                                        data-testid="guide-program"
+                                    >
+                                        <span class="guide__program-title truncate">{{ program.title }}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="guide__detail" data-testid="guide-detail">
+                            <p class="guide__detail-empty" data-if="!guide.view.selected">{{ strings.guide.detailEmpty }}</p>
+                            <div class="guide__detail-body" data-if="guide.view.selected">
+                                <h2 class="guide__detail-title">{{ guide.view.selected.title }}</h2>
+                                <p class="guide__detail-time">{{ guide.view.selected.channelName }} · {{ guide.view.selected.timeLabel }}</p>
+                                <p class="guide__detail-description">{{ guide.view.selected.description }}</p>
+                            </div>
+                        </div>
                     </div>
                 </section>
 

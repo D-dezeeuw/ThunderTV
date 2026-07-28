@@ -21,6 +21,9 @@ import { registerDebugActions } from './debug.actions';
 import { initDebugState } from './debug';
 import { registerPlayerActions } from './player.actions';
 import { registerRecentActions } from './recent.actions';
+import { registerGuideActions } from './guide.actions';
+import { registerGuideSelectors } from './guide.selectors';
+import { initGuideState } from './guide';
 import { registerPlayerSelectors } from './player.selectors';
 import { initPlaylistState } from './playlist';
 import { registerPlaylistActions } from './playlist.actions';
@@ -46,6 +49,8 @@ export { loadPlaylistSources } from './playlist-load';
 export { loadFavoriteIds } from './favorites-load';
 export { loadActiveSource } from './list-load';
 export { registerViewRowsWatch } from './live.actions';
+export { loadGuideChannels } from './guide-load';
+export { loadDefaultEpg } from './epg-load';
 
 /**
  * Seeds every module's defaults (Feature 05.1.8) — called before
@@ -66,6 +71,7 @@ export function initState(): void {
     initLiveState();
     initFavoritesState();
     initDebugState();
+    initGuideState();
     applyHistoryPolicy();
 }
 
@@ -81,6 +87,7 @@ export function registerActions(): void {
     registerRecentActions();
     registerDebugActions();
     registerXtreamActions();
+    registerGuideActions();
 }
 
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */
@@ -91,6 +98,7 @@ export function registerSelectors(): void {
     registerUiSelectors();
     registerListSelectors();
     registerLiveSelectors();
+    registerGuideSelectors();
 }
 
 /**

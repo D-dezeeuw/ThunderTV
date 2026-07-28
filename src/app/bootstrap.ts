@@ -9,7 +9,9 @@ import { registerDebugShortcut } from '../state/debug.actions';
 import { installDevtools } from '../state/devtools';
 import {
     initState,
+    loadDefaultEpg,
     loadFavoriteIds,
+    loadGuideChannels,
     loadPlaylistSources,
     registerActions,
     registerPersistOnHide,
@@ -78,6 +80,12 @@ export async function bootstrap(): Promise<void> {
     void sweepAndLoadPlaylistSources();
     void loadXtreamAccountPrefill();
     void loadFavoriteIds();
+    // Paint whatever EPG data already survived from a previous session
+    // immediately, then kick off the (TTL-guarded) bulk XMLTV fetch —
+    // loadDefaultEpg() itself republishes guide.channels once it writes
+    // anything new (src/state/epg-load.ts).
+    void loadGuideChannels();
+    void loadDefaultEpg();
     registerImportDropzoneDragover();
     registerDebugShortcut();
     registerListBindings();
