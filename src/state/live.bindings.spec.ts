@@ -169,31 +169,58 @@ describe('radio empty state', () => {
 });
 
 describe('variant switcher', () => {
-    it('renders a chip per feed, marks the playing one, and switches the stream on click', () => {
+    it('renders an icon chip per feed, marks the playing one, and switches the stream on click', () => {
         const mounted = mountTemplate(`
             <div data-if="hasVariants" data-testid="strip">
                 <div data-each="player.variants" data-action="click" data-fn="live/playVariant">
                     <button
                         :class="{ 'is-active': item.id === player.activeVariantId }"
+                        :aria-label="item.label"
                         :data-variant-id="item.id"
                         data-testid="chip"
-                    >{{ item.label }}</button>
+                    >
+                        <span data-testid="bars" data-if="item.tier">
+                            <i :class="{ on: item.tier >= 1 }"></i>
+                            <i :class="{ on: item.tier >= 2 }"></i>
+                            <i :class="{ on: item.tier >= 3 }"></i>
+                            <i :class="{ on: item.tier >= 4 }"></i>
+                        </span>
+                        <span data-testid="catchup" data-if="item.isRecording"></span>
+                    </button>
                 </div>
+                <span data-testid="current">{{ activeVariantLabel }}</span>
             </div>
         `);
 
         setActiveChannel(NPO);
         setValue(PLAYER_VARIANTS, [
-            { id: 'a', url: 'http://x/a.ts', label: 'FHD', quality: 'FHD', isRecording: false, provider: null },
-            { id: 'b', url: 'http://x/b.ts', label: 'HD · catch-up', quality: 'HD', isRecording: true, provider: null },
+            { id: 'a', url: 'http://x/a.ts', label: 'FHD', quality: 'FHD', isRecording: false, provider: null, tier: 3 },
+            { id: 'b', url: 'http://x/b.ts', label: 'HD · catch-up', quality: 'HD', isRecording: true, provider: null, tier: 2 },
         ]);
         setValue(PLAYER_ACTIVE_VARIANT_ID, 'a');
         tick();
 
         expect(mounted.query('[data-testid="strip"]')?.style.display).toBe('');
         const chips = mounted.queryAll('[data-testid="chip"]');
-        expect(chips.map((c) => c.textContent)).toEqual(['FHD', 'HD · catch-up']);
+        // The label is the accessible name now, not the visible text — the
+        // long "FHD · NEDERLAND ULTRA" forms are what overran the pane.
+        expect(chips.map((c) => c.getAttribute('aria-label'))).toEqual(['FHD', 'HD · catch-up']);
         expect(chips[0]?.classList.contains('is-active')).toBe(true);
+
+        // Tier reads as lit bars: FHD lights three of four, HD two.
+        const lit = (chip: HTMLElement | undefined): number => chip?.querySelectorAll('i.on').length ?? -1;
+        expect(lit(chips[0])).toBe(3);
+        expect(lit(chips[1])).toBe(2);
+
+        // Catch-up gets its own glyph, and only the recording has it.
+        const catchup = (chip: HTMLElement | undefined): string | undefined =>
+            chip?.querySelector<HTMLElement>('[data-testid="catchup"]')?.style.display;
+        expect(catchup(chips[0])).toBe('none');
+        expect(catchup(chips[1])).toBe('');
+
+        // The playing feed stays spelled out, so the current choice is
+        // never only an icon.
+        expect(mounted.query('[data-testid="current"]')?.textContent).toBe('FHD');
 
         // Click the catch-up chip through the real delegated handler.
         chips[1]?.click();

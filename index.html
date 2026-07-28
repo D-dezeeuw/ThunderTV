@@ -58,6 +58,8 @@
             <symbol id="icon-play" viewBox="0 0 24 24"><path d="M6 4.5v15l14-7.5z" fill="currentColor" stroke="none"/></symbol>
             <symbol id="icon-live" viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><polyline points="8,3 12,7 16,3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="13.5" r="2.2" fill="currentColor" stroke="none"/></symbol>
             <symbol id="icon-radio" viewBox="0 0 24 24"><rect x="2.5" y="8.5" width="19" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="16.5" cy="14.5" r="3" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="12.5" x2="10.5" y2="12.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="16.5" x2="10.5" y2="16.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="7" y1="8" x2="17.5" y2="3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <symbol id="icon-catchup" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.6-5.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="3.5,3.5 3.5,8.5 8.5,8.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="12,7.5 12,12 15.5,14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+            <symbol id="icon-feed" viewBox="0 0 24 24"><path d="M12 3.5l8.5 4.5-8.5 4.5-8.5-4.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><polyline points="3.5,12.5 12,17 20.5,12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="3.5,16.5 12,21 20.5,16.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
             <symbol id="icon-categories" viewBox="0 0 24 24"><line x1="9" y1="6" x2="20.5" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="18" x2="20.5" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.6" fill="currentColor" stroke="none"/></symbol>
         </svg>
 
@@ -716,15 +718,30 @@
                                             {{ strings.list.playerStop }}
                                         </button>
                                     </div>
-                                    <!-- Variant switcher. Lives here rather than under
-                                         each list row on purpose: the list republishes
-                                         its window on every scroll frame, so a nested
-                                         data-each per row would rebuild these chips
-                                         continuously across a 90k-channel source. The
-                                         alternate feeds only matter for the channel
-                                         you are actually watching. -->
-                                    <div class="variants" data-if="hasVariants" data-testid="variant-strip">
-                                        <span class="variants__label">{{ strings.live.variants.label }}</span>
+                                    <!-- Variant switcher for the channel being watched.
+                                         Lives here rather than under each list row on
+                                         purpose: the list republishes its window on every
+                                         scroll frame, so a nested data-each per row would
+                                         rebuild these continuously across a 90k-channel
+                                         source. The alternate feeds only matter for the
+                                         channel you are actually watching.
+
+                                         Icons, not a row of text tabs: a channel carried
+                                         by several bundles produced labels like
+                                         "FHD · NEDERLAND ULTRA" that overran the pane and
+                                         clipped. Picture tier reads as lit bars (4 = UHD
+                                         down to 1 = SD), catch-up gets its own glyph, and
+                                         the full label stays available as the accessible
+                                         name — with the playing feed's label spelled out
+                                         beside the strip, so the current choice is never
+                                         only an icon. -->
+                                    <div
+                                        class="variants"
+                                        data-if="hasVariants"
+                                        role="group"
+                                        :aria-label="strings.live.variants.label"
+                                        data-testid="variant-strip"
+                                    >
                                         <div
                                             class="variants__chips"
                                             data-each="player.variants"
@@ -736,12 +753,26 @@
                                                 class="variants__chip"
                                                 :class="{ 'variants__chip--active': item.id === player.activeVariantId }"
                                                 :aria-pressed="item.id === player.activeVariantId"
+                                                :aria-label="item.label"
+                                                :title="item.label"
                                                 :data-variant-id="item.id"
                                                 data-testid="variant-chip"
                                             >
-                                                {{ item.label }}
+                                                <span class="variants__bars" data-if="item.tier" aria-hidden="true">
+                                                    <span class="variants__bar" :class="{ 'variants__bar--on': item.tier >= 1 }"></span>
+                                                    <span class="variants__bar" :class="{ 'variants__bar--on': item.tier >= 2 }"></span>
+                                                    <span class="variants__bar" :class="{ 'variants__bar--on': item.tier >= 3 }"></span>
+                                                    <span class="variants__bar" :class="{ 'variants__bar--on': item.tier >= 4 }"></span>
+                                                </span>
+                                                <svg class="icon icon--s" data-if="!item.tier" aria-hidden="true">
+                                                    <use href="#icon-feed"></use>
+                                                </svg>
+                                                <svg class="icon icon--s variants__catchup" data-if="item.isRecording" aria-hidden="true">
+                                                    <use href="#icon-catchup"></use>
+                                                </svg>
                                             </button>
                                         </div>
+                                        <span class="variants__current truncate" data-testid="variant-current">{{ activeVariantLabel }}</span>
                                     </div>
                                     <p class="player-shell__error" data-if="player.playbackError" data-testid="player-error">
                                         {{ strings.list.playerErrorPrefix }} {{ player.playbackError }}

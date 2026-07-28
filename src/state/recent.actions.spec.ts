@@ -41,7 +41,9 @@ describe('viewForSnapshot', () => {
         expect(viewForSnapshot(SLAM)).toBe('radio');
         expect(viewForSnapshot(NPO)).toBe('live');
         // Entries persisted before the flag existed are television.
-        expect(viewForSnapshot({ ...SLAM, radio: undefined })).toBe('live');
+        const withoutFlag: ActiveChannelSnapshot = { ...SLAM };
+        delete withoutFlag.radio;
+        expect(viewForSnapshot(withoutFlag)).toBe('live');
     });
 });
 
