@@ -1,5 +1,6 @@
 import { mixedContentBlocked, type FetchFailure } from '../core/http/classified-fetch';
 import { getPlatform } from '../core/platform';
+import { captureRawResponse } from '../core/raw-capture';
 import { findExistingByFingerprint } from './import-commit';
 import { contentFingerprint, looksLikeM3u } from './import-sniff';
 import { runImport, type ImportOutcome } from './import-run';
@@ -95,6 +96,21 @@ export interface ImportUrlOptions {
  * choose both the right copy and the right retry affordance without
  * re-deriving either from a message string.
  */
+/** Playlist URLs often carry credentials as query parameters; the raw capture records the endpoint, never the account. */
+function redactPlaylistUrl(url: string): string {
+    try {
+        const parsed = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `http://${url}`);
+        parsed.username = '';
+        parsed.password = '';
+        for (const key of ['username', 'password', 'token', 'pass', 'user']) {
+            if (parsed.searchParams.has(key)) parsed.searchParams.set(key, 'REDACTED');
+        }
+        return parsed.toString();
+    } catch {
+        return '[unparseable url redacted]';
+    }
+}
+
 export async function importPlaylistUrl(url: string, options: ImportUrlOptions = {}): Promise<ImportEntryOutcome> {
     if (mixedContentBlocked(url)) {
         return { ok: false, cancelled: false, errorKind: 'mixedContent' };
@@ -106,6 +122,16 @@ export async function importPlaylistUrl(url: string, options: ImportUrlOptions =
     }
 
     const text = await result.res.text();
+    // Captured before the M3U sniff rejects it: a body that fails
+    // `looksLikeM3u` is precisely what needs eyes on it.
+    captureRawResponse({
+        label: 'm3u:url',
+        url: redactPlaylistUrl(url),
+        contentType: 'text/plain',
+        status: 200,
+        body: text,
+    });
+
     if (!looksLikeM3u(text)) return invalidM3uOutcome();
 
     return runImport({

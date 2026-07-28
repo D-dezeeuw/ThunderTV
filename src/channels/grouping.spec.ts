@@ -277,3 +277,39 @@ describe('first variant creates the channel', () => {
         expect(stats.droppedSamples).toEqual(['Onbekende Zender']);
     });
 });
+
+describe('real provider formats (from a live cloud-ott export)', () => {
+    it('reads a box-drawing country bracket and a superscript catch-up marker', () => {
+        // "┃NL┃ NPO 1 HD  ⏺ʳᵉᶜ" — U+2503 brackets, not ASCII pipes, and the
+        // record flag written as a pictograph plus superscript letters.
+        expect(parseChannelName('┃NL┃ NPO 1 HD  ⏺ʳᵉᶜ')).toMatchObject({
+            country: 'NL',
+            base: 'NPO 1',
+            quality: 'HD',
+            isRecording: true,
+        });
+        expect(parseCategoryName('┃NL┃ NEDERLAND HD | TERUGKIJKEN ⏺').country).toBe('NL');
+    });
+
+    it('still refuses to read a bare two-letter word as a country', () => {
+        // No bracket and no separator: "TV" must stay part of the name.
+        expect(parseChannelName('TV 538').country).toBeNull();
+        expect(parseChannelName('TV 538').base).toBe('TV 538');
+        expect(parseChannelName('FINLAND NEWS').country).toBeNull();
+    });
+
+    it('matches the curated catalog through the real spelling', () => {
+        const { channels } = groupChannels(
+            [
+                { id: 'a', name: '┃NL┃ NPO 1 HD  ⏺ʳᵉᶜ', url: 'u1', group: '┃NL┃ NEDERLAND HD | TERUGKIJKEN ⏺', logo: null, tvgId: null, radio: false },
+                { id: 'b', name: '┃NL┃ NPO 1 HD', url: 'u2', group: '┃NL┃ NEDERLAND HD', logo: null, tvgId: null, radio: false },
+                { id: 'c', name: '┃NL┃ NICKELODEON 8K', url: 'u3', group: '┃NL┃ JEUGD | BABY', logo: null, tvgId: null, radio: false },
+            ],
+            { country: 'NL', knownOnly: true },
+        );
+        expect(channels.map((c) => c.name)).toEqual(['NPO 1', 'Nickelodeon']);
+        // The live feed leads; the catch-up copy is folded in behind it.
+        expect(channels[0]?.variants).toHaveLength(2);
+        expect(channels[0]?.primary.isRecording).toBe(false);
+    });
+});

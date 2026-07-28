@@ -51,7 +51,9 @@ export const DUTCH_CATALOG: readonly CatalogEntry[] = [
     // --- Talpa / SBS ---
     { canonical: 'SBS6', rank: 300, aliases: ['SBS 6'] },
     { canonical: 'Net5', rank: 310, aliases: ['NET 5'] },
-    { canonical: 'Veronica', rank: 320, aliases: ['VERONICA DISNEY XD'] },
+    // Veronica and Disney XD share one Dutch channel, and providers spell
+    // the pairing several ways.
+    { canonical: 'Veronica', rank: 320, aliases: ['VERONICA DISNEY XD', 'VERONICA DISNEYXD', 'VERONICA DISNEY'] },
     { canonical: 'SBS9', rank: 330, aliases: ['SBS 9'] },
     { canonical: 'TV 538', rank: 340, aliases: ['TV538', 'RADIO 538 TV'] },
 

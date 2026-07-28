@@ -3,6 +3,7 @@ import { isValidProxyTemplate } from '../core/http';
 import { strings } from '../app/strings';
 import { downloadTextFile } from '../ui/download-file';
 import { buildConfigXml } from './config-export';
+import { buildEpgXml, buildRawResponsesXml } from './raw-export';
 import { persist } from './persist';
 import {
     isBufferingMode,
@@ -77,6 +78,44 @@ export function registerSettingsActions(): void {
     defineFn('settings/exportConfig', () => {
         exportConfiguration();
     });
+    defineFn('settings/exportRaw', () => {
+        exportRawResponses();
+    });
+    defineFn('settings/exportEpg', () => {
+        void exportEpg();
+    });
+}
+
+/** Filename stamp shared by every export, so a set of three files sorts together. */
+function stamp(iso: string): string {
+    return iso.slice(0, 19).replace(/[:T]/g, '-');
+}
+
+/** The provider's replies verbatim — the untransformed counterpart to `exportConfiguration()`. */
+export function exportRawResponses(): void {
+    try {
+        const iso = new Date().toISOString();
+        downloadTextFile(
+            `thundertv-raw-${stamp(iso)}.xml`,
+            'application/xml',
+            buildRawResponsesXml({ generatedAt: iso, appVersion: APP_VERSION }),
+        );
+        set(SETTINGS_EXPORT_STATE, 'done');
+    } catch {
+        set(SETTINGS_EXPORT_STATE, 'failed');
+    }
+}
+
+/** Async because the guide lives in storage rather than memory; failures surface in the panel like the other two. */
+export async function exportEpg(): Promise<void> {
+    try {
+        const iso = new Date().toISOString();
+        const xml = await buildEpgXml({ generatedAt: iso, appVersion: APP_VERSION });
+        downloadTextFile(`thundertv-epg-${stamp(iso)}.xml`, 'application/xml', xml);
+        set(SETTINGS_EXPORT_STATE, 'done');
+    } catch {
+        set(SETTINGS_EXPORT_STATE, 'failed');
+    }
 }
 
 /**
@@ -87,9 +126,9 @@ export function registerSettingsActions(): void {
  */
 export function exportConfiguration(): void {
     try {
-        const stamp = new Date().toISOString();
-        const xml = buildConfigXml({ generatedAt: stamp, appVersion: APP_VERSION });
-        downloadTextFile(`thundertv-config-${stamp.slice(0, 19).replace(/[:T]/g, '-')}.xml`, 'application/xml', xml);
+        const iso = new Date().toISOString();
+        const xml = buildConfigXml({ generatedAt: iso, appVersion: APP_VERSION });
+        downloadTextFile(`thundertv-config-${stamp(iso)}.xml`, 'application/xml', xml);
         set(SETTINGS_EXPORT_STATE, 'done');
     } catch {
         set(SETTINGS_EXPORT_STATE, 'failed');

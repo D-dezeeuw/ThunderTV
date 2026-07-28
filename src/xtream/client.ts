@@ -1,4 +1,5 @@
 import { getPlatform } from '../core/platform';
+import { captureRawResponse } from '../core/raw-capture';
 import { asArray, asBool01, asNumber, asString } from './coerce';
 import { classifyXtreamHttpFailure, looksLikeHtmlLoginPage, type XtreamError } from './errors';
 import type { AccountStatus, XtreamCategory, XtreamLiveStream, XtreamSource } from './types';
@@ -6,11 +7,27 @@ import { apiUrl } from './urls';
 
 type XtreamResult<T> = { ok: true; data: T } | { ok: false; error: XtreamError };
 
+/** The API URL with credentials stripped — `apiUrl()` embeds username and password as query parameters. */
+function redactApiUrl(source: XtreamSource, action: string): string {
+    return apiUrl({ ...source, user: 'REDACTED', pass: 'REDACTED' }, action, '');
+}
+
 async function callApi(source: XtreamSource, action: string, extra = ''): Promise<XtreamResult<unknown>> {
     const res = await getPlatform().http.get(apiUrl(source, action, extra));
     if (res.kind !== 'ok') return { ok: false, error: classifyXtreamHttpFailure(action, res) };
 
     const text = await res.res.text();
+    // Captured before any parsing, and before the login-page and JSON checks
+    // below can reject it — a response the app refuses is exactly the one
+    // worth reading raw.
+    captureRawResponse({
+        label: `xtream:${action || 'authenticate'}`,
+        url: redactApiUrl(source, action),
+        contentType: 'application/json',
+        status: 200,
+        body: text,
+    });
+
     if (looksLikeHtmlLoginPage(text)) return { ok: false, error: { kind: 'auth-failed', action } };
 
     try {

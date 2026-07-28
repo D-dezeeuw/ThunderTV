@@ -164,6 +164,12 @@ export const strings = {
                 'Downloads every setting, every source, and each channel your provider ships alongside what the filter made of its name — the fastest way to see why a channel is missing. Credentials in URLs are redacted, but check the file before sharing it.',
             exportDone: 'Export downloaded.',
             exportFailed: 'Export failed.',
+            exportRawButton: 'Export raw server responses (XML)',
+            exportRawHelp:
+                "The provider's replies exactly as received, before any parsing — the untransformed counterpart to the configuration export. Captured in memory only, so reload clears them: import the source or hit Refresh above, then export. Xtream echoes your username and password inside user_info, so only those two fields are redacted.",
+            exportEpgButton: 'Export EPG (XML)',
+            exportEpgHelp:
+                'Every stored guide channel and programme. An empty guide next to a full channel list usually means the channel tvg-id and the EPG channel id do not match.',
         },
         liveFilter: {
             countryLabel: 'Country',
