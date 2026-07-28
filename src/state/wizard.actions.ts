@@ -1,8 +1,9 @@
 import { defineFn, refs, setValue } from 'spektrum';
+import { persist } from './persist';
 import { PLAYLIST_SOURCES, type PlaylistSourceSummary } from './playlist';
 import { saveXtreamAccount } from './settings.actions';
 import { UI_SETTINGS_OPEN } from './ui';
-import { UI_WIZARD_OPEN, UI_WIZARD_STEP, shouldOpenWizard, type WizardStep } from './wizard';
+import { UI_SETUP_COMPLETE, UI_WIZARD_OPEN, UI_WIZARD_STEP, shouldOpenWizard, type WizardStep } from './wizard';
 import { get } from './typed';
 
 /**
@@ -19,10 +20,10 @@ export function registerWizardActions(): void {
         openWizard();
     });
     defineFn('wizard/close', () => {
-        setValue(UI_WIZARD_OPEN, false);
+        closeWizard();
     });
     defineFn('wizard/skip', () => {
-        setValue(UI_WIZARD_OPEN, false);
+        closeWizard();
     });
     defineFn('wizard/nextStep', () => {
         setValue(UI_WIZARD_STEP, 2 satisfies WizardStep);
@@ -52,15 +53,46 @@ export function openWizard(): void {
 }
 
 /**
+ * Dismissal (Skip/close) counts as "setup dealt with" just as much as a
+ * successful save: the user was asked and answered, so the next boot must
+ * not ask again. Settings → Streaming's "Run setup wizard again" stays the
+ * way back in, so this is never a one-shot trap.
+ */
+function closeWizard(): void {
+    markSetupComplete();
+    setValue(UI_WIZARD_OPEN, false);
+}
+
+/**
+ * Records "this install is configured" durably. Idempotent, and skips the
+ * write entirely when the flag is already set, so the common (returning
+ * user) boot path costs one read and no storage traffic.
+ */
+export function markSetupComplete(): void {
+    if (get<boolean>(UI_SETUP_COMPLETE) === true) return;
+    setValue(UI_SETUP_COMPLETE, true);
+    persist(UI_SETUP_COMPLETE);
+}
+
+/**
  * Boot-time check (Feature: first-run wizard) — called once
  * `playlist.sources` has actually finished loading from storage
  * (`bootstrap.ts`'s `sweepAndLoadPlaylistSources()`), never before, so an
  * existing user's sources list never flashes the wizard open while it's
  * still the pre-load empty default.
+ *
+ * Finding a configured source is also how an install that predates
+ * `ui.setupComplete` (or one set up through the Connect card rather than
+ * the wizard) gets the flag written — from then on the wizard stays shut
+ * regardless of what the sources projection reports.
  */
 export function openWizardIfNoSources(): void {
     const sources = get<PlaylistSourceSummary[]>(PLAYLIST_SOURCES) ?? [];
-    if (shouldOpenWizard(sources)) {
+    if (sources.length > 0) {
+        markSetupComplete();
+        return;
+    }
+    if (shouldOpenWizard(sources, get<boolean>(UI_SETUP_COMPLETE) ?? false)) {
         setValue(UI_WIZARD_STEP, 1 satisfies WizardStep);
         setValue(UI_WIZARD_OPEN, true);
     }
@@ -75,6 +107,7 @@ export function openWizardIfNoSources(): void {
 async function saveXtreamAccountAndClose(input: { url: string; user: string; pass: string }): Promise<void> {
     const saved = await saveXtreamAccount(input);
     if (saved) {
+        markSetupComplete();
         setValue(UI_WIZARD_OPEN, false);
     }
 }

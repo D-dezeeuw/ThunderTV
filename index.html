@@ -2190,9 +2190,12 @@
             </aside>
 
             <!-- First-run setup wizard: shown automatically when boot finds
-                 zero configured sources (state/wizard.ts's shouldOpenWizard(),
-                 wired in app/bootstrap.ts right after the real
-                 playlist.sources load resolves). Also reachable any time via
+                 zero configured sources on an install that has never
+                 completed setup (state/wizard.ts's shouldOpenWizard(), wired
+                 in app/bootstrap.ts right after the real playlist.sources
+                 load resolves). Saving, skipping, or booting with a source
+                 already configured writes the persisted ui.setupComplete
+                 flag, so a known configuration never sees this again. Also reachable any time via
                  the "Run setup wizard again" link in Settings → Streaming
                  (data-fn="wizard/open" above) — never a one-shot trap. Every
                  field reuses an existing action/setting: step 1's selects are

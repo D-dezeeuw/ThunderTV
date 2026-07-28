@@ -15,7 +15,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `epg.ts`             | `epg.tick`                                                                                                            | No — a heartbeat timestamp, recomputed every boot |
 | `settings.ts`        | `settings.locale`, `settings.proxyTemplate`, `settings.proxyError`, `settings.proxySaved`, …, `settings.audioLanguage`, `settings.subtitleLanguage`, `settings.nav.movies`, `settings.nav.series` | `locale` yes (Settings → User language switcher, i18n follow-up); `proxyTemplate` yes; `audioLanguage`/`subtitleLanguage` yes (Phase 21); `nav.movies`/`nav.series` yes, same default-on rail-toggle contract as every other `settings.nav.*` key; the transient feedback keys don't persist |
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.storageNoticeDismissed` yes; the rest no |
-| `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`                                                                                      | No — both transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen` |
+| `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`, `ui.setupComplete`                                                                 | `ui.setupComplete` yes — it is what stops a configured install from being asked again; `wizardOpen`/`wizardStep` no (transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen`) |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
 | `list-state.ts`       | `ui.listState`, `ui.activeGroup`, `ui.viewMode`                                                                      | `ui.listState` yes (Feature 08.6, LRU-capped at 20 sources); the two live mirrors restore from it on source entry but aren't separately persisted |
 | `list-groups.ts`      | `list.groups`, `list.groupsTruncated`                                                                                | No — the groups panel's own row set, capped independently of Phase 06's `MAX_GROUPS` (Feature 08.5.9) |
@@ -24,9 +24,12 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `series.ts`           | `series.categories`, `series.activeCategoryId`, `series.status`, `series.errorReason`, `series.count`, `series.detailId`, `series.detail`, `series.warmStatus` | No (Phase 21) — same reasoning as `vod.ts`, via `series-rows.ts`/`catalog-storage.ts` |
 | `search.ts`           | `search.query`, `search.scope`, `search.active`, `search.resultCounts`, `search.loadedOnly`                           | No (Phase 21) — a live, disposable session activity, reset every boot like `ui.settingsOpen` |
 
-**The rule:** adding a Spektrum key means adding it to `registry.ts`'s
+**The rule:** adding a Spektrum key means adding it to `registry-keys.ts`'s
 `KEY_REGISTRY` (owner, `persisted`, optional `maxItems`/`version`,
-description) and to the table above, in the same commit. `KEY_REGISTRY` is
+description) and to the table above, in the same commit. `registry.ts`
+itself is just the query surface (`isPersistedKey()`, `persistedKeys()`, …)
+and re-exports the table, so every existing `from './registry'` import
+still resolves. `KEY_REGISTRY` is
 the single source of truth the persistence bridge (05.3), boot rehydration
 (05.4), the bulk-data guard (05.8), and the generated reference doc (05.9)
 all read — nothing downstream should ever need a second list.
@@ -389,7 +392,19 @@ before — `playlist.sources` is a live storage projection, empty by default
 until that load actually completes, so checking any earlier would flash the
 wizard open for every returning user for one frame). The "should it open"
 decision itself is a pure function, `wizard.ts`'s `shouldOpenWizard()`
-(`sources.length === 0`), unit-tested without touching Spektrum state.
+(`!setupComplete && sources.length === 0`), unit-tested without touching
+Spektrum state.
+
+The `setupComplete` half is the *durable* answer, and the reason a
+configured install is never asked twice: `ui.setupComplete` is a persisted
+key, so it is rehydrated before the boot check runs. `markSetupComplete()`
+(idempotent, writes at most once) sets it when the wizard saves an account,
+when the user skips/closes it, and when boot finds a source already
+configured — that last one is also how an install predating the flag, or
+one set up through the Connect card instead of the wizard, gets it written.
+An empty `playlist.sources` on a later boot (a demoted storage tier, a
+deleted source, a cleared table) therefore no longer re-triggers the
+wizard; `wizard/open` in Settings → Streaming remains the way back in.
 
 The wizard's two steps reuse existing settings rather than inventing
 parallel ones: step 1's language/country `<select>`s are wired to the exact
