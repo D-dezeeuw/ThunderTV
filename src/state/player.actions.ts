@@ -51,10 +51,14 @@ export function registerPlayerActions(): void {
     // `<video>` — see player.css's `.player-shell--radio` rule.
     defineFn('player/fullscreen', () => {
         if (get<string | null>(UI_ACTIVE_VIEW) === 'radio') {
+            // The whole shell, not just `.radio-now-playing`: the control
+            // bar (preset picker, pause, next, stop) is a sibling of the
+            // visualizer pane, so fullscreening the pane alone left the
+            // viewer with no controls and no way back but Escape — which a
+            // TV remote may not even have.
             const canvas = refs['radioVisualizer'];
-            const pane =
-                canvas instanceof HTMLElement ? canvas.closest('.radio-now-playing') : null;
-            if (pane instanceof HTMLElement) requestElementFullscreen(pane);
+            const shell = canvas instanceof HTMLElement ? canvas.closest('.player-shell') : null;
+            if (shell instanceof HTMLElement) requestElementFullscreen(shell);
             return;
         }
         const video = refs['playerVideo'];

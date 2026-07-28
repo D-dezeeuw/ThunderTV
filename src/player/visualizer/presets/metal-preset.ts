@@ -1,122 +1,195 @@
 import type { FrameContext, VisualizerPreset } from '../types';
-import { barAtMirrored, decay } from './preset-utils';
+import { barAt, decay } from './preset-utils';
 
-const SPIKE_COUNT = 56;
+/** Odd count on purpose: an even segment count makes opposite wedges line up into a tidy mandala, which is the opposite of what this preset wants. */
+const SEGMENTS = 7;
+const SPIKES_PER_WEDGE = 22;
 /** Bounds the beat "camera shake" to a few pixels — violent, not nauseating. */
-const MAX_SHAKE_PX = 7;
-const MAX_BOLTS = 3;
+const MAX_SHAKE_PX = 8;
+const MAX_SHARDS = 5;
 
-interface Bolt {
+interface Shard {
     points: Array<[number, number]>;
+    /** Which mirrored segment this shard belongs to — one only, never all of them. That single-segment placement is what breaks the symmetry. */
+    segment: number;
     life: number;
     maxLife: number;
 }
 
 /**
- * Metal: aggressive, red, violent. Jagged fast-rotating red spikes on a
- * near-black field; every beat reverses the rotation direction (a hard
- * jolt) and kicks a bounded position shake, and strong beats strike
- * lightning bolts from the core to the edge. Treble (shredding) drives
- * both the spin rate and the jaggedness. A soft red bass wash pulses the
- * whole field — smooth, never a strobe.
+ * Metal: aggressive, red, violent — a kaleidoscope that refuses to be
+ * symmetric. The wedge is built once per frame into an offscreen buffer and
+ * mirrored around the circle like `kaleidoscope-preset.ts`, but three
+ * things deliberately break the symmetry that preset works so hard for:
+ *
+ *  - An **odd** segment count, so a mirrored wedge never has a matching
+ *    partner directly opposite it.
+ *  - Each segment is drawn at its own **rotation offset and brightness**,
+ *    both driven by a different slice of the spectrum, so the "identical"
+ *    copies visibly disagree with each other.
+ *  - **Shards** (lightning splinters) are stamped into a *single* segment
+ *    on hard beats, after the mirroring — one wedge lights up while its
+ *    siblings stay dark.
+ *
+ * Every beat also reverses the spin and kicks a bounded shake. Treble
+ * (shredding) drives both spin rate and the jagged noise on the spikes.
  */
 export class MetalPreset implements VisualizerPreset {
     readonly id = 'metal';
     readonly label = 'Metal';
 
+    private buffer: HTMLCanvasElement | null = null;
+    private width = 0;
+    private height = 0;
     private angle = 0;
     private direction = 1;
     private shake = 0;
-    private bolts: Bolt[] = [];
+    private shards: Shard[] = [];
+    /** Per-segment rotation wobble, so mirrored copies drift out of lockstep. */
+    private segmentPhase: number[] = [];
 
-    reset(): void {
+    reset(width: number, height: number): void {
+        this.width = width;
+        this.height = height;
+        this.buffer = document.createElement('canvas');
+        this.buffer.width = width;
+        this.buffer.height = height;
         this.angle = 0;
         this.direction = 1;
         this.shake = 0;
-        this.bolts = [];
+        this.shards = [];
+        this.segmentPhase = Array.from({ length: SEGMENTS }, (_, i) => i * 1.7);
     }
 
     frame(fc: FrameContext): void {
-        const { ctx, width, height, ts, dt, bars, bass, treble, beat, beatIntensity } = fc;
-        ctx.fillStyle = 'rgba(2, 0, 0, 0.38)';
-        ctx.fillRect(0, 0, width, height);
-
-        // Soft red wash riding the bass level — a smooth swell (alpha
-        // capped low), deliberately not a beat-keyed flash.
-        ctx.fillStyle = `hsla(0, 80%, 30%, ${(bass * 0.1).toFixed(2)})`;
-        ctx.fillRect(0, 0, width, height);
+        const { ctx, width, height, ts, dt, bars, bass, mid, treble, beat, beatIntensity } = fc;
+        if (!this.buffer || width !== this.width || height !== this.height)
+            this.reset(width, height);
+        const buffer = this.buffer;
+        if (!buffer) return;
+        const bctx = buffer.getContext('2d');
+        if (!bctx) return;
 
         const maxRadius = Math.min(width, height) * 0.5;
+        const wedgeAngle = (Math.PI * 2) / SEGMENTS;
+
         if (beat) {
             this.direction *= -1;
             this.shake = Math.min(1, 0.4 + beatIntensity * 0.6);
-            if (beatIntensity > 0.55 && this.bolts.length < MAX_BOLTS) {
-                this.bolts.push(makeBolt(maxRadius));
+            if (beatIntensity > 0.5 && this.shards.length < MAX_SHARDS) {
+                this.shards.push(makeShard(maxRadius, wedgeAngle));
             }
         }
         this.shake = decay(this.shake, 0.985, dt);
-        this.angle += (0.001 + treble * 0.005) * dt * this.direction;
+        this.angle += (0.0008 + treble * 0.004) * dt * this.direction;
 
+        // Trails, plus a soft red wash riding the bass — a smooth swell
+        // (alpha capped low), deliberately not a beat-keyed strobe.
+        ctx.fillStyle = 'rgba(2, 0, 0, 0.36)';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = `hsla(0, 80%, 30%, ${(bass * 0.1).toFixed(2)})`;
+        ctx.fillRect(0, 0, width, height);
+
+        // --- Build one wedge of jagged spikes into the buffer ---
+        bctx.clearRect(0, 0, width, height);
+        bctx.save();
+        bctx.translate(width / 2, height / 2);
+        bctx.beginPath();
+        bctx.moveTo(0, 0);
+        bctx.arc(0, 0, maxRadius, 0, wedgeAngle);
+        bctx.closePath();
+        bctx.clip();
+
+        const baseRadius = maxRadius * 0.14;
+        for (let i = 0; i < SPIKES_PER_WEDGE; i++) {
+            const u = i / SPIKES_PER_WEDGE;
+            const v = barAt(bars, u);
+            // Noise keyed to the angle (integer cycles) so it stays
+            // continuous where the wedge repeats, not to the loop index.
+            const theta = u * wedgeAngle;
+            const jagged = (Math.sin(ts * 0.02 + theta * 11) + 1) * 0.5;
+            const len = maxRadius * (v * 0.72 + jagged * 0.26 * treble);
+
+            bctx.strokeStyle = `hsl(0 90% ${(24 + v * 48).toFixed(1)}%)`;
+            bctx.lineWidth = 2 + v * 3;
+            bctx.beginPath();
+            bctx.moveTo(Math.cos(theta) * baseRadius, Math.sin(theta) * baseRadius);
+            bctx.lineTo(Math.cos(theta) * (baseRadius + len), Math.sin(theta) * (baseRadius + len));
+            bctx.stroke();
+        }
+        bctx.restore();
+
+        // --- Stamp the wedge around the circle, each copy disagreeing ---
         const cx = width / 2 + (Math.random() - 0.5) * this.shake * MAX_SHAKE_PX;
         const cy = height / 2 + (Math.random() - 0.5) * this.shake * MAX_SHAKE_PX;
-        const baseRadius = Math.min(width, height) * 0.12;
-        const maxLen = Math.min(width, height) * 0.38;
 
         ctx.save();
         ctx.translate(cx, cy);
         ctx.rotate(this.angle);
-        for (let i = 0; i < SPIKE_COUNT; i++) {
-            const v = barAtMirrored(bars, i / SPIKE_COUNT);
-            const theta = (i / SPIKE_COUNT) * Math.PI * 2;
-            // Jitter keyed to theta with an INTEGER cycle count, so it's
-            // periodic around the circle — keyed to the spike index it
-            // jumped where the last spike met the first (a visible seam).
-            const jaggedness = (Math.sin(ts * 0.02 + theta * 5) + 1) * 0.5;
-            const len = maxLen * (v * 0.72 + jaggedness * 0.28 * treble);
-            const lightness = 26 + v * 46;
+        ctx.globalCompositeOperation = 'lighter';
+        for (let s = 0; s < SEGMENTS; s++) {
+            // Each segment listens to its own band and drifts by its own
+            // wobble, so the copies never quite agree — asymmetry inside an
+            // otherwise kaleidoscopic layout.
+            const segLevel = barAt(bars, (s / SEGMENTS) * 0.9);
+            this.segmentPhase[s] =
+                (this.segmentPhase[s] ?? 0) + (0.0002 + segLevel * 0.0012) * dt * (s % 2 ? -1 : 1);
+            const wobble = Math.sin(this.segmentPhase[s] ?? 0) * wedgeAngle * 0.14;
 
-            ctx.strokeStyle = `hsl(0 90% ${lightness.toFixed(1)}%)`;
-            ctx.lineWidth = 2 + v * 3;
-            ctx.beginPath();
-            ctx.moveTo(Math.cos(theta) * baseRadius, Math.sin(theta) * baseRadius);
-            ctx.lineTo(Math.cos(theta) * (baseRadius + len), Math.sin(theta) * (baseRadius + len));
-            ctx.stroke();
+            ctx.save();
+            if (s % 2 === 0) ctx.rotate(s * wedgeAngle + wobble);
+            else {
+                // Mirrored copy of [0, θ] lands on [s·θ, (s+1)·θ] only when
+                // the rotation is (s+1)·θ — same fix as the kaleidoscope.
+                ctx.rotate((s + 1) * wedgeAngle + wobble);
+                ctx.scale(1, -1);
+            }
+            ctx.globalAlpha = 0.45 + segLevel * 0.55 + mid * 0.15;
+            ctx.drawImage(buffer, -width / 2, -height / 2);
+            ctx.restore();
         }
-        ctx.restore();
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
 
-        // Lightning bolts: short-lived jagged strikes from the core out.
-        ctx.save();
-        ctx.translate(cx, cy);
-        for (let i = this.bolts.length - 1; i >= 0; i--) {
-            const bolt = this.bolts[i];
-            if (!bolt) continue;
-            bolt.life += dt;
-            if (bolt.life >= bolt.maxLife) {
-                this.bolts.splice(i, 1);
+        // --- Shards: one segment only, so the burst is never mirrored ---
+        for (let i = this.shards.length - 1; i >= 0; i--) {
+            const shard = this.shards[i];
+            if (!shard) continue;
+            shard.life += dt;
+            if (shard.life >= shard.maxLife) {
+                this.shards.splice(i, 1);
                 continue;
             }
-            const fade = 1 - bolt.life / bolt.maxLife;
-            ctx.strokeStyle = `hsla(0, 30%, 88%, ${(fade * 0.75).toFixed(2)})`;
-            ctx.lineWidth = 1.5 + fade * 2;
+            const fade = 1 - shard.life / shard.maxLife;
+            ctx.save();
+            ctx.rotate(shard.segment * wedgeAngle);
+            ctx.strokeStyle = `hsla(0, 30%, 90%, ${(fade * 0.8).toFixed(2)})`;
+            ctx.lineWidth = 1.5 + fade * 2.5;
             ctx.beginPath();
-            bolt.points.forEach(([x, y], k) => {
+            shard.points.forEach(([x, y], k) => {
                 if (k === 0) ctx.moveTo(x, y);
                 else ctx.lineTo(x, y);
             });
             ctx.stroke();
+            ctx.restore();
         }
         ctx.restore();
     }
 }
 
-function makeBolt(maxRadius: number): Bolt {
-    const heading = Math.random() * Math.PI * 2;
+function makeShard(maxRadius: number, wedgeAngle: number): Shard {
+    const heading = Math.random() * wedgeAngle;
     const points: Array<[number, number]> = [];
     const steps = 8;
     for (let s = 0; s <= steps; s++) {
         const r = (s / steps) * maxRadius;
-        const wobble = s === 0 || s === steps ? 0 : (Math.random() - 0.5) * 0.5;
+        const wobble = s === 0 || s === steps ? 0 : (Math.random() - 0.5) * 0.45;
         points.push([Math.cos(heading + wobble) * r, Math.sin(heading + wobble) * r]);
     }
-    return { points, life: 0, maxLife: 140 };
+    return {
+        points,
+        segment: Math.floor(Math.random() * SEGMENTS),
+        life: 0,
+        maxLife: 180,
+    };
 }

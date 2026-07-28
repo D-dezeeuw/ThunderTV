@@ -120,7 +120,26 @@ in-flight crossfade or the pause state; preset/pause changes apply through
 their own setters instead. The visualizer reads real frequency data only
 when the audio is same-origin/CORS-clean, which mpegts.js/hls.js's `blob:`
 MediaSource URL satisfies (the default engines); the native-engine fallback
-still animates, just without music-reactivity. `player/fullscreen`
-(`state/player.actions.ts`) fullscreens `.radio-now-playing` instead of the
-video when `ui.activeView === 'radio'`, since Radio's video element carries
-no picture (`player.css`'s `.player-shell--radio` rule).
+still animates, just without music-reactivity.
+
+## Fullscreen
+
+`fullscreen.ts` tries every vendor spelling of `requestFullscreen`, not just
+the standard one. That is the whole point of the module: webOS/Tizen TV
+browsers and older WebKit ship only `webkitRequestFullscreen`, and iPhone
+Safari ships neither (just the video-only `webkitEnterFullscreen`) — an
+implementation that calls the standard API and gives up is simply dead on a
+TV, which is exactly how it shipped before. Both entry points are also
+*toggles*: pressing while already fullscreen exits, because a TV remote has
+no dependable Escape key.
+
+`player/fullscreen` (`state/player.actions.ts`) fullscreens the whole
+`.player-shell` when `ui.activeView === 'radio'` — not just
+`.radio-now-playing`, since the control bar is a sibling of the visualizer
+pane and fullscreening the pane alone left the viewer with no preset
+picker, no pause, and no way back. Live still fullscreens the `<video>`
+itself, which carries its own native controls. `player.css` spells the
+fullscreen sizing out explicitly (`:fullscreen` plus a separate
+`:-webkit-full-screen` rule — one unrecognised selector invalidates a whole
+selector list) rather than trusting the UA stylesheet to reset the windowed
+`max-height`, which TV browsers do not reliably do.
