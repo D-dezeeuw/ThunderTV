@@ -31,7 +31,8 @@ import {
  */
 export function registerPlayerBindings(): () => void {
     const unwatchPlayback = watch([PLAYER_ACTIVE], (state: unknown) => {
-        const active = (state as { player?: { active?: { streamUrl: string } | null } }).player?.active;
+        const active = (state as { player?: { active?: { streamUrl: string } | null } }).player
+            ?.active;
         const video = refs['playerVideo'];
         if (!(video instanceof HTMLVideoElement)) return;
 
@@ -56,7 +57,11 @@ export function registerPlayerBindings(): () => void {
         [PLAYER_ACTIVE, UI_ACTIVE_VIEW, PLAYER_VISUALIZER_PRESET, PLAYER_VISUALIZER_PAUSED],
         (state: unknown) => {
             const typed = state as {
-                player?: { active?: unknown; visualizerPreset?: string; visualizerPaused?: boolean };
+                player?: {
+                    active?: unknown;
+                    visualizerPreset?: string;
+                    visualizerPaused?: boolean;
+                };
                 ui?: { activeView?: string };
             };
             const video = refs['playerVideo'];
