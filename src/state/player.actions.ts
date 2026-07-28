@@ -4,8 +4,10 @@ import { cycleRadioVisualizerPreset } from '../player/visualizer';
 import { pushCapped } from './collections';
 import { persist } from './persist';
 import {
+    isAudioVisual,
     PLAYER_ACTIVE,
     PLAYER_ACTIVE_VARIANT_ID,
+    PLAYER_AUDIO_MODE,
     PLAYER_PLAYBACK_ERROR,
     PLAYER_STREAM_HEALTH,
     PLAYER_VARIANTS,
@@ -46,11 +48,13 @@ export function registerPlayerActions(): void {
     // No state mutation involved (only a read) — registered here anyway
     // because every defineFn is registered before bindDOM()
     // (registerActions()'s contract); the fullscreen mechanics live in
-    // src/player/fullscreen.ts. Radio has no picture to fullscreen, so it
-    // targets the visualizer pane instead of the (visually collapsed)
-    // `<video>` — see player.css's `.player-shell--radio` rule.
+    // src/player/fullscreen.ts. Whenever the visualizer is standing in for
+    // the picture — Radio always, a TV channel in audio mode — there is no
+    // picture to fullscreen, so it targets the visualizer pane instead of
+    // the (visually collapsed) `<video>`; see player.css's
+    // `.player-shell--audio` rule.
     defineFn('player/fullscreen', () => {
-        if (get<string | null>(UI_ACTIVE_VIEW) === 'radio') {
+        if (audioVisualActive()) {
             // The whole shell, not just `.radio-now-playing`: the control
             // bar (preset picker, pause, next, stop) is a sibling of the
             // visualizer pane, so fullscreening the pane alone left the
@@ -79,6 +83,25 @@ export function registerPlayerActions(): void {
     defineFn('player/toggleVisualizerPause', () => {
         setValue(PLAYER_VISUALIZER_PAUSED, !(get<boolean>(PLAYER_VISUALIZER_PAUSED) ?? false));
     });
+    defineFn('player/toggleAudioMode', () => {
+        toggleAudioMode();
+    });
+}
+
+/** True while the visualizer pane stands in for the picture — see `player.ts`'s `isAudioVisual()`. */
+export function audioVisualActive(): boolean {
+    return isAudioVisual(get<string | null>(UI_ACTIVE_VIEW), get<boolean>(PLAYER_AUDIO_MODE) ?? false);
+}
+
+/**
+ * Flips a TV channel between picture and audio-only-with-visualizer. A
+ * persisted preference rather than a per-channel one: someone who watches
+ * news as background audio wants that on the next channel too, and on the
+ * next visit.
+ */
+export function toggleAudioMode(): void {
+    set(PLAYER_AUDIO_MODE, !(get<boolean>(PLAYER_AUDIO_MODE) ?? false));
+    persist(PLAYER_AUDIO_MODE);
 }
 
 /** MVP playback slice: clears `player.active`, which `src/player/bindings.ts`'s `watch()` reacts to by tearing the `<video>` element down — the `setValue()` fence (Feature 05.2.5) keeps that write here, not in `src/player/`. */

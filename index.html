@@ -556,7 +556,7 @@
                          the surface Phases 09 (search) and 10 (playback) plug into. -->
                     <div
                         class="list-shell"
-                        :class="{ 'list-shell--group-view': view.categories.active && ui.viewMode === 'groups', 'list-shell--has-groups': view.categories.active && groupsPanelVisible, 'list-shell--split': view.live.active || view.radio.active, 'list-shell--catalog': view.movies.active || view.series.active }"
+                        :class="{ 'list-shell--group-view': view.categories.active && ui.viewMode === 'groups', 'list-shell--has-groups': view.categories.active && groupsPanelVisible, 'list-shell--split': view.channelList.active, 'list-shell--catalog': view.movies.active || view.series.active }"
                         data-if="(view.channelList.active && activeSource) || view.movies.active || view.series.active"
                         data-testid="channel-list-shell"
                     >
@@ -1077,34 +1077,45 @@
                                 <div class="pad" :style="'height:' + list.padBottom + 'px'"></div>
                             </div>
 
-                            <!-- Right column: Live plays video, Radio shows a fullscreen
-                                 canvas visualizer (src/player/visualizer.ts) instead —
+                            <!-- Right column: the preview. Live plays video; Radio (and
+                                 any TV channel switched to audio-only) shows a canvas
+                                 visualizer (src/player/visualizer/) instead —
                                  src/player/bindings.ts still drives the same <video>
                                  element either way, it is the sole attach point for the
                                  audio/video engine and doubles as the visualizer's Web
-                                 Audio source, so Radio keeps it mounted but visually
-                                 minimal rather than removing it, see player.css's
-                                 .list-shell--split rules. -->
-                            <div class="now-playing" data-if="view.live.active || view.radio.active" data-testid="now-playing-pane">
-                                <!-- The radio/live distinction is a class on the shell,
-                                     never a `:has(.radio-now-playing)` selector: Spektrum's
-                                     data-if only sets `display: none`, it does not detach
-                                     the node, so a structural selector would match in Live
-                                     too and collapse the video away (it did — that was the
-                                     "Live shows no picture" bug). -->
+                                 Audio source, so the audio-only presentations keep it
+                                 mounted but visually minimal rather than removing it,
+                                 see player.css's .list-shell--split rules.
+
+                                 Categories gets the same column, which is what makes it
+                                 three: categories -> channels -> preview. -->
+                            <div class="now-playing" data-if="view.channelList.active" data-testid="now-playing-pane">
+                                <!-- The picture/audio-only distinction is a class on the
+                                     shell, never a `:has(.radio-now-playing)` selector:
+                                     Spektrum's data-if only sets `display: none`, it does
+                                     not detach the node, so a structural selector would
+                                     match in Live too and collapse the video away (it did
+                                     — that was the "Live shows no picture" bug).
+
+                                     `visualizerActive` (state/player.selectors.ts) is
+                                     Radio, plus any TV channel the viewer switched to
+                                     audio-only. -->
                                 <div
                                     class="player-shell"
-                                    :class="{ 'player-shell--radio': view.radio.active }"
+                                    :class="{ 'player-shell--audio': visualizerActive }"
                                     data-if="player.active"
                                     data-testid="player-shell"
                                 >
                                     <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
-                                    <div class="radio-now-playing" data-if="view.radio.active" data-testid="radio-now-playing">
+                                    <div class="radio-now-playing" data-if="visualizerActive" data-testid="radio-now-playing">
                                         <canvas class="radio-now-playing__canvas" data-ref="radioVisualizer" data-testid="radio-visualizer" aria-hidden="true"></canvas>
                                         <span class="radio-now-playing__name truncate">{{ player.active.name }}</span>
                                     </div>
                                     <div class="player-shell__bar">
-                                        <span class="player-shell__name truncate" data-if="view.live.active">{{ player.active.name }}</span>
+                                        <!-- The audio-only pane already spells the channel
+                                             name across the visualizer, so the bar only
+                                             carries it when a picture is playing. -->
+                                        <span class="player-shell__name truncate" data-if="!visualizerActive">{{ player.active.name }}</span>
                                         <!-- Live stream-quality bars (src/player/stream-health.ts) —
                                              lit count reflects stall frequency, engine-agnostic. -->
                                         <span
@@ -1229,7 +1240,7 @@
                                         </div>
                                         <select
                                             class="btn"
-                                            data-if="view.radio.active"
+                                            data-if="visualizerActive"
                                             data-action="change"
                                             data-fn="player/setVisualizerPreset"
                                             :aria-label="strings.list.visualizerPickerLabel"
@@ -1254,17 +1265,32 @@
                                         <button
                                             type="button"
                                             class="btn"
-                                            data-if="view.radio.active"
+                                            data-if="visualizerActive"
                                             data-action="click"
                                             data-fn="player/toggleVisualizerPause"
                                             data-testid="player-pause-visual-btn"
                                         >
                                             {{ player.visualizerPaused ? strings.list.playerResumeVisual : strings.list.playerPauseVisual }}
                                         </button>
-                                        <button type="button" class="btn" data-if="view.radio.active" data-action="click" data-fn="player/nextVisualizerPreset" data-testid="player-next-visual-btn">
+                                        <button type="button" class="btn" data-if="visualizerActive" data-action="click" data-fn="player/nextVisualizerPreset" data-testid="player-next-visual-btn">
                                             {{ strings.list.playerNextVisual }}
                                         </button>
-                                        <button type="button" class="btn" data-if="view.live.active || view.radio.active" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
+                                        <!-- Watch a TV channel like a radio station: the
+                                             picture collapses, the visualizer takes the
+                                             pane. Not offered in Radio, which has no
+                                             picture to give up in the first place. -->
+                                        <button
+                                            type="button"
+                                            class="btn"
+                                            data-if="view.live.active || view.categories.active"
+                                            :aria-pressed="player.audioMode"
+                                            data-action="click"
+                                            data-fn="player/toggleAudioMode"
+                                            data-testid="player-audio-mode-btn"
+                                        >
+                                            {{ player.audioMode ? strings.list.playerShowPicture : strings.list.playerAudioOnly }}
+                                        </button>
+                                        <button type="button" class="btn" data-if="view.channelList.active" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
                                             {{ strings.list.playerFullscreen }}
                                         </button>
                                         <button type="button" class="btn" data-action="click" data-fn="player/stop" data-testid="player-stop-btn">

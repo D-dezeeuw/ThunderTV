@@ -2,7 +2,7 @@
  * Movies/Series/Search catalog copy (Phase 21), split out of
  * `strings.en.ts` — that file was pushed over ESLint's 400-line hard
  * ceiling by this addition, the same "split into its own file, merge via
- * one spread" precedent `src/state/registry-catalog.ts` already
+ * one spread" precedent `src/state/registry-overflow.ts` already
  * established for the identical problem (`registry.ts`'s own header
  * explains it). `strings.ts` still treats `en`/`nl`/`de` as complete,
  * single dictionaries — this only changes how `en` gets assembled.

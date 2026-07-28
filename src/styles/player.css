@@ -21,15 +21,17 @@
     border-radius: 8px;
 }
 
-/* Radio has no picture — the audio element stays mounted (it's the sole
-   attach point src/player/bindings.ts drives) but collapsed out of view in
-   favor of .radio-now-playing's station icon.
+/* Audio-only presentation — Radio, which has no picture at all, and any TV
+   channel the viewer switched to audio-only (`player.audioMode`). The media
+   element stays mounted (it's the sole attach point src/player/bindings.ts
+   drives, and the visualizer's Web Audio source) but collapses out of view
+   in favor of .radio-now-playing's visualizer.
 
    Keyed on the shell's own modifier class, NOT on `:has(.radio-now-playing)`:
    Spektrum's data-if hides by setting `display: none` and leaves the node in
    the tree, so the structural form matched in the Live view as well and
    collapsed the picture to 1x1 there too. */
-.player-shell--radio .player-shell__video {
+.player-shell--audio .player-shell__video {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -37,9 +39,9 @@
     opacity: 0;
 }
 
-/* Fullscreen-friendly visualizer pane: the canvas (src/player/visualizer.ts)
-   fills the box, the station name overlays its bottom edge — both stay
-   inside this element on purpose, since Radio's fullscreen action
+/* Fullscreen-friendly visualizer pane: the canvas (src/player/visualizer/)
+   fills the box, the channel name overlays its bottom edge — both stay
+   inside this element on purpose, since the audio-only fullscreen action
    (player/fullscreen, state/player.actions.ts) targets this pane rather
    than the (visually collapsed) <video>, so the name stays visible in
    fullscreen too. */

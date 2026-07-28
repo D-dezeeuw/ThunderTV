@@ -5,6 +5,7 @@
  * a real localized app would leave them.
  */
 import { deCatalog } from './strings.de.catalog';
+import { dePlayerTracks } from './strings.de.player';
 
 export const de = {
     appName: 'ThunderTV',
@@ -347,11 +348,7 @@ export const de = {
         signalFair: 'Stream puffert gelegentlich',
         signalPoor: 'Stream stockt — Verbindung zu langsam oder instabil',
         nowPlayingEmpty: 'Wählen Sie einen Sender, um mit dem Ansehen zu beginnen.',
-        audioTracksLabel: 'Audiospuren',
-        subtitlesLabel: 'Untertitel',
-        subtitlesOff: 'Aus',
-        noAudioTracks: 'Keine Audiospuren in diesem Stream',
-        noSubtitles: 'Keine Untertitel in diesem Stream',
+        ...dePlayerTracks,
     },
 
     import: {
