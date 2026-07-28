@@ -6,6 +6,36 @@ lazy-loaded hls.js/mpegts.js/native engines.
 Owners: Phase 10 — Playback Foundation; Phase 11 — HLS & MPEG-TS Engines;
 Phase 12 — Player UI: Dock & Theater.
 
+## Switching streams (one attach at a time)
+
+`engine.ts` keeps an `attachToken`, bumped by every `attachAndPlay()` and
+every `detach()`. It exists because attaching is asynchronous —
+`import('mpegts.js')`, `import('hls.js')`, `video.play()` — while the engine
+handle, the chain cursor, the `playing` flag and the `<video>` element are
+all module-global and shared. Pressing a second channel while the first was
+still attaching therefore left *both* attempts live: the superseded one
+resumed after its import, called `detachMpegts()` (destroying the player
+that had just replaced it), attached its own, and advanced the new stream's
+engine chain past its end. On screen that was the old channel still playing,
+the new one dead, and a spurious "Playback failed"; underneath it was two
+MediaSources on one element, which is what Chromium's
+`SharedImageManager::ProduceOverlay ... non-existent mailbox` / `Invalid
+mailbox` GPU errors are complaining about.
+
+So: every async continuation and every engine callback (hls.js `ERROR` and
+`MANIFEST_PARSED`, mpegts' `onFatalError`, the element's `error` handler,
+`advanceChain()`, the `describeStream()` probe) carries the token its attach
+started with and returns early once it is stale. `attachMpegts()` takes an
+`isStale` option for the same reason, checked immediately after its dynamic
+import so a superseded attempt cannot tear down the current player.
+
+`detach()` is the full stop, and every attach begins with one: engines,
+health monitor, chain state, *and* the element — `pause()`, clear
+`srcObject`, drop `src`, `load()`. Clearing the MediaSource matters as much
+as destroying the engine; destroying the engine does not reliably take it
+with it, and a stale one keeps a decoder and its GPU surfaces alive for a
+stream nobody is watching.
+
 ## Audio/subtitle tracks
 
 `player-engine.ts` defines `PlayerEngine`'s track-control members

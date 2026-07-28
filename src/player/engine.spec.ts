@@ -20,6 +20,7 @@ function makeVideo(): HTMLVideoElement {
     const video = document.createElement('video');
     // jsdom throws "Not implemented" from the real HTMLMediaElement methods.
     video.play = vi.fn().mockResolvedValue(undefined);
+    video.pause = vi.fn();
     video.load = vi.fn();
     video.canPlayType = vi.fn().mockReturnValue('');
     document.body.appendChild(video);
@@ -97,5 +98,61 @@ describe('playback error reporting', () => {
         video.dispatchEvent(new Event('error'));
         tick();
         expect(get<string | null>(PLAYER_PLAYBACK_ERROR)).toBeNull();
+    });
+});
+
+/**
+ * Attaching is asynchronous (two dynamic imports plus `video.play()`),
+ * so pressing a second channel while the first is still attaching used to
+ * leave both attempts running against one `<video>` element and one set of
+ * module globals: the superseded attempt tore down the player that had
+ * replaced it, attached its own, and advanced the *new* stream's engine
+ * chain past its end — "stream 1 kept playing, stream 2 failed."
+ */
+describe('switching streams mid-attach', () => {
+    it('lets the newest stream win and reports no failure for it', async () => {
+        boot();
+        const video = makeVideo();
+
+        // Deliberately not awaited: the first attach is still inside its
+        // `import('mpegts.js')` when the second one starts.
+        const first = attachAndPlay(video, 'http://provider.test/1.webm');
+        const second = attachAndPlay(video, 'http://provider.test/2.webm');
+        await Promise.all([first, second]);
+        tick();
+
+        expect(video.src).toContain('/2.webm');
+        expect(get<string | null>(PLAYER_PLAYBACK_ERROR)).toBeNull();
+    });
+
+    it('stops the previous stream before the next one attaches', async () => {
+        boot();
+        const video = makeVideo();
+        await attachAndPlay(video, 'http://provider.test/1.webm');
+
+        // Fresh spies, so only the second attach's teardown is counted.
+        const pause = vi.fn();
+        const load = vi.fn();
+        video.pause = pause;
+        video.load = load;
+        await attachAndPlay(video, 'http://provider.test/2.webm');
+
+        expect(pause).toHaveBeenCalled();
+        expect(load).toHaveBeenCalled();
+    });
+
+    it('detach() releases the MediaSource the engine left on the element', () => {
+        boot();
+        const video = makeVideo();
+        const pause = vi.fn();
+        video.pause = pause;
+        // hls.js hands the element its MediaSource this way; leaving it set
+        // keeps a decoder (and its GPU surfaces) alive for a dead stream.
+        Object.defineProperty(video, 'srcObject', { configurable: true, writable: true, value: {} });
+
+        detach(video);
+
+        expect(video.srcObject).toBeNull();
+        expect(pause).toHaveBeenCalled();
     });
 });
