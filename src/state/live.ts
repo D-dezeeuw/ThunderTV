@@ -19,6 +19,15 @@ export interface LiveStats {
     hiddenAsUnknown: number;
     /** Duplicate rows folded into an existing channel as variants. */
     collapsed: number;
+    /**
+     * True when "curated channel list only" matched nothing and the view
+     * fell back to the unfiltered set. Almost always a naming mismatch
+     * rather than an absent channel, so it is surfaced instead of silently
+     * showing an empty list.
+     */
+    strictFellBack: boolean;
+    /** A few provider spellings the filter removed — the only way to tell a naming mismatch from a genuinely missing channel. */
+    droppedSamples: string[];
 }
 
 export const LIVE_STATS_DEFAULT: LiveStats = {
@@ -28,6 +37,8 @@ export const LIVE_STATS_DEFAULT: LiveStats = {
     hiddenAsJunk: 0,
     hiddenAsUnknown: 0,
     collapsed: 0,
+    strictFellBack: false,
+    droppedSamples: [],
 };
 
 export function initLiveState(): void {

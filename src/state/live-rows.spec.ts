@@ -109,3 +109,40 @@ describe('publishRowsForCurrentView', () => {
         mounted.cleanup();
     });
 });
+
+describe('strict-mode fallback', () => {
+    it('shows every channel rather than a blank list when the curated list matches nothing', () => {
+        const mounted = mountTemplate('<div></div>');
+        invalidateLiveRows();
+        // Names the catalog has never seen — a provider naming mismatch, the
+        // exact case where an empty screen would be actively misleading.
+        setMemoryRows([
+            row('| NL | Zender Een HD', '| NL | TV', '1'),
+            row('| NL | Zender Twee HD', '| NL | TV', '2'),
+        ]);
+        setValue(UI_ACTIVE_VIEW, 'live');
+        tick();
+        publishRowsForCurrentView();
+        tick();
+
+        expect(liveDisplayRows().map((r) => r.name)).toEqual(['Zender Een', 'Zender Twee']);
+        const stats = get<LiveStats>(LIVE_STATS);
+        expect(stats?.strictFellBack).toBe(true);
+        // The rejected provider spellings are what makes the message useful —
+        // the loose rerun drops nothing, so they must survive the fallback.
+        expect(stats?.droppedSamples).toEqual(['Zender Een', 'Zender Twee']);
+
+        mounted.cleanup();
+    });
+
+    it('does not fall back when the curated list matched at least one channel', () => {
+        const mounted = mountWithCatalog();
+        setValue(UI_ACTIVE_VIEW, 'live');
+        tick();
+        publishRowsForCurrentView();
+        tick();
+
+        expect(get<LiveStats>(LIVE_STATS)?.strictFellBack).toBe(false);
+        mounted.cleanup();
+    });
+});

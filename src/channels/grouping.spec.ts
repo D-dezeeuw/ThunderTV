@@ -243,3 +243,37 @@ describe('curated Dutch catalog', () => {
         expect(stats.droppedAsUnknown).toBe(1);
     });
 });
+
+describe('first variant creates the channel', () => {
+    it('a single "| NL | NPO 1 HD" row yields NPO 1 with HD as the default variant', () => {
+        const { channels } = groupChannels([row('| NL | NPO 1 HD', '| NL | TV', 'a')], { country: 'NL' });
+
+        expect(channels).toHaveLength(1);
+        expect(channels[0]?.name).toBe('NPO 1');
+        expect(channels[0]?.variants).toHaveLength(1);
+        expect(channels[0]?.primary.quality).toBe('HD');
+        expect(channels[0]?.primary.id).toBe('a');
+        expect(channels[0]?.primary.url).toBe(channels[0]?.variants[0]?.url);
+    });
+
+    it('every channel appears even when each has exactly one feed — nothing is lost to variant collapsing', () => {
+        const { channels, stats } = groupChannels(
+            [
+                row('| NL | NPO 1 HD', '| NL | TV', 'a'),
+                row('| NL | RTL 4 HD', '| NL | TV', 'b'),
+                row('| NL | SBS 6 HD', '| NL | TV', 'c'),
+            ],
+            { country: 'NL', knownOnly: true },
+        );
+        expect(channels.map((c) => c.name)).toEqual(['NPO 1', 'RTL 4', 'SBS6']);
+        expect(stats.collapsedVariants).toBe(0);
+    });
+
+    it('records the provider spelling of rows the curated list rejected', () => {
+        const { stats } = groupChannels(
+            [row('| NL | NPO 1', '| NL | TV', 'a'), row('| NL | Onbekende Zender', '| NL | TV', 'b')],
+            { country: 'NL', knownOnly: true },
+        );
+        expect(stats.droppedSamples).toEqual(['Onbekende Zender']);
+    });
+});

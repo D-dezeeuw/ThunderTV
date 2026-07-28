@@ -541,6 +541,25 @@
                                 {{ liveHiddenCount }} {{ strings.live.hiddenLabel }} ·
                                 {{ live.stats.collapsed }} {{ strings.live.mergedLabel }}
                             </p>
+                            <!-- A blank list teaches nothing. When the curated
+                                 list matched nothing at all, the view shows
+                                 everything instead and names what it saw, so a
+                                 naming mismatch is distinguishable from an
+                                 absent channel. -->
+                            <p
+                                class="list-shell__stats list-shell__stats--warn"
+                                data-if="view.live.active && live.stats.strictFellBack"
+                                data-testid="live-strict-fallback"
+                            >
+                                {{ strings.live.strictFellBack }} {{ liveDroppedSamples }}
+                            </p>
+                            <p
+                                class="list-shell__stats"
+                                data-if="view.live.active && !live.stats.strictFellBack && liveHiddenCount > 0"
+                                data-testid="live-dropped-samples"
+                            >
+                                {{ strings.live.missingHint }} {{ liveDroppedSamples }}
+                            </p>
                             <p class="list-shell__stats" data-if="view.categories.active" data-testid="categories-note">
                                 {{ strings.categories.note }}
                             </p>

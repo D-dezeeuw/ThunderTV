@@ -46,6 +46,9 @@ export const strings = {
             label: 'Other feeds',
             catchUp: 'catch-up',
         },
+        /** Shown instead of an empty list when the curated list matched nothing — a naming mismatch, not an absent channel. */
+        strictFellBack: 'Curated list matched nothing here, showing all channels. Names seen:',
+        missingHint: 'Not seeing a channel? These names were filtered out:',
     },
 
     categories: {

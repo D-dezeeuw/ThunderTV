@@ -3,7 +3,7 @@ import { getRows } from '../m3u/channel-memory';
 import type { ChannelRow } from '../m3u/types';
 import { LIVE_STATS } from './live';
 import { SETTINGS_LIVE_COUNTRY, SETTINGS_LIVE_DROP_JUNK, SETTINGS_LIVE_KNOWN_ONLY } from './settings';
-import { get, set } from './typed';
+import { get, replace } from './typed';
 
 /**
  * The Live view's row source: the raw provider dump run through
@@ -42,11 +42,27 @@ export function ensureLiveRows(force = false): void {
     const key = optionsKey(country, knownOnly, dropJunk, rows.length);
     if (!force && key === builtFrom && displayRows.length > 0) return;
 
-    const result = buildLiveRows(rows, country, knownOnly, dropJunk);
+    // Strict mode must never hand back an empty screen. If the curated list
+    // matched nothing at all — a provider spelling the catalog has never
+    // seen, not an absent channel — fall back to the unfiltered set and say
+    // so in the header. A blank list teaches the user nothing; a full list
+    // plus "the curated list matched nothing" tells them exactly what broke.
+    let result = buildLiveRows(rows, country, knownOnly, dropJunk);
+    let fellBack = false;
+    if (knownOnly && result.channels.length === 0 && rows.length > 0) {
+        const loose = buildLiveRows(rows, country, false, dropJunk);
+        if (loose.channels.length > 0) {
+            // Keep the *strict* run's rejected names: the loose run dropped
+            // nothing, so its samples are empty, and those names are the
+            // entire point of the message.
+            result = { channels: loose.channels, stats: { ...loose.stats, droppedSamples: result.stats.droppedSamples } };
+            fellBack = true;
+        }
+    }
     grouped = result.channels;
     displayRows = toDisplayRows(grouped);
     builtFrom = key;
-    publishStats(result);
+    publishStats(result, fellBack);
 }
 
 /**
@@ -89,14 +105,16 @@ export function buildLiveRows(
     });
 }
 
-function publishStats(result: GroupingResult): void {
-    set(LIVE_STATS, {
+function publishStats(result: GroupingResult, strictFellBack = false): void {
+    replace(LIVE_STATS, {
         inputRows: result.stats.inputRows,
         channels: result.stats.keptChannels,
         hiddenByCountry: result.stats.droppedByCountry,
         hiddenAsJunk: result.stats.droppedAsJunk,
         hiddenAsUnknown: result.stats.droppedAsUnknown,
         collapsed: result.stats.collapsedVariants,
+        strictFellBack,
+        droppedSamples: result.stats.droppedSamples,
     });
 }
 

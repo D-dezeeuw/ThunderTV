@@ -15,6 +15,18 @@ export function registerLiveSelectors(): void {
     registerHiddenCountComputed();
     registerFilteredEverythingComputed();
     registerHasVariantsComputed();
+    registerDroppedSamplesComputed();
+}
+
+/**
+ * The provider's own spelling of a few filtered-out rows. This is the
+ * difference between "your provider doesn't carry it" and "we failed to
+ * recognize the name" — without it a missing channel is unexplainable.
+ */
+function registerDroppedSamplesComputed(): void {
+    computed('liveDroppedSamples', [LIVE_STATS], (state: State) => {
+        return ((state as LiveShapedState).live?.stats?.droppedSamples ?? []).join(', ');
+    });
 }
 
 /** One number for the header rather than three: the breakdown by reason is diagnostic detail, not something to spend list-header space on. */

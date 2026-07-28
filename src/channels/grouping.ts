@@ -60,8 +60,13 @@ export interface GroupingResult {
         droppedAsJunk: number;
         droppedAsUnknown: number;
         collapsedVariants: number;
+        /** A few names the filter removed, for the "why is my channel missing?" readout — the provider's raw spelling is the only way to tell a naming mismatch from a genuinely absent channel. */
+        droppedSamples: string[];
     };
 }
+
+/** How many dropped names to keep for the diagnostic. Enough to spot a naming pattern, few enough to render in a header. */
+const DROPPED_SAMPLE_CAP = 8;
 
 /**
  * A provider bundle prefixing its own channels (`| NL | ODIDO HD` holding
@@ -165,6 +170,11 @@ export function groupChannels(rows: readonly ChannelRow[], options: GroupingOpti
         droppedAsJunk: 0,
         droppedAsUnknown: 0,
         collapsedVariants: 0,
+        droppedSamples: [] as string[],
+    };
+
+    const sample = (name: string): void => {
+        if (stats.droppedSamples.length < DROPPED_SAMPLE_CAP) stats.droppedSamples.push(name);
     };
 
     for (const row of rows) {
@@ -193,6 +203,7 @@ export function groupChannels(rows: readonly ChannelRow[], options: GroupingOpti
         // empty the Radio list outright — it is deliberately not applied there.
         if (knownOnly && radio !== 'only' && !identity.isKnown) {
             stats.droppedAsUnknown += 1;
+            sample(parsed.base);
             continue;
         }
 
