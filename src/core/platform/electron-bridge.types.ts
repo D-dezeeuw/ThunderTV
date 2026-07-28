@@ -41,13 +41,21 @@ export interface ElectronBridge {
      */
     setWindowFullscreen(next: boolean): void;
     /**
-     * Default Xtream credentials read from a gitignored `desktop/.env` at
-     * startup (`THUNDERTV_XTREAM_URL`/`_USERNAME`/`_PASSWORD`), or `null` when
-     * no such file/keys exist. Dev-convenience only — `.env` sits outside
-     * `electron-builder.yml`'s files allowlist, so a packaged build always
-     * resolves `null` here. `bootstrap.ts` uses a non-null result to seed the
-     * first Xtream account automatically instead of opening the first-run
-     * wizard.
+     * Default first-run config read from a gitignored `desktop/.env` at
+     * startup — `THUNDERTV_XTREAM_URL`/`_USERNAME`/`_PASSWORD` (all three
+     * required together, else `xtream` is `null`), `THUNDERTV_LOCALE`
+     * (`'en'|'nl'|'de'`), `THUNDERTV_LIVE_COUNTRY` (a Live-filter country
+     * code). Each field is independently `null` when unset. Dev-convenience
+     * only — `.env` sits outside `electron-builder.yml`'s files allowlist, so
+     * a packaged build always resolves all-null fields. `bootstrap.ts` applies
+     * these as pre-filled first-run-wizard answers, only while the wizard
+     * would otherwise open.
      */
-    getDefaultXtreamAccount(): Promise<{ url: string; username: string; password: string } | null>;
+    getDefaultConfig(): Promise<DefaultElectronConfig>;
+}
+
+export interface DefaultElectronConfig {
+    xtream: { url: string; username: string; password: string } | null;
+    locale: string | null;
+    liveCountry: string | null;
 }

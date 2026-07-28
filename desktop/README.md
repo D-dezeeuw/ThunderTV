@@ -14,16 +14,20 @@ cd desktop && npm install
 npm start             # builds the web app, swaps to vendored Spektrum, launches
 ```
 
-## Default Xtream credentials for local dev
+## Default first-run config for local dev
 
-Copy `.env.example` to `.env` in this directory and fill in your own Xtream
-panel URL/username/password. `main.mjs` reads it at startup and, if no
-playlist source exists yet, `bootstrap.ts` auto-imports it as the active
-source instead of showing the first-run wizard — see
-`src/core/platform/electron-bridge.types.ts`'s `getDefaultXtreamAccount`
-comment. `.env` is gitignored and outside `electron-builder.yml`'s files
-allowlist, so this never affects a packaged build, only `npm start` from
-your own checkout.
+Copy `.env.example` to `.env` in this directory and fill in any of: an
+Xtream panel URL/username/password, a UI locale, and/or a Live-filter
+country. `main.mjs` reads it at startup; `bootstrap.ts` applies whichever
+fields are set as pre-filled first-run-wizard answers, but only while the
+wizard would otherwise open (a fresh install, or after clearing local
+storage) — never as a standing override once setup is complete or a source
+exists. An Xtream default skips the wizard outright; locale/region alone
+still opens it, pre-filled. See
+`src/core/platform/electron-bridge.types.ts`'s `getDefaultConfig` comment.
+`.env` is gitignored and outside `electron-builder.yml`'s files allowlist,
+so this never affects a packaged build, only `npm start` from your own
+checkout.
 
 ## Packaging
 

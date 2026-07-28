@@ -11,6 +11,7 @@ import { loadPlaylistSources } from './playlist-load';
 import { PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_SOURCES, type PlaylistSourceSummary } from './playlist';
 import { setActiveSourceId } from './playlist.actions';
 import { persist } from './persist';
+import { shouldOpenWizard, UI_SETUP_COMPLETE } from './wizard';
 import {
     isBufferingMode,
     isPlaybackEngine,
@@ -355,18 +356,29 @@ export async function saveXtreamAccount(input: { url: string; user: string; pass
 }
 
 /**
- * Dev-convenience auto-seed (Electron only): if `desktop/.env` configured a
- * default Xtream account (`window.electron.getDefaultXtreamAccount()`) and
- * no playlist source exists yet, imports it as the active source — the
- * same gate `wizard.actions.ts`'s `openWizardIfNoSources()` uses, so a
- * fresh/reset install gets seeded silently instead of showing the wizard,
- * while an install with any existing source (Xtream or M3U) is left alone.
- * No-op on web, where the platform has no `getDefaultXtreamAccount`.
+ * Dev-convenience auto-seed (Electron only): if `desktop/.env` configured
+ * defaults — language/region (`THUNDERTV_LOCALE`/`THUNDERTV_LIVE_COUNTRY`)
+ * and/or a full Xtream account — applies them once, but only while the
+ * first-run wizard would otherwise open (`wizard.ts`'s `shouldOpenWizard()`:
+ * setup not yet marked complete, zero playlist sources). `.env` is treated
+ * as pre-filled wizard answers, never a standing override: once setup is
+ * complete (or any source exists), later boots leave whatever the user has
+ * since configured in-app alone. An Xtream default (if present) ends up
+ * importing a source and thereby skips the wizard outright regardless of
+ * whether locale/region were also set; locale/region alone (no Xtream
+ * default) still opens the wizard, just with step 1 pre-filled. No-op on
+ * web, where the platform has no `getDefaultConfig`.
  */
-export async function importDefaultXtreamAccountIfConfigured(): Promise<void> {
+export async function applyDefaultConfigIfFirstRun(): Promise<void> {
     const sources = get<PlaylistSourceSummary[]>(PLAYLIST_SOURCES) ?? [];
-    if (sources.length > 0) return;
-    const defaults = await getPlatform().getDefaultXtreamAccount?.();
+    if (!shouldOpenWizard(sources, get<boolean>(UI_SETUP_COMPLETE) ?? false)) return;
+
+    const defaults = await getPlatform().getDefaultConfig?.();
     if (!defaults) return;
-    await saveXtreamAccount({ url: defaults.url, user: defaults.username, pass: defaults.password });
+
+    if (defaults.locale) setLocale(defaults.locale);
+    if (defaults.liveCountry) setLiveCountry(defaults.liveCountry);
+    if (defaults.xtream) {
+        await saveXtreamAccount({ url: defaults.xtream.url, user: defaults.xtream.username, pass: defaults.xtream.password });
+    }
 }

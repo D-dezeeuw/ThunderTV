@@ -176,7 +176,7 @@ export function fakeElectronBridge(proxyOrigin = 'http://127.0.0.1:52301'): Elec
         setWindowFullscreen: (next) => {
             fullscreen = next;
         },
-        getDefaultXtreamAccount: () => Promise.resolve(null),
+        getDefaultConfig: () => Promise.resolve({ xtream: null, locale: null, liveCountry: null }),
     };
 }
 
