@@ -25,11 +25,11 @@ export function registerPlaylistSelectors(): void {
     });
 
     computed('hiddenSources', [PLAYLIST_SOURCES], (state: State) => {
-        return ((state as SourcesState).playlist?.sources ?? []).filter(isHiddenSource);
+        return ((state as SourcesState).playlist?.sources ?? []).filter((s) => isHiddenSource(s));
     });
 
     computed('hasHiddenSources', [PLAYLIST_SOURCES], (state: State) => {
-        return ((state as SourcesState).playlist?.sources ?? []).some(isHiddenSource);
+        return ((state as SourcesState).playlist?.sources ?? []).some((s) => isHiddenSource(s));
     });
 
     computed('activeSource', [PLAYLIST_SOURCES, PLAYLIST_ACTIVE_SOURCE_ID], (state: State) => {
