@@ -1,9 +1,15 @@
 import { defineFn, refs } from 'spektrum';
 import { isValidProxyTemplate } from '../core/http';
 import { strings } from '../app/strings';
+import { getPlatform } from '../core/platform';
 import { downloadTextFile } from '../ui/download-file';
+import { importXtreamSource } from '../xtream/import';
+import { normalizeXtreamUrl } from '../xtream/urls';
 import { buildConfigXml } from './config-export';
 import { buildEpgXml, buildRawResponsesXml } from './raw-export';
+import { loadPlaylistSources } from './playlist-load';
+import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
+import { setActiveSourceId } from './playlist.actions';
 import { persist } from './persist';
 import {
     isBufferingMode,
@@ -24,9 +30,18 @@ import {
     SETTINGS_PROXY_SAVED,
     SETTINGS_PROXY_TEMPLATE,
     SETTINGS_REFRESH_STATE,
+    SETTINGS_XTREAM_BUSY,
+    SETTINGS_XTREAM_ERROR,
+    SETTINGS_XTREAM_SAVED,
+    SETTINGS_XTREAM_URL,
+    SETTINGS_XTREAM_USERNAME,
 } from './settings';
 import { refreshActiveXtreamSource } from './xtream-refresh';
+import { toImportErrorKind } from './xtream.actions';
 import { get, set } from './typed';
+
+/** Same cast `import.selectors.ts` uses for `strings.http.failure` — `XtreamError['kind']` values map onto its keys via `toImportErrorKind()`. */
+const HTTP_FAILURE_STRINGS: Record<string, string> = strings.http.failure;
 
 /**
  * Settings → Streaming's proxy template field (Feature 07.8.1/07.8.3) — an
@@ -44,6 +59,17 @@ export function registerSettingsActions(): void {
     defineFn('settings/clearProxyFeedback', () => {
         set(SETTINGS_PROXY_ERROR, null);
         set(SETTINGS_PROXY_SAVED, false);
+    });
+    defineFn('settings/saveXtreamAccount', () => {
+        void saveXtreamAccount({
+            url: refValue('xtreamAccountUrlInput'),
+            user: refValue('xtreamAccountUserInput'),
+            pass: refValue('xtreamAccountPassInput'),
+        });
+    });
+    defineFn('settings/clearXtreamFeedback', () => {
+        set(SETTINGS_XTREAM_ERROR, null);
+        set(SETTINGS_XTREAM_SAVED, false);
     });
     // Manual channel-list refresh (masterplan Feature 19.6.4: a
     // user-initiated refresh always enqueues fresh — no TTL, no rate limit).
@@ -199,4 +225,74 @@ export function saveProxyTemplate(raw: string): void {
     persist(SETTINGS_PROXY_TEMPLATE);
     set(SETTINGS_PROXY_ERROR, null);
     set(SETTINGS_PROXY_SAVED, true);
+}
+
+/**
+ * Prefills Settings → Streaming's Xtream account fields (URL/username only
+ * — never the password, see `settings.ts`'s header comment) from the stored
+ * `playlists` table. Same "prefer the active source, fall back to the first
+ * Xtream row" resolution `saveXtreamAccount()` uses, so what the panel shows
+ * on load is exactly what a blank-password Save would update. Called once
+ * at boot (`bootstrap.ts`) and again after a successful save.
+ */
+export async function loadXtreamAccountPrefill(): Promise<void> {
+    const record = await findXtreamAccountRecord();
+    set(SETTINGS_XTREAM_URL, record?.url ?? '');
+    set(SETTINGS_XTREAM_USERNAME, record?.username ?? '');
+}
+
+async function findXtreamAccountRecord() {
+    const records = await getPlatform().storage.getAll('playlists');
+    const activeId = get<string | null>(PLAYLIST_ACTIVE_SOURCE_ID);
+    const active = records.find((r) => r.id === activeId && r.type === 'xtream');
+    return active ?? records.find((r) => r.type === 'xtream');
+}
+
+/**
+ * Settings → Streaming's Xtream account fields: an uncontrolled URL/
+ * username/password input trio read on Save, exactly like the proxy
+ * template field above, so persistence goes through the same validated,
+ * read-on-submit path rather than writing per keystroke. Reuses
+ * `importXtreamSource()` — the exact upsert the Connect-card import form
+ * calls (`xtream.actions.ts`'s `triggerXtreamImport`) — so credentials
+ * entered here land in the same `playlists` row and are never duplicated
+ * storage logic. A blank password keeps the previously stored one (masked
+ * as "•••• (unchanged)" in the field's placeholder); a new source with no
+ * prior password requires one. Exported for direct testing without a DOM ref.
+ */
+export async function saveXtreamAccount(input: { url: string; user: string; pass: string }): Promise<void> {
+    set(SETTINGS_XTREAM_ERROR, null);
+    set(SETTINGS_XTREAM_SAVED, false);
+
+    const url = normalizeXtreamUrl(input.url);
+    const user = input.user.trim();
+    if (!url || !user) {
+        set(SETTINGS_XTREAM_ERROR, strings.settings.streaming.xtreamMissingFields);
+        return;
+    }
+
+    const existing = await findXtreamAccountRecord();
+    const pass = input.pass.trim() !== '' ? input.pass : existing?.password;
+    if (!pass) {
+        set(SETTINGS_XTREAM_ERROR, strings.settings.streaming.xtreamPasswordRequired);
+        return;
+    }
+
+    set(SETTINGS_XTREAM_BUSY, true);
+    try {
+        const outcome = await importXtreamSource({ url, user, pass, name: existing?.name ?? url });
+        if (!outcome.ok) {
+            set(SETTINGS_XTREAM_ERROR, HTTP_FAILURE_STRINGS[toImportErrorKind(outcome.error.kind)] ?? strings.http.failure.httpOther);
+            return;
+        }
+        await loadPlaylistSources();
+        setActiveSourceId(outcome.summary.sourceId);
+        set(SETTINGS_XTREAM_URL, url);
+        set(SETTINGS_XTREAM_USERNAME, user);
+        set(SETTINGS_XTREAM_SAVED, true);
+        const passwordInput = refs['xtreamAccountPassInput'];
+        if (passwordInput instanceof HTMLInputElement) passwordInput.value = '';
+    } finally {
+        set(SETTINGS_XTREAM_BUSY, false);
+    }
 }

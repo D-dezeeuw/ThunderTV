@@ -18,6 +18,7 @@ import {
     seedStrings,
     startEpgTick,
 } from '../state';
+import { loadXtreamAccountPrefill } from '../state/settings.actions';
 import { handleStorageDemotion } from '../state/ui.actions';
 import { refreshActiveXtreamSource } from '../state/xtream-refresh';
 import { seedPlatformDiagnostics } from '../state/ui';
@@ -75,6 +76,7 @@ export async function bootstrap(): Promise<void> {
     if (import.meta.env.DEV) installDevtools();
 
     void sweepAndLoadPlaylistSources();
+    void loadXtreamAccountPrefill();
     void loadFavoriteIds();
     registerImportDropzoneDragover();
     registerDebugShortcut();

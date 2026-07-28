@@ -5,6 +5,27 @@ export const SETTINGS_PROXY_TEMPLATE = 'settings.proxyTemplate';
 export const SETTINGS_PROXY_ERROR = 'settings.proxyError';
 /** Feature 07.8.3 success feedback — transient, never persisted; cleared the moment the field is edited again. */
 export const SETTINGS_PROXY_SAVED = 'settings.proxySaved';
+
+/**
+ * Settings → Streaming's Xtream account fields — lets the credentials that
+ * previously only had a way in through the Connect-card import form also be
+ * entered/updated from Settings, reusing the very same `importXtreamSource()`
+ * upsert (`settings.actions.ts`'s `saveXtreamAccount()`). `xtreamUrl`/
+ * `xtreamUsername` are a *prefill* projection of the stored `playlists`
+ * table's Xtream row (never itself persisted through the Phase 05 bridge —
+ * same "live projection" rule as `playlist.sources`), refreshed at boot and
+ * again after a successful save. The password is never prefilled or held in
+ * state at all — the field stays blank on load and only overwrites the
+ * stored credential when the user types a new, non-empty value.
+ */
+export const SETTINGS_XTREAM_URL = 'settings.xtreamUrl';
+export const SETTINGS_XTREAM_USERNAME = 'settings.xtreamUsername';
+/** Transient validation/import feedback — never persisted. */
+export const SETTINGS_XTREAM_ERROR = 'settings.xtreamError';
+/** Transient success feedback — never persisted; cleared the moment a field is edited again. */
+export const SETTINGS_XTREAM_SAVED = 'settings.xtreamSaved';
+/** True while the save is authenticating/importing against the provider. */
+export const SETTINGS_XTREAM_BUSY = 'settings.xtreamBusy';
 /** Manual channel-list refresh feedback — transient, never persisted. */
 export const SETTINGS_REFRESH_STATE = 'settings.refreshState';
 /** Configuration-export feedback — transient, never persisted. */
@@ -100,6 +121,11 @@ export interface SettingsState {
     proxyTemplate: string | null;
     proxyError: string | null;
     proxySaved: boolean;
+    xtreamUrl: string;
+    xtreamUsername: string;
+    xtreamError: string | null;
+    xtreamSaved: boolean;
+    xtreamBusy: boolean;
     refreshState: RefreshFeedbackState;
     exportState: 'idle' | 'done' | 'failed';
     playbackEngine: PlaybackEngine;
@@ -123,6 +149,11 @@ export const SETTINGS_DEFAULTS: SettingsState = {
     proxyTemplate: null,
     proxyError: null,
     proxySaved: false,
+    xtreamUrl: '',
+    xtreamUsername: '',
+    xtreamError: null,
+    xtreamSaved: false,
+    xtreamBusy: false,
     refreshState: 'idle',
     exportState: 'idle',
     playbackEngine: 'mpegts',
@@ -137,6 +168,11 @@ export function initSettingsState(): void {
     setValue(SETTINGS_PROXY_TEMPLATE, SETTINGS_DEFAULTS.proxyTemplate);
     setValue(SETTINGS_PROXY_ERROR, SETTINGS_DEFAULTS.proxyError);
     setValue(SETTINGS_PROXY_SAVED, SETTINGS_DEFAULTS.proxySaved);
+    setValue(SETTINGS_XTREAM_URL, SETTINGS_DEFAULTS.xtreamUrl);
+    setValue(SETTINGS_XTREAM_USERNAME, SETTINGS_DEFAULTS.xtreamUsername);
+    setValue(SETTINGS_XTREAM_ERROR, SETTINGS_DEFAULTS.xtreamError);
+    setValue(SETTINGS_XTREAM_SAVED, SETTINGS_DEFAULTS.xtreamSaved);
+    setValue(SETTINGS_XTREAM_BUSY, SETTINGS_DEFAULTS.xtreamBusy);
     setValue(SETTINGS_REFRESH_STATE, SETTINGS_DEFAULTS.refreshState);
     setValue(SETTINGS_EXPORT_STATE, SETTINGS_DEFAULTS.exportState);
     setValue(SETTINGS_PLAYBACK_ENGINE, SETTINGS_DEFAULTS.playbackEngine);
