@@ -5,12 +5,16 @@
  * mutable `strings` singleton. `nl`/`de` mirror this exact key shape —
  * `strings.spec.ts` asserts they never drift.
  */
+import { enCatalog } from './strings.en.catalog';
+
 export const en = {
     appName: 'ThunderTV',
 
     rail: {
         live: 'Live',
         radio: 'Radio',
+        movies: 'Movies',
+        series: 'Series',
         categories: 'Categories',
         sources: 'Sources',
         favorites: 'Starred',
@@ -22,6 +26,8 @@ export const en = {
     views: {
         live: { title: 'Live', heading: 'Live' },
         radio: { title: 'Radio', heading: 'Radio' },
+        movies: { title: 'Movies', heading: 'Movies' },
+        series: { title: 'Series', heading: 'Series' },
         categories: { title: 'Categories', heading: 'Categories' },
         sources: { title: 'Sources', heading: 'Sources' },
         favorites: { title: 'Starred', heading: 'Starred' },
@@ -29,6 +35,8 @@ export const en = {
         guide: { title: 'Guide', heading: 'Guide' },
         connect: { title: 'Connect', heading: 'Connect' },
     },
+
+    ...enCatalog,
 
     live: {
         channelsLabel: 'channels total',
@@ -229,6 +237,8 @@ export const en = {
             starred: 'Starred',
             recents: 'Recents',
             guide: 'Guide',
+            movies: 'Movies',
+            series: 'Series',
         },
         streaming: {
             proxyLabel: 'Proxy URL template',
@@ -271,6 +281,13 @@ export const en = {
             bufferingLowLatency: 'Low latency',
             bufferingHelp:
                 'Auto sizes the buffer from your connection and grows it whenever playback actually stalls. Smooth always keeps a few seconds buffered. Low latency stays closest to live but rebuffers on any hiccup — solid networks only.',
+            audioLanguageLabel: 'Preferred audio language',
+            audioLanguageHelp: 'Used when a movie or episode offers more than one audio track. Not every provider tags its tracks, so this is a preference, not a guarantee.',
+            audioLanguageAuto: 'Original / Auto',
+            subtitleLanguageLabel: 'Preferred subtitle language',
+            subtitleLanguageHelp: 'Used when a movie or episode ships subtitle tracks. "Auto" derives a language from your Live filter country.',
+            subtitleAuto: 'Auto (my country)',
+            subtitleOff: 'Off',
         },
         appearance: {
             density: 'Density',

@@ -25,6 +25,7 @@ import { loadXtreamAccountPrefill } from '../state/settings.actions';
 import { handleStorageDemotion } from '../state/ui.actions';
 import { refreshActiveXtreamSource } from '../state/xtream-refresh';
 import { seedPlatformDiagnostics } from '../state/ui';
+import { registerCatalogActivation } from './catalog-activation';
 import { initRouter } from './router';
 import { registerViewSwitching } from './views';
 
@@ -63,6 +64,7 @@ export async function bootstrap(): Promise<void> {
     registerActions();
     registerSelectors();
     registerViewSwitching();
+    registerCatalogActivation();
 
     // Resolves the initial route before bindDOM()/run() so a deep link
     // (e.g. #/favorites) renders correctly on first paint (Feature 02.4.4).

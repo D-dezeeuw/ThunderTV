@@ -4,12 +4,16 @@
  * acronyms (M3U, EPG, Xtream Codes, CORS, HLS, MPEG-TS, DRM), exactly like
  * a real localized app would leave them.
  */
+import { nlCatalog } from './strings.nl.catalog';
+
 export const nl = {
     appName: 'ThunderTV',
 
     rail: {
         live: 'Live',
         radio: 'Radio',
+        movies: 'Films',
+        series: 'Series',
         categories: 'Categorieën',
         sources: 'Bronnen',
         favorites: 'Favorieten',
@@ -21,6 +25,8 @@ export const nl = {
     views: {
         live: { title: 'Live', heading: 'Live' },
         radio: { title: 'Radio', heading: 'Radio' },
+        movies: { title: 'Films', heading: 'Films' },
+        series: { title: 'Series', heading: 'Series' },
         categories: { title: 'Categorieën', heading: 'Categorieën' },
         sources: { title: 'Bronnen', heading: 'Bronnen' },
         favorites: { title: 'Favorieten', heading: 'Favorieten' },
@@ -28,6 +34,8 @@ export const nl = {
         guide: { title: 'Gids', heading: 'Gids' },
         connect: { title: 'Verbinden', heading: 'Verbinden' },
     },
+
+    ...nlCatalog,
 
     live: {
         channelsLabel: 'zenders totaal',
@@ -225,6 +233,8 @@ export const nl = {
             starred: 'Favorieten',
             recents: 'Recent',
             guide: 'Gids',
+            movies: 'Films',
+            series: 'Series',
         },
         streaming: {
             proxyLabel: 'Proxy-URL-sjabloon',
@@ -267,6 +277,13 @@ export const nl = {
             bufferingLowLatency: 'Lage latentie',
             bufferingHelp:
                 'Automatisch bepaalt de buffergrootte op basis van uw verbinding en vergroot deze zodra afspelen echt hapert. Soepel houdt altijd enkele seconden gebufferd. Lage latentie blijft het dichtst bij live maar hapert bij elke hapering opnieuw — alleen voor stabiele netwerken.',
+            audioLanguageLabel: 'Voorkeurstaal audio',
+            audioLanguageHelp: 'Gebruikt wanneer een film of aflevering meer dan één audiospoor aanbiedt. Niet elke provider labelt zijn sporen, dus dit is een voorkeur, geen garantie.',
+            audioLanguageAuto: 'Origineel / Automatisch',
+            subtitleLanguageLabel: 'Voorkeurstaal ondertitels',
+            subtitleLanguageHelp: 'Gebruikt wanneer een film of aflevering ondertitelsporen bevat. "Automatisch" leidt een taal af van uw Live-filterland.',
+            subtitleAuto: 'Automatisch (mijn land)',
+            subtitleOff: 'Uit',
         },
         appearance: {
             density: 'Dichtheid',
