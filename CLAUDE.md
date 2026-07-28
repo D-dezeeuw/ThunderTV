@@ -29,10 +29,11 @@ if you need historical "why," not for a routine change.
 | Storage (IndexedDB/localStorage/memory tiers, versioning)    | `src/core/storage/README.md` |
 | Platform adapter (web vs. Electron, capabilities, testing)   | `src/core/platform/README.md` |
 | Network calls, CORS/timeout classification, proxy            | `src/core/http/README.md` |
-| Routing, boot sequence, view titles                          | `src/app/router.ts`, `src/app/bootstrap.ts` (no README yet — small enough to read directly) |
-| User-facing copy                                              | `src/app/strings.ts` — all UI text lives here, never inline |
-| Connect bookmark URLs (`#/connect?...`)                       | `src/core/connect/` — stub, Phase 14 not built yet |
-| Test harness for Spektrum-bound DOM                           | `src/shared/testing/bind-dom.ts` |
+| Routing, boot sequence, view titles, user-facing copy        | `src/app/README.md` |
+| Platform/storage/http foundations, raw-capture diagnostics, source-key dedup | `src/core/README.md` |
+| Connect bookmark URLs (`#/connect?...`)                       | `src/core/README.md` — stub, Phase 14 not built yet |
+| Test harness for Spektrum-bound DOM                           | `src/shared/README.md` |
+| Ambient types (`window.electron`, the vendored `spektrum` types) | `src/types/README.md` |
 
 ## Rules that cut across files (check before adding code, not after)
 
@@ -57,7 +58,7 @@ if you need historical "why," not for a routine change.
 
 ## Missing a README?
 
-`src/app/`, `src/core/` (top level), `src/shared/`, `src/types/` don't have
-one yet — small enough to read directly. If a directory keeps needing more
-than a glance, add a README modeled on `src/channels/README.md` or
-`src/state/README.md` rather than re-deriving the same context next time.
+Every `src/*` directory has one now. If you add a new top-level directory,
+give it a README modeled on `src/channels/README.md` or `src/state/README.md`
+before it grows past a file or two, rather than re-deriving the same context
+next time.
