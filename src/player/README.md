@@ -133,13 +133,24 @@ TV, which is exactly how it shipped before. Both entry points are also
 *toggles*: pressing while already fullscreen exits, because a TV remote has
 no dependable Escape key.
 
-`player/fullscreen` (`state/player.actions.ts`) fullscreens the whole
-`.player-shell` when `ui.activeView === 'radio'` — not just
-`.radio-now-playing`, since the control bar is a sibling of the visualizer
-pane and fullscreening the pane alone left the viewer with no preset
-picker, no pause, and no way back. Live still fullscreens the `<video>`
-itself, which carries its own native controls. `player.css` spells the
+`player/fullscreen` (`state/player.actions.ts`, the exported
+`togglePlayerFullscreen()`) fullscreens the whole `.player-shell` when
+`ui.activeView === 'radio'` — not just `.radio-now-playing`, since the
+control bar is a sibling of the visualizer pane and fullscreening the pane
+alone left the viewer with no preset picker, no pause, and no way back.
+Live, Movies and TV Shows all play into the same `<video>` and fullscreen
+that, since it carries its own native controls. `player.css` spells the
 fullscreen sizing out explicitly (`:fullscreen` plus a separate
 `:-webkit-full-screen` rule — one unrecognised selector invalidates a whole
 selector list) rather than trusting the UA stylesheet to reset the windowed
 `max-height`, which TV browsers do not reliably do.
+
+Page-level fullscreen is not always granted, so where the host owns a
+window of its own — the Electron shell, via `getPlatform().windowFullscreen`
+(`core/platform/README.md`) — `togglePlayerFullscreen()` checks a beat later
+whether anything actually went fullscreen and, if not, fullscreens the
+*window* instead. That is a real answer to "make this big," not a
+consolation prize, and the same button toggles back out of it. Everything up
+to the `requestFullscreen()` call stays synchronous on purpose: it runs
+inside the click handler, and an `await` above it would spend the click's
+transient user activation, which is the one thing browsers require here.

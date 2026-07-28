@@ -143,7 +143,11 @@ recording once rather than re-discovering per call site:
   it and reads as `undefined`/television, unaffected. Only `vod.actions.ts`'s
   `playVod()` and `series.actions.ts`'s `playSeriesEpisode()` set it, both
   reusing `player.actions.ts`'s existing `setActiveChannel()` rather than a
-  parallel action.
+  parallel action. Both also close their detail panel on the way out:
+  `.catalog-detail` is absolutely positioned over the whole
+  `.list-shell__body`, which is where the now-playing pane appears, so
+  leaving it open would hide the picture the viewer just asked for behind
+  the poster they asked for it from.
 - **`sequence-token.ts`**: `selectVodCategory()`/`openVodDetail()` (and their
   series equivalents) need to detect "did a newer call supersede me" after
   an `await`. Re-reading the very key the same call just `set()` moments

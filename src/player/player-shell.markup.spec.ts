@@ -76,6 +76,47 @@ describe('player shell: radio layout is class-driven, not structural', () => {
     });
 });
 
+/**
+ * Movies/TV Shows played into the same `<video>` as Live — but the pane
+ * holding it was gated on `view.live.active || view.radio.active`, and
+ * `data-if` only sets `display: none`. Pressing Play on a movie therefore
+ * gave you audio, no picture, and nothing to fullscreen.
+ */
+describe('now-playing pane covers every view that plays something', () => {
+    it('index.html shows the pane in Movies/TV Shows once something is playing', () => {
+        expect(indexHtml).toContain(
+            'data-if="view.live.active || view.radio.active || ((view.movies.active || view.series.active) && player.active)"',
+        );
+    });
+
+    it('the fullscreen button carries no view gate — the shell itself is the gate', () => {
+        const button = /<button[^>]*data-fn="player\/fullscreen"[^>]*>/.exec(indexHtml)?.[0] ?? '';
+        expect(button).not.toBe('');
+        expect(button).not.toContain('data-if');
+    });
+
+    it('renders the pane in Movies only while a title is playing', () => {
+        const mounted = mountTemplate(`
+            <div
+                class="now-playing"
+                data-if="view.live.active || view.radio.active || ((view.movies.active || view.series.active) && player.active)"
+                data-testid="now-playing-pane"
+            ></div>
+        `);
+        const pane = (): HTMLElement | null => mounted.query('[data-testid="now-playing-pane"]');
+
+        setValue(UI_ACTIVE_VIEW, 'movies');
+        tick();
+        expect(pane()?.style.display).toBe('none');
+
+        setActiveChannel({ ...CHANNEL, kind: 'vod' });
+        tick();
+        expect(pane()?.style.display).toBe('');
+
+        mounted.cleanup();
+    });
+});
+
 describe('channel-list layout fills the view', () => {
     it('the channel-list section opts into the full-height flex column', () => {
         expect(indexHtml).toContain('class="view__section view__section--fill" data-if="view.channelList.active"');

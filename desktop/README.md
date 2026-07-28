@@ -43,11 +43,43 @@ workflows/desktop-build.yml` builds all three on a `v*` tag push.
 | `webviewTag: false` | done, explicit |
 | Popup denial (`setWindowOpenHandler`) | done — denies all, routes `http(s):` to `shell.openExternal` |
 | Navigation lock (`will-navigate`) | done — same-origin only, else cancelled (+ `shell.openExternal` for `http(s):`) |
-| Permission handler | done — denies every request (no notifications/geolocation/media in this app) |
+| Permission handler | done — denies every request except `fullscreen` (see below); no notifications/geolocation/media in this app |
 | Single-instance lock | done — second launch focuses the existing window |
 | Remote code | none — vendored Spektrum only, no CDN script in the packaged build |
 | DevTools gating | not yet wired to a dev-only flag — `main.mjs` never opens devtools itself either way; revisit if a dev workflow script is added |
 | Code signing | deliberately unsigned for v1 — see `electron-builder.yml`'s commented signing stubs and the top-level task's rationale (no cert budget for a local-build personal project) |
+
+### Why `fullscreen` is allowed
+
+Electron routes `Element.requestFullscreen()` through
+`setPermissionRequestHandler`, so the original blanket `callback(false)`
+didn't just harden the shell — it made the player's fullscreen button dead
+on the desktop build while it kept working on the web. It is one named
+allowance, for a capability this app's own UI asks for on purpose, from a
+renderer that can only ever load this app's own `file://` page; everything
+else still defaults to deny. No `setPermissionCheckHandler` alongside it,
+deliberately: nothing set one before the request handler existed, so a
+deny-all check handler would be a *new* denial surface rather than a fix.
+
+`main.mjs` also exposes a window-fullscreen toggle over IPC
+(`thundertv:set-window-fullscreen`, mirrored back on
+`thundertv:window-fullscreen` so the preload can answer synchronously). The
+renderer uses it as a fallback when page-level fullscreen doesn't take —
+see `src/player/README.md`'s Fullscreen section.
+
+## The window icon
+
+`BrowserWindow.icon` is a *runtime* icon, entirely separate from
+`electron-builder.yml`'s `win`/`mac`/`linux` `icon:` entries (which brand
+the installer, the `.exe` and the `.desktop` file). It has to be readable
+from inside the running app, so `electron-builder.yml` maps `build/icons/`
+into the package as `icons/` and `main.mjs`'s `ICON_CANDIDATES` tries that
+first, then the repo-relative `../build/icons/` path an unpackaged
+`npm start` sees. With nothing mapped in, packaged builds found no icon at
+all and fell back to Electron's default — that was the "we see the Electron
+icon" bug. macOS ignores `BrowserWindow.icon` outright, so the dock icon is
+set through `app.dock.setIcon()` (which only matters unpackaged; a packaged
+`.app` carries `build/icon.icns`).
 
 ## Deliberately out of scope for this pass
 

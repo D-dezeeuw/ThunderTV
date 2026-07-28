@@ -556,7 +556,7 @@
                          the surface Phases 09 (search) and 10 (playback) plug into. -->
                     <div
                         class="list-shell"
-                        :class="{ 'list-shell--group-view': view.categories.active && ui.viewMode === 'groups', 'list-shell--has-groups': view.categories.active && groupsPanelVisible, 'list-shell--split': view.live.active || view.radio.active, 'list-shell--catalog': view.movies.active || view.series.active }"
+                        :class="{ 'list-shell--group-view': view.categories.active && ui.viewMode === 'groups', 'list-shell--has-groups': view.categories.active && groupsPanelVisible, 'list-shell--split': view.live.active || view.radio.active || ((view.movies.active || view.series.active) && player.active), 'list-shell--catalog': view.movies.active || view.series.active }"
                         data-if="(view.channelList.active && activeSource) || view.movies.active || view.series.active"
                         data-testid="channel-list-shell"
                     >
@@ -1032,8 +1032,20 @@
                                  audio/video engine and doubles as the visualizer's Web
                                  Audio source, so Radio keeps it mounted but visually
                                  minimal rather than removing it, see player.css's
-                                 .list-shell--split rules. -->
-                            <div class="now-playing" data-if="view.live.active || view.radio.active" data-testid="now-playing-pane">
+                                 .list-shell--split rules.
+
+                                 Movies/TV Shows play into that same <video> (vod.actions.ts
+                                 and series.actions.ts both go through setActiveChannel), so
+                                 they get this pane too — but only once something is
+                                 actually playing, since a permanent empty player beside a
+                                 poster grid is just noise. Without this, pressing Play on a
+                                 movie left the <video> in a `display: none` pane: audio
+                                 only, no picture, and nothing to fullscreen. -->
+                            <div
+                                class="now-playing"
+                                data-if="view.live.active || view.radio.active || ((view.movies.active || view.series.active) && player.active)"
+                                data-testid="now-playing-pane"
+                            >
                                 <!-- The radio/live distinction is a class on the shell,
                                      never a `:has(.radio-now-playing)` selector: Spektrum's
                                      data-if only sets `display: none`, it does not detach
@@ -1052,7 +1064,10 @@
                                         <span class="radio-now-playing__name truncate">{{ player.active.name }}</span>
                                     </div>
                                     <div class="player-shell__bar">
-                                        <span class="player-shell__name truncate" data-if="view.live.active">{{ player.active.name }}</span>
+                                        <!-- Every view but Radio, which prints the station
+                                             name over its visualizer instead
+                                             (.radio-now-playing__name above). -->
+                                        <span class="player-shell__name truncate" data-if="!view.radio.active">{{ player.active.name }}</span>
                                         <!-- Live stream-quality bars (src/player/stream-health.ts) —
                                              lit count reflects stall frequency, engine-agnostic. -->
                                         <span
@@ -1212,7 +1227,12 @@
                                         <button type="button" class="btn" data-if="view.radio.active" data-action="click" data-fn="player/nextVisualizerPreset" data-testid="player-next-visual-btn">
                                             {{ strings.list.playerNextVisual }}
                                         </button>
-                                        <button type="button" class="btn" data-if="view.live.active || view.radio.active" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
+                                        <!-- No data-if: this whole shell only renders while
+                                             something is playing, and everything that plays
+                                             — Live, Radio, Movies, TV Shows — can be
+                                             fullscreened (state/player.actions.ts picks the
+                                             right element per view). -->
+                                        <button type="button" class="btn" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
                                             {{ strings.list.playerFullscreen }}
                                         </button>
                                         <button type="button" class="btn" data-action="click" data-fn="player/stop" data-testid="player-stop-btn">
