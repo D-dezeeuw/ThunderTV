@@ -476,9 +476,7 @@
                                 :title="strings.live.statsTitle"
                                 data-testid="live-stats"
                             >
-                                {{ live.stats.channels }} {{ strings.live.channelsLabel }} ·
-                                {{ liveHiddenCount }} {{ strings.live.hiddenLabel }} ·
-                                {{ live.stats.collapsed }} {{ strings.live.mergedLabel }}
+                                {{ live.stats.inputRows }} {{ strings.live.channelsLabel }}
                             </p>
                             <!-- A blank list teaches nothing. When the curated
                                  list matched nothing at all, the view shows
@@ -491,13 +489,6 @@
                                 data-testid="live-strict-fallback"
                             >
                                 {{ strings.live.strictFellBack }} {{ liveDroppedSamples }}
-                            </p>
-                            <p
-                                class="list-shell__stats"
-                                data-if="view.live.active && !live.stats.strictFellBack && liveHiddenCount > 0"
-                                data-testid="live-dropped-samples"
-                            >
-                                {{ strings.live.missingHint }} {{ liveDroppedSamples }}
                             </p>
                             <p class="list-shell__stats" data-if="view.categories.active" data-testid="categories-note">
                                 {{ strings.categories.note }}

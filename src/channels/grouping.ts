@@ -182,7 +182,11 @@ export function groupChannels(rows: readonly ChannelRow[], options: GroupingOpti
 
         const parsed = parseChannelName(row.name);
 
-        if (wanted) {
+        // Radio stations carry none of the bracketed "| NL |" country
+        // markers TV categories use — providers just name them "RADIO 10",
+        // "NPO RADIO 1", with no prefix to match. Applying the TV country
+        // filter here doesn't narrow the Radio list, it empties it.
+        if (wanted && radio !== 'only') {
             // A row's own prefix wins; when it has none, fall back to its
             // category's — provider bundles label the category, not every
             // channel inside it.

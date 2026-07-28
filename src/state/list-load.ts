@@ -43,10 +43,11 @@ export async function loadActiveSource(): Promise<void> {
 
     if (get<string | null>(PLAYLIST_ACTIVE_SOURCE_ID) !== sourceId) return; // superseded mid-stream
 
-    // The Live view derives its own row set from the now-complete catalog
-    // (one row per real channel), so it never uses the restored group /
+    // Live and Radio derive their own row sets from the now-complete catalog
+    // (one row per real channel), so neither uses the restored group /
     // scroll position — those describe the raw, ungrouped list.
-    if (get<Route>(UI_ACTIVE_VIEW) === 'live') {
+    const activeView = get<Route>(UI_ACTIVE_VIEW);
+    if (activeView === 'live' || activeView === 'radio') {
         publishRowsForCurrentView();
         return;
     }

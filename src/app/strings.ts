@@ -30,9 +30,7 @@ export const strings = {
     },
 
     live: {
-        channelsLabel: 'channels',
-        hiddenLabel: 'hidden',
-        mergedLabel: 'merged',
+        channelsLabel: 'channels total',
         /** The filter is aggressive by design, so the header always states what it removed — a missing channel must never look like the provider's fault. */
         statsTitle: 'Live filter: grouped variants and hid rows that did not match',
         empty: {
@@ -48,7 +46,6 @@ export const strings = {
         },
         /** Shown instead of an empty list when the curated list matched nothing — a naming mismatch, not an absent channel. */
         strictFellBack: 'Curated list matched nothing here, showing all channels. Names seen:',
-        missingHint: 'Not seeing a channel? These names were filtered out:',
     },
 
     categories: {
@@ -56,7 +53,7 @@ export const strings = {
     },
 
     radio: {
-        note: 'Audio-only stations from this source. Radio has no EPG and no curated list, so only country and filler filtering apply.',
+        note: 'Audio-only stations from this source. Radio has no EPG and no curated list, and stations carry no country marker, so only filler filtering applies.',
         empty: 'No radio stations found in this source.',
     },
 
