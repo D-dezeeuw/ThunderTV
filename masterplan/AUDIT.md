@@ -1,8 +1,15 @@
 # ThunderTV — Application Audit
 
-> Audited at commit `6818418` (branch `claude/app-audit-3-0-vision-tjcj92`).
+> **Revised.** First measured at `6818418`; re-measured and revised against
+> `origin/main` at `a7baa42` after the Movies/TV-Shows UI landed mid-audit.
 > Every claim below was verified by running the toolchain or reading the
 > code — no finding is inferred from documentation alone.
+>
+> The revision matters: the audit's original headline finding (Movies, Series
+> and Search built but unreachable) was **substantially fixed on `main` while
+> this audit was being written**, by commit `70fccf2`. §3.1 records both the
+> original measurement and what actually shipped, because the *systemic* cause
+> is unchanged and the fix arrived by luck of timing rather than by a gate.
 
 ---
 
@@ -14,14 +21,18 @@ HTTP error taxonomy, parsing worker, lint fences) are better than most
 production codebases. The failure is not in how code is written; it is in
 **what reaches the user, and whether the map still matches the territory.**
 
-Two facts define the current state:
+Three facts define the current state:
 
-1. **26% of the app's action surface is unreachable.** 19 of 74 registered
-   Spektrum actions have no binding in `index.html`. Movies, Series, and
-   Search are fully built in the state layer and completely absent from the UI.
+1. **Feature reachability is now good, but nothing guarantees it.** Unbound
+   actions dropped from 19 of 74 to **6 of 78** when `70fccf2` shipped the
+   Movies/Series/Search UI. Two of the remaining six are genuinely orphaned.
+   No check would have caught the original 19, and none would catch the next.
 2. **The masterplan tracker reports 0/100 for phases 09–30**, while the code
    for phases 09–13, 16–22 and 28–29 demonstrably ships. The project's own
-   navigation document is now actively misleading.
+   navigation document is now actively misleading. **Unchanged by the merge.**
+3. **The performance budget is drifting away, not toward, its target.** The
+   breach widened from 12% over to **19% over** in a single merge, because
+   nothing measures it.
 
 ### Health scorecard
 
@@ -30,10 +41,10 @@ Two facts define the current state:
 | Typecheck | ✅ Clean | `tsc --noEmit` |
 | ESLint (`--max-warnings 0`) | ✅ Clean | `npm run lint` |
 | CSS fence / file-access fence | ✅ Clean | both custom guards pass |
-| Tests | ⚠️ 1,039 pass, **intermittent** | 5 failures in 1 of 4 full runs |
-| Build | ✅ Succeeds | 375 ms |
-| Perf budget | ❌ **Breached** | 67.37 kB gz vs. ≤60 kB stated budget |
-| Feature reachability | ❌ **26% dead** | 19/74 actions unbound |
+| Tests | ✅ 1,073 pass (129 files) | 4 clean post-merge runs; see §4.3 on a latent flake |
+| Build | ✅ Succeeds | 1.17 s |
+| Perf budget | ❌ **Breached, widening** | 71.46 kB gz vs. ≤60 kB budget (was 67.37) |
+| Feature reachability | ⚠️ **6/78 unbound** | improved from 19/74; still ungated |
 | Plan ↔ code fidelity | ❌ **Detached** | phases 09–30 report 0% while shipping |
 | Security posture | ✅ Strong | with two gaps (§4.7) |
 
@@ -71,50 +82,52 @@ of the whole.
 
 ## 3. Critical findings
 
-### 3.1 A quarter of the app is built but unreachable
+### 3.1 Features shipped unreachable — fixed by luck, not by a gate
 
-Comparing every `defineFn(...)` registration against every `data-fn="..."` in
-`index.html`:
+**What the audit originally measured** (at `6818418`): 74 actions registered,
+55 bound, **19 unreachable**. `index.html` contained **zero** occurrences of
+`movies` or `series` — no rail button, no view, no settings toggle. The `Route`
+union had no `'movies'`/`'series'` member. No `search/*` action was bound and
+there was no search input, only an unused `#icon-search` sprite symbol and a
+comment at `index.html:498` reading *"the surface Phases 09 (search) and 10
+(playback) plug into."* Roughly **2,211 LOC of production code plus 1,219 LOC
+of passing specs — 18% of the codebase — that no user could reach.**
 
-- **74 actions registered, 55 bound, 19 unreachable.**
-- `index.html` contains **zero** occurrences of the strings `movies` or
-  `series`. No rail button, no view section, no settings toggle.
-- `src/app/router.ts`'s `Route` union is
-  `'live' | 'radio' | 'categories' | 'sources' | 'favorites' | 'recent' | 'guide' | 'connect'`
-  — **no `'movies'`, no `'series'`.** Any navigation there falls back to `live`.
-- No `search/*` action is bound and there is no search input in the markup —
-  only an unused `#icon-search` sprite symbol and a comment at `index.html:498`
-  reading *"the surface Phases 09 (search) and 10 (playback) plug into."*
+**What happened next:** while this audit was being written, commit `70fccf2`
+("Add Movies and TV Shows tabs: rail, views, category chips, search, detail")
+landed on `main` and fixed most of it. Re-measured at `a7baa42`:
 
-The unreachable actions:
+| | Before (`6818418`) | After (`a7baa42`) |
+| --- | --- | --- |
+| Actions registered | 74 | 78 |
+| Actions bound in markup | 55 | **72** |
+| **Unreachable** | **19 (26%)** | **6 (7.7%)** |
+| `movies`/`series` in `index.html` | 0 | 112 |
 
-```
-list/jumpToGroup            search/clear             vod/closeDetail
-list/playSelected           search/setQuery          vod/open
-player/setActiveChannel     search/setScope          vod/openDetail
-settings/setAudioLanguage   series/closeDetail       vod/play
-settings/setSubtitleLanguage series/open             vod/selectCategory
-wizard/close                series/openDetail
-                            series/playEpisode
-                            series/selectCategory
-```
+Of the six remaining, four are legitimately programmatic and belong on an
+allowlist rather than in the markup — `list/playSelected` and
+`player/setActiveChannel` are called from `list.actions.ts`/`recent.actions.ts`,
+and `vod/open`/`series/open` are driven by `src/app/catalog-activation.ts` on
+view entry. **Two are genuinely orphaned:** `list/jumpToGroup`
+(`groups.actions.ts:20`) and `wizard/close` (`wizard.actions.ts:21`) are
+registered via `defineFn` and appear nowhere else in the repository — no
+binding, no call site.
 
-**Scale:** ~2,211 LOC of production code plus ~1,219 LOC of specs — roughly
-**18% of the 19,248-line production codebase** — that no user can reach. It is
-fully typechecked, fully linted, and fully unit-tested. The tests pass. The
-feature does not exist.
-
-**Root cause, and this is the important part:** `src/state/README.md` documents
-the dependency explicitly:
+**The finding stands, and this is the important part.** The defect was never
+"Movies is missing"; it was that **a feature could be 3,430 lines complete,
+fully typechecked, fully linted, fully unit-tested, entirely unreachable, and
+green in CI.** That is still true today for the next feature. The fix arrived
+because someone happened to build the UI, not because anything failed when the
+halves were separated. `src/state/README.md` had documented the split
+explicitly:
 
 > *"…once the other agent's `src/app/router.ts` change adds `'movies'`/`'series'`
 > to the `Route` union — nothing here depends on that union directly … so no
 > coordination was required to land this half first."*
 
-The state half landed. The UI half never did. Work was split across parallel
-branches with **no integration gate that fails when a half arrives alone.**
-This is a systemic defect, not a one-off: the same pattern produced the unused
-`settings/setAudioLanguage` and `settings/setSubtitleLanguage` actions.
+Work was split across parallel branches with **no integration gate that fails
+when a half arrives alone.** The two orphaned actions above are that same gap,
+still open, at smaller scale. [`UPGRADES.md`](./UPGRADES.md) U1 closes it.
 
 Related: the app has **zero `data-model` bindings**, despite `data-model` being
 named as one of the four core Spektrum bindings in the masterplan. Every input
@@ -148,17 +161,22 @@ after Phase 08. Actual branches are ad-hoc: `claude/vod-filtering-search-plan-eq
 ### 4.1 Performance budget breached, and nothing enforces it
 
 The masterplan's standing verification checklist mandates **"initial JS ≤ ~60 KB
-gz app code (+ ~6 KB Spektrum)."** Actual:
+gz app code (+ ~6 KB Spektrum)."** Actual, at `a7baa42`:
 
 ```
-dist/assets/index-*.js    197.66 kB │ gzip:  67.37 kB   ← 12% over budget
-dist/index.html           116.31 kB │ gzip:  16.58 kB
-dist/assets/index-*.css    24.14 kB │ gzip:   4.30 kB
+dist/assets/index-*.js    210.81 kB │ gzip:  71.46 kB   ← 19% over budget
+dist/index.html           158.73 kB │ gzip:  21.43 kB
+dist/assets/index-*.css    29.50 kB │ gzip:   4.92 kB
 ```
 
 Lazy-loaded engines (`hls` 157 kB gz, `mpegts` 62 kB gz) are correctly split
-and not counted. The breach is in first-load app code. No script measures this;
-nothing in CI would ever catch further drift.
+and not counted. The breach is in first-load app code.
+
+**The trend is the finding, not the number.** One merge moved app JS from
+67.37 kB to 71.46 kB gz (+6%) and the HTML shell from 16.58 kB to 21.43 kB gz
+(+29%). The budget went from 12% over to 19% over **in a single commit range,
+silently**, because no script measures it and nothing in CI would ever notice.
+An unmeasured budget is not a budget.
 
 ### 4.2 Guard scripts exist but never run
 
@@ -178,10 +196,12 @@ What is silently unguarded as a result:
 CI also never runs `npm run build`, so a broken production build reaches `main`
 with a green check.
 
-### 4.3 Intermittent test failure from module-singleton leakage
+### 4.3 Latent flake from module-singleton leakage
 
 `src/m3u/import-run.spec.ts` produced **5 failures in one of four full-suite
-runs** and passes 10/10 in isolation:
+runs** at `6818418`, and passes 10/10 in isolation. It did **not** reproduce in
+four post-merge runs at `a7baa42` — but nothing about the cause changed, so
+this is a dormant flake, not a fixed one:
 
 ```
 Error: runImport(): an import is already in flight — call cancelImport() first.
@@ -190,8 +210,9 @@ Error: runImport(): an import is already in flight — call cancelImport() first
 
 `import-run.ts:59` holds `let active: ActiveImport | null = null` at module
 scope. Under the full suite, that singleton survives across tests with no reset
-hook. A once-in-four-runs red CI is worse than a consistently red one — it
-trains everyone to re-run rather than investigate.
+hook. A flake that appears once in four runs and then hides for four more is
+worse than a consistently red one — it trains everyone to re-run rather than
+investigate, and it will resurface the moment file scheduling shifts again.
 
 ### 4.4 The shadow state layer
 
@@ -275,12 +296,16 @@ the scars are permanent and compound.
   the web target, with no CSP to contain it. (Packaged builds swap to the
   vendored copy via `package-target.mjs` and are unaffected.)
 
-### 4.8 `index.html` is an unlinted 1,829-line monolith
+### 4.8 `index.html` is an unlinted 2,340-line monolith — and growing fast
 
-116 KB raw, 16.58 kB gzipped — a quarter of the app JS payload again, on the
-critical path, shipped on every load with no code splitting. It contains the
+158.73 kB raw, 21.43 kB gzipped — nearly a third of the app JS payload again, on
+the critical path, shipped on every load with no code splitting. It contains the
 nav rail, every view, the entire settings panel (11 `<section>` blocks), the
 wizard, the debug panel, and a 6 KB inline SVG sprite.
+
+It grew **28% in one merge** (1,829 → 2,340 lines) when the Movies/Series views
+landed, which is the predictable consequence of the asymmetry below rather than
+a criticism of that commit.
 
 The asymmetry is the finding: **TypeScript files are hard-capped at 400 lines by
 ESLint; the single largest and most-edited UI artifact in the repo has no limit
@@ -305,17 +330,19 @@ warming, then abandoned before actions and rows.
 
 ### 4.10 Priority inversion: the radio visualizer
 
+Production LOC only (specs excluded), at `a7baa42`:
+
 | Module | LOC | In the 30-phase plan? |
 | --- | --- | --- |
-| Radio visualizer + 12 presets | **1,969** | **No** — appears in zero phase files |
-| EPG core (`src/epg`) | 281 | Phases 16–18 |
+| Radio visualizer + 12 presets | **2,042** | **No** — appears in zero phase files |
 | Search core (`src/search`) | 333 | Phase 09 |
-| Search UI | **0** | Phase 09 |
+| EPG core (`src/epg`) | 162 | Phases 16–18 |
 
-The visualizer is competent work and users may well love it. But it is 7× the
-EPG core, entirely off-plan, and it shipped **while the Movies/Series/Search UI
-it competed with for attention did not**. Three of the last ten commits are
-visualizer work.
+The visualizer is competent work and users may well love it. But it is **12.6×
+the EPG core** and 6× the search core, entirely off-plan, and it grew again
+(1,969 → 2,042) in the same merge window. Four of the last fifteen commits are
+visualizer work. It is now the single largest subsystem in the app that the
+plan does not mention at all.
 
 ### 4.11 Smaller items
 
@@ -330,8 +357,8 @@ visualizer work.
 - **i18n has no fallback path at runtime.** `strings.spec.ts` asserts key-set
   parity across `en`/`nl`/`de` at build time, which is good, but a missing leaf
   at runtime renders `undefined` rather than falling back to `en`.
-- **`src/state/` is 37% of the production codebase** (7,144 of 19,248 LOC across
-  78 files). Some of that is genuine state; a substantial fraction is
+- **`src/state/` is 37% of the production codebase** (7,470 of 20,013 LOC across
+  80 files). Some of that is genuine state; a substantial fraction is
   application logic that landed in `state/` because the layering rule made it
   the path of least resistance.
 
@@ -343,13 +370,19 @@ Every critical finding traces to one of three causes:
 
 | Cause | Findings | The pattern |
 | --- | --- | --- |
-| **No integration gate** | §3.1, §4.2 | Work splits across branches; halves land alone; nothing fails when a feature is built but unreachable. Guards exist but are not wired to anything that blocks a merge. |
+| **Nothing is measured, so nothing holds** | §3.1, §4.1, §4.2, §4.8 | Reachability, bundle size, and markup size are all governed by documents rather than scripts. Each drifted. The perf budget widened 12%→19% during this audit; `index.html` grew 28%; the reachability gap closed only because someone happened to build the UI. |
 | **The map is not maintained with the territory** | §3.2, §4.4 | The masterplan and `state/README.md` are excellent *when accurate*. Nothing forces them to stay accurate, so the tracker inverted and the shadow state layer went unmapped entirely. |
 | **Process scope treated as design scope** | §4.6, §4.9, §4.10 | Phase mandates ("`src/state/`-only") and lint ceilings (400 lines) made permanent architectural decisions that no one would have chosen on the merits. |
 
+The mid-audit merge is the clearest evidence for the first row. In one commit
+range the codebase **fixed** its largest reachability defect and **worsened**
+two measured budgets, and CI reported exactly the same green for all of it.
+
 The encouraging read: **none of these are code-quality problems.** The code is
-good. The problems are all at the seams — between branches, between plan and
-implementation, between state and markup. Seams are cheap to fix once named.
+good — 1,073 tests, clean typecheck, clean lint, four real lint fences that all
+hold. The problems are at the seams: between branches, between plan and
+implementation, between state and markup. Seams are cheap to fix once named,
+and every fence this project already has works.
 
 Fixes are specified in [`UPGRADES.md`](./UPGRADES.md). The long-horizon target
 is [`VISION-3.0.md`](./VISION-3.0.md).

@@ -226,15 +226,18 @@ Honest accounting of the gap between here and there:
 - **An identity model where the app currently has strings.** `ChannelRow` is a
   parsed M3U line. 3.0 needs a `Work` and a `Feed`, with the row demoted to
   evidence *about* an entity rather than the entity itself.
-- **A UI layer that can render surfaces we have not designed yet.** A
-  1,829-line `index.html` (§4.8) cannot host a poster wall, a timeline scrubber,
-  a merge-conflict resolver, and a 10-foot layout.
-- **Delivery that closes the loop.** 3.0 is roughly ten times the surface area
-  of the feature that currently sits fully built and completely unreachable
-  (§3.1). **A project that ships 3,430 lines nobody can click cannot ship this
-  vision** — not because the engineering is beyond it, but because the seams
-  are. [`UPGRADES.md`](./UPGRADES.md) U1 is therefore not merely a bug fix; it
-  is the first prerequisite of this document.
+- **A UI layer that can render surfaces we have not designed yet.** A single
+  2,340-line `index.html` (§4.8) — which grew 28% in one merge — cannot host a
+  poster wall, a timeline scrubber, a merge-conflict resolver, and a 10-foot
+  layout. It has to be composable before those exist.
+- **Delivery that measures itself.** 3.0 is many times the surface area of
+  anything shipped so far, and the audit caught the project in the act: one
+  merge simultaneously **fixed** its largest reachability defect and **widened**
+  the performance budget breach from 12% to 19%, with CI reporting green for
+  both. **A project that cannot feel a 6% payload regression cannot hold a
+  60 kB budget through a semantic resolver.** [`UPGRADES.md`](./UPGRADES.md)
+  U1 and U4 are therefore not bug fixes; they are the instruments this vision
+  is flown on.
 
 ---
 

@@ -34,30 +34,30 @@ The single highest-leverage change in this document. A new
 The allowlist is the important design detail: it makes "this is intentionally
 unbound" a **deliberate, reviewed, one-line act** rather than a silent default.
 
-### U2. Ship or delete Movies / Series / Search
-**Closes §3.1.**
+### U2. ~~Ship or delete Movies / Series / Search~~ — mostly done; finish the tail
+**Closes §3.1. Status: largely resolved on `main` by `70fccf2`.**
 
-~3,430 LOC currently sits in limbo. Limbo is the worst of the three options —
-it carries full maintenance cost and delivers nothing. Pick one, this week:
+The bulk of this item was completed while the audit was being written: the
+Movies/TV-Shows rail, views, category chips, search and detail panes shipped,
+taking unbound actions from 19/74 to 6/78. `catalog-activation.ts` now drives
+`openVodCatalog()`/`openSeriesCatalog()` and the per-catalog warms on view
+entry. **No action needed on the main body of this item.**
 
-**Option A — Ship (recommended).** The remaining work is genuinely small
-relative to what already exists:
-- Add `'movies' | 'series'` to `Route` and `ROUTE_VALUES` in `src/app/router.ts`.
-- Add two rail buttons to `index.html` (copy the `guide` button verbatim; the
-  `rail.movies.visible` / `rail.series.visible` computeds already exist and
-  already work).
-- Add two settings checkboxes (`data-setting="nav.movies"` / `"nav.series"` —
-  the `TOGGLEABLE` allowlist entries already exist).
-- Add a poster-grid view section bound to the existing `vod.*` / `series.*`
-  keys, and a search input bound to `search/setQuery`.
-- Call `warmCatalogs()` from `bootstrap.ts` after first paint — it is exported,
-  documented as "never self-triggered," and currently called by nobody.
+What remains is small and specific:
 
-**Option B — Delete.** Revert the state layer to a branch, note the decision in
-the masterplan, and reclaim 18% of the codebase. Legitimate if Movies/Series is
-not actually wanted.
+- **Two genuinely orphaned actions.** `list/jumpToGroup`
+  (`groups.actions.ts:20`) and `wizard/close` (`wizard.actions.ts:21`) are
+  registered and referenced nowhere — no binding, no call site. Bind them or
+  delete them; U1's check will force the choice.
+- **`warmCatalogs()` is still exported and called by nobody.**
+  `catalog-activation.ts` calls `warmVodCatalog()`/`warmSeriesCatalog()`
+  individually, so the combined wrapper in `src/state/warm.ts` is now dead
+  weight. Delete it, or use it at the call site.
 
-Do not choose Option C, which is what is happening now.
+**The lesson to keep, since the finding is closing:** this was fixed because
+someone happened to build the UI, not because anything failed when the halves
+were separated. U1 is what makes the fix durable — without it, the next feature
+can repeat the whole thing and CI will stay green throughout.
 
 ### U3. Wire the guards that already exist
 **Closes §4.2. Cost: ~15 minutes.**
@@ -81,19 +81,26 @@ Extend `check-dist.mjs` with gzipped-size assertions read from a committed
 
 ```jsonc
 {
-  "app-js-gz":  61440,   // masterplan's ≤60 kB — currently 67.37 kB, FAILING
+  "app-js-gz":  61440,   // masterplan's ≤60 kB — currently 71.46 kB, FAILING
   "css-gz":     10240,
-  "html-gz":    20480,
+  "html-gz":    20480,   // currently 21.43 kB, FAILING
   "worker-gz":  10240
 }
 ```
 
-Land it **failing**, with the current 67.37 kB recorded as a `TODO` overage
-that blocks release but not the merge, then close the gap. Options, cheapest
-first: split the settings panel and wizard markup out of the initial HTML
-payload (§U8); lazy-load the visualizer presets (1,969 LOC that only the Radio
-view needs); audit the three 380-line locale dictionaries into a dynamic import
-per locale rather than shipping all three to every user.
+**This item got more urgent, not less.** During the audit window the app JS went
+67.37 → 71.46 kB gz and the HTML shell 16.58 → 21.43 kB gz, moving the breach
+from 12% to 19% over budget in a single merge, with CI green throughout. The
+budget is drifting away from its target at a measurable rate precisely because
+nothing measures it.
+
+Land the check **failing**, with the current overage recorded as a `TODO` that
+blocks release but not the merge, then close the gap. Options, cheapest first:
+split the settings panel and wizard markup out of the initial HTML payload
+(§U8); lazy-load the visualizer presets (2,042 LOC that only the Radio view
+needs); split the locale dictionaries — now six files across `strings.*.ts` and
+`strings.*.catalog.ts` — into a dynamic import per locale rather than shipping
+all three languages to every user.
 
 ---
 
@@ -248,7 +255,7 @@ never sees `undefined` if that guarantee is ever bypassed. ~15 lines.
 ### U16. Decide the visualizer's place deliberately
 **Closes §4.10.**
 
-The 1,969-LOC visualizer is off-plan, not bad. Two actions:
+The 2,042-LOC visualizer is off-plan, not bad. Two actions:
 - **Lazy-load it** behind the Radio view (feeds U4's budget directly — it is
   dead weight for every user who never opens Radio).
 - **Give it a phase file.** It is a real feature with real scope; leaving the
