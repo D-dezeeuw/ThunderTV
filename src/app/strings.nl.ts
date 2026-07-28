@@ -42,6 +42,7 @@ export const nl = {
         variants: {
             label: 'Andere feeds',
             catchUp: 'terugkijken',
+            alt: 'alt',
         },
         strictFellBack: 'De samengestelde lijst kwam hier nergens mee overeen, alle zenders worden getoond. Geziene namen:',
     },
