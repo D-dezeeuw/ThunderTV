@@ -13,4 +13,11 @@ export interface ActiveChannelSnapshot {
     streamUrl: string;
     logo: string | null;
     group: string | null;
+    /**
+     * Audio-only station. Optional because it is additive over snapshots
+     * already persisted without it — an entry from before this existed is
+     * simply treated as television. Carried so Recents can send a station
+     * back to Radio, which is the only view with a layout for one.
+     */
+    radio?: boolean;
 }

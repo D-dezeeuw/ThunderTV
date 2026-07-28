@@ -18,6 +18,7 @@ import { initListStateModule } from './list-state';
 import { unwrapPersisted } from './persist';
 import { initPlayerState } from './player';
 import { registerPlayerActions } from './player.actions';
+import { registerRecentActions } from './recent.actions';
 import { registerPlayerSelectors } from './player.selectors';
 import { initPlaylistState } from './playlist';
 import { registerPlaylistActions } from './playlist.actions';
@@ -74,6 +75,7 @@ export function registerActions(): void {
     registerListActions();
     registerGroupActions();
     registerLiveActions();
+    registerRecentActions();
     registerXtreamActions();
 }
 
