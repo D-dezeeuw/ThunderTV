@@ -39,14 +39,30 @@ Presets auto-advance every `AUTO_CYCLE_MS` — unless the listener pins one via
 the picker (`index.html`'s `#radio-visualizer-select`, `player.visualizerPreset`
 in `state/player.ts`, persisted), in which case only picking `'auto'` again
 resumes the rotation. `player/nextVisualizerPreset` (`state/player.actions.ts`)
-skips manually and always clears a pin. `bindings.ts` starts/stops the whole
-thing and applies the preference whenever `view.radio.active`,
-`player.active`, or `player.visualizerPreset` change, in a `watch()` kept
-separate from the attach/detach one so switching views or presets never
-restarts the stream. It reads real frequency data only when the audio is
-same-origin/CORS-clean, which mpegts.js/hls.js's `blob:` MediaSource URL
-satisfies (the default engines); the native-engine fallback still animates,
-just without music-reactivity. `player/fullscreen`
+skips manually and always clears a pin. Every switch — auto-advance, the
+picker, or "Next visual" — crossfades over `TRANSITION_MS` rather than
+cutting instantly: the outgoing preset keeps rendering into one offscreen
+buffer (untouched, so it keeps animating while it fades), the incoming one
+(freshly reset) renders into another, and the visible canvas is just the two
+alpha-blended each frame (`renderTransition()`).
+
+`player/toggleVisualizerPause` (`player.visualizerPaused`, transient —
+always false on a fresh Radio visit) freezes the render loop entirely rather
+than blanking the canvas, so the last drawn frame just sits there until
+resumed.
+
+`bindings.ts` starts/stops the whole thing and applies the preset/pause
+preference whenever `view.radio.active`, `player.active`,
+`player.visualizerPreset`, or `player.visualizerPaused` change, in a
+`watch()` kept separate from the attach/detach one so none of those ever
+restarts the stream. `startRadioVisualizer()` is itself a no-op when already
+running against the same canvas — the same `watch()` fires on every one of
+those four dependencies, and a full reset on each call would stomp an
+in-flight crossfade or the pause state; preset/pause changes apply through
+their own setters instead. The visualizer reads real frequency data only
+when the audio is same-origin/CORS-clean, which mpegts.js/hls.js's `blob:`
+MediaSource URL satisfies (the default engines); the native-engine fallback
+still animates, just without music-reactivity. `player/fullscreen`
 (`state/player.actions.ts`) fullscreens `.radio-now-playing` instead of the
 video when `ui.activeView === 'radio'`, since Radio's video element carries
 no picture (`player.css`'s `.player-shell--radio` rule).

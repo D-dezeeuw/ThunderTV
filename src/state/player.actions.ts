@@ -9,6 +9,7 @@ import {
     PLAYER_PLAYBACK_ERROR,
     PLAYER_STREAM_HEALTH,
     PLAYER_VARIANTS,
+    PLAYER_VISUALIZER_PAUSED,
     PLAYER_VISUALIZER_PRESET,
     PLAYER_ZAP_HISTORY,
     ZAP_HISTORY_CAP,
@@ -70,6 +71,9 @@ export function registerPlayerActions(): void {
     });
     defineFn('player/setVisualizerPreset', (el) => {
         if (el instanceof HTMLSelectElement) setVisualizerPreset(el.value);
+    });
+    defineFn('player/toggleVisualizerPause', () => {
+        setValue(PLAYER_VISUALIZER_PAUSED, !(get<boolean>(PLAYER_VISUALIZER_PAUSED) ?? false));
     });
 }
 

@@ -28,6 +28,8 @@ export const PLAYER_ACTIVE_VARIANT_ID = 'player.activeVariantId';
  * the picker in the player bar (`index.html`'s `#radio-visualizer-select`).
  */
 export const PLAYER_VISUALIZER_PRESET = 'player.visualizerPreset';
+/** Transient, session-only: whether the listener paused the Radio visualizer's render loop. Never persisted — reopening Radio always starts unpaused. */
+export const PLAYER_VISUALIZER_PAUSED = 'player.visualizerPaused';
 
 /** Feature 05.5.3: capped at 20 entries; the Recent view (Phase 13) may trim its own display further. */
 export const ZAP_HISTORY_CAP = 20;
@@ -43,6 +45,7 @@ export interface PlayerState {
     variants: ChannelVariant[];
     activeVariantId: string | null;
     visualizerPreset: string;
+    visualizerPaused: boolean;
 }
 
 export const PLAYER_DEFAULTS: PlayerState = {
@@ -53,6 +56,7 @@ export const PLAYER_DEFAULTS: PlayerState = {
     variants: [],
     activeVariantId: null,
     visualizerPreset: 'auto',
+    visualizerPaused: false,
 };
 
 /** Seeds this module's defaults — called once from `state/index.ts`'s `initState()`, before rehydration can overwrite it (Feature 05.1.8). */
@@ -64,4 +68,5 @@ export function initPlayerState(): void {
     setValue(PLAYER_VARIANTS, PLAYER_DEFAULTS.variants);
     setValue(PLAYER_ACTIVE_VARIANT_ID, PLAYER_DEFAULTS.activeVariantId);
     setValue(PLAYER_VISUALIZER_PRESET, PLAYER_DEFAULTS.visualizerPreset);
+    setValue(PLAYER_VISUALIZER_PAUSED, PLAYER_DEFAULTS.visualizerPaused);
 }

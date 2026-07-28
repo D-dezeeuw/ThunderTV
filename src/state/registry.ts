@@ -18,6 +18,7 @@ import {
     PLAYER_PLAYBACK_ERROR,
     PLAYER_STREAM_HEALTH,
     PLAYER_VARIANTS,
+    PLAYER_VISUALIZER_PAUSED,
     PLAYER_VISUALIZER_PRESET,
     PLAYER_ZAP_HISTORY,
     VARIANTS_CAP,
@@ -220,6 +221,11 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         owner: 'player',
         persisted: true,
         description: 'Radio visualizer preference — \'auto\' (cycle every preset) or a specific preset id (a genre preset stays pinned). Chosen by the listener, never inferred from the audio.',
+    },
+    [PLAYER_VISUALIZER_PAUSED]: {
+        owner: 'player',
+        persisted: false,
+        description: 'Whether the listener paused the Radio visualizer render loop — transient, always false on a fresh Radio visit.',
     },
 
     // --- epg ---

@@ -748,6 +748,16 @@
                                                 <option value="fractal-tunnel" :selected="player.visualizerPreset === 'fractal-tunnel'">{{ strings.list.visualizerFractalTunnel }}</option>
                                             </optgroup>
                                         </select>
+                                        <button
+                                            type="button"
+                                            class="btn"
+                                            data-if="view.radio.active"
+                                            data-action="click"
+                                            data-fn="player/toggleVisualizerPause"
+                                            data-testid="player-pause-visual-btn"
+                                        >
+                                            {{ player.visualizerPaused ? strings.list.playerResumeVisual : strings.list.playerPauseVisual }}
+                                        </button>
                                         <button type="button" class="btn" data-if="view.radio.active" data-action="click" data-fn="player/nextVisualizerPreset" data-testid="player-next-visual-btn">
                                             {{ strings.list.playerNextVisual }}
                                         </button>

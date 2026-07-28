@@ -292,6 +292,8 @@ export const strings = {
         playerStop: 'Stop',
         playerFullscreen: 'Full screen',
         playerNextVisual: 'Next visual',
+        playerPauseVisual: 'Pause visual',
+        playerResumeVisual: 'Resume visual',
         visualizerPickerLabel: 'Visualizer',
         visualizerAuto: 'Auto (cycle)',
         visualizerGenreGroup: 'By genre',
