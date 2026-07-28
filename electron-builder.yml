@@ -87,7 +87,14 @@ linux:
   target:
     - target: AppImage
       arch: [x64]
-  desktopName: thundertv.desktop
+  # The installed `.desktop` filename follows `desktopName` in
+  # desktop/package.json (`thundertv.desktop`) rather than the productName
+  # default (`ThunderTV.desktop`). electron-builder 26 moved this: the name
+  # itself is package.json metadata — because Electron reads it from there
+  # for the window's app_id — and this flag is what makes the packaged
+  # filename agree with it. A `desktopName:` key here is not in the schema
+  # and fails the build outright.
+  syncDesktopName: true
   # A single square source, not the build/icons/*.png set — those are
   # named `16.png`/`32.png`/… (the scripts/generate-icons.mjs convention),
   # not electron-builder's expected `16x16.png` directory convention, so
@@ -96,8 +103,10 @@ linux:
   icon: ../assets/branding/thundertv-icon-master.png
   category: AudioVideo
   maintainer: ThunderTV
-  desktop:
-    entry:
-      StartupWMClass: ThunderTV
+  # No `desktop.entry.StartupWMClass` override: electron-builder derives it
+  # from `desktopName` minus the suffix (`thundertv`), which is exactly the
+  # app_id Electron reports for the running window. Hard-coding `ThunderTV`
+  # here contradicted that and broke the window↔launcher association the
+  # key exists for.
 
 artifactName: 'thundertv-${version}-${os}-${arch}.${ext}'
