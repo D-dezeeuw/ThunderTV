@@ -19,6 +19,7 @@ export const enCatalog = {
         emptyCategory: 'Nothing in this category yet.',
         close: 'Close',
         play: 'Play',
+        retry: 'Retry',
     },
 
     movies: {

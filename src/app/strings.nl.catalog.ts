@@ -10,6 +10,7 @@ export const nlCatalog = {
         emptyCategory: 'Nog niets in deze categorie.',
         close: 'Sluiten',
         play: 'Afspelen',
+        retry: 'Opnieuw proberen',
     },
 
     movies: {

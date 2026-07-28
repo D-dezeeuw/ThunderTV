@@ -180,26 +180,30 @@
     margin-top: var(--space-2);
 }
 
-/* ---- Seasons/episodes (Series detail only) ---- */
+/* ---- Seasons/episodes (Series detail only) ----
+   One flat data-each over series.detail.rows (season-header rows and
+   episode rows interleaved, state/series-rows.ts's buildSeriesDetailRows())
+   — .catalog-detail-row is the single cloned row template; data-if inside
+   it swaps between the two visual kinds. Spacing that used to come from
+   .catalog-seasons' own gap (grouping whole season blocks) now lives on
+   .catalog-season__title's top margin instead, since every row is a
+   sibling of every other row, not nested inside a per-season container. */
 
 .catalog-seasons {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+}
+
+.catalog-detail-row {
+    display: contents;
 }
 
 .catalog-season__title {
-    margin: 0 0 var(--space-2);
+    margin: var(--space-4) 0 var(--space-2);
     font-size: var(--text-sm);
     color: var(--color-text-dim);
     text-transform: uppercase;
     letter-spacing: 0.04em;
-}
-
-.catalog-episode-list {
-    display: flex;
-    flex-direction: column;
-    border-top: 1px solid var(--color-border);
 }
 
 .catalog-episode {
