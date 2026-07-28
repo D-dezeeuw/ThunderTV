@@ -2,7 +2,9 @@ import { refs, watch } from 'spektrum';
 import { applyProxy } from '../core/http/proxy';
 import { effectiveProxyTemplate } from '../core/platform/desktop-proxy';
 import { PLAYER_ACTIVE } from '../state/player';
+import { UI_ACTIVE_VIEW } from '../state/ui';
 import { attachAndPlay, detach } from './engine';
+import { startRadioVisualizer, stopRadioVisualizer } from './visualizer';
 
 /**
  * Watches `player.active` (already fully wired by Phase 05/08's
@@ -23,7 +25,7 @@ import { attachAndPlay, detach } from './engine';
  * streams-toggle arrives with the Phase 22 settings work.
  */
 export function registerPlayerBindings(): () => void {
-    return watch([PLAYER_ACTIVE], (state: unknown) => {
+    const unwatchPlayback = watch([PLAYER_ACTIVE], (state: unknown) => {
         const active = (state as { player?: { active?: { streamUrl: string } | null } }).player?.active;
         const video = refs['playerVideo'];
         if (!(video instanceof HTMLVideoElement)) return;
@@ -35,6 +37,27 @@ export function registerPlayerBindings(): () => void {
         void attachAndPlay(video, applyProxy(effectiveProxyTemplate(), active.streamUrl));
         revealPlayer(video);
     });
+
+    // Separate from the attach/detach watch above on purpose: this one also
+    // depends on `ui.activeView`, and folding it into the same `watch()`
+    // would re-run `attachAndPlay()` (restarting the stream) on every nav
+    // between Radio and another view, not just on a real channel change.
+    const unwatchVisualizer = watch([PLAYER_ACTIVE, UI_ACTIVE_VIEW], (state: unknown) => {
+        const typed = state as { player?: { active?: unknown }; ui?: { activeView?: string } };
+        const video = refs['playerVideo'];
+        if (!(video instanceof HTMLVideoElement)) return;
+
+        if (typed.player?.active && typed.ui?.activeView === 'radio') {
+            startRadioVisualizer(video);
+        } else {
+            stopRadioVisualizer();
+        }
+    });
+
+    return () => {
+        unwatchPlayback();
+        unwatchVisualizer();
+    };
 }
 
 /**

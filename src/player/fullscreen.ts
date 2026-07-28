@@ -16,3 +16,15 @@ export function requestVideoFullscreen(video: HTMLVideoElement): void {
     }
     withWebkit.webkitEnterFullscreen?.();
 }
+
+/**
+ * Fullscreen for a plain element (Radio's `.radio-now-playing` visualizer
+ * pane) — no `webkitEnterFullscreen` fallback, since that API is
+ * video-element-only on iOS Safari and this element never carries a
+ * picture.
+ */
+export function requestElementFullscreen(element: HTMLElement): void {
+    if (typeof element.requestFullscreen === 'function') {
+        void element.requestFullscreen().catch(() => undefined);
+    }
+}

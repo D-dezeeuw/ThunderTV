@@ -37,41 +37,40 @@
     opacity: 0;
 }
 
+/* Fullscreen-friendly visualizer pane: the canvas (src/player/visualizer.ts)
+   fills the box, the station name overlays its bottom edge — both stay
+   inside this element on purpose, since Radio's fullscreen action
+   (player/fullscreen, state/player.actions.ts) targets this pane rather
+   than the (visually collapsed) <video>, so the name stays visible in
+   fullscreen too. */
 .radio-now-playing {
+    position: relative;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-6) var(--space-3);
-}
-
-.radio-now-playing__logo {
-    flex: none;
-    width: 8rem;
-    height: 8rem;
-    display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    border-radius: 12px;
-    background: var(--color-surface-raised);
+    width: 100%;
+    min-height: 40vh;
+    max-height: 70vh;
+    border-radius: 8px;
     overflow: hidden;
+    background: var(--color-bg);
 }
 
-.radio-now-playing__logo-img {
+.radio-now-playing__canvas {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain;
-}
-
-.radio-now-playing__logo-placeholder {
-    width: 45%;
-    height: 45%;
-    border-radius: 50%;
-    background: var(--color-text-dim);
 }
 
 .radio-now-playing__name {
-    max-width: 100%;
+    position: relative;
+    z-index: 1;
+    max-width: calc(100% - var(--space-6));
+    margin-bottom: var(--space-3);
+    padding: var(--space-1) var(--space-3);
+    border-radius: 999px;
+    background: var(--color-surface);
     font-size: var(--text-md);
     color: var(--color-text);
     text-align: center;

@@ -1,5 +1,5 @@
 import { appState, defineFn, getPathObj, refs, setValue } from 'spektrum';
-import { requestVideoFullscreen } from '../player/fullscreen';
+import { requestElementFullscreen, requestVideoFullscreen } from '../player/fullscreen';
 import { pushCapped } from './collections';
 import { persist } from './persist';
 import {
@@ -12,7 +12,8 @@ import {
     ZAP_HISTORY_CAP,
 } from './player';
 import type { ActiveChannelSnapshot } from './records';
-import { replace, set } from './typed';
+import { get, replace, set } from './typed';
+import { UI_ACTIVE_VIEW } from './ui';
 
 /**
  * The reference action from masterplan §6.3, ported exactly: sets the
@@ -39,10 +40,19 @@ export function registerPlayerActions(): void {
     defineFn('player/stop', () => {
         stopPlayback();
     });
-    // No state involved — registered here anyway because every defineFn is
-    // registered before bindDOM() (registerActions()'s contract); the
-    // fullscreen mechanics live in src/player/fullscreen.ts.
+    // No state mutation involved (only a read) — registered here anyway
+    // because every defineFn is registered before bindDOM()
+    // (registerActions()'s contract); the fullscreen mechanics live in
+    // src/player/fullscreen.ts. Radio has no picture to fullscreen, so it
+    // targets the visualizer pane instead of the (visually collapsed)
+    // `<video>` — see player.css's `.player-shell--radio` rule.
     defineFn('player/fullscreen', () => {
+        if (get<string | null>(UI_ACTIVE_VIEW) === 'radio') {
+            const canvas = refs['radioVisualizer'];
+            const pane = canvas instanceof HTMLElement ? canvas.closest('.radio-now-playing') : null;
+            if (pane instanceof HTMLElement) requestElementFullscreen(pane);
+            return;
+        }
         const video = refs['playerVideo'];
         if (video instanceof HTMLVideoElement) requestVideoFullscreen(video);
     });

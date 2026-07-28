@@ -681,12 +681,14 @@
                                 <div class="pad" :style="'height:' + list.padBottom + 'px'"></div>
                             </div>
 
-                            <!-- Right column: Live plays video, Radio shows only the
-                                 playing station's icon (src/player/bindings.ts still
-                                 drives the same <video> element either way — it is the
-                                 sole attach point for the audio/video engine, so Radio
-                                 keeps it mounted but visually minimal rather than
-                                 removing it, see player.css's .list-shell--split rules). -->
+                            <!-- Right column: Live plays video, Radio shows a fullscreen
+                                 canvas visualizer (src/player/visualizer.ts) instead —
+                                 src/player/bindings.ts still drives the same <video>
+                                 element either way, it is the sole attach point for the
+                                 audio/video engine and doubles as the visualizer's Web
+                                 Audio source, so Radio keeps it mounted but visually
+                                 minimal rather than removing it, see player.css's
+                                 .list-shell--split rules. -->
                             <div class="now-playing" data-if="view.live.active || view.radio.active" data-testid="now-playing-pane">
                                 <!-- The radio/live distinction is a class on the shell,
                                      never a `:has(.radio-now-playing)` selector: Spektrum's
@@ -702,18 +704,7 @@
                                 >
                                     <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
                                     <div class="radio-now-playing" data-if="view.radio.active" data-testid="radio-now-playing">
-                                        <span class="radio-now-playing__logo">
-                                            <img
-                                                data-if="player.active.logo"
-                                                class="radio-now-playing__logo-img"
-                                                :src="player.active.logo"
-                                                loading="lazy"
-                                                decoding="async"
-                                                referrerpolicy="no-referrer"
-                                                alt=""
-                                            />
-                                            <span class="radio-now-playing__logo-placeholder" data-if="!player.active.logo" aria-hidden="true"></span>
-                                        </span>
+                                        <canvas class="radio-now-playing__canvas" data-ref="radioVisualizer" data-testid="radio-visualizer" aria-hidden="true"></canvas>
                                         <span class="radio-now-playing__name truncate">{{ player.active.name }}</span>
                                     </div>
                                     <div class="player-shell__bar">
@@ -733,7 +724,7 @@
                                             <span class="signal__bar signal__bar--2"></span>
                                             <span class="signal__bar signal__bar--3"></span>
                                         </span>
-                                        <button type="button" class="btn" data-if="view.live.active" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
+                                        <button type="button" class="btn" data-if="view.live.active || view.radio.active" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
                                             {{ strings.list.playerFullscreen }}
                                         </button>
                                         <button type="button" class="btn" data-action="click" data-fn="player/stop" data-testid="player-stop-btn">
