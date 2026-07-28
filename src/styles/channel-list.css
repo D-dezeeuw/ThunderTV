@@ -67,6 +67,18 @@
     color: var(--color-danger);
 }
 
+.sources-list__select--active {
+    background: var(--surface-hover);
+    cursor: default;
+}
+
+.sources-list__active-badge {
+    flex: none;
+    padding-inline-end: var(--row-pad-x);
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
 /* ---- List shell (Feature 08.5/08.10) ---- */
 
 .list-shell {
