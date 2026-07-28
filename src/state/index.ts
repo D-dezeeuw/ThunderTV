@@ -30,11 +30,17 @@ import { initPlaylistState } from './playlist';
 import { registerPlaylistActions } from './playlist.actions';
 import { registerPlaylistSelectors } from './playlist.selectors';
 import { persistedKeys } from './registry';
+import { registerSearchActions } from './search.actions';
+import { initSearchState } from './search';
+import { registerSeriesActions } from './series.actions';
+import { initSeriesState } from './series';
 import { initSettingsState } from './settings';
 import { registerSettingsActions } from './settings.actions';
 import { initUiState } from './ui';
 import { registerUiActions } from './ui.actions';
 import { registerUiSelectors } from './ui.selectors';
+import { registerVodActions } from './vod.actions';
+import { initVodState } from './vod';
 import { registerXtreamActions } from './xtream.actions';
 import { initWizardState } from './wizard';
 import { registerWizardActions } from './wizard.actions';
@@ -56,6 +62,8 @@ export { loadGuideChannels } from './guide-load';
 export { loadDefaultEpg } from './epg-load';
 export { openWizard, openWizardIfNoSources } from './wizard.actions';
 export { shouldOpenWizard } from './wizard';
+export { openVodCatalog } from './vod.actions';
+export { openSeriesCatalog } from './series.actions';
 
 /**
  * Seeds every module's defaults (Feature 05.1.8) — called before
@@ -78,6 +86,9 @@ export function initState(): void {
     initDebugState();
     initGuideState();
     initWizardState();
+    initVodState();
+    initSeriesState();
+    initSearchState();
     applyHistoryPolicy();
 }
 
@@ -95,6 +106,9 @@ export function registerActions(): void {
     registerXtreamActions();
     registerGuideActions();
     registerWizardActions();
+    registerVodActions();
+    registerSeriesActions();
+    registerSearchActions();
 }
 
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */

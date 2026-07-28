@@ -20,4 +20,16 @@ export interface ActiveChannelSnapshot {
      * back to Radio, which is the only view with a layout for one.
      */
     radio?: boolean;
+    /**
+     * What is playing (Phase 21's Movies/Series catalogs) — additive over
+     * every snapshot built before this field existed, which all still omit
+     * it and read as television, same "absent means the old default"
+     * pattern as `radio` above. Never round-tripped through equality
+     * against an older stored snapshot in a way that would break: existing
+     * specs build snapshots without `kind` and compare them against other
+     * snapshots without `kind`, so the field stays `undefined` on both
+     * sides. `vod.actions.ts`'s `playVod()`/`series.actions.ts`'s
+     * `playSeriesEpisode()` are the only current writers of `'vod'`/`'series'`.
+     */
+    kind?: 'live' | 'vod' | 'series';
 }

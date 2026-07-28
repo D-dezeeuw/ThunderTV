@@ -55,7 +55,7 @@ import {
     UI_STORAGE_NOTICE_DISMISSED,
 } from './ui';
 import { UI_WIZARD_OPEN, UI_WIZARD_STEP } from './wizard';
-
+import { CATALOG_REGISTRY_ENTRIES } from './registry-catalog';
 /**
  * One source of truth for every Spektrum key's persistence class and owner
  * (Feature 05.1.7) — the persistence bridge (05.3) and the generated
@@ -63,7 +63,7 @@ import { UI_WIZARD_OPEN, UI_WIZARD_STEP } from './wizard';
  * "what actually persists" and "what the docs claim persists".
  */
 export interface KeyMeta {
-    owner: 'playlist' | 'import' | 'player' | 'epg' | 'settings' | 'ui' | 'list' | 'favorites';
+    owner: 'playlist' | 'import' | 'player' | 'epg' | 'settings' | 'ui' | 'list' | 'favorites' | 'vod' | 'series' | 'search';
     persisted: boolean;
     /** Feature 05.8.5: the bulk-data guard's per-key ceiling, for keys holding an array. */
     maxItems?: number;
@@ -71,7 +71,6 @@ export interface KeyMeta {
     version?: number;
     description: string;
 }
-
 export const KEY_REGISTRY: Record<string, KeyMeta> = {
     // --- playlist ---
     [PLAYLIST_SOURCES]: {
@@ -378,6 +377,7 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         persisted: false,
         description: 'Which of the wizard\'s two steps (1 = language/country, 2 = Xtream credentials) is showing — reset to 1 every time the wizard opens.',
     },
+    ...CATALOG_REGISTRY_ENTRIES,
 };
 /** `strings` (the plain-TS copy mirror, Feature 02.1) is deliberately outside this registry — it is static reference data, not application state, and is never a candidate for persistence. */
 export const NON_REGISTRY_KEYS = ['strings'] as const;

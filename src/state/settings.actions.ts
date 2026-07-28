@@ -14,6 +14,7 @@ import { persist } from './persist';
 import {
     isBufferingMode,
     isPlaybackEngine,
+    SETTINGS_AUDIO_LANGUAGE,
     SETTINGS_BUFFERING,
     SETTINGS_EXPORT_STATE,
     SETTINGS_LIVE_COUNTRY,
@@ -31,6 +32,7 @@ import {
     SETTINGS_PROXY_SAVED,
     SETTINGS_PROXY_TEMPLATE,
     SETTINGS_REFRESH_STATE,
+    SETTINGS_SUBTITLE_LANGUAGE,
     SETTINGS_XTREAM_BUSY,
     SETTINGS_XTREAM_ERROR,
     SETTINGS_XTREAM_SAVED,
@@ -98,6 +100,12 @@ export function registerSettingsActions(): void {
     });
     defineFn('settings/setLiveCountry', (el) => {
         if (el instanceof HTMLSelectElement) setLiveCountry(el.value);
+    });
+    defineFn('settings/setAudioLanguage', (el) => {
+        if (el instanceof HTMLSelectElement) setAudioLanguage(el.value);
+    });
+    defineFn('settings/setSubtitleLanguage', (el) => {
+        if (el instanceof HTMLSelectElement) setSubtitleLanguage(el.value);
     });
     defineFn('settings/setLocale', (el) => {
         if (el instanceof HTMLSelectElement) setLocale(el.value);
@@ -193,6 +201,22 @@ export function toggleSetting(token: string | undefined): void {
 export function setLiveCountry(raw: string): void {
     set(SETTINGS_LIVE_COUNTRY, raw.trim().toUpperCase());
     persist(SETTINGS_LIVE_COUNTRY);
+}
+
+/** Settings → Playback's audio-track language preference — an ISO 639-1 code, lower-cased for consistency with `subtitle-language.ts`'s table. A blank value is a no-op, same "the `<select>`'s own options are the only way to reach here" reasoning as `setLocale()`. */
+export function setAudioLanguage(raw: string): void {
+    const value = raw.trim().toLowerCase();
+    if (!value) return;
+    set(SETTINGS_AUDIO_LANGUAGE, value);
+    persist(SETTINGS_AUDIO_LANGUAGE);
+}
+
+/** Settings → Playback's subtitle language preference — `'auto'`, `'off'`, or an explicit ISO 639-1 code; resolving `'auto'` to a concrete language happens at use time via `subtitle-language.ts`'s `resolveSubtitleLanguage()`, never here. */
+export function setSubtitleLanguage(raw: string): void {
+    const value = raw.trim().toLowerCase();
+    if (!value) return;
+    set(SETTINGS_SUBTITLE_LANGUAGE, value);
+    persist(SETTINGS_SUBTITLE_LANGUAGE);
 }
 
 /**

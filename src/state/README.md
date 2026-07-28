@@ -12,13 +12,16 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `playlist.ts`        | `playlist.sources`, `playlist.activeSourceId`, `playlist.demoRows`                                                   | `activeSourceId` yes (Feature 08.10.6); `sources` is a live storage projection, `demoRows` is static demo data — neither persists |
 | `player.ts`          | `player.active`, `player.zapHistory`, `player.visualizerPreset`, `player.visualizerPaused`                            | Yes — the §6.4 instant-restore pair; `visualizerPreset` also persists (the listener's Radio visualizer choice); `visualizerPaused` does not (always false on a fresh Radio visit) |
 | `epg.ts`             | `epg.tick`                                                                                                            | No — a heartbeat timestamp, recomputed every boot |
-| `settings.ts`        | `settings.locale`, `settings.proxyTemplate`, `settings.proxyError`, `settings.proxySaved`                            | `locale` yes (Settings → User language switcher, i18n follow-up); `proxyTemplate` yes; the other two are transient save feedback |
+| `settings.ts`        | `settings.locale`, `settings.proxyTemplate`, `settings.proxyError`, `settings.proxySaved`, …, `settings.audioLanguage`, `settings.subtitleLanguage` | `locale` yes (Settings → User language switcher, i18n follow-up); `proxyTemplate` yes; `audioLanguage`/`subtitleLanguage` yes (Phase 21); the transient feedback keys don't persist |
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.storageNoticeDismissed` yes; the rest no |
 | `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`                                                                                      | No — both transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen` |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
 | `list-state.ts`       | `ui.listState`, `ui.activeGroup`, `ui.viewMode`                                                                      | `ui.listState` yes (Feature 08.6, LRU-capped at 20 sources); the two live mirrors restore from it on source entry but aren't separately persisted |
 | `list-groups.ts`      | `list.groups`, `list.groupsTruncated`                                                                                | No — the groups panel's own row set, capped independently of Phase 06's `MAX_GROUPS` (Feature 08.5.9) |
 | `favorites.ts`        | `favorites.ids`                                                                                                       | No — a live projection of the real `favorites` storage table (Feature 08.8.4), exactly like `playlist.sources` |
+| `vod.ts`              | `vod.categories`, `vod.activeCategoryId`, `vod.status`, `vod.errorReason`, `vod.count`, `vod.detailId`, `vod.detail`  | No (Phase 21) — the Movies catalog itself (categories/items/detail cache) lives in `vod-rows.ts`'s module memory and, on the `'full'` storage tier only, in ad hoc `catalog-storage.ts` keys outside the Phase 05 bridge; see "Existing-key decisions" below |
+| `series.ts`           | `series.categories`, `series.activeCategoryId`, `series.status`, `series.errorReason`, `series.count`, `series.detailId`, `series.detail` | No (Phase 21) — same reasoning as `vod.ts`, via `series-rows.ts`/`catalog-storage.ts` |
+| `search.ts`           | `search.query`, `search.scope`, `search.active`, `search.resultCounts`, `search.loadedOnly`                           | No (Phase 21) — a live, disposable session activity, reset every boot like `ui.settingsOpen` |
 
 **The rule:** adding a Spektrum key means adding it to `registry.ts`'s
 `KEY_REGISTRY` (owner, `persisted`, optional `maxItems`/`version`,
@@ -103,6 +106,95 @@ Recorded here once instead of re-litigated at every call site:
   already types `(el, state, delta, value)`, and the real payload typing
   problem is solved by exporting a typed function alongside the thin
   `defineFn` wrapper (see `player.actions.ts`'s `setActiveChannel()`).
+
+## Movies/Series/Search catalogs (Phase 21) — decisions and row publication
+
+Three new modules follow every existing convention above (typed key
+constants, `KEY_REGISTRY` entries, `set()`/`replace()` discipline, module
+memory for anything unbounded) but introduce a few decisions worth
+recording once rather than re-discovering per call site:
+
+- **`registry-catalog.ts`**: `registry.ts` was already at eslint's 400-line
+  `max-lines` ceiling with zero slack, so the ~20 new `KEY_REGISTRY` entries
+  for `vod`/`series`/`search`/the two new `settings.*` language keys live in
+  their own file and are merged into `KEY_REGISTRY` via one spread.
+  `KEY_REGISTRY` itself is still the one object every consumer
+  (`persist.ts`, `bulk-policy.ts`, `index.ts`'s `rehydrateState()`) reads —
+  this only changes how it's assembled. `KeyMeta.owner`'s union gained
+  `'vod' | 'series' | 'search'`.
+- **Catalog payload persistence** (`catalog-storage.ts`): no bulk table in
+  `src/core/storage/records.ts`'s `TableName` union fits a VOD/series
+  catalog, and adding one means editing `src/core/storage/**`, outside this
+  phase's `src/state/`-only scope. Catalog payloads (categories, one
+  category's items, one item's detail) persist instead through the small-
+  keyed `get`/`set` surface, one storage key per category/detail entry, and
+  **only on the `'full'` storage tier** — `'partial'`/`'none'` stay session-
+  memory-only (`vod-rows.ts`/`series-rows.ts`'s `createCatalogMemory()`
+  instances). See `catalog-storage.ts`'s own header for the full reasoning.
+- **No "All" pseudo-category**: `vod/open`/`series/open` auto-select
+  whatever ends up first after `catalog-sort.ts`'s country-first sort —
+  which *is* the first country-matching category whenever one exists — and
+  fall back to the provider's first category otherwise. An "All" entry would
+  need one very large, unfiltered `get_vod_streams`/`get_series` call on
+  every open; a real category is the cheaper, always-relevant first stop.
+- **`ActiveChannelSnapshot` gained one additive field, `kind?: 'live' | 'vod'
+  | 'series'`** (`records.ts`) — every snapshot built before this phase omits
+  it and reads as `undefined`/television, unaffected. Only `vod.actions.ts`'s
+  `playVod()` and `series.actions.ts`'s `playSeriesEpisode()` set it, both
+  reusing `player.actions.ts`'s existing `setActiveChannel()` rather than a
+  parallel action.
+- **`sequence-token.ts`**: `selectVodCategory()`/`openVodDetail()` (and their
+  series equivalents) need to detect "did a newer call supersede me" after
+  an `await`. Re-reading the very key the same call just `set()` moments
+  earlier is unreliable — `set()`/`replace()` only queue a write, and
+  nothing is visible to `get()` until the next `tick()` (production:
+  `run()`'s rAF loop; nothing guarantees one lands between a same-function
+  `set()` and a later `get()`). `sequence-token.ts`'s plain in-memory counter
+  sidesteps the tick queue entirely; `search.actions.ts`'s `recomputeSearch()`
+  uses the same fix (plain module variables for the just-set query/scope,
+  never a re-read) for the identical reason.
+- **Channel search keys**: `ChannelRow` (`src/m3u/types.ts`) carries no
+  pre-normalized search key — adding one is outside this phase's
+  `src/state/`-only scope. `search.actions.ts` instead caches
+  `normalizeForSearch()` results keyed by row id, invalidated by reference
+  identity against `live-rows.ts`'s `liveDisplayRows()` array (which only
+  changes reference on an actual rebuild, never per keystroke) — satisfying
+  `src/search/README.md`'s "normalize once" contract without a `ChannelRow`
+  schema change.
+- **A series row's `url` is `''`** (`series-rows.ts`'s `seriesItemToRow()`)
+  — a series is a container of episodes, never directly playable; a click
+  handler must trigger `series/openDetail`, never reuse a generic play-on-
+  click path. A VOD row's `url`, by contrast, is the real playable stream
+  URL (`vod-rows.ts`'s `vodItemToRow()`), so it works whether a future click
+  handler reuses the generic list-click path or `vod/play`'s own action.
+
+### Row publication — which action feeds the shared virtual list
+
+Every catalog/search row set reaches the DOM through the same
+`state/list-rows.ts` choke point every other channel list already uses
+(`setDisplayedRows()`) — no second row surface, no second selection cursor:
+
+| View                        | Publishing action(s)                                              |
+| ---------------------------- | ------------------------------------------------------------------ |
+| Movies (a selected category)| `vod.actions.ts`'s `selectVodCategory(id)` (called by `vod/open`'s auto-select, and directly by `vod/selectCategory`) |
+| Series (a selected category)| `series.actions.ts`'s `selectSeriesCategory(id)`, same pattern      |
+| Search results (any scope)  | `search.actions.ts`'s `setSearchQuery()`/`setSearchScope()`, via the internal `recomputeSearch()` — also exported directly for the UI stage to force a re-publish (e.g. after a catalog fetch completes) |
+
+One deliberate non-goal: a currently-open series' episode list does **not**
+go through `setDisplayedRows()`. `series.detail.seasons[].episodes[]` is
+already bounded (`SERIES_DETAIL_EPISODES_CAP`) and belongs to exactly one
+open series, so the UI stage should template it directly off `series.detail`
+rather than route a small, fixed list through virtual-list windowing built
+for a 90k-row catalog.
+
+One known, harmless side effect: `setDisplayedRows()` also invalidates/saves
+the shared `list.selectedId` cursor into the active source's `ui.listState`
+entry (`list-state-sync.ts`), same as every other view that calls it. A
+Movies/Series/Search selection can therefore overwrite that per-source
+entry's `selectedId`; returning to Live self-heals via `setDisplayedRows()`'s
+own "selected id absent from the new row set → fall back to the first row"
+rule, so this was left as-is rather than threading a per-view exception
+through `list.actions.ts` (out of this phase's scope).
 
 ## The persistence bridge, in one paragraph
 

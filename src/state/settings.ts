@@ -114,6 +114,17 @@ export const SETTINGS_LIVE_DROP_JUNK = 'settings.liveDropJunk';
 /** Countries offered in Settings. Anything else can still be typed into the field — this is a shortlist, not a validation gate. */
 export const LIVE_COUNTRIES: readonly string[] = ['NL', 'BE', 'DE', 'UK', 'FR', 'ES', 'US'];
 
+/** Preferred audio track language (an ISO 639-1 code, e.g. `'en'`/`'nl'`) — Settings → Playback. Resolution against what a stream actually offers happens in the player layer; this is only the user's stated preference. */
+export const SETTINGS_AUDIO_LANGUAGE = 'settings.audioLanguage';
+/**
+ * Preferred subtitle language — `'auto'` (default: derive from
+ * `settings.liveCountry` at use time, never resolved here) or `'off'`, or an
+ * explicit ISO 639-1 code. See `subtitle-language.ts`'s
+ * `resolveSubtitleLanguage()` for the pure country → language mapping this
+ * setting's `'auto'` value defers to.
+ */
+export const SETTINGS_SUBTITLE_LANGUAGE = 'settings.subtitleLanguage';
+
 /**
  * Mirrors the stored settings blob (masterplan §6.3's `settings` key
  * family). `proxyTemplate` is the only persisted field — density lives
@@ -142,6 +153,8 @@ export interface SettingsState {
     liveCountry: string;
     liveKnownOnly: boolean;
     liveDropJunk: boolean;
+    audioLanguage: string;
+    subtitleLanguage: string;
 }
 
 export interface NavVisibility {
@@ -171,6 +184,8 @@ export const SETTINGS_DEFAULTS: SettingsState = {
     liveCountry: 'NL',
     liveKnownOnly: true,
     liveDropJunk: true,
+    audioLanguage: 'en',
+    subtitleLanguage: 'auto',
 };
 
 export function initSettingsState(): void {
@@ -196,4 +211,6 @@ export function initSettingsState(): void {
     setValue(SETTINGS_LIVE_COUNTRY, SETTINGS_DEFAULTS.liveCountry);
     setValue(SETTINGS_LIVE_KNOWN_ONLY, SETTINGS_DEFAULTS.liveKnownOnly);
     setValue(SETTINGS_LIVE_DROP_JUNK, SETTINGS_DEFAULTS.liveDropJunk);
+    setValue(SETTINGS_AUDIO_LANGUAGE, SETTINGS_DEFAULTS.audioLanguage);
+    setValue(SETTINGS_SUBTITLE_LANGUAGE, SETTINGS_DEFAULTS.subtitleLanguage);
 }
