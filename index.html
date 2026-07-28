@@ -457,71 +457,10 @@
                          the surface Phases 09 (search) and 10 (playback) plug into. -->
                     <div
                         class="list-shell"
-                        :class="{ 'list-shell--group-view': view.categories.active && ui.viewMode === 'groups', 'list-shell--has-groups': view.categories.active && groupsPanelVisible }"
+                        :class="{ 'list-shell--group-view': view.categories.active && ui.viewMode === 'groups', 'list-shell--has-groups': view.categories.active && groupsPanelVisible, 'list-shell--split': view.live.active || view.radio.active }"
                         data-if="activeSource"
                         data-testid="channel-list-shell"
                     >
-                        <!-- MVP playback slice: a single real <video> element driven by
-                             src/player/bindings.ts, watching player.active (already fully
-                             wired since Phase 05/08 — this is the piece that was missing). -->
-                        <div class="player-shell" data-if="player.active" data-testid="player-shell">
-                            <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
-                            <div class="player-shell__bar">
-                                <span class="player-shell__name truncate">{{ player.active.name }}</span>
-                                <!-- Live stream-quality bars (src/player/stream-health.ts) —
-                                     lit count reflects stall frequency, engine-agnostic. -->
-                                <span
-                                    class="signal"
-                                    :class="'signal--' + (player.streamHealth ?? 'good')"
-                                    data-if="player.streamHealth"
-                                    :title="streamHealthLabel"
-                                    :aria-label="streamHealthLabel"
-                                    role="img"
-                                    data-testid="stream-health"
-                                >
-                                    <span class="signal__bar signal__bar--1"></span>
-                                    <span class="signal__bar signal__bar--2"></span>
-                                    <span class="signal__bar signal__bar--3"></span>
-                                </span>
-                                <button type="button" class="btn" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
-                                    {{ strings.list.playerFullscreen }}
-                                </button>
-                                <button type="button" class="btn" data-action="click" data-fn="player/stop" data-testid="player-stop-btn">
-                                    {{ strings.list.playerStop }}
-                                </button>
-                            </div>
-                            <!-- Variant switcher. Lives here rather than under
-                                 each list row on purpose: the list republishes
-                                 its window on every scroll frame, so a nested
-                                 data-each per row would rebuild these chips
-                                 continuously across a 90k-channel source. The
-                                 alternate feeds only matter for the channel
-                                 you are actually watching. -->
-                            <div class="variants" data-if="hasVariants" data-testid="variant-strip">
-                                <span class="variants__label">{{ strings.live.variants.label }}</span>
-                                <div
-                                    class="variants__chips"
-                                    data-each="player.variants"
-                                    data-action="click"
-                                    data-fn="live/playVariant"
-                                >
-                                    <button
-                                        type="button"
-                                        class="variants__chip"
-                                        :class="{ 'variants__chip--active': item.id === player.activeVariantId }"
-                                        :aria-pressed="item.id === player.activeVariantId"
-                                        :data-variant-id="item.id"
-                                        data-testid="variant-chip"
-                                    >
-                                        {{ item.label }}
-                                    </button>
-                                </div>
-                            </div>
-                            <p class="player-shell__error" data-if="player.playbackError" data-testid="player-error">
-                                {{ strings.list.playerErrorPrefix }} {{ player.playbackError }}
-                            </p>
-                        </div>
-
                         <div class="list-shell__header">
                             <button type="button" class="btn" data-action="click" data-fn="playlist/clearActiveSource" data-testid="back-to-sources-btn">
                                 {{ strings.list.backToSources }}
@@ -695,6 +634,90 @@
                                     </div>
                                 </div>
                                 <div class="pad" :style="'height:' + list.padBottom + 'px'"></div>
+                            </div>
+
+                            <!-- Right column: Live plays video, Radio shows only the
+                                 playing station's icon (src/player/bindings.ts still
+                                 drives the same <video> element either way — it is the
+                                 sole attach point for the audio/video engine, so Radio
+                                 keeps it mounted but visually minimal rather than
+                                 removing it, see player.css's .list-shell--split rules). -->
+                            <div class="now-playing" data-if="view.live.active || view.radio.active" data-testid="now-playing-pane">
+                                <div class="player-shell" data-if="player.active" data-testid="player-shell">
+                                    <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
+                                    <div class="radio-now-playing" data-if="view.radio.active" data-testid="radio-now-playing">
+                                        <span class="radio-now-playing__logo">
+                                            <img
+                                                data-if="player.active.logo"
+                                                class="radio-now-playing__logo-img"
+                                                :src="player.active.logo"
+                                                loading="lazy"
+                                                decoding="async"
+                                                referrerpolicy="no-referrer"
+                                                alt=""
+                                            />
+                                            <span class="radio-now-playing__logo-placeholder" data-if="!player.active.logo" aria-hidden="true"></span>
+                                        </span>
+                                        <span class="radio-now-playing__name truncate">{{ player.active.name }}</span>
+                                    </div>
+                                    <div class="player-shell__bar">
+                                        <span class="player-shell__name truncate" data-if="view.live.active">{{ player.active.name }}</span>
+                                        <!-- Live stream-quality bars (src/player/stream-health.ts) —
+                                             lit count reflects stall frequency, engine-agnostic. -->
+                                        <span
+                                            class="signal"
+                                            :class="'signal--' + (player.streamHealth ?? 'good')"
+                                            data-if="player.streamHealth"
+                                            :title="streamHealthLabel"
+                                            :aria-label="streamHealthLabel"
+                                            role="img"
+                                            data-testid="stream-health"
+                                        >
+                                            <span class="signal__bar signal__bar--1"></span>
+                                            <span class="signal__bar signal__bar--2"></span>
+                                            <span class="signal__bar signal__bar--3"></span>
+                                        </span>
+                                        <button type="button" class="btn" data-if="view.live.active" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
+                                            {{ strings.list.playerFullscreen }}
+                                        </button>
+                                        <button type="button" class="btn" data-action="click" data-fn="player/stop" data-testid="player-stop-btn">
+                                            {{ strings.list.playerStop }}
+                                        </button>
+                                    </div>
+                                    <!-- Variant switcher. Lives here rather than under
+                                         each list row on purpose: the list republishes
+                                         its window on every scroll frame, so a nested
+                                         data-each per row would rebuild these chips
+                                         continuously across a 90k-channel source. The
+                                         alternate feeds only matter for the channel
+                                         you are actually watching. -->
+                                    <div class="variants" data-if="hasVariants" data-testid="variant-strip">
+                                        <span class="variants__label">{{ strings.live.variants.label }}</span>
+                                        <div
+                                            class="variants__chips"
+                                            data-each="player.variants"
+                                            data-action="click"
+                                            data-fn="live/playVariant"
+                                        >
+                                            <button
+                                                type="button"
+                                                class="variants__chip"
+                                                :class="{ 'variants__chip--active': item.id === player.activeVariantId }"
+                                                :aria-pressed="item.id === player.activeVariantId"
+                                                :data-variant-id="item.id"
+                                                data-testid="variant-chip"
+                                            >
+                                                {{ item.label }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p class="player-shell__error" data-if="player.playbackError" data-testid="player-error">
+                                        {{ strings.list.playerErrorPrefix }} {{ player.playbackError }}
+                                    </p>
+                                </div>
+                                <div class="empty-state now-playing__empty" data-if="!player.active" data-testid="now-playing-empty">
+                                    <p class="empty-state__message">{{ strings.list.nowPlayingEmpty }}</p>
+                                </div>
                             </div>
                         </div>
                     </div>

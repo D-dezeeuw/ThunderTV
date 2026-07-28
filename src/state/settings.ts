@@ -127,7 +127,7 @@ export const SETTINGS_DEFAULTS: SettingsState = {
     exportState: 'idle',
     playbackEngine: 'mpegts',
     buffering: 'auto',
-    nav: { sources: true, categories: true, radio: true, starred: true, recents: true, guide: true },
+    nav: { sources: false, categories: true, radio: true, starred: true, recents: true, guide: true },
     liveCountry: 'NL',
     liveKnownOnly: true,
     liveDropJunk: true,

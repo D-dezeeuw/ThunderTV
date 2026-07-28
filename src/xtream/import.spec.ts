@@ -118,6 +118,38 @@ describe('xtream/import', () => {
         });
     });
 
+    it('flags a stream as radio when its category or its own name carries the word "radio"', async () => {
+        await withFakePlatform({}, async ({ http, storage }) => {
+            http.onGet(apiUrl(source, '')).reply({ kind: 'ok', body: JSON.stringify({ user_info: { auth: 1, status: 'Active' } }) });
+            http.onGet(apiUrl(source, 'get_live_categories')).reply({
+                kind: 'ok',
+                body: JSON.stringify([
+                    { category_id: '1', category_name: 'NL RADIO' },
+                    { category_id: '2', category_name: 'NL | ENTERTAINMENT' },
+                ]),
+            });
+            http.onGet(apiUrl(source, 'get_live_streams')).reply({
+                kind: 'ok',
+                body: JSON.stringify([
+                    { stream_id: 1, name: 'Radio 10', category_id: '1' },
+                    { stream_id: 2, name: 'NPO 1', category_id: '2' },
+                    { stream_id: 3, name: 'Radio Zeta HD', category_id: '2' },
+                ]),
+            });
+            const outcome = await importXtreamSource({ url: source.url, user: source.user, pass: source.pass, name: 'X' });
+            expect(outcome.ok).toBe(true);
+            if (!outcome.ok) return;
+            const channels = await storage.getRange('channels', [outcome.summary.sourceId, 0], [outcome.summary.sourceId, 9]);
+            expect(channels.map((c) => [c.name, c.radio])).toEqual(
+                expect.arrayContaining([
+                    ['Radio 10', true],
+                    ['NPO 1', false],
+                    ['Radio Zeta HD', true],
+                ]),
+            );
+        });
+    });
+
     it('surfaces an auth-failed error without writing any rows', async () => {
         await withFakePlatform({}, async ({ http, storage }) => {
             http.onGet(apiUrl(source, '')).reply({ kind: 'ok', body: JSON.stringify({ user_info: { auth: 0 } }) });

@@ -10,7 +10,6 @@
     flex-direction: column;
     gap: var(--space-2);
     padding: var(--space-3);
-    margin: 0 0 var(--space-4);
     border: 1px solid var(--color-border);
     border-radius: 12px;
     background: var(--color-surface);
@@ -20,6 +19,57 @@
     width: 100%;
     max-height: 60vh;
     border-radius: 8px;
+}
+
+/* Radio has no picture — the audio element stays mounted (it's the sole
+   attach point src/player/bindings.ts drives) but collapsed out of view in
+   favor of .radio-now-playing's station icon. */
+.player-shell:has(.radio-now-playing) .player-shell__video {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+}
+
+.radio-now-playing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-6) var(--space-3);
+}
+
+.radio-now-playing__logo {
+    flex: none;
+    width: 8rem;
+    height: 8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: var(--color-surface-raised);
+    overflow: hidden;
+}
+
+.radio-now-playing__logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.radio-now-playing__logo-placeholder {
+    width: 45%;
+    height: 45%;
+    border-radius: 50%;
+    background: var(--color-text-dim);
+}
+
+.radio-now-playing__name {
+    max-width: 100%;
+    font-size: var(--text-md);
+    color: var(--color-text);
+    text-align: center;
 }
 
 .player-shell__bar {
