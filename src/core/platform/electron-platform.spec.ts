@@ -58,17 +58,21 @@ describe('createElectronPlatform', () => {
     });
 });
 
-describe('createElectronPlatform.getDefaultXtreamAccount', () => {
-    it('delegates to window.electron.getDefaultXtreamAccount()', async () => {
-        const fixture = { url: 'http://example.com:8080', username: 'bob', password: 'secret' };
-        window.electron = { ...fakeElectronBridge(), getDefaultXtreamAccount: () => Promise.resolve(fixture) };
+describe('createElectronPlatform.getDefaultConfig', () => {
+    it('delegates to window.electron.getDefaultConfig()', async () => {
+        const fixture = {
+            xtream: { url: 'http://example.com:8080', username: 'bob', password: 'secret' },
+            locale: 'nl',
+            liveCountry: 'NL',
+        };
+        window.electron = { ...fakeElectronBridge(), getDefaultConfig: () => Promise.resolve(fixture) };
         const platform = await createElectronPlatform();
-        await expect(platform.getDefaultXtreamAccount?.()).resolves.toEqual(fixture);
+        await expect(platform.getDefaultConfig?.()).resolves.toEqual(fixture);
     });
 
-    it('resolves null when the bridge has no default account configured', async () => {
+    it('resolves all-null fields when the bridge has no defaults configured', async () => {
         window.electron = fakeElectronBridge();
         const platform = await createElectronPlatform();
-        await expect(platform.getDefaultXtreamAccount?.()).resolves.toBeNull();
+        await expect(platform.getDefaultConfig?.()).resolves.toEqual({ xtream: null, locale: null, liveCountry: null });
     });
 });

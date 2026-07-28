@@ -7,10 +7,10 @@
 // src/core/platform/electron-platform.ts); `appVersion` is diagnostics-only
 // (never for feature gating); the two fullscreen members are the desktop
 // fallback for the player's fullscreen button (see main.mjs's
-// `publishFullscreenState`); `getDefaultXtreamAccount` surfaces `desktop/.env`'s
-// dev-only credentials (see main.mjs's `loadDefaultXtreamAccount`). Context
-// isolation stays on; nothing else crosses the bridge — no raw `ipcRenderer`,
-// no filesystem, no `require`.
+// `publishFullscreenState`); `getDefaultConfig` surfaces `desktop/.env`'s
+// dev-only first-run defaults — Xtream account, locale, Live-filter country
+// (see main.mjs's `loadDefaultConfig`). Context isolation stays on; nothing
+// else crosses the bridge — no raw `ipcRenderer`, no filesystem, no `require`.
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Electron preload scripts must be CommonJS; require() is the contract here.
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -18,7 +18,7 @@ const PROXY_ORIGIN_PREFIX = '--thundertv-proxy-origin=';
 const APP_VERSION_PREFIX = '--thundertv-app-version=';
 const IPC_SET_WINDOW_FULLSCREEN = 'thundertv:set-window-fullscreen';
 const IPC_WINDOW_FULLSCREEN_STATE = 'thundertv:window-fullscreen';
-const IPC_GET_DEFAULT_XTREAM_ACCOUNT = 'thundertv:get-default-xtream-account';
+const IPC_GET_DEFAULT_CONFIG = 'thundertv:get-default-config';
 
 const proxyOriginArg = process.argv.find((a) => a.startsWith(PROXY_ORIGIN_PREFIX));
 const appVersionArg = process.argv.find((a) => a.startsWith(APP_VERSION_PREFIX));
@@ -45,6 +45,6 @@ if (proxyOriginArg) {
             windowFullscreen = value;
             ipcRenderer.send(IPC_SET_WINDOW_FULLSCREEN, value);
         },
-        getDefaultXtreamAccount: () => ipcRenderer.invoke(IPC_GET_DEFAULT_XTREAM_ACCOUNT),
+        getDefaultConfig: () => ipcRenderer.invoke(IPC_GET_DEFAULT_CONFIG),
     });
 }

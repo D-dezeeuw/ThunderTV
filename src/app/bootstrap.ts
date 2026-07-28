@@ -22,7 +22,7 @@ import {
     seedStrings,
     startEpgTick,
 } from '../state';
-import { importDefaultXtreamAccountIfConfigured, loadXtreamAccountPrefill } from '../state/settings.actions';
+import { applyDefaultConfigIfFirstRun, loadXtreamAccountPrefill } from '../state/settings.actions';
 import { handleStorageDemotion } from '../state/ui.actions';
 import { refreshActiveXtreamSource } from '../state/xtream-refresh';
 import { seedPlatformDiagnostics } from '../state/ui';
@@ -120,9 +120,11 @@ function registerImportDropzoneDragover(): void {
 /**
  * Feature 07.9.7: the sweep runs before the sources list first loads, so a
  * crash-orphaned row never flashes into view even briefly. The dev-only
- * `desktop/.env` auto-import runs next — if it fires, it refreshes
- * `PLAYLIST_SOURCES` via `saveXtreamAccount()`'s own `loadPlaylistSources()`
- * call. The first-run wizard's "zero sources" check runs last, so it sees
+ * `desktop/.env` default-config seed runs next — if it fires, it may seed
+ * `settings.locale`/`settings.liveCountry` and/or refresh `PLAYLIST_SOURCES`
+ * via `saveXtreamAccount()`'s own `loadPlaylistSources()` call (see
+ * `settings.actions.ts`'s `applyDefaultConfigIfFirstRun()` for the exact
+ * gate). The first-run wizard's "zero sources" check runs last, so it sees
  * whatever sources actually exist by then (real ones from the sweep, or a
  * freshly auto-imported dev default) rather than flashing open and then
  * needing to be dismissed (state/README.md's "First-run setup wizard"
@@ -131,6 +133,6 @@ function registerImportDropzoneDragover(): void {
 async function sweepAndLoadPlaylistSources(): Promise<void> {
     await sweepOrphanedPlaylistRows();
     await loadPlaylistSources();
-    await importDefaultXtreamAccountIfConfigured();
+    await applyDefaultConfigIfFirstRun();
     openWizardIfNoSources();
 }
