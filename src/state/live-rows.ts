@@ -1,9 +1,9 @@
 import { groupChannels, toDisplayRows, type GroupedChannel, type GroupingResult } from '../channels/grouping';
 import { getRows } from '../m3u/channel-memory';
 import type { ChannelRow } from '../m3u/types';
-import { LIVE_STATS } from './live';
+import { LIVE_STATS, RADIO_COUNT } from './live';
 import { SETTINGS_LIVE_COUNTRY, SETTINGS_LIVE_DROP_JUNK, SETTINGS_LIVE_KNOWN_ONLY } from './settings';
-import { get, replace } from './typed';
+import { get, replace, set } from './typed';
 
 /**
  * The Live view's row source: the raw provider dump run through
@@ -75,8 +75,11 @@ export function ensureRadioRows(force = false): void {
     const dropJunk = get<boolean>(SETTINGS_LIVE_DROP_JUNK) ?? true;
     const rows = getRows();
 
+    // Keyed on the options alone, not on "did we get rows": a source with no
+    // stations at all would otherwise re-scan every row on every navigation
+    // into Radio, forever.
     const key = optionsKey(country, false, dropJunk, rows.length);
-    if (!force && key === radioBuiltFrom && radioRows.length > 0) return;
+    if (!force && key === radioBuiltFrom) return;
 
     const result = groupChannels(rows, {
         ...(country ? { country } : {}),
@@ -86,6 +89,9 @@ export function ensureRadioRows(force = false): void {
     radioGrouped = result.channels;
     radioRows = toDisplayRows(radioGrouped);
     radioBuiltFrom = key;
+    // Only the count reaches state — enough for the Radio view to tell an
+    // empty result from a list that simply hasn't been built yet.
+    set(RADIO_COUNT, radioRows.length);
 }
 
 /** Pure core, split out so it can be exercised without touching state or module memory. */
@@ -138,4 +144,5 @@ export function invalidateLiveRows(): void {
     radioGrouped = [];
     radioRows = [];
     radioBuiltFrom = '';
+    set(RADIO_COUNT, 0);
 }

@@ -1,3 +1,4 @@
+import { radioClassifierFor } from '../channels/radio-detect';
 import { getPlatform } from '../core/platform';
 import type { ChannelRecord, GroupRecord, PlaylistRecord } from '../core/storage';
 import { makeSourceKey } from '../core/connect/source-key';
@@ -81,7 +82,7 @@ export async function importXtreamSource(params: XtreamImportParams): Promise<Xt
         password: params.pass,
         channelCount: rows.length,
         groupCount: groups.length,
-        radioCount: 0,
+        radioCount: rows.reduce((n, row) => n + (row.radio ? 1 : 0), 0),
         drmCount: 0,
         skipped: streamsResult.data.length - rows.length,
         importDate: existing?.importDate ?? now,
@@ -196,6 +197,16 @@ function buildRows(
     return { rows, groups };
 }
 
+/**
+ * Xtream's `get_live_streams` has no radio flag (unlike M3U's `radio="true"`
+ * attribute, see `m3u/channel-mapper.ts`) — providers signal it only
+ * through naming and grouping, so the classification lives in
+ * `channels/radio-detect.ts` and is decided once per category: a bundle
+ * whose name or whose membership reads as stations makes every row in it
+ * radio, and outside such a bundle only an unambiguous name counts. A plain
+ * per-name `\bradio\b` test both missed stations (`SLAM!`, `QMUSIC`,
+ * `WILD FM`) and claimed television (`RADIO BREMEN TV`).
+ */
 function appendGroup(
     rows: ChannelRow[],
     groups: GroupMeta[],
@@ -204,7 +215,7 @@ function appendGroup(
     buildStreamUrl: (streamId: number) => string,
 ): void {
     const firstIndex = rows.length;
-    const groupIsRadio = RADIO_WORD.test(groupName);
+    const isRadio = radioClassifierFor(groupName, streams.map((s) => s.name));
     for (const stream of streams) {
         rows.push({
             id: crypto.randomUUID(),
@@ -213,21 +224,11 @@ function appendGroup(
             group: groupName,
             logo: stream.icon ?? null,
             tvgId: stream.epgChannelId ?? null,
-            radio: groupIsRadio || RADIO_WORD.test(stream.name),
+            radio: isRadio(stream.name),
         });
     }
     groups.push({ name: groupName, count: streams.length, firstIndex });
 }
-
-/**
- * Xtream's `get_live_streams` has no radio flag (unlike M3U's `radio="true"`
- * attribute, see `m3u/channel-mapper.ts`) — providers signal it only through
- * naming, so a category or channel carrying the word "radio" is treated as
- * one. Checking the category first is cheap and catches an entire bundle
- * (`NL RADIO`) in one test; the per-channel fallback covers providers that
- * mix radio into a general category instead.
- */
-const RADIO_WORD = /\bradio\b/i;
 
 function toChannelRecord(row: ChannelRow, playlistId: string, index: number): ChannelRecord {
     return {
