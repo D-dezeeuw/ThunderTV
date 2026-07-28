@@ -173,6 +173,9 @@ export const strings = {
     sourcesAdmin: {
         hiddenNote: 'Hidden from the sidebar because it carries no playable channels. Still selectable here.',
         showHidden: 'Show hidden sources',
+        allTitle: 'Default source',
+        allHint: 'Choose which imported source Live, Radio and Categories show. Switching here does the same thing as picking one in the Sources tab.',
+        activeBadge: 'Active',
     },
 
     settings: {

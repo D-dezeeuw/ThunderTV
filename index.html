@@ -1217,6 +1217,37 @@
                         </label>
                     </section>
 
+                    <!-- Switch the active source without going back to the
+                         Sources tab (which only offers a picker while no
+                         source is active). Same playlist/selectSource fn the
+                         Sources-view popup and the hidden-sources list below
+                         use — this is just a third entry point onto it. -->
+                    <section class="settings-section" data-if="!hasNoSources" data-testid="default-source-section">
+                        <h3 class="settings-section__title">
+                            {{ strings.sourcesAdmin.allTitle }}
+                        </h3>
+                        <p class="settings-section__hint">{{ strings.sourcesAdmin.allHint }}</p>
+                        <ul class="sources-list" data-each="visibleSources" data-testid="default-source-list">
+                            <li class="sources-list__row">
+                                <button
+                                    type="button"
+                                    class="sources-list__select"
+                                    :class="{ 'sources-list__select--active': item.id === playlist.activeSourceId }"
+                                    data-action="click"
+                                    data-fn="playlist/selectSource"
+                                    :data-id="item.id"
+                                    data-testid="default-source-select-btn"
+                                >
+                                    <span class="sources-list__name truncate">{{ item.name }}</span>
+                                    <span class="sources-list__meta">{{ item.channelCount }} channels</span>
+                                </button>
+                                <span class="sources-list__active-badge" data-if="item.id === playlist.activeSourceId" data-testid="default-source-active-badge">
+                                    {{ strings.sourcesAdmin.activeBadge }}
+                                </span>
+                            </li>
+                        </ul>
+                    </section>
+
                     <!-- Sources hidden from the sidebar picker because they
                          carry nothing playable. Listed here, and only here, so
                          hiding can never make an import unreachable. -->
