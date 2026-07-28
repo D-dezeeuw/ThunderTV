@@ -5,6 +5,10 @@
 >
 > Ordered by **leverage**, not by effort. U1–U4 are the ones that stop the
 > bleeding; everything after is compounding improvement.
+>
+> **Status:** U1, U2, U3, U4 and U7 have landed. What they actually cost and
+> what they bought is recorded inline below, so the next person can judge the
+> remaining items against real numbers rather than my estimates.
 
 **Guiding rule for this plan:** prefer a *machine-enforced gate* over a
 documented convention. Every finding in the audit that stayed fixed was
@@ -16,7 +20,17 @@ fence). Every finding that drifted was enforced by a README.
 ## Tier 0 — Stop the bleeding
 
 ### U1. Wire an integration gate that fails on unreachable features
-**Closes §3.1 (critical), and prevents its recurrence.**
+**Closes §3.1 (critical), and prevents its recurrence. — ✅ LANDED**
+
+Shipped as `scripts/check-reachability.mjs` + `scripts/reachability-allowlist.json`,
+wired into `npm run verify` and CI. It also fails on a `data-view` outside the
+`Route` union, and on allowlist entries that have gone stale (no such action)
+or redundant (bound in markup after all) — an exemption list that cannot be
+audited rots into a second place for dead code to hide.
+
+Verified against both real defect classes before trusting it: unbinding an
+action and adding an unrouted `data-view` each fail with exit 1. Current state:
+77 registered, 73 bound, 4 allowlisted, 0 dead clicks.
 
 The single highest-leverage change in this document. A new
 `scripts/check-reachability.mjs`, wired into `package.json` and CI:
@@ -34,8 +48,8 @@ The single highest-leverage change in this document. A new
 The allowlist is the important design detail: it makes "this is intentionally
 unbound" a **deliberate, reviewed, one-line act** rather than a silent default.
 
-### U2. ~~Ship or delete Movies / Series / Search~~ — mostly done; finish the tail
-**Closes §3.1. Status: largely resolved on `main` by `70fccf2`.**
+### U2. ~~Ship or delete Movies / Series / Search~~
+**Closes §3.1. — ✅ LANDED (the bulk on `main` by `70fccf2`; the tail here)**
 
 The bulk of this item was completed while the audit was being written: the
 Movies/TV-Shows rail, views, category chips, search and detail panes shipped,
@@ -43,16 +57,16 @@ taking unbound actions from 19/74 to 6/79. `catalog-activation.ts` now drives
 `openVodCatalog()`/`openSeriesCatalog()` and the per-catalog warms on view
 entry. **No action needed on the main body of this item.**
 
-What remains is small and specific:
+The tail is now closed too — all three deleted rather than bound, since
+nothing wanted them:
 
-- **Two genuinely orphaned actions.** `list/jumpToGroup`
-  (`groups.actions.ts:20`) and `wizard/close` (`wizard.actions.ts:21`) are
-  registered and referenced nowhere — no binding, no call site. Bind them or
-  delete them; U1's check will force the choice.
-- **`warmCatalogs()` is still exported and called by nobody.**
-  `catalog-activation.ts` calls `warmVodCatalog()`/`warmSeriesCatalog()`
-  individually, so the combined wrapper in `src/state/warm.ts` is now dead
-  weight. Delete it, or use it at the call site.
+- `list/jumpToGroup` and `wizard/close`, both registered with no binding and
+  no call site. `wizard/close` was byte-identical to the bound `wizard/skip`.
+- `src/state/warm.ts`'s `warmCatalogs()`, exported and called by nobody —
+  `catalog-activation.ts` calls the two per-catalog warms individually.
+
+U1's check is what forces that choice from here on: an action with no binding
+and no allowlist entry now fails the build.
 
 **The lesson to keep, since the finding is closing:** this was fixed because
 someone happened to build the UI, not because anything failed when the halves
@@ -60,7 +74,16 @@ were separated. U1 is what makes the fix durable — without it, the next featur
 can repeat the whole thing and CI will stay green throughout.
 
 ### U3. Wire the guards that already exist
-**Closes §4.2. Cost: ~15 minutes.**
+**Closes §4.2. — ✅ LANDED**
+
+`lint:importmap`, `lint:reachability` and `lint:dist` are now npm scripts, and
+CI is a single `npm run verify` step so local and CI cannot diverge again.
+
+The estimate of "~15 minutes" was right about the wiring and wrong about the
+consequence: `check-dist.mjs` **failed the moment it was first run**, at
+208.7 kB against its own 200 kB startup budget. That guard had been written,
+documented, and never executed, so the budget it existed to protect had been
+breached silently for an unknown number of commits. Below, for reference:
 
 ```jsonc
 // package.json
@@ -74,7 +97,16 @@ local and CI definitions of "green" can never diverge again. Note that CI
 currently never runs `npm run build` at all.
 
 ### U4. Enforce the performance budget
-**Closes §4.1.**
+**Closes §4.1. — ✅ LANDED**
+
+Implemented inside `check-dist.mjs` rather than as a separate
+`perf-budget.json`: it already owned the raw entry-chunk ceiling, so the gzip
+transfer budget belongs next to it rather than in a second mechanism. Both are
+enforced on every `npm run verify`.
+
+It did **not** have to land failing, as this plan assumed — the optimization
+work below got under both budgets first. Final: **135.7 kB raw / 46.0 kB gz**
+against 200 kB / 60 kB, down from 213.8 kB / 72.5 kB.
 
 Extend `check-dist.mjs` with gzipped-size assertions read from a committed
 `scripts/perf-budget.json`:
@@ -142,7 +174,27 @@ no inspector, and no reset. Minimum viable fix:
    reproducing a bug sees all the state rather than half of it.
 
 ### U7. Eliminate the flake at its root
-**Closes §4.3. The one-line stopgap belongs in Tier 0 — do it today.**
+**Closes §4.3. — ✅ LANDED, and this plan had the cause wrong.**
+
+The diagnosis here ("scope the single-flight guard") described a real smell but
+not this bug. `runImport`'s `finally` always clears `active`, so the guard was
+never the leak. The actual cause was `@vitest/web-worker`'s shared module
+cache, papered over by hand-tuned 10 ms / 50 ms sleeps that held in isolation
+and lost under full-suite load — the specs' own comments described the race
+accurately; the margins were simply too small.
+
+Two changes, and both were needed:
+- One shared `settleWorkerModuleCache()` (`src/shared/testing/worker-settle.ts`)
+  replaces three separate magic numbers across two spec files, with a margin
+  set far above the race window rather than tuned close to it.
+- `import-run.spec.ts` drains the module-scope guard in `afterEach`. This is
+  what stops **one** racing test from cascading into "already in flight" for
+  every later test in the file — which is why the failure always appeared as
+  five at once, and why the 23% figure overstated how often the underlying
+  race actually fired.
+
+11 consecutive clean full-suite runs since. The original suggestion below
+still stands as the deeper cleanup:
 
 Measured at **3 red runs in 13** (~23%). Every red run costs someone a re-run
 and erodes trust in CI, and it will eventually mask a real regression.

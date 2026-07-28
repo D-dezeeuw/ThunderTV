@@ -10,6 +10,13 @@
 > this audit was being written**, by commit `70fccf2`. §3.1 records both the
 > original measurement and what actually shipped, because the *systemic* cause
 > is unchanged and the fix arrived by luck of timing rather than by a gate.
+>
+> **Remediation status.** §3.1, §4.1, §4.2 and §4.3 are now closed in code —
+> see [`UPGRADES.md`](./UPGRADES.md) for what landed. The findings are kept
+> here as written rather than deleted: the measurements are the evidence for
+> why the gates exist, and a gate with no recorded failure it prevents is the
+> first thing someone deletes. Everything not marked closed there is still
+> open.
 
 ---
 
@@ -41,10 +48,10 @@ Three facts define the current state:
 | Typecheck | ✅ Clean | `tsc --noEmit` |
 | ESLint (`--max-warnings 0`) | ✅ Clean | `npm run lint` |
 | CSS fence / file-access fence | ✅ Clean | both custom guards pass |
-| Tests | ⚠️ 1,073 pass, **~23% flaky** | 3 red runs in 13 full-suite runs (§4.3) |
+| Tests | ✅ 1,125 pass (133 files) | flake fixed — 11 consecutive clean runs (§4.3) |
 | Build | ✅ Succeeds | 616 ms |
-| Perf budget | ❌ **Breached, widening** | 71.75 kB gz vs. ≤60 kB budget (was 67.37) |
-| Feature reachability | ⚠️ **6/79 unbound** | improved from 19/74; still ungated |
+| Perf budget | ✅ **Under, and enforced** | 46.0 kB gz / 135.7 kB raw vs. 60 kB / 200 kB |
+| Feature reachability | ✅ **Gated in CI** | 77 registered, 73 bound, 4 allowlisted, 0 dead clicks |
 | Plan ↔ code fidelity | ❌ **Detached** | phases 09–30 report 0% while shipping |
 | Security posture | ✅ Strong | with two gaps (§4.7) |
 
