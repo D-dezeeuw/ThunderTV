@@ -142,17 +142,21 @@ no inspector, and no reset. Minimum viable fix:
    reproducing a bug sees all the state rather than half of it.
 
 ### U7. Eliminate the flake at its root
-**Closes §4.3.**
+**Closes §4.3. The one-line stopgap belongs in Tier 0 — do it today.**
 
-U6's reset hook fixes the symptom. The root fix is to stop `runImport`'s
-single-flight guard from being ambient module state: return a disposable
-`ImportSession` handle from `runImport()`, with `active` scoped to it. The same
-treatment applies to the seven other `inFlight` / `busy` booleans
-(`vod.actions`, `series.actions`, `vod-warm`, `series-warm`, `xtream-refresh`,
-`xtream.actions`, `import-triggers`).
+Measured at **3 red runs in 13** (~23%). Every red run costs someone a re-run
+and erodes trust in CI, and it will eventually mask a real regression.
 
-Interim, if U7 slips: add `beforeEach(cancelImport)` to `import-run.spec.ts`
-today. It is a one-line stopgap, not a fix.
+**Today (Tier 0, one line):** add `beforeEach(cancelImport)` to
+`import-run.spec.ts`. A stopgap, not a fix, but a ~23% flake does not deserve
+to wait for the proper change.
+
+**Properly:** stop `runImport`'s single-flight guard being ambient module
+state — return a disposable `ImportSession` handle from `runImport()`, with
+`active` scoped to it. The same treatment applies to the seven other
+`inFlight` / `busy` booleans (`vod.actions`, `series.actions`, `vod-warm`,
+`series-warm`, `xtream-refresh`, `xtream.actions`, `import-triggers`), and
+U6's reset hook closes the residual class.
 
 ---
 

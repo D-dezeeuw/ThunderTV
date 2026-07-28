@@ -41,7 +41,7 @@ Three facts define the current state:
 | Typecheck | ✅ Clean | `tsc --noEmit` |
 | ESLint (`--max-warnings 0`) | ✅ Clean | `npm run lint` |
 | CSS fence / file-access fence | ✅ Clean | both custom guards pass |
-| Tests | ✅ 1,073 pass (129 files) | 4 clean post-merge runs; see §4.3 on a latent flake |
+| Tests | ⚠️ 1,073 pass, **~23% flaky** | 3 red runs in 13 full-suite runs (§4.3) |
 | Build | ✅ Succeeds | 1.17 s |
 | Perf budget | ❌ **Breached, widening** | 71.46 kB gz vs. ≤60 kB budget (was 67.37) |
 | Feature reachability | ⚠️ **6/78 unbound** | improved from 19/74; still ungated |
@@ -196,12 +196,19 @@ What is silently unguarded as a result:
 CI also never runs `npm run build`, so a broken production build reaches `main`
 with a green check.
 
-### 4.3 Latent flake from module-singleton leakage
+### 4.3 Active flake from module-singleton leakage
 
-`src/m3u/import-run.spec.ts` produced **5 failures in one of four full-suite
-runs** at `6818418`, and passes 10/10 in isolation. It did **not** reproduce in
-four post-merge runs at `a7baa42` — but nothing about the cause changed, so
-this is a dormant flake, not a fixed one:
+**Reproduced 3 times in 13 full-suite runs (~23%)** across both commits, always
+in `src/m3u/import-run.spec.ts`, which passes 10/10 in isolation. **Which**
+tests in that file fail varies run to run — a different set each time, which is
+the signature of cross-file ordering rather than a bad assertion:
+
+```
+FAIL  cancelImport() allows a fresh runImport() to proceed shortly afterward
+FAIL  a header-less parse failure rejects cleanly and leaves zero trace
+FAIL  upserts an existing m3u-url source instead of creating a second one
+FAIL  never records an array of channel rows in Spektrum state during a real import
+```
 
 ```
 Error: runImport(): an import is already in flight — call cancelImport() first.
@@ -210,9 +217,14 @@ Error: runImport(): an import is already in flight — call cancelImport() first
 
 `import-run.ts:59` holds `let active: ActiveImport | null = null` at module
 scope. Under the full suite, that singleton survives across tests with no reset
-hook. A flake that appears once in four runs and then hides for four more is
-worse than a consistently red one — it trains everyone to re-run rather than
-investigate, and it will resurface the moment file scheduling shifts again.
+hook, so whichever test runs after a leaked import fails — and which test that
+is depends on scheduling.
+
+**This is the highest-priority item in §4.** A roughly one-in-four red CI is
+worse than a consistently red one: it trains everyone to re-run rather than
+investigate, and it will mask a real regression the first time one appears.
+It is also cheap to fix — [`UPGRADES.md`](./UPGRADES.md) U6's reset hook closes
+the whole class, and a `beforeEach(cancelImport)` closes this instance today.
 
 ### 4.4 The shadow state layer
 
