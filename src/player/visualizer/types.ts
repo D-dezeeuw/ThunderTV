@@ -12,14 +12,22 @@ export interface FrameContext {
     ts: number;
     /** Elapsed time since the previous frame, ms, clamped so a tab-switch stall never causes a giant jump. */
     dt: number;
-    /** Frequency-domain byte data straight from `AnalyserNode.getByteFrequencyData()` — length is the analyser's `frequencyBinCount`. */
+    /** Raw frequency bytes straight from the analyser — presets should almost always prefer `bars`, which is log-spaced and level-normalized (see `audio-features.ts`). */
     data: Uint8Array<ArrayBuffer>;
-    /** 0-255 averages over the low/mid/high thirds of `data` — coarse bands, cheap to compute once and share across presets. */
+    /** Raw time-domain bytes (128 = silence midline) — the actual waveform, for oscilloscope-style presets. */
+    wave: Uint8Array<ArrayBuffer>;
+    /** FEATURE_BAR_COUNT log-spaced band levels in [0, 1], auto-gained so 1.0 means "loud for this station" regardless of stream volume. Sample fractionally via `presets/preset-utils.ts`'s `barAt()`. */
+    bars: Float32Array;
+    /** Auto-gained band levels in [0, 1] — kick/bassline, melody body, hats/air. */
     bass: number;
     mid: number;
     treble: number;
+    /** Overall level in [0, 1] — the mean of the three bands. */
+    energy: number;
     /** True on the one frame a bass onset was detected (see `beat-detector.ts`). */
     beat: boolean;
+    /** 0..1 onset strength for the frame `beat` is true, else 0 — scale reactions by this. */
+    beatIntensity: number;
 }
 
 /**

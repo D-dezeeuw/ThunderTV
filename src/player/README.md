@@ -38,40 +38,54 @@ imports of its own.
 `visualizer/` drives a canvas 2D visualizer over the shared `<video>`
 element's Web Audio output — Radio's answer to "something to look at on a
 TV" while a station plays. `visualizer/index.ts` owns the Web Audio graph,
-canvas sizing, beat detection (`beat-detector.ts`), and preset
-cycling/switching; each `visualizer/presets/*.ts` file is one self-contained
-preset (its own particle array/offscreen buffer/angle state) implementing
-the shared `VisualizerPreset` interface (`visualizer/types.ts`):
+canvas sizing, and preset cycling/switching; `audio-features.ts` turns the
+raw spectrum into what presets actually consume (log-spaced bars over
+35 Hz–11 kHz plus bass/mid/treble bands, all auto-gained so 1.0 means
+"loud for this station" whether the stream is mastered hot or quiet —
+without this, loud streams pinned the analyser bytes flat at the ceiling
+and quiet ones never moved, which read as "the visualizers don't work");
+`beat-detector.ts` flags bass onsets with a 0..1 intensity presets scale
+their reactions by; `crossfade.ts` blends preset switches. Each
+`visualizer/presets/*.ts` file is one self-contained preset (its own
+particle array/offscreen buffer/angle state) implementing the shared
+`VisualizerPreset` interface (`visualizer/types.ts`):
 
 Four abstract presets:
 
-- **Radial Spectrum** — rotating, zoom-pulsing, hue-cycling frequency bars.
+- **Radial Spectrum** — rotating, zoom-pulsing, hue-cycling frequency bars
+  (mirrored sampling, beat-punched zoom, beat flash ring).
 - **Particle Storm** — particles drifting outward in slow orbits, trailing,
-  pulsing size on beat.
-- **Kaleidoscope** — one wedge of audio-reactive art, mirrored/rotated
-  around the circle.
+  each sized by its own spectrum slice; beats pulse the field and fling
+  bursts from the center.
+- **Kaleidoscope** — one wedge of audio-reactive lacework (rays, band arcs,
+  beat starbursts), mirrored/rotated around the circle; beats kick the spin.
 - **Fractal Tunnel** — a "video feedback" zoom loop (last frame redrawn
-  zoomed + rotated) with a nested-squares fractal core injected each frame.
+  zoomed + rotated, gently fading) with a nested-squares core, a
+  spectrum-star, and a beat ring the zoom races down the tunnel.
 
 Six genre presets — picked by the listener, never inferred from the audio
 (there's no genre-classification model here, just six distinct looks tuned
-to fit a mood): **EDM** (fast neon rotation, beat rings), **Jazz** (slow
-interweaving Lissajous ribbons, warm amber), **Blues** (a single slow
-breathing waveform ring, deep indigo), **Rock** (punchy attack/decay spikes,
-metallic highlight), **Metal** (jagged red spikes, beat-jolted rotation
-reversal, bounded camera shake), **Classical** (independently-rotating
-concentric rings, gold/purple).
+to fit a mood): **EDM** (dual counter-rotating neon bar rings, kick
+scale-punch, beat rings), **Jazz** (interweaving Lissajous ribbons with
+treble-chasing comet dots and beat syncopation, warm amber), **Blues** (an
+oscilloscope ring drawn from the actual waveform, deep indigo), **Rock**
+(attack/decay spikes with metallic highlights, ember sprays off the tips on
+beats), **Metal** (jagged red spikes, beat-jolted rotation reversal,
+bounded shake, lightning strikes on hard hits), **Classical** (concentric
+rings each rippling with its own orchestral register, drifting golden
+motes).
 
 Presets auto-advance every `AUTO_CYCLE_MS` — unless the listener pins one via
 the picker (`index.html`'s `#radio-visualizer-select`, `player.visualizerPreset`
 in `state/player.ts`, persisted), in which case only picking `'auto'` again
 resumes the rotation. `player/nextVisualizerPreset` (`state/player.actions.ts`)
 skips manually and always clears a pin. Every switch — auto-advance, the
-picker, or "Next visual" — crossfades over `TRANSITION_MS` rather than
-cutting instantly: the outgoing preset keeps rendering into one offscreen
-buffer (untouched, so it keeps animating while it fades), the incoming one
-(freshly reset) renders into another, and the visible canvas is just the two
-alpha-blended each frame (`renderTransition()`).
+picker, or "Next visual" — crossfades rather than cutting instantly: the
+outgoing preset keeps rendering into one offscreen buffer (seeded from the
+frame on screen, so trail-based looks carry into the fade instead of
+dipping to black), the incoming one (freshly reset) renders into another,
+and the visible canvas is just the two alpha-blended each frame
+(`crossfade.ts`'s `CrossFader`).
 
 `player/toggleVisualizerPause` (`player.visualizerPaused`, transient —
 always false on a fresh Radio visit) freezes the render loop entirely rather
