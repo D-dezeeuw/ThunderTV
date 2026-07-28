@@ -4,12 +4,16 @@
  * acronyms (M3U, EPG, Xtream Codes, CORS, HLS, MPEG-TS, DRM), exactly like
  * a real localized app would leave them.
  */
+import { deCatalog } from './strings.de.catalog';
+
 export const de = {
     appName: 'ThunderTV',
 
     rail: {
         live: 'Live',
         radio: 'Radio',
+        movies: 'Filme',
+        series: 'Serien',
         categories: 'Kategorien',
         sources: 'Quellen',
         favorites: 'Favoriten',
@@ -21,6 +25,8 @@ export const de = {
     views: {
         live: { title: 'Live', heading: 'Live' },
         radio: { title: 'Radio', heading: 'Radio' },
+        movies: { title: 'Filme', heading: 'Filme' },
+        series: { title: 'Serien', heading: 'Serien' },
         categories: { title: 'Kategorien', heading: 'Kategorien' },
         sources: { title: 'Quellen', heading: 'Quellen' },
         favorites: { title: 'Favoriten', heading: 'Favoriten' },
@@ -28,6 +34,8 @@ export const de = {
         guide: { title: 'Guide', heading: 'Guide' },
         connect: { title: 'Verbinden', heading: 'Verbinden' },
     },
+
+    ...deCatalog,
 
     live: {
         channelsLabel: 'Sender insgesamt',
@@ -225,6 +233,8 @@ export const de = {
             starred: 'Favoriten',
             recents: 'Zuletzt',
             guide: 'Guide',
+            movies: 'Filme',
+            series: 'Serien',
         },
         streaming: {
             proxyLabel: 'Proxy-URL-Vorlage',
@@ -267,6 +277,13 @@ export const de = {
             bufferingLowLatency: 'Niedrige Latenz',
             bufferingHelp:
                 'Automatisch bemisst den Puffer anhand Ihrer Verbindung und vergrößert ihn, sobald die Wiedergabe tatsächlich stockt. Sanft hält immer einige Sekunden gepuffert. Niedrige Latenz bleibt am nächsten am Live-Rand, stockt aber bei jeder Störung erneut — nur für stabile Netzwerke.',
+            audioLanguageLabel: 'Bevorzugte Audiosprache',
+            audioLanguageHelp: 'Wird verwendet, wenn ein Film oder eine Folge mehr als eine Tonspur anbietet. Nicht jeder Anbieter kennzeichnet seine Spuren, daher ist dies eine Vorliebe, keine Garantie.',
+            audioLanguageAuto: 'Original / Automatisch',
+            subtitleLanguageLabel: 'Bevorzugte Untertitelsprache',
+            subtitleLanguageHelp: 'Wird verwendet, wenn ein Film oder eine Folge Untertitelspuren enthält. "Automatisch" leitet eine Sprache von Ihrem Live-Filterland ab.',
+            subtitleAuto: 'Automatisch (mein Land)',
+            subtitleOff: 'Aus',
         },
         appearance: {
             density: 'Dichte',
@@ -330,6 +347,11 @@ export const de = {
         signalFair: 'Stream puffert gelegentlich',
         signalPoor: 'Stream stockt — Verbindung zu langsam oder instabil',
         nowPlayingEmpty: 'Wählen Sie einen Sender, um mit dem Ansehen zu beginnen.',
+        audioTracksLabel: 'Audiospuren',
+        subtitlesLabel: 'Untertitel',
+        subtitlesOff: 'Aus',
+        noAudioTracks: 'Keine Audiospuren in diesem Stream',
+        noSubtitles: 'Keine Untertitel in diesem Stream',
     },
 
     import: {

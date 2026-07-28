@@ -7,6 +7,7 @@ import { registerPlayerBindings } from '../player/bindings';
 import { installDebugCapture } from '../state/debug';
 import { registerDebugShortcut } from '../state/debug.actions';
 import { installDevtools } from '../state/devtools';
+import { registerTrackSync } from '../state/player-tracks.actions';
 import {
     initState,
     loadDefaultEpg,
@@ -25,6 +26,7 @@ import { loadXtreamAccountPrefill } from '../state/settings.actions';
 import { handleStorageDemotion } from '../state/ui.actions';
 import { refreshActiveXtreamSource } from '../state/xtream-refresh';
 import { seedPlatformDiagnostics } from '../state/ui';
+import { registerCatalogActivation } from './catalog-activation';
 import { initRouter } from './router';
 import { registerViewSwitching } from './views';
 
@@ -63,6 +65,7 @@ export async function bootstrap(): Promise<void> {
     registerActions();
     registerSelectors();
     registerViewSwitching();
+    registerCatalogActivation();
 
     // Resolves the initial route before bindDOM()/run() so a deep link
     // (e.g. #/favorites) renders correctly on first paint (Feature 02.4.4).
@@ -91,6 +94,7 @@ export async function bootstrap(): Promise<void> {
     registerDebugShortcut();
     registerListBindings();
     registerPlayerBindings();
+    registerTrackSync();
     // Xtream catalogs rot (panels renumber stream ids) — silently re-import
     // the active source when its snapshot is older than the 6h TTL.
     void refreshActiveXtreamSource();

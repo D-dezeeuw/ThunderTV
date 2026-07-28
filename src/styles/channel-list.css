@@ -79,6 +79,24 @@
     color: var(--color-text-dim);
 }
 
+/* ---- Movies/Series wrapper (Phase 21) ----
+   Takes over .view__section--fill's "fill the viewport" role one level up,
+   since the channel-list-only <section> below it now wraps just the
+   no-active-source empty state — .list-shell (shared by Movies/Series) is
+   what actually needs the remaining flex space. See index.html's own
+   comment on why the inner section couldn't just widen its own gate. */
+.channel-list-scope {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.channel-list-scope > .view__section--fill {
+    flex: none;
+    min-height: auto;
+}
+
 /* ---- List shell (Feature 08.5/08.10) ---- */
 
 .list-shell {
@@ -120,6 +138,7 @@
    under it at any viewport taller than ~1000px. min-height keeps it usable
    when the window is genuinely short. */
 .list-shell__body {
+    position: relative;
     display: flex;
     flex: 1;
     gap: var(--space-4);
@@ -243,12 +262,24 @@
 /* ---- Channel row (Feature 08.3) ---- */
 
 .channel-row {
+    position: relative;
     display: flex;
     align-items: center;
     gap: var(--space-3);
     height: var(--row-h);
     padding-inline: var(--row-pad-x);
     border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+}
+
+/* Movies/Series row click interception (Phase 21) — see index.html's
+   channel-row__catalog-trigger comment for why a full-row invisible overlay
+   is what carries a per-row-kind click target inside a template shared with
+   plain channel rows. Absent (data-if) for every non-catalog row, so this
+   never changes Live/Radio/Categories hit-testing. */
+.channel-row__catalog-trigger {
+    position: absolute;
+    inset: 0;
     cursor: pointer;
 }
 

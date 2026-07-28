@@ -45,6 +45,14 @@ describe('resolveRoute', () => {
         expect(resolveRoute('guide')).toBe('guide');
     });
 
+    it('resolves the movies route (Phase 21)', () => {
+        expect(resolveRoute('movies')).toBe('movies');
+    });
+
+    it('resolves the series route (Phase 21)', () => {
+        expect(resolveRoute('series')).toBe('series');
+    });
+
     it('falls back to the default route for an unknown path', () => {
         expect(resolveRoute('bogus')).toBe(DEFAULT_ROUTE);
     });

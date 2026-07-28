@@ -29,9 +29,26 @@ correct-and-expected snapshot; mpegts.js has no track-switching API at all,
 so its `PlayerEngine` only implements `getTracks()` (always empty) and skips
 the setters/`onTracksChanged` entirely. `track-prefs.ts` is the pure
 preference resolver (`normalizeLangCode`, `pickDefaultAudioTrack`,
-`pickDefaultSubtitleTrack`) a later stage calls with the viewer's saved
-language and a `getPlayerTracks()` snapshot — it has no engine or Spektrum
-imports of its own.
+`pickDefaultSubtitleTrack`), engine/Spektrum-free by design.
+
+The state/UI stage this section used to describe as "later" is
+`src/state/player-tracks.ts`/`player-tracks.actions.ts` (`state/README.md`'s
+module table). `registerTrackSync()` there is the one piece that reaches
+into this folder from `src/state/`: it subscribes to `onTracksChanged()`,
+republishes `player.audioTracks`/`player.subtitleTracks` (compact
+`MediaTrack[]`, capped), and applies `track-prefs.ts`'s picks against
+`settings.audioLanguage`/`resolveSubtitleLanguage(settings.subtitleLanguage,
+settings.liveCountry)` exactly once per stream — keyed on `player.active`'s
+`id`+`streamUrl` together (not `id` alone), since `live/playVariant` keeps
+the row id but hands the engine a new `streamUrl` and genuinely re-attaches.
+A later `onTracksChanged` firing for the *same* stream only republishes, so
+it never re-applies over a manual pick the viewer already made through the
+dock's two track-menu buttons (`index.html`'s `.player-shell__bar`,
+`icon-audio-tracks`/`icon-subtitles`) — each opens a small popup
+(`.track-menu`, `src/styles/player.css`) positioned above the dock, with a
+fixed "Off" row at the top of the subtitle menu and an explicit dashed empty
+row when a stream offers no tracks of that kind, rather than hiding the
+buttons.
 
 ## Radio visualizer
 
@@ -103,7 +120,26 @@ in-flight crossfade or the pause state; preset/pause changes apply through
 their own setters instead. The visualizer reads real frequency data only
 when the audio is same-origin/CORS-clean, which mpegts.js/hls.js's `blob:`
 MediaSource URL satisfies (the default engines); the native-engine fallback
-still animates, just without music-reactivity. `player/fullscreen`
-(`state/player.actions.ts`) fullscreens `.radio-now-playing` instead of the
-video when `ui.activeView === 'radio'`, since Radio's video element carries
-no picture (`player.css`'s `.player-shell--radio` rule).
+still animates, just without music-reactivity.
+
+## Fullscreen
+
+`fullscreen.ts` tries every vendor spelling of `requestFullscreen`, not just
+the standard one. That is the whole point of the module: webOS/Tizen TV
+browsers and older WebKit ship only `webkitRequestFullscreen`, and iPhone
+Safari ships neither (just the video-only `webkitEnterFullscreen`) — an
+implementation that calls the standard API and gives up is simply dead on a
+TV, which is exactly how it shipped before. Both entry points are also
+*toggles*: pressing while already fullscreen exits, because a TV remote has
+no dependable Escape key.
+
+`player/fullscreen` (`state/player.actions.ts`) fullscreens the whole
+`.player-shell` when `ui.activeView === 'radio'` — not just
+`.radio-now-playing`, since the control bar is a sibling of the visualizer
+pane and fullscreening the pane alone left the viewer with no preset
+picker, no pause, and no way back. Live still fullscreens the `<video>`
+itself, which carries its own native controls. `player.css` spells the
+fullscreen sizing out explicitly (`:fullscreen` plus a separate
+`:-webkit-full-screen` rule — one unrecognised selector invalidates a whole
+selector list) rather than trusting the UA stylesheet to reset the windowed
+`max-height`, which TV browsers do not reliably do.
