@@ -1,5 +1,6 @@
 import { appState, getPathObj, setValue } from 'spektrum';
-import { strings } from '../app/strings';
+import { applyLocale, isLocale, strings } from '../app/strings';
+import { SETTINGS_LOCALE } from './settings';
 import { getPlatform } from '../core/platform';
 import { initEpgState } from './epg';
 import { initFavoritesState } from './favorites';
@@ -127,14 +128,20 @@ export function debugReadState<T>(key: string): T | undefined {
 }
 
 /**
- * Mirrors the static `strings.ts` module into state once at boot, since
+ * Mirrors the active locale's copy into state once at boot, since
  * `:attr`/`{{}}` bindings can only reach Spektrum state, not a plain TS
  * import. Not a KEY_REGISTRY entry (Feature 05.9.1) — `strings` is static
- * reference data, never a persistence candidate. Kept here (rather than in
- * `bootstrap.ts`) so every `setValue` call in the app stays inside
- * `src/state/`, with `router.ts`'s `ui.activeView` writes the only
- * sanctioned exception (Feature 05.2.5).
+ * reference data, never itself a persistence candidate (unlike
+ * `settings.locale`, which picks it). Called after `rehydrateState()` so
+ * a persisted `settings.locale` value is already live in state, and reads
+ * it via the same `applyLocale()` the live language switcher uses
+ * (`settings.actions.ts`'s `setLocale()`) — the two paths never diverge.
+ * Kept here (rather than in `bootstrap.ts`) so every `setValue` call in the
+ * app stays inside `src/state/`, with `router.ts`'s `ui.activeView` writes
+ * the only sanctioned exception (Feature 05.2.5).
  */
 export function seedStrings(): void {
+    const locale = getPathObj<string>(appState, SETTINGS_LOCALE);
+    applyLocale(isLocale(locale) ? locale : 'en');
     setValue('strings', strings);
 }

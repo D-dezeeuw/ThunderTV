@@ -1,6 +1,13 @@
 import { setValue } from 'spektrum';
+import type { Locale } from '../app/strings';
 
 export const SETTINGS_PROXY_TEMPLATE = 'settings.proxyTemplate';
+/**
+ * UI language (Feature 02.6.7 i18n follow-up) — persisted, switchable live
+ * from Settings → User. Default `'en'`, the baseline locale
+ * `strings.en.ts` ships as the app's original copy.
+ */
+export const SETTINGS_LOCALE = 'settings.locale';
 /** Feature 07.8.3 validation feedback — transient, never persisted. */
 export const SETTINGS_PROXY_ERROR = 'settings.proxyError';
 /** Feature 07.8.3 success feedback — transient, never persisted; cleared the moment the field is edited again. */
@@ -118,6 +125,7 @@ export const LIVE_COUNTRIES: readonly string[] = ['NL', 'BE', 'DE', 'UK', 'FR', 
  * the rest of the Settings UI; the Streaming section is real starting here.
  */
 export interface SettingsState {
+    locale: Locale;
     proxyTemplate: string | null;
     proxyError: string | null;
     proxySaved: boolean;
@@ -146,6 +154,7 @@ export interface NavVisibility {
 }
 
 export const SETTINGS_DEFAULTS: SettingsState = {
+    locale: 'en',
     proxyTemplate: null,
     proxyError: null,
     proxySaved: false,
@@ -165,6 +174,7 @@ export const SETTINGS_DEFAULTS: SettingsState = {
 };
 
 export function initSettingsState(): void {
+    setValue(SETTINGS_LOCALE, SETTINGS_DEFAULTS.locale);
     setValue(SETTINGS_PROXY_TEMPLATE, SETTINGS_DEFAULTS.proxyTemplate);
     setValue(SETTINGS_PROXY_ERROR, SETTINGS_DEFAULTS.proxyError);
     setValue(SETTINGS_PROXY_SAVED, SETTINGS_DEFAULTS.proxySaved);

@@ -30,6 +30,7 @@ import {
     SETTINGS_LIVE_COUNTRY,
     SETTINGS_LIVE_DROP_JUNK,
     SETTINGS_LIVE_KNOWN_ONLY,
+    SETTINGS_LOCALE,
     SETTINGS_NAV_CATEGORIES,
     SETTINGS_NAV_GUIDE,
     SETTINGS_NAV_RADIO,
@@ -224,6 +225,11 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
     },
 
     // --- settings ---
+    [SETTINGS_LOCALE]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'UI language (en/nl/de) — Settings → User, switchable live; drives both the `strings` state mirror and the plain-TS `strings` singleton (src/app/strings.ts).',
+    },
     [SETTINGS_PROXY_TEMPLATE]: {
         owner: 'settings',
         persisted: true,
