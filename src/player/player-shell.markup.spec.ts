@@ -3,6 +3,7 @@ import { fileURLToPath, URL as NodeURL } from 'node:url';
 import { setValue, tick } from 'spektrum';
 import { describe, expect, it } from 'vitest';
 import { mountTemplate } from '../shared/testing/bind-dom';
+import { PLAYER_AUDIO_MODE } from '../state/player';
 import { setActiveChannel } from '../state/player.actions';
 import type { ActiveChannelSnapshot } from '../state/records';
 import { UI_ACTIVE_VIEW } from '../state/ui';
@@ -33,7 +34,7 @@ const CHANNEL: ActiveChannelSnapshot = {
     group: null,
 };
 
-describe('player shell: radio layout is class-driven, not structural', () => {
+describe('player shell: audio-only layout is class-driven, not structural', () => {
     it('player.css never selects on the presence of a data-if-gated node', () => {
         // `:has()` against markup Spektrum only hides is always true. If a
         // future rule genuinely needs it, it must target something that is
@@ -41,38 +42,67 @@ describe('player shell: radio layout is class-driven, not structural', () => {
         expect(playerCss).not.toContain(':has(');
     });
 
-    it('index.html binds the radio modifier to the active view', () => {
-        expect(indexHtml).toContain("'player-shell--radio': view.radio.active");
+    it('index.html binds the audio modifier to the shared visualizerActive selector', () => {
+        expect(indexHtml).toContain("'player-shell--audio': visualizerActive");
     });
 
-    it('adds player-shell--radio only in the Radio view', () => {
+    it('adds player-shell--audio only while the visualizer stands in for the picture', () => {
         const mounted = mountTemplate(`
             <div
                 class="player-shell"
-                :class="{ 'player-shell--radio': view.radio.active }"
+                :class="{ 'player-shell--audio': visualizerActive }"
                 data-if="player.active"
                 data-testid="player-shell"
             >
                 <video class="player-shell__video" data-testid="player-video"></video>
-                <div class="radio-now-playing" data-if="view.radio.active" data-testid="radio-now-playing"></div>
+                <div class="radio-now-playing" data-if="visualizerActive" data-testid="radio-now-playing"></div>
             </div>
         `);
         const shell = (): HTMLElement | null => mounted.query('[data-testid="player-shell"]');
 
         setActiveChannel(CHANNEL);
+        setValue(PLAYER_AUDIO_MODE, false);
         setValue(UI_ACTIVE_VIEW, 'live');
         tick();
         expect(shell()?.style.display).toBe('');
-        expect(shell()?.classList.contains('player-shell--radio')).toBe(false);
-        // The radio pane is hidden but still mounted — the exact condition
-        // that made the `:has()` selector fire in Live.
+        expect(shell()?.classList.contains('player-shell--audio')).toBe(false);
+        // The visualizer pane is hidden but still mounted — the exact
+        // condition that made the `:has()` selector fire in Live.
         expect(mounted.query('[data-testid="radio-now-playing"]')).not.toBeNull();
 
         setValue(UI_ACTIVE_VIEW, 'radio');
         tick();
-        expect(shell()?.classList.contains('player-shell--radio')).toBe(true);
+        expect(shell()?.classList.contains('player-shell--audio')).toBe(true);
+
+        // A TV channel switched to audio-only gets the same presentation.
+        setValue(UI_ACTIVE_VIEW, 'live');
+        setValue(PLAYER_AUDIO_MODE, true);
+        tick();
+        expect(shell()?.classList.contains('player-shell--audio')).toBe(true);
 
         mounted.cleanup();
+    });
+});
+
+/**
+ * Categories is three columns — categories -> channels -> preview — which
+ * only holds if the preview pane and the side-by-side modifier both cover
+ * every channel-list view, not just Live/Radio.
+ */
+describe('Categories preview column', () => {
+    it('mounts the now-playing pane for every channel-list view', () => {
+        expect(indexHtml).toContain('class="now-playing" data-if="view.channelList.active"');
+    });
+
+    it('puts the list and the preview side by side in Categories too', () => {
+        expect(indexHtml).toContain("'list-shell--split': view.channelList.active");
+    });
+
+    it('keeps the third column out of the phone drill-down until a channel list is open', () => {
+        const channelListCss = stripComments(readFileSync(`${repoRoot}/src/styles/channel-list.css`, 'utf8'));
+        expect(channelListCss).toContain(
+            '.list-shell--has-groups:not(.list-shell--group-view) .list-shell__body > .now-playing',
+        );
     });
 });
 

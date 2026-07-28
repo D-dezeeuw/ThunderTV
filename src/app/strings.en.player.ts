@@ -1,10 +1,12 @@
 /**
- * Dock/theater audio/subtitle track-menu copy (final audio/subtitle stage),
- * split out of `strings.en.ts` — that file was pushed over ESLint's
- * 400-line hard ceiling by this addition, the same "split into its own
- * file, merge via one spread" precedent `strings.en.catalog.ts`/
- * `src/state/registry-catalog.ts` already established for the identical
- * problem. Spread *inside* `strings.en.ts`'s own `list: { … }` object
+ * Player-bar copy that no longer fits in `strings.<locale>.ts`: the
+ * dock/theater audio/subtitle track menus, and the audio-only TV switch.
+ * Split out because those files sit on ESLint's 400-line hard ceiling, the
+ * same "split into its own file, merge via one spread" precedent
+ * `strings.en.catalog.ts`/`src/state/registry-overflow.ts` already
+ * established for the identical problem — every new player-bar string
+ * belongs here now, in all three locales. Spread *inside* the locale file's
+ * own `list: { … }` object
  * (`list.audioTracksLabel` etc. — matching every other player-bar string
  * already living there, e.g. `playerStop`/`nowPlayingEmpty`), not as a
  * second top-level `list` key: `list` already exists in `strings.en.ts`,
@@ -18,4 +20,7 @@ export const enPlayerTracks = {
     subtitlesOff: 'Off',
     noAudioTracks: 'No audio tracks in this stream',
     noSubtitles: 'No subtitles in this stream',
+    /** Switches a TV channel to Radio's audio + visualizer presentation, and back. */
+    playerAudioOnly: 'Audio only',
+    playerShowPicture: 'Show picture',
 } as const;

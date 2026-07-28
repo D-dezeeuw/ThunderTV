@@ -1,9 +1,10 @@
 import { computed, type State } from 'spektrum';
 import { strings } from '../app/strings';
 import type { MediaTrack } from '../player/tracks';
-import { PLAYER_STREAM_HEALTH, PLAYER_ZAP_HISTORY } from './player';
+import { isAudioVisual, PLAYER_AUDIO_MODE, PLAYER_STREAM_HEALTH, PLAYER_ZAP_HISTORY } from './player';
 import { PLAYER_SUBTITLE_TRACKS } from './player-tracks';
 import { SETTINGS_LOCALE } from './settings';
+import { UI_ACTIVE_VIEW } from './ui';
 
 /**
  * The third selector module named by Feature 05.6.1 alongside
@@ -35,5 +36,16 @@ export function registerPlayerSelectors(): void {
         if (health === 'poor') return strings.list.signalPoor;
         if (health === 'fair') return strings.list.signalFair;
         return strings.list.signalGood;
+    });
+
+    /**
+     * Whether the visualizer pane replaces the picture: Radio always, a TV
+     * channel only when the viewer switched to audio-only. Every piece of
+     * player markup that used to compare against `view.radio.active` binds
+     * to this instead, so the two presentations stay one decision.
+     */
+    computed('visualizerActive', [UI_ACTIVE_VIEW, PLAYER_AUDIO_MODE], (state: State) => {
+        const typed = state as { ui?: { activeView?: string }; player?: { audioMode?: boolean } };
+        return isAudioVisual(typed.ui?.activeView, typed.player?.audioMode ?? false);
     });
 }

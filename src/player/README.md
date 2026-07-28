@@ -109,9 +109,25 @@ always false on a fresh Radio visit) freezes the render loop entirely rather
 than blanking the canvas, so the last drawn frame just sits there until
 resumed.
 
+### Audio-only TV (`player.audioMode`)
+
+The visualizer is not Radio's alone: `player/toggleAudioMode`
+(`state/player.actions.ts`, a button in the player bar shown in Live and
+Categories) plays a *television* channel with the picture collapsed and the
+visualizer in its place — a TV used as a stereo. One pure predicate,
+`state/player.ts`'s `isAudioVisual(view, audioMode)`, decides this
+everywhere: the `visualizerActive` computed the markup binds to
+(`player.selectors.ts`), `player/fullscreen`'s "fullscreen the pane, not the
+video" branch, and `bindings.ts`'s visualizer watch. It is true for Radio
+regardless of the flag, and for `live`/`categories` only when the flag is
+on — never for a view that doesn't mount the canvas. The preference is
+persisted; `player.css`'s modifier is `.player-shell--audio` (renamed from
+`--radio`, which no longer described what it means).
+
 `bindings.ts` starts/stops the whole thing and applies the preset/pause
-preference whenever `view.radio.active`, `player.active`,
-`player.visualizerPreset`, or `player.visualizerPaused` change, in a
+preference whenever the active view, `player.active`,
+`player.visualizerPreset`, `player.visualizerPaused`, or `player.audioMode`
+change, in a
 `watch()` kept separate from the attach/detach one so none of those ever
 restarts the stream. `startRadioVisualizer()` is itself a no-op when already
 running against the same canvas — the same `watch()` fires on every one of
@@ -134,12 +150,13 @@ TV, which is exactly how it shipped before. Both entry points are also
 no dependable Escape key.
 
 `player/fullscreen` (`state/player.actions.ts`) fullscreens the whole
-`.player-shell` when `ui.activeView === 'radio'` — not just
-`.radio-now-playing`, since the control bar is a sibling of the visualizer
-pane and fullscreening the pane alone left the viewer with no preset
-picker, no pause, and no way back. Live still fullscreens the `<video>`
-itself, which carries its own native controls. `player.css` spells the
-fullscreen sizing out explicitly (`:fullscreen` plus a separate
-`:-webkit-full-screen` rule — one unrecognised selector invalidates a whole
-selector list) rather than trusting the UA stylesheet to reset the windowed
-`max-height`, which TV browsers do not reliably do.
+`.player-shell` whenever `isAudioVisual()` holds (Radio, or a TV channel in
+audio mode) — not just `.radio-now-playing`, since the control bar is a
+sibling of the visualizer pane and fullscreening the pane alone left the
+viewer with no preset picker, no pause, and no way back. A channel showing
+a picture still fullscreens the `<video>` itself, which carries its own
+native controls. `player.css` spells the fullscreen sizing out explicitly
+(`:fullscreen` plus a separate `:-webkit-full-screen` rule — one
+unrecognised selector invalidates a whole selector list) rather than
+trusting the UA stylesheet to reset the windowed `max-height`, which TV
+browsers do not reliably do.
