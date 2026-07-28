@@ -1,9 +1,10 @@
+import { createElectronPlatform } from './electron-platform';
 import type { PlatformAdapter } from './platform-adapter';
 import { createWebPlatform, type CreateWebPlatformOptions } from './web-platform';
 
 /**
- * `window.electron` truthy → Electron adapter (Phase 28); otherwise the web
- * adapter. Identical in spirit to thunder-tv's `DataFactory()`.
+ * `window.electron` truthy → Electron adapter, otherwise the web adapter.
+ * Identical in spirit to thunder-tv's `DataFactory()`.
  *
  * webOS is *not* a third branch (Feature 03.8.4): a packaged webOS build is
  * `WebPlatform` + the Phase 04 storage probe + the vendored import map swap
@@ -14,10 +15,18 @@ import { createWebPlatform, type CreateWebPlatformOptions } from './web-platform
  * boot; Electron guarantees the preload script runs before app code, so
  * there is no late-injection case to guard against and no re-detection ever
  * happens (Feature 03.8.5).
+ *
+ * Both branches share the same options shape (`CreateWebPlatformOptions`)
+ * on purpose — `createElectronPlatform()`'s collaborators are the same web
+ * ones, so `bootstrap.ts` never has to branch on which one it's calling.
+ * See `electron-platform.ts`'s header comment for the desktop adapter's
+ * architecture decision (this used to throw — "not yet implemented" — even
+ * though nothing ever set `window.electron`, so the throw was unreachable
+ * and the desktop shell silently ran on this web branch the whole time).
  */
 export async function createPlatform(options: CreateWebPlatformOptions = {}): Promise<PlatformAdapter> {
     if (window.electron) {
-        throw new Error('The Electron platform adapter is not yet implemented (arrives in Phase 28).');
+        return createElectronPlatform(options);
     }
     return createWebPlatform(options);
 }

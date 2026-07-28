@@ -6,9 +6,15 @@
     "type": "module",
     "main": "main.mjs",
     "scripts": {
-        "start": "npm --prefix .. run build && node ../scripts/package-target.mjs && electron ."
+        "start": "npm --prefix .. run build && node ../scripts/package-target.mjs && electron .",
+        "prepackage": "npm --prefix .. run build && node ../scripts/package-target.mjs",
+        "package": "npm run prepackage && electron-builder --config ../electron-builder.yml",
+        "package:linux": "npm run prepackage && electron-builder --config ../electron-builder.yml --linux",
+        "package:win": "npm run prepackage && electron-builder --config ../electron-builder.yml --win",
+        "package:mac": "npm run prepackage && electron-builder --config ../electron-builder.yml --mac"
     },
     "devDependencies": {
-        "electron": "38.2.1"
+        "electron": "38.2.1",
+        "electron-builder": "26.15.3"
     }
 }

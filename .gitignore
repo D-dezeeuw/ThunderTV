@@ -161,3 +161,7 @@ Thumbs.db
 # Generated M3U benchmark fixtures (Feature 06.10.2) — scripts/gen-m3u-fixture.mjs
 # is committed, its output (potentially 100k+ lines) never is.
 tests/fixtures/generated/
+
+# electron-builder output (masterplan Feature 29.1.7) — packaged installers/
+# AppImages/DMGs are built artifacts, never committed.
+/release/
