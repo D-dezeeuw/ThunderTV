@@ -6,6 +6,7 @@
  * `strings.spec.ts` asserts they never drift.
  */
 import { enCatalog } from './strings.en.catalog';
+import { enPlayerTracks } from './strings.en.player';
 
 export const en = {
     appName: 'ThunderTV',
@@ -351,6 +352,7 @@ export const en = {
         signalFair: 'Stream buffering occasionally',
         signalPoor: 'Stream struggling — connection too slow or unstable',
         nowPlayingEmpty: 'Pick a channel to start watching.',
+        ...enPlayerTracks,
     },
 
     import: {

@@ -74,6 +74,10 @@
             <symbol id="icon-movies" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="8" y1="5" x2="8" y2="19" stroke="currentColor" stroke-width="2"/><line x1="16" y1="5" x2="16" y2="19" stroke="currentColor" stroke-width="2"/><line x1="3" y1="9" x2="8" y2="9" stroke="currentColor" stroke-width="2"/><line x1="16" y1="9" x2="21" y2="9" stroke="currentColor" stroke-width="2"/><line x1="3" y1="15" x2="8" y2="15" stroke="currentColor" stroke-width="2"/><line x1="16" y1="15" x2="21" y2="15" stroke="currentColor" stroke-width="2"/></symbol>
             <!-- Series (Phase 21): a monitor with a play triangle and a stand — distinct from icon-live's antenna+dot broadcast glyph. -->
             <symbol id="icon-series" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 8.2v5.6l5-2.8z" fill="currentColor" stroke="none"/><line x1="9" y1="20.5" x2="15" y2="20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="17" x2="12" y2="20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <!-- Audio tracks (final audio/subtitle stage): a speaker cone plus two sound-wave arcs. -->
+            <symbol id="icon-audio-tracks" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16.5 9.3a4 4 0 0 1 0 5.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 6.8a8 8 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <!-- Subtitles: a caption box with two lines of text — distinct from icon-guide's plain grid and icon-sources' left-aligned lines. -->
+            <symbol id="icon-subtitles" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="10" x2="11" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="13" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
         </svg>
 
         <div id="app">
@@ -1064,6 +1068,113 @@
                                             <span class="signal__bar signal__bar--2"></span>
                                             <span class="signal__bar signal__bar--3"></span>
                                         </span>
+
+                                        <!-- Audio/subtitle track menus (final audio/subtitle stage). Each
+                                             popup is anchored to its own trigger button (position: relative
+                                             on .track-menu-anchor), opening upward above the dock — the dock
+                                             sits low in the viewport, same reasoning as the [data-tip]
+                                             tooltip above. Always rendered, never behind a view/track-count
+                                             data-if: an empty track list still opens the menu and explains
+                                             itself (see .track-menu__empty below) rather than hiding the
+                                             button, so a viewer never wonders whether the feature is broken
+                                             or just absent for this stream. -->
+                                        <div class="track-menu-anchor">
+                                            <button
+                                                type="button"
+                                                class="icon-btn"
+                                                :aria-label="strings.list.audioTracksLabel"
+                                                :title="strings.list.audioTracksLabel"
+                                                :aria-expanded="player.trackMenu === 'audio'"
+                                                data-action="click"
+                                                data-fn="player/toggleAudioMenu"
+                                                data-testid="player-audio-tracks-btn"
+                                            >
+                                                <svg class="icon icon--s" aria-hidden="true"><use href="#icon-audio-tracks"></use></svg>
+                                            </button>
+                                            <div
+                                                class="track-menu"
+                                                data-if="player.trackMenu === 'audio'"
+                                                role="listbox"
+                                                :aria-label="strings.list.audioTracksLabel"
+                                                data-testid="audio-track-menu"
+                                            >
+                                                <div class="track-menu__list" data-each="player.audioTracks">
+                                                    <button
+                                                        type="button"
+                                                        class="track-menu__item"
+                                                        :class="{ 'track-menu__item--active': item.active }"
+                                                        role="option"
+                                                        :aria-selected="item.active"
+                                                        data-action="click"
+                                                        data-fn="player/setAudioTrack"
+                                                        :data-value="item.id"
+                                                        data-testid="audio-track-item"
+                                                    >
+                                                        <span class="track-menu__label truncate">{{ item.label }}</span>
+                                                        <span class="track-menu__lang" data-if="item.lang && item.lang !== item.label">({{ item.lang }})</span>
+                                                    </button>
+                                                </div>
+                                                <div class="track-menu__empty" data-if="!player.audioTracks.length" data-testid="audio-track-empty">
+                                                    <span class="track-menu__empty-dash" aria-hidden="true">—</span>
+                                                    <p class="track-menu__empty-message">{{ strings.list.noAudioTracks }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="track-menu-anchor">
+                                            <button
+                                                type="button"
+                                                class="icon-btn"
+                                                :aria-label="strings.list.subtitlesLabel"
+                                                :title="strings.list.subtitlesLabel"
+                                                :aria-expanded="player.trackMenu === 'subtitles'"
+                                                data-action="click"
+                                                data-fn="player/toggleSubtitleMenu"
+                                                data-testid="player-subtitles-btn"
+                                            >
+                                                <svg class="icon icon--s" aria-hidden="true"><use href="#icon-subtitles"></use></svg>
+                                            </button>
+                                            <div
+                                                class="track-menu"
+                                                data-if="player.trackMenu === 'subtitles'"
+                                                role="listbox"
+                                                :aria-label="strings.list.subtitlesLabel"
+                                                data-testid="subtitle-track-menu"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    class="track-menu__item"
+                                                    :class="{ 'track-menu__item--active': subtitlesOffActive }"
+                                                    role="option"
+                                                    :aria-selected="subtitlesOffActive"
+                                                    data-action="click"
+                                                    data-fn="player/setSubtitleTrack"
+                                                    data-value="off"
+                                                    data-testid="subtitle-track-off"
+                                                >
+                                                    <span class="track-menu__label">{{ strings.list.subtitlesOff }}</span>
+                                                </button>
+                                                <div class="track-menu__list" data-each="player.subtitleTracks">
+                                                    <button
+                                                        type="button"
+                                                        class="track-menu__item"
+                                                        :class="{ 'track-menu__item--active': item.active }"
+                                                        role="option"
+                                                        :aria-selected="item.active"
+                                                        data-action="click"
+                                                        data-fn="player/setSubtitleTrack"
+                                                        :data-value="item.id"
+                                                        data-testid="subtitle-track-item"
+                                                    >
+                                                        <span class="track-menu__label truncate">{{ item.label }}</span>
+                                                        <span class="track-menu__lang" data-if="item.lang && item.lang !== item.label">({{ item.lang }})</span>
+                                                    </button>
+                                                </div>
+                                                <div class="track-menu__empty" data-if="!player.subtitleTracks.length" data-testid="subtitle-track-empty">
+                                                    <span class="track-menu__empty-dash" aria-hidden="true">—</span>
+                                                    <p class="track-menu__empty-message">{{ strings.list.noSubtitles }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                         <select
                                             class="btn"
                                             data-if="view.radio.active"

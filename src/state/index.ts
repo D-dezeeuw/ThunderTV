@@ -21,6 +21,8 @@ import { initPlayerState } from './player';
 import { registerDebugActions } from './debug.actions';
 import { initDebugState } from './debug';
 import { registerPlayerActions } from './player.actions';
+import { initPlayerTracksState } from './player-tracks';
+import { registerPlayerTrackActions } from './player-tracks.actions';
 import { registerRecentActions } from './recent.actions';
 import { registerGuideActions } from './guide.actions';
 import { registerGuideSelectors } from './guide.selectors';
@@ -78,6 +80,7 @@ export function initState(): void {
     initPlaylistState();
     initImportState();
     initPlayerState();
+    initPlayerTracksState();
     initEpgState();
     initSettingsState();
     initUiState();
@@ -100,6 +103,7 @@ export function registerActions(): void {
     registerPlaylistActions();
     registerSettingsActions();
     registerPlayerActions();
+    registerPlayerTrackActions();
     registerUiActions();
     registerListActions();
     registerGroupActions();

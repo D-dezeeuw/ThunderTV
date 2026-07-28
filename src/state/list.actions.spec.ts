@@ -9,6 +9,10 @@ import { PLAYER_ACTIVE } from './player';
 import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
 import { get } from './typed';
 import type { ActiveChannelSnapshot } from './records';
+import { SERIES_DETAIL_ID, type SeriesItem } from './series';
+import { makeSeriesRowId, resetSeriesMemoryForTests, seriesMemory } from './series-rows';
+import { VOD_DETAIL_ID, type VodItem } from './vod';
+import { makeVodRowId, resetVodMemoryForTests, vodMemory } from './vod-rows';
 
 function row(id: string): ChannelRow {
     return { id, name: `Channel ${id}`, url: `https://example.com/${id}.m3u8`, group: null, logo: null, tvgId: null, radio: false };
@@ -138,6 +142,53 @@ describe('list.actions.ts selection (Feature 08.7)', () => {
             const preventSpy = vi.spyOn(event, 'preventDefault');
             handleListKeydown(event);
             expect(preventSpy).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('playSelected() Phase 21 catalog routing — Enter on a Movies/Series row opens its detail instead of playing it', () => {
+        afterEach(() => {
+            resetVodMemoryForTests();
+            resetSeriesMemoryForTests();
+        });
+
+        it("a 'vod:' row id opens the movie detail via openVodDetail(), never player.active", () => {
+            const item: VodItem = { streamId: 42, name: 'Movie', categoryId: '1', containerExtension: 'mp4', searchKey: 'movie' };
+            vodMemory.setItemsFor('1', [item], Date.now());
+            setValue(LIST_SELECTED_ID, makeVodRowId(42));
+            tick();
+
+            playSelected();
+            tick();
+
+            expect(get<number | null>(VOD_DETAIL_ID)).toBe(42);
+            expect(get(PLAYER_ACTIVE)).toBeUndefined();
+        });
+
+        it("a 'series:' row id opens the series detail via openSeriesDetail(), never player.active", () => {
+            const item: SeriesItem = { seriesId: 7, name: 'Show', categoryId: '1', searchKey: 'show' };
+            seriesMemory.setItemsFor('1', [item], Date.now());
+            setValue(LIST_SELECTED_ID, makeSeriesRowId(7));
+            tick();
+
+            playSelected();
+            tick();
+
+            expect(get<number | null>(SERIES_DETAIL_ID)).toBe(7);
+            expect(get(PLAYER_ACTIVE)).toBeUndefined();
+        });
+
+        it('a plain (live/radio) row id is completely unaffected — still routes through playChannelById', () => {
+            setRows([row('a')]);
+            setValue(PLAYLIST_ACTIVE_SOURCE_ID, 'src-1');
+            selectChannel('a');
+            tick();
+
+            playSelected();
+            tick();
+
+            expect(get<ActiveChannelSnapshot>(PLAYER_ACTIVE)).toMatchObject({ id: 'a', sourceId: 'src-1' });
+            expect(get<number | null>(VOD_DETAIL_ID)).toBeUndefined();
+            expect(get<number | null>(SERIES_DETAIL_ID)).toBeUndefined();
         });
     });
 });

@@ -7,7 +7,9 @@ import { saveListState } from './list-state-sync';
 import { publishVariantsFor } from './live.actions';
 import { setActiveChannel } from './player.actions';
 import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
+import { openSeriesDetail } from './series.actions';
 import { get } from './typed';
+import { openVodDetail } from './vod.actions';
 
 /**
  * Selection (Feature 08.7) and its keyboard/pointer dispatch. Selection
@@ -95,10 +97,40 @@ export function moveSelection(delta: 1 | -1): void {
     ensureIndexVisible(nextIndex);
 }
 
-/** Feature 08.7.5: Enter plays the selected row via the real, already-built `setActiveChannel` action (Phase 05's §6.3 body — zap history + persistence already work, ahead of Phase 10's full player wiring). */
+/**
+ * Feature 08.7.5: Enter plays the selected row via the real, already-built
+ * `setActiveChannel` action (Phase 05's §6.3 body — zap history +
+ * persistence already work, ahead of Phase 10's full player wiring).
+ *
+ * Phase 21 catalogs extended this: a Movies/Series row is a container, not
+ * directly playable (`vod-rows.ts`/`series-rows.ts`'s `vod:`/`series:` id
+ * prefixes), so Enter on one of those opens that catalog's detail instead
+ * of trying to play the (empty, for a series row) stream URL. Only this
+ * Enter/OK path changes — `handleRowTap` (click-to-play) and
+ * `playChannelById` itself stay exactly as they were for a live/radio row.
+ */
 export function playSelected(): void {
     const id = get<string | null>(LIST_SELECTED_ID);
-    if (id) playChannelById(id);
+    if (!id) return;
+
+    const vodId = parseCatalogRowId(id, 'vod:');
+    if (vodId !== null) {
+        void openVodDetail(vodId);
+        return;
+    }
+    const seriesId = parseCatalogRowId(id, 'series:');
+    if (seriesId !== null) {
+        void openSeriesDetail(seriesId);
+        return;
+    }
+    playChannelById(id);
+}
+
+/** The numeric id embedded after `prefix` in a catalog row id (e.g. `vod:42` → `42`), or `null` when `id` doesn't carry that prefix or the remainder isn't numeric — mirrors `vod.actions.ts`/`series.actions.ts`'s own `parseStreamId`/`parseSeriesId` guards. */
+function parseCatalogRowId(id: string, prefix: string): number | null {
+    if (!id.startsWith(prefix)) return null;
+    const parsed = Number(id.slice(prefix.length));
+    return Number.isFinite(parsed) ? parsed : null;
 }
 
 /** Builds and publishes the active-channel snapshot for a specific row id — shared by Enter-to-play and the mobile tap-to-play path. */

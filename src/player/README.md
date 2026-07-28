@@ -29,9 +29,26 @@ correct-and-expected snapshot; mpegts.js has no track-switching API at all,
 so its `PlayerEngine` only implements `getTracks()` (always empty) and skips
 the setters/`onTracksChanged` entirely. `track-prefs.ts` is the pure
 preference resolver (`normalizeLangCode`, `pickDefaultAudioTrack`,
-`pickDefaultSubtitleTrack`) a later stage calls with the viewer's saved
-language and a `getPlayerTracks()` snapshot — it has no engine or Spektrum
-imports of its own.
+`pickDefaultSubtitleTrack`), engine/Spektrum-free by design.
+
+The state/UI stage this section used to describe as "later" is
+`src/state/player-tracks.ts`/`player-tracks.actions.ts` (`state/README.md`'s
+module table). `registerTrackSync()` there is the one piece that reaches
+into this folder from `src/state/`: it subscribes to `onTracksChanged()`,
+republishes `player.audioTracks`/`player.subtitleTracks` (compact
+`MediaTrack[]`, capped), and applies `track-prefs.ts`'s picks against
+`settings.audioLanguage`/`resolveSubtitleLanguage(settings.subtitleLanguage,
+settings.liveCountry)` exactly once per stream — keyed on `player.active`'s
+`id`+`streamUrl` together (not `id` alone), since `live/playVariant` keeps
+the row id but hands the engine a new `streamUrl` and genuinely re-attaches.
+A later `onTracksChanged` firing for the *same* stream only republishes, so
+it never re-applies over a manual pick the viewer already made through the
+dock's two track-menu buttons (`index.html`'s `.player-shell__bar`,
+`icon-audio-tracks`/`icon-subtitles`) — each opens a small popup
+(`.track-menu`, `src/styles/player.css`) positioned above the dock, with a
+fixed "Off" row at the top of the subtitle menu and an explicit dashed empty
+row when a stream offers no tracks of that kind, rather than hiding the
+buttons.
 
 ## Radio visualizer
 

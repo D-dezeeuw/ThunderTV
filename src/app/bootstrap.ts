@@ -7,6 +7,7 @@ import { registerPlayerBindings } from '../player/bindings';
 import { installDebugCapture } from '../state/debug';
 import { registerDebugShortcut } from '../state/debug.actions';
 import { installDevtools } from '../state/devtools';
+import { registerTrackSync } from '../state/player-tracks.actions';
 import {
     initState,
     loadDefaultEpg,
@@ -93,6 +94,7 @@ export async function bootstrap(): Promise<void> {
     registerDebugShortcut();
     registerListBindings();
     registerPlayerBindings();
+    registerTrackSync();
     // Xtream catalogs rot (panels renumber stream ids) — silently re-import
     // the active source when its snapshot is older than the 6h TTL.
     void refreshActiveXtreamSource();

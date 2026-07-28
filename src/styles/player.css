@@ -250,6 +250,94 @@
     color: inherit;
 }
 
+/* Audio/subtitle track menus (final audio/subtitle stage). Each popup is
+   anchored to its own trigger button and opens UPWARD (bottom: 100%) —
+   same reasoning as the [data-tip] tooltip below: the dock sits low in the
+   viewport, so opening downward would clip at the bottom edge. */
+.track-menu-anchor {
+    position: relative;
+    display: inline-flex;
+}
+
+.track-menu {
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    width: max-content;
+    min-width: 10rem;
+    max-width: 16rem;
+    max-height: 14rem;
+    overflow-y: auto;
+    margin-bottom: var(--space-2);
+    padding: var(--space-1) 0;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface-raised);
+}
+
+.track-menu__list {
+    display: flex;
+    flex-direction: column;
+}
+
+.track-menu__item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.track-menu__item:hover,
+.track-menu__item:focus-visible {
+    background: var(--surface-hover);
+}
+
+.track-menu__item--active {
+    background: var(--surface-active);
+    color: var(--color-accent);
+}
+
+.track-menu__label {
+    min-width: 0;
+}
+
+.track-menu__lang {
+    flex: none;
+    color: var(--color-text-dim);
+    font-size: var(--text-xs);
+}
+
+.track-menu__empty {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    color: var(--color-text-dim);
+}
+
+.track-menu__empty-dash {
+    flex: none;
+    padding: 0 var(--space-2);
+    border: 1px dashed var(--color-border);
+    border-radius: 4px;
+    font-size: var(--text-sm);
+}
+
+.track-menu__empty-message {
+    margin: 0;
+    font-size: var(--text-xs);
+}
+
 /* Instant hover/focus tooltip, replacing native `title`: `title` never
    appears on touch/TV and lags behind the pointer on desktop. `data-tip`
    drives a pseudo-element pill instead, shown immediately and positioned

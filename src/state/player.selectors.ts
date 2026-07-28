@@ -1,6 +1,8 @@
 import { computed, type State } from 'spektrum';
 import { strings } from '../app/strings';
+import type { MediaTrack } from '../player/tracks';
 import { PLAYER_STREAM_HEALTH, PLAYER_ZAP_HISTORY } from './player';
+import { PLAYER_SUBTITLE_TRACKS } from './player-tracks';
 import { SETTINGS_LOCALE } from './settings';
 
 /**
@@ -14,6 +16,12 @@ export function registerPlayerSelectors(): void {
     computed('hasNoZapHistory', [PLAYER_ZAP_HISTORY], (state: State) => {
         const zapHistory = (state as { player?: { zapHistory?: unknown[] } }).player?.zapHistory;
         return !zapHistory || zapHistory.length === 0;
+    });
+
+    /** Whether the subtitle popup's fixed "Off" row should read as active — true whenever no published subtitle track currently carries `active: true` (including the empty-list case, where "Off" is the only real state there is). */
+    computed('subtitlesOffActive', [PLAYER_SUBTITLE_TRACKS], (state: State) => {
+        const tracks = (state as { player?: { subtitleTracks?: MediaTrack[] } }).player?.subtitleTracks;
+        return !tracks || !tracks.some((track) => track.active);
     });
 
     /**
