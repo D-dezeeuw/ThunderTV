@@ -18,6 +18,7 @@ import {
     PLAYER_PLAYBACK_ERROR,
     PLAYER_STREAM_HEALTH,
     PLAYER_VARIANTS,
+    PLAYER_VISUALIZER_PRESET,
     PLAYER_ZAP_HISTORY,
     VARIANTS_CAP,
     ZAP_HISTORY_CAP,
@@ -214,6 +215,11 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         persisted: true,
         maxItems: ZAP_HISTORY_CAP,
         description: 'Capped, deduped list of recently played channel snapshots.',
+    },
+    [PLAYER_VISUALIZER_PRESET]: {
+        owner: 'player',
+        persisted: true,
+        description: 'Radio visualizer preference — \'auto\' (cycle every preset) or a specific preset id (a genre preset stays pinned). Chosen by the listener, never inferred from the audio.',
     },
 
     // --- epg ---

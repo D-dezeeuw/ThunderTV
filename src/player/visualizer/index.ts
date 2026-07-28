@@ -1,6 +1,7 @@
 import { refs } from 'spektrum';
 import { BeatDetector } from './beat-detector';
 import { createRadioVisualizerPresets } from './presets/index';
+import { bandAverage } from './presets/preset-utils';
 import type { VisualizerPreset } from './types';
 
 /**
@@ -39,6 +40,8 @@ let presets: VisualizerPreset[] = createRadioVisualizerPresets();
 let presetIndex = 0;
 let presetElapsedMs = 0;
 let activePresetCanvas: HTMLCanvasElement | null = null;
+/** Non-null when the listener picked a specific preset (e.g. a genre) rather than "Auto" — see `setRadioVisualizerPreset()`. */
+let pinnedPresetId: string | null = null;
 
 let lastTs: number | null = null;
 
@@ -103,14 +106,12 @@ function observeSize(canvas: HTMLCanvasElement): void {
     observedCanvas = canvas;
 }
 
-function average(data: Uint8Array<ArrayBuffer>, start: number, end: number): number {
-    if (end <= start) return 0;
-    let sum = 0;
-    for (let i = start; i < end; i++) sum += data[i] ?? 0;
-    return sum / (end - start);
-}
-
-function render(ts: number, canvas: HTMLCanvasElement, node: AnalyserNode, data: Uint8Array<ArrayBuffer>): void {
+function render(
+    ts: number,
+    canvas: HTMLCanvasElement,
+    node: AnalyserNode,
+    data: Uint8Array<ArrayBuffer>,
+): void {
     rafId = requestAnimationFrame((next) => render(next, canvas, node, data));
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -120,15 +121,16 @@ function render(ts: number, canvas: HTMLCanvasElement, node: AnalyserNode, data:
     lastTs = ts;
 
     presetElapsedMs += dt;
-    if (presetElapsedMs >= AUTO_CYCLE_MS) {
+    // A pinned preset (the listener picked a genre explicitly) never
+    // auto-advances away — only "Auto" in the picker keeps the rotation
+    // going.
+    if (!pinnedPresetId && presetElapsedMs >= AUTO_CYCLE_MS) {
         advancePreset(canvas);
     }
 
-    const bassEnd = Math.floor(data.length * 0.12);
-    const midEnd = Math.floor(data.length * 0.5);
-    const bass = average(data, 0, bassEnd);
-    const mid = average(data, bassEnd, midEnd);
-    const treble = average(data, midEnd, data.length);
+    const bass = bandAverage(data, 0, 0.12);
+    const mid = bandAverage(data, 0.12, 0.5);
+    const treble = bandAverage(data, 0.5, 1);
     const beat = beatDetector.update(bass, dt);
 
     presets[presetIndex]?.frame({
@@ -152,10 +154,40 @@ function advancePreset(canvas: HTMLCanvasElement): void {
     presets[presetIndex]?.reset(canvas.width, canvas.height);
 }
 
-/** Manual "next preset" — the `player/nextVisualizerPreset` action's entry point. A no-op while the visualizer isn't running. */
+/**
+ * Manual "next preset" — the `player/nextVisualizerPreset` action's entry
+ * point. Always advances past a pin (browsing forward is an explicit
+ * override of "stay on this genre"); `player.actions.ts` also resets the
+ * `player.visualizerPreset` setting to `'auto'` in the same click so the
+ * picker's displayed value doesn't drift from what's actually on screen.
+ * A no-op while the visualizer isn't running.
+ */
 export function cycleRadioVisualizerPreset(): void {
     if (!activePresetCanvas) return;
+    pinnedPresetId = null;
     advancePreset(activePresetCanvas);
+}
+
+/**
+ * Applies the listener's preset preference (`player.visualizerPreset`,
+ * `'auto'` or a preset id). `'auto'` just clears the pin and lets the
+ * existing rotation continue; a specific id pins to that preset immediately
+ * — switching to it now, not waiting for the current preset's turn to end.
+ */
+export function setRadioVisualizerPreset(preference: string): void {
+    if (preference === 'auto') {
+        pinnedPresetId = null;
+        return;
+    }
+    const index = presets.findIndex((p) => p.id === preference);
+    if (index === -1) return;
+    pinnedPresetId = preference;
+    if (index === presetIndex) return;
+    presetIndex = index;
+    presetElapsedMs = 0;
+    beatDetector.reset();
+    if (activePresetCanvas)
+        presets[presetIndex]?.reset(activePresetCanvas.width, activePresetCanvas.height);
 }
 
 /** Starts (or resumes) the visualizer against `[data-ref="radioVisualizer"]`. A no-op if that canvas isn't mounted or the audio graph can't be created (e.g. an unsupported browser). */
@@ -204,6 +236,7 @@ export function resetRadioVisualizerForTests(): void {
     presets = createRadioVisualizerPresets();
     presetIndex = 0;
     presetElapsedMs = 0;
+    pinnedPresetId = null;
     beatDetector.reset();
     lastTs = null;
 }

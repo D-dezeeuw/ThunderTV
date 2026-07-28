@@ -32,7 +32,8 @@ export class KaleidoscopePreset implements VisualizerPreset {
 
     frame(fc: FrameContext): void {
         const { ctx, width, height, ts, dt, data, mid } = fc;
-        if (!this.buffer || width !== this.width || height !== this.height) this.reset(width, height);
+        if (!this.buffer || width !== this.width || height !== this.height)
+            this.reset(width, height);
         const buffer = this.buffer;
         if (!buffer) return;
         const bctx = buffer.getContext('2d');

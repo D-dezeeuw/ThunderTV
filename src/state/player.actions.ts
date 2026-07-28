@@ -9,6 +9,7 @@ import {
     PLAYER_PLAYBACK_ERROR,
     PLAYER_STREAM_HEALTH,
     PLAYER_VARIANTS,
+    PLAYER_VISUALIZER_PRESET,
     PLAYER_ZAP_HISTORY,
     ZAP_HISTORY_CAP,
 } from './player';
@@ -50,7 +51,8 @@ export function registerPlayerActions(): void {
     defineFn('player/fullscreen', () => {
         if (get<string | null>(UI_ACTIVE_VIEW) === 'radio') {
             const canvas = refs['radioVisualizer'];
-            const pane = canvas instanceof HTMLElement ? canvas.closest('.radio-now-playing') : null;
+            const pane =
+                canvas instanceof HTMLElement ? canvas.closest('.radio-now-playing') : null;
             if (pane instanceof HTMLElement) requestElementFullscreen(pane);
             return;
         }
@@ -59,9 +61,15 @@ export function registerPlayerActions(): void {
     });
     // Manual skip alongside the visualizer's own auto-cycle
     // (src/player/visualizer/index.ts's AUTO_CYCLE_MS) — a no-op if the
-    // visualizer isn't currently running.
+    // visualizer isn't currently running. Also resets the preference back to
+    // 'auto' so the picker's displayed value never drifts from what
+    // browsing forward actually put on screen.
     defineFn('player/nextVisualizerPreset', () => {
+        setVisualizerPreset('auto');
         cycleRadioVisualizerPreset();
+    });
+    defineFn('player/setVisualizerPreset', (el) => {
+        if (el instanceof HTMLSelectElement) setVisualizerPreset(el.value);
     });
 }
 
@@ -87,6 +95,12 @@ export function reportStreamHealth(health: string | null): void {
     setValue(PLAYER_STREAM_HEALTH, health);
 }
 
+/** Persists the listener's Radio visualizer preference (`'auto'` or a preset id) — `src/player/bindings.ts`'s `watch()` reacts by calling `setRadioVisualizerPreset()`. */
+export function setVisualizerPreset(preference: string): void {
+    set(PLAYER_VISUALIZER_PRESET, preference);
+    persist(PLAYER_VISUALIZER_PRESET);
+}
+
 export function setActiveChannel(channel: ActiveChannelSnapshot): void {
     setValue(PLAYER_ACTIVE, channel);
     setValue(PLAYER_PLAYBACK_ERROR, null);
@@ -96,7 +110,10 @@ export function setActiveChannel(channel: ActiveChannelSnapshot): void {
     // gets a chance to catch a runaway zap-history size; scalar writes
     // elsewhere in this module have nothing for the guard to check, so
     // they stay on the plain `setValue` import.
-    set(PLAYER_ZAP_HISTORY, pushCapped(zapHistory, channel, ZAP_HISTORY_CAP, (c) => c.id));
+    set(
+        PLAYER_ZAP_HISTORY,
+        pushCapped(zapHistory, channel, ZAP_HISTORY_CAP, (c) => c.id),
+    );
     persist(PLAYER_ACTIVE);
     persist(PLAYER_ZAP_HISTORY);
 }

@@ -1,10 +1,10 @@
 import { refs, watch } from 'spektrum';
 import { applyProxy } from '../core/http/proxy';
 import { effectiveProxyTemplate } from '../core/platform/desktop-proxy';
-import { PLAYER_ACTIVE } from '../state/player';
+import { PLAYER_ACTIVE, PLAYER_VISUALIZER_PRESET } from '../state/player';
 import { UI_ACTIVE_VIEW } from '../state/ui';
 import { attachAndPlay, detach } from './engine';
-import { startRadioVisualizer, stopRadioVisualizer } from './visualizer';
+import { setRadioVisualizerPreset, startRadioVisualizer, stopRadioVisualizer } from './visualizer';
 
 /**
  * Watches `player.active` (already fully wired by Phase 05/08's
@@ -39,14 +39,16 @@ export function registerPlayerBindings(): () => void {
     });
 
     // Separate from the attach/detach watch above on purpose: this one also
-    // depends on `ui.activeView`, and folding it into the same `watch()`
-    // would re-run `attachAndPlay()` (restarting the stream) on every nav
-    // between Radio and another view, not just on a real channel change.
-    const unwatchVisualizer = watch([PLAYER_ACTIVE, UI_ACTIVE_VIEW], (state: unknown) => {
-        const typed = state as { player?: { active?: unknown }; ui?: { activeView?: string } };
+    // depends on `ui.activeView`/`player.visualizerPreset`, and folding it
+    // into the same `watch()` would re-run `attachAndPlay()` (restarting the
+    // stream) on every nav between Radio and another view or every preset
+    // pick, not just on a real channel change.
+    const unwatchVisualizer = watch([PLAYER_ACTIVE, UI_ACTIVE_VIEW, PLAYER_VISUALIZER_PRESET], (state: unknown) => {
+        const typed = state as { player?: { active?: unknown; visualizerPreset?: string }; ui?: { activeView?: string } };
         const video = refs['playerVideo'];
         if (!(video instanceof HTMLVideoElement)) return;
 
+        setRadioVisualizerPreset(typed.player?.visualizerPreset ?? 'auto');
         if (typed.player?.active && typed.ui?.activeView === 'radio') {
             startRadioVisualizer(video);
         } else {

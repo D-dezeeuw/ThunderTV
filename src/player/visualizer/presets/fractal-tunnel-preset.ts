@@ -32,7 +32,8 @@ export class FractalTunnelPreset implements VisualizerPreset {
 
     frame(fc: FrameContext): void {
         const { ctx, width, height, ts, dt, bass, mid, treble } = fc;
-        if (!this.history || width !== this.width || height !== this.height) this.reset(width, height);
+        if (!this.history || width !== this.width || height !== this.height)
+            this.reset(width, height);
         const history = this.history;
         if (!history) return;
 

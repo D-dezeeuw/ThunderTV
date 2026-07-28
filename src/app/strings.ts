@@ -149,7 +149,8 @@ export const strings = {
             timeout: 'The provider took too long to respond and the request timed out.',
             corsOrNetwork:
                 "This provider's server blocked the request, or a network error occurred. Providers rarely allow direct browser access (CORS) — try downloading the playlist file and uploading it instead, or configure a proxy in Settings → Streaming.",
-            offline: 'This device appears to be offline. Check the network connection and try again.',
+            offline:
+                'This device appears to be offline. Check the network connection and try again.',
             mixedContent:
                 'This playlist uses an unencrypted (http://) address, which browsers block on a secure (https://) page. Configure a proxy in Settings → Streaming, or use the desktop app, which has no such restriction.',
             tooLarge: 'This is larger than expected and was stopped to protect memory.',
@@ -159,17 +160,20 @@ export const strings = {
                 'This provider uses an unencrypted (http://) address, which browsers block on a secure (https://) page. Configure a proxy in Settings → Streaming, or use the desktop app, which has no such restriction.',
         },
         proxy: {
-            invalidTemplate: 'Proxy address must start with https:// (or http://localhost for local testing).',
+            invalidTemplate:
+                'Proxy address must start with https:// (or http://localhost for local testing).',
             credentialWarning:
                 'Requests routed through a proxy — including Xtream Codes credentials embedded in the URL — are visible to whoever operates that proxy. Only use a proxy you trust.',
         },
     },
 
     sourcesAdmin: {
-        hiddenNote: 'Hidden from the sidebar because it carries no playable channels. Still selectable here.',
+        hiddenNote:
+            'Hidden from the sidebar because it carries no playable channels. Still selectable here.',
         showHidden: 'Show hidden sources',
         allTitle: 'Default source',
-        allHint: 'Choose which imported source Live, Radio and Categories show. Switching here does the same thing as picking one in the Sources tab.',
+        allHint:
+            'Choose which imported source Live, Radio and Categories show. Switching here does the same thing as picking one in the Sources tab.',
         activeBadge: 'Active',
     },
 
@@ -232,7 +236,8 @@ export const strings = {
                 'Providers renumber their streams regularly — the list also refreshes itself when older than 6 hours, and after a channel 404s.',
             refreshBusy: 'Refreshing…',
             refreshDone: 'Channel list refreshed.',
-            refreshFailed: 'Could not refresh — open the source first, or check its connection details.',
+            refreshFailed:
+                'Could not refresh — open the source first, or check its connection details.',
             xtreamTitle: 'Xtream Codes account',
             xtreamUrlLabel: 'Server URL',
             xtreamUrlPlaceholder: 'http://provider.example:8080',
@@ -243,7 +248,8 @@ export const strings = {
             xtreamMissingFields: 'Server URL and username are required.',
             xtreamPasswordRequired: 'Password is required for a new account.',
             xtreamSaved: 'Account saved.',
-            xtreamHelp: 'Enter your provider details, or update them here — this is the same account used by the Connect import.',
+            xtreamHelp:
+                'Enter your provider details, or update them here — this is the same account used by the Connect import.',
         },
         playback: {
             engine: 'Playback engine',
@@ -276,7 +282,8 @@ export const strings = {
         noChannels: 'No channels loaded for this source yet.',
         noActiveSource: {
             heading: 'No source is selected',
-            noSources: 'Nothing has been imported on this device yet. Add a playlist or an Xtream account to start.',
+            noSources:
+                'Nothing has been imported on this device yet. Add a playlist or an Xtream account to start.',
             pickOne:
                 'A source is stored but none is active — this also happens when the last selected source is no longer in storage. Pick one and this view fills in.',
             openSources: 'Go to Sources',
@@ -285,6 +292,20 @@ export const strings = {
         playerStop: 'Stop',
         playerFullscreen: 'Full screen',
         playerNextVisual: 'Next visual',
+        visualizerPickerLabel: 'Visualizer',
+        visualizerAuto: 'Auto (cycle)',
+        visualizerGenreGroup: 'By genre',
+        visualizerAbstractGroup: 'Abstract',
+        visualizerEdm: 'EDM',
+        visualizerJazz: 'Jazz',
+        visualizerBlues: 'Blues',
+        visualizerRock: 'Rock',
+        visualizerMetal: 'Metal',
+        visualizerClassical: 'Classical',
+        visualizerSpectrum: 'Radial Spectrum',
+        visualizerParticles: 'Particle Storm',
+        visualizerKaleidoscope: 'Kaleidoscope',
+        visualizerFractalTunnel: 'Fractal Tunnel',
         playerErrorPrefix: 'Playback failed:',
         signalGood: 'Stream steady',
         signalFair: 'Stream buffering occasionally',

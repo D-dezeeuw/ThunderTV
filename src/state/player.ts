@@ -20,6 +20,14 @@ export const PLAYER_STREAM_HEALTH = 'player.streamHealth';
 export const PLAYER_VARIANTS = 'player.variants';
 /** Id of the variant currently playing, so the strip can mark one chip active. */
 export const PLAYER_ACTIVE_VARIANT_ID = 'player.activeVariantId';
+/**
+ * The listener's Radio visualizer preference: `'auto'` (the default —
+ * `src/player/visualizer/index.ts` cycles through every preset) or a
+ * specific preset id (a genre preset pins to that look until switched back
+ * to `'auto'`). No audio analysis ever picks this — the listener does, via
+ * the picker in the player bar (`index.html`'s `#radio-visualizer-select`).
+ */
+export const PLAYER_VISUALIZER_PRESET = 'player.visualizerPreset';
 
 /** Feature 05.5.3: capped at 20 entries; the Recent view (Phase 13) may trim its own display further. */
 export const ZAP_HISTORY_CAP = 20;
@@ -34,6 +42,7 @@ export interface PlayerState {
     streamHealth: string | null;
     variants: ChannelVariant[];
     activeVariantId: string | null;
+    visualizerPreset: string;
 }
 
 export const PLAYER_DEFAULTS: PlayerState = {
@@ -43,6 +52,7 @@ export const PLAYER_DEFAULTS: PlayerState = {
     streamHealth: null,
     variants: [],
     activeVariantId: null,
+    visualizerPreset: 'auto',
 };
 
 /** Seeds this module's defaults — called once from `state/index.ts`'s `initState()`, before rehydration can overwrite it (Feature 05.1.8). */
@@ -53,4 +63,5 @@ export function initPlayerState(): void {
     setValue(PLAYER_STREAM_HEALTH, PLAYER_DEFAULTS.streamHealth);
     setValue(PLAYER_VARIANTS, PLAYER_DEFAULTS.variants);
     setValue(PLAYER_ACTIVE_VARIANT_ID, PLAYER_DEFAULTS.activeVariantId);
+    setValue(PLAYER_VISUALIZER_PRESET, PLAYER_DEFAULTS.visualizerPreset);
 }

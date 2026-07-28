@@ -724,6 +724,30 @@
                                             <span class="signal__bar signal__bar--2"></span>
                                             <span class="signal__bar signal__bar--3"></span>
                                         </span>
+                                        <select
+                                            class="btn"
+                                            data-if="view.radio.active"
+                                            data-action="change"
+                                            data-fn="player/setVisualizerPreset"
+                                            :aria-label="strings.list.visualizerPickerLabel"
+                                            data-testid="radio-visualizer-select"
+                                        >
+                                            <option value="auto" :selected="player.visualizerPreset === 'auto'">{{ strings.list.visualizerAuto }}</option>
+                                            <optgroup :label="strings.list.visualizerGenreGroup">
+                                                <option value="edm" :selected="player.visualizerPreset === 'edm'">{{ strings.list.visualizerEdm }}</option>
+                                                <option value="jazz" :selected="player.visualizerPreset === 'jazz'">{{ strings.list.visualizerJazz }}</option>
+                                                <option value="blues" :selected="player.visualizerPreset === 'blues'">{{ strings.list.visualizerBlues }}</option>
+                                                <option value="rock" :selected="player.visualizerPreset === 'rock'">{{ strings.list.visualizerRock }}</option>
+                                                <option value="metal" :selected="player.visualizerPreset === 'metal'">{{ strings.list.visualizerMetal }}</option>
+                                                <option value="classical" :selected="player.visualizerPreset === 'classical'">{{ strings.list.visualizerClassical }}</option>
+                                            </optgroup>
+                                            <optgroup :label="strings.list.visualizerAbstractGroup">
+                                                <option value="spectrum" :selected="player.visualizerPreset === 'spectrum'">{{ strings.list.visualizerSpectrum }}</option>
+                                                <option value="particles" :selected="player.visualizerPreset === 'particles'">{{ strings.list.visualizerParticles }}</option>
+                                                <option value="kaleidoscope" :selected="player.visualizerPreset === 'kaleidoscope'">{{ strings.list.visualizerKaleidoscope }}</option>
+                                                <option value="fractal-tunnel" :selected="player.visualizerPreset === 'fractal-tunnel'">{{ strings.list.visualizerFractalTunnel }}</option>
+                                            </optgroup>
+                                        </select>
                                         <button type="button" class="btn" data-if="view.radio.active" data-action="click" data-fn="player/nextVisualizerPreset" data-testid="player-next-visual-btn">
                                             {{ strings.list.playerNextVisual }}
                                         </button>

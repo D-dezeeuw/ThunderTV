@@ -56,7 +56,10 @@ export class SpectrumPreset implements VisualizerPreset {
             ctx.lineWidth = Math.max(1.5, (Math.min(width, height) / BAR_COUNT) * 0.9);
             ctx.beginPath();
             ctx.moveTo(Math.cos(theta) * baseRadius, Math.sin(theta) * baseRadius);
-            ctx.lineTo(Math.cos(theta) * (baseRadius + barLength), Math.sin(theta) * (baseRadius + barLength));
+            ctx.lineTo(
+                Math.cos(theta) * (baseRadius + barLength),
+                Math.sin(theta) * (baseRadius + barLength),
+            );
             ctx.stroke();
         }
 
