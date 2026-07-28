@@ -90,9 +90,9 @@ describe('Series detail panel markup (Issue 2, DOM-bound)', () => {
         resetSeriesMemoryForTests();
     });
 
-    it('renders a season header row and an episode row from a flat series.detail.rows array, in order', () => {
+    it('renders a season header row and an episode row from a flat series.detail.rows array, in order', async () => {
         const mounted = mountTemplate(seriesDetailPanelHtml);
-        seedStrings();
+        await seedStrings();
         setValue('series.detailStatus', 'ready');
         seedSeriesDetail({
             rows: [

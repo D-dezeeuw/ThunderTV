@@ -87,8 +87,8 @@ describe('seedStrings() (Feature 05.2.5)', () => {
         resetState();
     });
 
-    it('mirrors the static strings module into Spektrum state for :attr/{{}} bindings', () => {
-        seedStrings();
+    it('mirrors the static strings module into Spektrum state for :attr/{{}} bindings', async () => {
+        await seedStrings();
         tick();
         expect((appState['strings'] as { appName?: string } | undefined)?.appName).toBe('ThunderTV');
     });

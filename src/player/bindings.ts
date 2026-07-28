@@ -15,7 +15,7 @@ import {
     setRadioVisualizerPreset,
     startRadioVisualizer,
     stopRadioVisualizer,
-} from './visualizer';
+} from './visualizer-lazy';
 
 /**
  * Watches `player.active` (already fully wired by Phase 05/08's

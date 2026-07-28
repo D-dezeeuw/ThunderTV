@@ -1,6 +1,12 @@
-import type { XtreamCategory } from '../xtream/types';
-import { loadStoredCategories, loadStoredItems, saveStoredCategories, saveStoredItems, saveStoredWarmMeta } from './catalog-storage';
+import { getPlatform } from '../core/platform';
+import { resolveActiveXtreamSource } from './xtream-refresh';
+import type { XtreamResult } from '../xtream/client';
+import type { XtreamCategory, XtreamSource } from '../xtream/types';
+import { loadStoredCategories, loadStoredItems, loadStoredWarmMeta, saveStoredCategories, saveStoredItems, saveStoredWarmMeta } from './catalog-storage';
 import type { CatalogMemory } from './catalog-memory';
+import { recomputeSearch } from './search.actions';
+import { CATALOG_TTL_MS, isFresh } from './ttl';
+import { get, set } from './typed';
 
 /**
  * Shared bookkeeping for the VOD/series background full-catalog warm
@@ -106,4 +112,129 @@ export async function rehydrateWarmedCatalog<TItem, TDetail>(
     );
 
     memory.setWarmedAt(warmedAt);
+}
+
+/**
+ * The whole background-warm flow, parameterized. `vod-warm.ts` and
+ * `series-warm.ts` were structurally identical — same guards, same TTL
+ * checks, same rehydrate-before-fetch path, same sanity cap, same
+ * finally-block — differing only in which key constants, memory instance,
+ * endpoints and item mapper they used. Keeping two copies meant every fix
+ * had to be made twice, with nothing to catch it when only one was.
+ *
+ * The returned pair mirrors what each module exported before: the warm
+ * itself, and a test-only reset for its in-flight guard.
+ */
+export interface CatalogWarmerConfig<TItem, TDetail, TRaw> {
+    /** Storage-key prefix and memory identity — `'vod'` or `'series'`. */
+    prefix: string;
+    memory: CatalogMemory<TItem, TDetail>;
+    /** Spektrum keys this warmer owns. */
+    keys: { warmStatus: string; activeCategoryId: string; count: string };
+    fetchCategories: (source: XtreamSource) => Promise<XtreamResult<XtreamCategory[]>>;
+    /** Called with no category id — the documented "returns the ENTIRE catalog" quirk. */
+    fetchAll: (source: XtreamSource) => Promise<XtreamResult<TRaw[]>>;
+    toItem: (raw: TRaw) => TItem;
+    categoryIdOf: (item: TItem) => string;
+}
+
+export interface CatalogWarmer {
+    warm: () => Promise<void>;
+    resetForTests: () => void;
+}
+
+export function createCatalogWarmer<TItem, TDetail, TRaw>(
+    config: CatalogWarmerConfig<TItem, TDetail, TRaw>,
+): CatalogWarmer {
+    const { prefix, memory, keys } = config;
+    let warmInFlight = false;
+
+    /**
+     * Recomputes the active category's count (a warm may have found a more
+     * complete item list than a prior lazy fetch had) and re-runs an
+     * in-progress search so `search.loadedOnly` drops immediately —
+     * `recomputeSearch()` is a no-op when there is no active query.
+     */
+    function afterWarm(): void {
+        const activeCategoryId = get<string | null>(keys.activeCategoryId);
+        if (activeCategoryId) {
+            const items = memory.itemsFor(activeCategoryId);
+            if (items) set(keys.count, items.length);
+        }
+        recomputeSearch();
+    }
+
+    async function warm(): Promise<void> {
+        if (warmInFlight) return;
+        if (getPlatform().storage.tier !== 'full') {
+            set(keys.warmStatus, 'skipped');
+            return;
+        }
+
+        const now = Date.now();
+        if (isFresh(memory.warmedAt(), now, CATALOG_TTL_MS)) {
+            set(keys.warmStatus, 'warmed');
+            return;
+        }
+
+        warmInFlight = true;
+        set(keys.warmStatus, 'warming');
+        try {
+            const storedMeta = await loadStoredWarmMeta(prefix);
+            if (storedMeta && isFresh(storedMeta.fetchedAt, now, CATALOG_TTL_MS)) {
+                // A previous session's warm is still fresh — reload it from
+                // the full-tier storage cache rather than re-fetching.
+                await rehydrateWarmedCatalog(prefix, memory, storedMeta.fetchedAt);
+                set(keys.warmStatus, 'warmed');
+                afterWarm();
+                return;
+            }
+
+            const account = await resolveActiveXtreamSource();
+            if (!account) {
+                set(keys.warmStatus, 'skipped');
+                return;
+            }
+
+            const categoriesResult = await config.fetchCategories(account.source);
+            if (!categoriesResult.ok) {
+                set(keys.warmStatus, 'skipped');
+                return;
+            }
+
+            const allResult = await config.fetchAll(account.source);
+            if (!allResult.ok) {
+                set(keys.warmStatus, 'skipped');
+                return;
+            }
+
+            // Sanity cap (WARM_ROW_CAP's own header): a dump this large is
+            // discarded outright — keep whatever categories were already
+            // loaded lazily, publish nothing, stay lazy.
+            if (allResult.data.length > WARM_ROW_CAP) {
+                set(keys.warmStatus, 'skipped');
+                return;
+            }
+
+            const items = allResult.data.map(config.toItem);
+            const byCategory = groupWarmedItems(
+                items,
+                categoriesResult.data.map((c: XtreamCategory) => c.id),
+                config.categoryIdOf,
+            );
+            commitWarmedCatalog(prefix, memory, categoriesResult.data, byCategory, now);
+
+            set(keys.warmStatus, 'warmed');
+            afterWarm();
+        } finally {
+            warmInFlight = false;
+        }
+    }
+
+    return {
+        warm,
+        resetForTests: () => {
+            warmInFlight = false;
+        },
+    };
 }

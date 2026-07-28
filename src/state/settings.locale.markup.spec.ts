@@ -29,6 +29,23 @@ const TEMPLATE = `
 `;
 
 /** Fires a real 'change' event with the select already set to `value` — matches how a user picking an <option> actually drives Spektrum's data-action="change" binding, unlike the harness's click-based dispatch() (built for buttons/checkboxes, not <select>). */
+/**
+ * `settings/setLocale` is async now that nl/de dictionaries are lazily
+ * imported chunks (app/strings.ts), so the DOM cannot have re-rendered on
+ * the same turn the change event fires — drain the import and the resulting
+ * Spektrum write before asserting.
+ */
+async function settleLocaleSwitch(expected: string, testid: string, mounted: { query: (sel: string) => Element | null }): Promise<void> {
+    for (let i = 0; i < 100; i++) {
+        tick();
+        if (mounted.query(`[data-testid="${testid}"]`)?.textContent?.trim() === expected) return;
+        // A macrotask, not just a microtask: a dynamic import() settles on
+        // the task queue, so draining Promise.resolve() alone never gets there.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    tick();
+}
+
 function changeSelectTo(select: HTMLSelectElement, value: string): void {
     select.value = value;
     select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -36,10 +53,10 @@ function changeSelectTo(select: HTMLSelectElement, value: string): void {
 }
 
 describe('Settings language switcher (i18n, DOM-bound)', () => {
-    it('switching the <select> re-renders {{ strings.* }} bindings live, no reload', () => {
-        applyLocale('en');
+    it('switching the <select> re-renders {{ strings.* }} bindings live, no reload', async () => {
+        await applyLocale('en');
         const mounted = mountTemplate(TEMPLATE);
-        seedStrings();
+        await seedStrings();
         tick();
 
         expect(mounted.query('[data-testid="rail-categories-label"]')?.textContent?.trim()).toBe('Categories');
@@ -48,15 +65,17 @@ describe('Settings language switcher (i18n, DOM-bound)', () => {
         expect(select).not.toBeNull();
 
         changeSelectTo(select as HTMLSelectElement, 'nl');
+        await settleLocaleSwitch('Categorieën', 'rail-categories-label', mounted);
 
         expect(mounted.query('[data-testid="rail-categories-label"]')?.textContent?.trim()).toBe('Categorieën');
         expect(mounted.query('[data-testid="rail-live-label"]')?.textContent?.trim()).toBe('Live');
 
         changeSelectTo(select as HTMLSelectElement, 'de');
+        await settleLocaleSwitch('Kategorien', 'rail-categories-label', mounted);
 
         expect(mounted.query('[data-testid="rail-categories-label"]')?.textContent?.trim()).toBe('Kategorien');
 
         mounted.cleanup();
-        applyLocale('en');
+        await applyLocale('en');
     });
 });

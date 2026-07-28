@@ -7,7 +7,7 @@ on:
 
 jobs:
   verify:
-    name: typecheck, lint, test
+    name: verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,12 +19,10 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run typecheck
-
-      - run: npm run lint
-
-      - run: npm run lint:css
-
-      - run: npm run lint:file-access
-
-      - run: npm test
+      # One step, deliberately: `npm run verify` is the single definition of
+      # "green", so what CI enforces and what a developer runs locally cannot
+      # drift apart. Previously CI listed its own subset of checks and silently
+      # omitted `npm run build`, check-importmap and check-dist — the last of
+      # which had been failing its own 200 kB startup budget unnoticed
+      # (AUDIT.md §4.2).
+      - run: npm run verify

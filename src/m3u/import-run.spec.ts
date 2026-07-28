@@ -8,11 +8,29 @@ import { IMPORT_STATE } from '../state/import';
 import { get } from '../state/typed';
 import { clearRows } from './channel-memory';
 import { assertGroupCountsConsistent, cancelImport, isImportInFlight, runImport } from './import-run';
+import { settleWorkerModuleCache } from '../shared/testing/worker-settle';
 
 const SAMPLE = '#EXTM3U\n#EXTINF:-1,One\nhttps://example.com/1.m3u8\n';
 
+/**
+ * `runImport`'s single-flight guard is module state (`import-run.ts`'s
+ * `active`), so a test whose import never settles leaves it set and every
+ * *later* test in this file then fails with "already in flight" — one race
+ * turning into a five-failure cascade. `cancelImport()` resolves
+ * `runImport`'s cancel race regardless of whether its parse ever finishes,
+ * so draining on it clears the guard deterministically instead of hoping a
+ * fixed sleep was long enough.
+ */
+async function drainImport(): Promise<void> {
+    cancelImport();
+    for (let i = 0; i < 500 && isImportInFlight(); i++) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+}
+
 describe('runImport() (Feature 07.9/07.7)', () => {
-    afterEach(() => {
+    afterEach(async () => {
+        await drainImport();
         clearRows();
         resetPlatformForTests();
     });
@@ -70,7 +88,7 @@ describe('runImport() (Feature 07.9/07.7)', () => {
             // concurrent imports of one cache slot. Same test-harness-only
             // finding as Phase 06's parser-client.spec.ts cancel() test;
             // this delay works around the harness, not a production race.
-            await new Promise((resolve) => setTimeout(resolve, 10));
+            await settleWorkerModuleCache();
 
             const outcome = await runImport({ type: 'm3u-text', text: SAMPLE, name: 'B' });
             expect(outcome.ok).toBe(true);
@@ -152,7 +170,7 @@ describe('runImport() (Feature 07.9/07.7)', () => {
             // contention (other *.spec.ts files' own real Worker instances,
             // all sharing @vitest/web-worker's one module cache) makes the
             // race window measurably less forgiving than in isolation.
-            await new Promise((resolve) => setTimeout(resolve, 50));
+            await settleWorkerModuleCache();
 
             const outcome = await runImport({ type: 'm3u-text', text: fixture.text, name: 'Big list' });
             expect(outcome.ok).toBe(true);

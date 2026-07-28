@@ -5,8 +5,6 @@ import { getPlatform } from '../core/platform';
 import { downloadTextFile } from '../ui/download-file';
 import { importXtreamSource } from '../xtream/import';
 import { normalizeXtreamUrl } from '../xtream/urls';
-import { buildConfigXml } from './config-export';
-import { buildEpgXml, buildRawResponsesXml } from './raw-export';
 import { loadPlaylistSources } from './playlist-load';
 import { PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_SOURCES, type PlaylistSourceSummary } from './playlist';
 import { setActiveSourceId } from './playlist.actions';
@@ -111,13 +109,13 @@ export function registerSettingsActions(): void {
         if (el instanceof HTMLSelectElement) setSubtitleLanguage(el.value);
     });
     defineFn('settings/setLocale', (el) => {
-        if (el instanceof HTMLSelectElement) setLocale(el.value);
+        if (el instanceof HTMLSelectElement) void setLocale(el.value);
     });
     defineFn('settings/exportConfig', () => {
-        exportConfiguration();
+        void exportConfiguration();
     });
     defineFn('settings/exportRaw', () => {
-        exportRawResponses();
+        void exportRawResponses();
     });
     defineFn('settings/exportEpg', () => {
         void exportEpg();
@@ -129,9 +127,19 @@ function stamp(iso: string): string {
     return iso.slice(0, 19).replace(/[:T]/g, '-');
 }
 
-/** The provider's replies verbatim — the untransformed counterpart to `exportConfiguration()`. */
-export function exportRawResponses(): void {
+/**
+ * The provider's replies verbatim — the untransformed counterpart to
+ * `exportConfiguration()`.
+ *
+ * The three XML builders (`config-export.ts`/`raw-export.ts`, ~5 kB) are
+ * dynamically imported rather than pulled into the entry chunk: they are
+ * reachable only from Settings → Diagnostics, on a click, and most sessions
+ * never open that panel at all. Async as a result, which is why the
+ * `defineFn`s below `void` these calls.
+ */
+export async function exportRawResponses(): Promise<void> {
     try {
+        const { buildRawResponsesXml } = await import('./raw-export');
         const iso = new Date().toISOString();
         downloadTextFile(
             `thundertv-raw-${stamp(iso)}.xml`,
@@ -147,6 +155,7 @@ export function exportRawResponses(): void {
 /** Async because the guide lives in storage rather than memory; failures surface in the panel like the other two. */
 export async function exportEpg(): Promise<void> {
     try {
+        const { buildEpgXml } = await import('./raw-export');
         const iso = new Date().toISOString();
         const xml = await buildEpgXml({ generatedAt: iso, appVersion: APP_VERSION });
         downloadTextFile(`thundertv-epg-${stamp(iso)}.xml`, 'application/xml', xml);
@@ -162,8 +171,9 @@ export async function exportEpg(): Promise<void> {
  * source must surface as "export failed" in the panel, never as an
  * unhandled rejection that leaves the button looking inert.
  */
-export function exportConfiguration(): void {
+export async function exportConfiguration(): Promise<void> {
     try {
+        const { buildConfigXml } = await import('./config-export');
         const iso = new Date().toISOString();
         const xml = buildConfigXml({ generatedAt: iso, appVersion: APP_VERSION });
         downloadTextFile(`thundertv-config-${stamp(iso)}.xml`, 'application/xml', xml);
@@ -234,11 +244,14 @@ export function setSubtitleLanguage(raw: string): void {
  * `seedStrings()` keeps in sync at boot. An unrecognised value is a no-op,
  * since the `<select>`'s own options are the only way to reach here.
  */
-export function setLocale(raw: string): void {
+export async function setLocale(raw: string): Promise<void> {
     if (!isLocale(raw)) return;
     set(SETTINGS_LOCALE, raw);
     persist(SETTINGS_LOCALE);
-    applyLocale(raw);
+    // The chosen locale's dictionary is a lazily-imported chunk, so both
+    // halves of the mirror are written only once it has actually resolved —
+    // otherwise `strings` would still hold the previous language here.
+    await applyLocale(raw);
     set('strings', strings);
 }
 
@@ -376,7 +389,10 @@ export async function applyDefaultConfigIfFirstRun(): Promise<void> {
     const defaults = await getPlatform().getDefaultConfig?.();
     if (!defaults) return;
 
-    if (defaults.locale) setLocale(defaults.locale);
+    // Awaited: `setLocale()` resolves a lazily-imported dictionary chunk
+    // (app/strings.ts), and the wizard this pre-fills renders right after —
+    // firing and forgetting would show step 1 in the previous language.
+    if (defaults.locale) await setLocale(defaults.locale);
     if (defaults.liveCountry) setLiveCountry(defaults.liveCountry);
     if (defaults.xtream) {
         await saveXtreamAccount({ url: defaults.xtream.url, user: defaults.xtream.username, pass: defaults.xtream.password });

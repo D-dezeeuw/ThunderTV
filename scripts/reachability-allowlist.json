@@ -1,0 +1,8 @@
+{
+    "$comment": "Actions deliberately registered without a data-fn binding, each with the reason. scripts/check-reachability.mjs fails on any registered action missing from index.html unless it is listed here, and also fails on entries that are stale (no such action) or redundant (bound in markup after all). Keys starting with $ are ignored.",
+
+    "list/playSelected": "Called programmatically from list.actions.ts's keydown handler (Enter on the focused row) and from the double-click path — never its own clickable element.",
+    "player/setActiveChannel": "The player's entry point, called from list.actions.ts, recent.actions.ts, vod.actions.ts and series.actions.ts. Registered as a defineFn so markup *could* bind it, but every real caller passes a structured snapshot that data-value cannot carry.",
+    "vod/open": "Driven by src/app/catalog-activation.ts on Movies view entry, not by a click — the rail button navigates, and activation reacts to the route change.",
+    "series/open": "Driven by src/app/catalog-activation.ts on TV Shows view entry, same pattern as vod/open."
+}
