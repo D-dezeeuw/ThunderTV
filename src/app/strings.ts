@@ -9,6 +9,7 @@ export const strings = {
 
     rail: {
         live: 'Live',
+        radio: 'Radio',
         categories: 'Categories',
         sources: 'Sources',
         favorites: 'Starred',
@@ -19,6 +20,7 @@ export const strings = {
 
     views: {
         live: { title: 'Live', heading: 'Live' },
+        radio: { title: 'Radio', heading: 'Radio' },
         categories: { title: 'Categories', heading: 'Categories' },
         sources: { title: 'Sources', heading: 'Sources' },
         favorites: { title: 'Starred', heading: 'Starred' },
@@ -48,6 +50,11 @@ export const strings = {
 
     categories: {
         note: 'Every category and channel exactly as your provider ships them — unfiltered and ungrouped.',
+    },
+
+    radio: {
+        note: 'Audio-only stations from this source. Radio has no EPG and no curated list, so only country and filler filtering apply.',
+        empty: 'No radio stations in this source.',
     },
 
     emptyStates: {
@@ -131,6 +138,11 @@ export const strings = {
         },
     },
 
+    sourcesAdmin: {
+        hiddenNote: 'Hidden from the sidebar because it carries no playable channels. Still selectable here.',
+        showHidden: 'Show hidden sources',
+    },
+
     settings: {
         title: 'Settings',
         close: 'Close settings',
@@ -147,9 +159,9 @@ export const strings = {
             countryAll: 'All countries',
             countryHelp:
                 'Matched against the "| NL |"-style prefix your provider puts on channels and categories. Choose "All countries" to keep every channel while still merging duplicates.',
-            knownOnly: 'Known channels only',
+            knownOnly: 'Curated channel list only',
             knownOnlyHelp:
-                'Strict: show only channels in the built-in Dutch/Flemish list. Off by default — a whitelist silently hides regional and newly launched channels the list has never heard of.',
+                'On by default: Live shows only the channels in the built-in Dutch list. Switch it off to see every channel your provider carries, with the curated ones still listed first — useful when a channel you expect is missing. Never applies to Radio.',
             dropJunk: 'Hide filler channels',
             dropJunkHelp:
                 'Removes numbered event slots (VIAPLAY 07, PPV 12…), separator rows and adult entries. Judged on the channel name only — nothing here checks whether a stream is actually alive.',
@@ -158,6 +170,7 @@ export const strings = {
             help: 'Choose which buttons appear in the sidebar. Live is always shown.',
             sources: 'Sources',
             categories: 'Categories',
+            radio: 'Radio',
             starred: 'Starred',
             recents: 'Recents',
             guide: 'Guide',

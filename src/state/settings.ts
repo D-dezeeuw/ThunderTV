@@ -59,6 +59,7 @@ export function isPlaybackEngine(value: unknown): value is PlaybackEngine {
  */
 export const SETTINGS_NAV_SOURCES = 'settings.nav.sources';
 export const SETTINGS_NAV_CATEGORIES = 'settings.nav.categories';
+export const SETTINGS_NAV_RADIO = 'settings.nav.radio';
 export const SETTINGS_NAV_STARRED = 'settings.nav.starred';
 export const SETTINGS_NAV_RECENTS = 'settings.nav.recents';
 export const SETTINGS_NAV_GUIDE = 'settings.nav.guide';
@@ -69,7 +70,13 @@ export const SETTINGS_NAV_GUIDE = 'settings.nav.guide';
  * disables country filtering entirely (show everything, still grouped).
  */
 export const SETTINGS_LIVE_COUNTRY = 'settings.liveCountry';
-/** Strict mode — keep only channels the curated catalog knows. Off by default; see `src/channels/dutch-catalog.ts` for why a whitelist is not the primary filter. */
+/**
+ * Strict mode — keep only channels the curated catalog knows. **On** by
+ * default: the catalog is an explicit, user-chosen shortlist of Dutch
+ * channels, so Live is that list and nothing else. Switching it off widens
+ * Live to every channel the other filters allow, ordered with the known
+ * ones first. Never applies to Radio, which the TV catalog says nothing about.
+ */
 export const SETTINGS_LIVE_KNOWN_ONLY = 'settings.liveKnownOnly';
 /** Drop event-slot placeholders, separators and adult rows. On by default. */
 export const SETTINGS_LIVE_DROP_JUNK = 'settings.liveDropJunk';
@@ -103,6 +110,7 @@ export interface SettingsState {
 export interface NavVisibility {
     sources: boolean;
     categories: boolean;
+    radio: boolean;
     starred: boolean;
     recents: boolean;
     guide: boolean;
@@ -115,9 +123,9 @@ export const SETTINGS_DEFAULTS: SettingsState = {
     refreshState: 'idle',
     playbackEngine: 'mpegts',
     buffering: 'auto',
-    nav: { sources: true, categories: true, starred: true, recents: true, guide: true },
+    nav: { sources: true, categories: true, radio: true, starred: true, recents: true, guide: true },
     liveCountry: 'NL',
-    liveKnownOnly: false,
+    liveKnownOnly: true,
     liveDropJunk: true,
 };
 
@@ -130,6 +138,7 @@ export function initSettingsState(): void {
     setValue(SETTINGS_BUFFERING, SETTINGS_DEFAULTS.buffering);
     setValue(SETTINGS_NAV_SOURCES, SETTINGS_DEFAULTS.nav.sources);
     setValue(SETTINGS_NAV_CATEGORIES, SETTINGS_DEFAULTS.nav.categories);
+    setValue(SETTINGS_NAV_RADIO, SETTINGS_DEFAULTS.nav.radio);
     setValue(SETTINGS_NAV_STARRED, SETTINGS_DEFAULTS.nav.starred);
     setValue(SETTINGS_NAV_RECENTS, SETTINGS_DEFAULTS.nav.recents);
     setValue(SETTINGS_NAV_GUIDE, SETTINGS_DEFAULTS.nav.guide);

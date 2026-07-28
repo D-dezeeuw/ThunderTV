@@ -31,6 +31,7 @@ import {
     SETTINGS_LIVE_KNOWN_ONLY,
     SETTINGS_NAV_CATEGORIES,
     SETTINGS_NAV_GUIDE,
+    SETTINGS_NAV_RADIO,
     SETTINGS_NAV_RECENTS,
     SETTINGS_NAV_SOURCES,
     SETTINGS_NAV_STARRED,
@@ -261,6 +262,11 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: true,
         description: 'Show the Categories button in the nav rail — the provider\'s catalog exactly as shipped, unfiltered and ungrouped.',
+    },
+    [SETTINGS_NAV_RADIO]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'Show the Radio button in the nav rail — audio-only stations, grouped separately from TV.',
     },
     [SETTINGS_NAV_STARRED]: {
         owner: 'settings',

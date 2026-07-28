@@ -4,7 +4,7 @@ import { getRows } from '../m3u/channel-memory';
 import type { ChannelVariant } from '../m3u/types';
 import { findRowById } from '../ui/virtual-list';
 import { setDisplayedRows } from './list-rows';
-import { ensureLiveRows, invalidateLiveRows, liveDisplayRows } from './live-rows';
+import { ensureLiveRows, ensureRadioRows, invalidateLiveRows, liveDisplayRows, radioDisplayRows } from './live-rows';
 import { PLAYER_ACTIVE, PLAYER_ACTIVE_VARIANT_ID, PLAYER_VARIANTS, VARIANTS_CAP } from './player';
 import { setActiveChannel } from './player.actions';
 import type { ActiveChannelSnapshot } from './records';
@@ -48,6 +48,11 @@ export function publishRowsForCurrentView(): void {
     if (view === 'live') {
         ensureLiveRows();
         setDisplayedRows(liveDisplayRows());
+        return;
+    }
+    if (view === 'radio') {
+        ensureRadioRows();
+        setDisplayedRows(radioDisplayRows());
         return;
     }
     if (view === 'categories') setDisplayedRows(getRows());

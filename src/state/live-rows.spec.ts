@@ -87,9 +87,15 @@ describe('publishRowsForCurrentView', () => {
         publishRowsForCurrentView();
         expect(rowCount()).toBe(2);
 
-        // Switching the country off keeps every country — the BBC row now
-        // survives, still grouped.
+        // Switching the country off keeps every country, but the curated
+        // list is on by default and does not carry BBC One — so it takes
+        // *both* switches for an uncurated foreign channel to appear.
         setLiveCountry('');
+        tick();
+        refreshLiveRows();
+        expect(liveDisplayRows().map((r) => r.name)).toEqual(['NPO 1', 'RTL 4']);
+
+        toggleSetting('liveKnownOnly');
         tick();
         refreshLiveRows();
         expect(liveDisplayRows().map((r) => r.name)).toEqual(['NPO 1', 'RTL 4', 'BBC One']);

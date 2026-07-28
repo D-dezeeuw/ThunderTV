@@ -31,6 +31,8 @@ export interface GroupedChannel {
     tvgId: string | null;
     isKnown: boolean;
     rank: number;
+    /** Audio-only station (M3U `radio="true"`) — kept so `toDisplayRows()` can hand the player its radio layout. */
+    radio: boolean;
 }
 
 export interface GroupingOptions {
@@ -40,6 +42,13 @@ export interface GroupingOptions {
     knownOnly?: boolean;
     /** Drop structural junk (event slots, separators, adult). Default true. */
     dropJunk?: boolean;
+    /**
+     * Radio stations are a different medium, not a TV channel that happens
+     * to be audio: they have no EPG, their own player layout, and a curated
+     * TV catalog says nothing about them. `'exclude'` (the default) keeps
+     * them out of the TV list; `'only'` builds the Radio list.
+     */
+    radio?: 'exclude' | 'only';
 }
 
 export interface GroupingResult {
@@ -145,7 +154,7 @@ function compareVariants(a: ChannelVariant, b: ChannelVariant): number {
 }
 
 export function groupChannels(rows: readonly ChannelRow[], options: GroupingOptions = {}): GroupingResult {
-    const { country, knownOnly = false, dropJunk = true } = options;
+    const { country, knownOnly = false, dropJunk = true, radio = 'exclude' } = options;
     const wanted = country?.toUpperCase();
 
     const buckets = new Map<string, GroupedChannel>();
@@ -159,6 +168,8 @@ export function groupChannels(rows: readonly ChannelRow[], options: GroupingOpti
     };
 
     for (const row of rows) {
+        if ((radio === 'only') !== (row.radio === true)) continue;
+
         const parsed = parseChannelName(row.name);
 
         if (wanted) {
@@ -178,7 +189,9 @@ export function groupChannels(rows: readonly ChannelRow[], options: GroupingOpti
         }
 
         const identity = resolveIdentity(parsed.key, parsed.base);
-        if (knownOnly && !identity.isKnown) {
+        // The curated catalog lists TV channels only, so strict mode would
+        // empty the Radio list outright — it is deliberately not applied there.
+        if (knownOnly && radio !== 'only' && !identity.isKnown) {
             stats.droppedAsUnknown += 1;
             continue;
         }
@@ -212,6 +225,7 @@ export function groupChannels(rows: readonly ChannelRow[], options: GroupingOpti
             tvgId: row.tvgId,
             isKnown: identity.isKnown,
             rank: identity.rank,
+            radio: row.radio === true,
         });
     }
 
@@ -239,7 +253,7 @@ export function toDisplayRows(channels: readonly GroupedChannel[]): ChannelRow[]
         group: channel.primary.provider,
         logo: channel.logo,
         tvgId: channel.tvgId,
-        radio: false,
+        radio: channel.radio,
         variants: channel.variants,
     }));
 }

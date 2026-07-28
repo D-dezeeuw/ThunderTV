@@ -8,6 +8,7 @@ interface ActiveViewState extends State {
 
 const TITLES: Record<Route, string> = {
     live: strings.views.live.title,
+    radio: strings.views.radio.title,
     categories: strings.views.categories.title,
     sources: strings.views.sources.title,
     favorites: strings.views.favorites.title,

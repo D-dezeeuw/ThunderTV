@@ -3,6 +3,7 @@ import { parseHash, ROUTE_VALUES, type Route } from '../app/router';
 import {
     SETTINGS_NAV_CATEGORIES,
     SETTINGS_NAV_GUIDE,
+    SETTINGS_NAV_RADIO,
     SETTINGS_NAV_RECENTS,
     SETTINGS_NAV_SOURCES,
     SETTINGS_NAV_STARRED,
@@ -30,7 +31,7 @@ export function registerUiSelectors(): void {
 function registerChannelListViewComputed(): void {
     computed('view.channelList.active', [UI_ACTIVE_VIEW], (state: State) => {
         const active = (state as { ui?: { activeView?: Route } }).ui?.activeView;
-        return active === 'live' || active === 'categories';
+        return active === 'live' || active === 'radio' || active === 'categories';
     });
 }
 
@@ -41,6 +42,7 @@ function registerChannelListViewComputed(): void {
  * back except the settings gear.
  */
 const RAIL_TOGGLES: ReadonlyArray<{ name: string; key: string }> = [
+    { name: 'radio', key: SETTINGS_NAV_RADIO },
     { name: 'categories', key: SETTINGS_NAV_CATEGORIES },
     { name: 'sources', key: SETTINGS_NAV_SOURCES },
     { name: 'favorites', key: SETTINGS_NAV_STARRED },

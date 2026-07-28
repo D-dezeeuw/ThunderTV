@@ -178,3 +178,68 @@ describe('groupChannels', () => {
         expect(rows[0]?.variants).toHaveLength(2);
     });
 });
+
+describe('radio partitioning', () => {
+    function radioRow(name: string, id: string): ChannelRow {
+        return { ...row(name, '| NL | RADIO', id), radio: true };
+    }
+
+    const MIXED: ChannelRow[] = [
+        row('| NL | NPO 1 HD', '| NL | ENTERTAINMENT', 'tv1'),
+        radioRow('| NL | Radio 538', 'r1'),
+        radioRow('| NL | Sky Radio HD', 'r2'),
+    ];
+
+    it('keeps radio out of the TV list and TV out of the radio list', () => {
+        expect(groupChannels(MIXED, { country: 'NL' }).channels.map((c) => c.name)).toEqual(['NPO 1']);
+        // "Sky Radio HD" keeps its quality marker as a variant, same as TV.
+        expect(groupChannels(MIXED, { country: 'NL', radio: 'only' }).channels.map((c) => c.name)).toEqual([
+            'Radio 538',
+            'Sky Radio',
+        ]);
+    });
+
+    it('marks radio rows so the player can pick its audio layout', () => {
+        const rows = toDisplayRows(groupChannels(MIXED, { country: 'NL', radio: 'only' }).channels);
+        expect(rows.every((r) => r.radio)).toBe(true);
+        expect(toDisplayRows(groupChannels(MIXED, { country: 'NL' }).channels).every((r) => !r.radio)).toBe(true);
+    });
+
+    it('never applies the TV catalog to radio — strict mode would otherwise empty the list', () => {
+        const strict = groupChannels(MIXED, { country: 'NL', radio: 'only', knownOnly: true });
+        expect(strict.channels).toHaveLength(2);
+    });
+});
+
+describe('curated Dutch catalog', () => {
+    it('resolves the exact requested channel list, aliases included', () => {
+        const { channels } = groupChannels(
+            [
+                row('| NL | NPO 1 HD', '| NL | TV', '1'),
+                row('| NL | SBS 6 HD', '| NL | TV', '2'),
+                row('| NL | TV538', '| NL | TV', '3'),
+                row('| NL | Disney Jr HD', '| NL | TV', '4'),
+                row('| NL | VIAPLAY TV', '| NL | TV', '5'),
+                row('| NL | NPO Politiek', '| NL | TV', '6'),
+            ],
+            { country: 'NL', knownOnly: true },
+        );
+        expect(channels.map((c) => c.name)).toEqual([
+            'NPO 1',
+            'NPO Politiek en Nieuws',
+            'SBS6',
+            'TV 538',
+            'Disney Jr.',
+            'Viaplay TV',
+        ]);
+    });
+
+    it('drops channels outside the curated list in strict mode', () => {
+        const { channels, stats } = groupChannels(
+            [row('| NL | NPO 1', '| NL | TV', '1'), row('| NL | Ziggo Sport Golf', '| NL | TV', '2')],
+            { country: 'NL', knownOnly: true },
+        );
+        expect(channels.map((c) => c.name)).toEqual(['NPO 1']);
+        expect(stats.droppedAsUnknown).toBe(1);
+    });
+});

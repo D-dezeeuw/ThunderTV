@@ -5,10 +5,11 @@ import { setValue } from 'spektrum';
  * is written from exactly one place — `applyRoute()` below — so no other
  * module may set that key (Feature 02.4.3).
  */
-export type Route = 'live' | 'categories' | 'sources' | 'favorites' | 'recent' | 'guide' | 'connect';
+export type Route = 'live' | 'radio' | 'categories' | 'sources' | 'favorites' | 'recent' | 'guide' | 'connect';
 
 export const ROUTE_VALUES: readonly Route[] = [
     'live',
+    'radio',
     'categories',
     'sources',
     'favorites',

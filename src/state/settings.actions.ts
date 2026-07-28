@@ -11,6 +11,7 @@ import {
     SETTINGS_LIVE_KNOWN_ONLY,
     SETTINGS_NAV_CATEGORIES,
     SETTINGS_NAV_GUIDE,
+    SETTINGS_NAV_RADIO,
     SETTINGS_NAV_RECENTS,
     SETTINGS_NAV_SOURCES,
     SETTINGS_NAV_STARRED,
@@ -76,6 +77,7 @@ export function registerSettingsActions(): void {
 const TOGGLEABLE: Record<string, string> = {
     'nav.sources': SETTINGS_NAV_SOURCES,
     'nav.categories': SETTINGS_NAV_CATEGORIES,
+    'nav.radio': SETTINGS_NAV_RADIO,
     'nav.starred': SETTINGS_NAV_STARRED,
     'nav.recents': SETTINGS_NAV_RECENTS,
     'nav.guide': SETTINGS_NAV_GUIDE,

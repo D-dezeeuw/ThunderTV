@@ -45,6 +45,7 @@ repeated here, to avoid the two drifting apart.
 | `settings.liveKnownOnly` | settings | yes | — | v1 | Live view strict mode — show only channels the curated catalog knows. Off by default; a whitelist silently hides legitimate regional and newly launched channels. |
 | `settings.nav.categories` | settings | yes | — | v1 | Show the Categories button in the nav rail — the provider\'s catalog exactly as shipped, unfiltered and ungrouped. |
 | `settings.nav.guide` | settings | yes | — | v1 | Show the Guide button in the nav rail. |
+| `settings.nav.radio` | settings | yes | — | v1 | Show the Radio button in the nav rail — audio-only stations, grouped separately from TV. |
 | `settings.nav.recents` | settings | yes | — | v1 | Show the Recents button in the nav rail. |
 | `settings.nav.sources` | settings | yes | — | v1 | Show the Sources button in the nav rail. Default on — hiding it on a fresh install would bury the import flow. |
 | `settings.nav.starred` | settings | yes | — | v1 | Show the Starred button in the nav rail. |

@@ -27,15 +27,26 @@ the variant strip in the player dock.
 `src/state/live-rows.ts` caches the result; `src/state/live.actions.ts`
 publishes it into the shared virtual list.
 
+## Radio
+
+Radio stations (`radio="true"` in the M3U) are a separate medium, not a TV
+channel that happens to be audio: no EPG, their own player layout, and the TV
+catalog says nothing about them. `groupChannels()` partitions on the flag —
+`radio: 'exclude'` (the default) builds the TV list, `radio: 'only'` builds the
+Radio view. Country and filler filtering still apply there; the curated catalog
+deliberately does **not**, since applying a TV whitelist to radio would empty
+the list rather than narrow it.
+
 ## Two deliberate limits
 
-**The catalog is not a whitelist.** It drives ordering, canonical naming and an
-*optional* strict mode — it is not the filter. A hard whitelist silently hides
-every channel it has never heard of: regional broadcasters, new launches, a
-provider's own spelling quirk. A catalog maintained in this repo cannot keep up
-with that, and a channel that vanishes with no explanation is worse than one
-extra row. Strict mode exists for providers whose Dutch categories really are
-mostly junk, and it is off by default.
+**The catalog is an explicit shortlist, and strict mode is on by default.** It
+holds exactly the Dutch channels the user asked for, and drives ordering,
+canonical naming, and the strict filter. Turning "Curated channel list only"
+off widens Live to everything the other filters allow, with the curated
+channels still first — the escape hatch for a channel that should be there and
+isn't. That switch matters because a repo-maintained list cannot keep up with
+regional broadcasters, new launches, or a provider's own spelling quirks, and a
+channel that vanishes with no explanation is worse than one extra row.
 
 **Junk detection reads names, not streams.** Whether a stream is genuinely dead
 can only be known by fetching it, and probing hundreds of URLs on every list

@@ -1,4 +1,5 @@
 import { computed, type State } from 'spektrum';
+import { isHiddenSource, visibleSources } from './hidden-sources';
 import { PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_SOURCES, type PlaylistSourceSummary } from './playlist';
 
 interface SourcesState {
@@ -15,6 +16,20 @@ export function registerPlaylistSelectors(): void {
     computed('hasNoSources', [PLAYLIST_SOURCES], (state: State) => {
         const sources = (state as SourcesState).playlist?.sources ?? [];
         return sources.length === 0;
+    });
+
+    // The picker hides known-dead provider hosts; Settings still binds to
+    // the raw `playlist.sources`, so nothing is ever unreachable.
+    computed('visibleSources', [PLAYLIST_SOURCES], (state: State) => {
+        return visibleSources((state as SourcesState).playlist?.sources ?? []);
+    });
+
+    computed('hiddenSources', [PLAYLIST_SOURCES], (state: State) => {
+        return ((state as SourcesState).playlist?.sources ?? []).filter(isHiddenSource);
+    });
+
+    computed('hasHiddenSources', [PLAYLIST_SOURCES], (state: State) => {
+        return ((state as SourcesState).playlist?.sources ?? []).some(isHiddenSource);
     });
 
     computed('activeSource', [PLAYLIST_SOURCES, PLAYLIST_ACTIVE_SOURCE_ID], (state: State) => {

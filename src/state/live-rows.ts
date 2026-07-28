@@ -16,9 +16,12 @@ import { get, set } from './typed';
  */
 let grouped: GroupedChannel[] = [];
 let displayRows: ChannelRow[] = [];
+let radioGrouped: GroupedChannel[] = [];
+let radioRows: ChannelRow[] = [];
 
-/** Options snapshot the current `grouped` was built from — lets `ensureLiveRows()` skip a rebuild when nothing relevant changed. */
+/** Options snapshot each cache was built from — lets the ensure* calls skip a rebuild when nothing relevant changed. */
 let builtFrom = '';
+let radioBuiltFrom = '';
 
 function optionsKey(country: string, knownOnly: boolean, dropJunk: boolean, sourceRows: number): string {
     return `${country}|${knownOnly}|${dropJunk}|${sourceRows}`;
@@ -46,6 +49,29 @@ export function ensureLiveRows(force = false): void {
     publishStats(result);
 }
 
+/**
+ * The Radio list. Same country and filler filtering, but never `knownOnly`
+ * — the curated catalog lists TV channels, so applying it here would empty
+ * the list outright rather than narrow it.
+ */
+export function ensureRadioRows(force = false): void {
+    const country = get<string>(SETTINGS_LIVE_COUNTRY) ?? '';
+    const dropJunk = get<boolean>(SETTINGS_LIVE_DROP_JUNK) ?? true;
+    const rows = getRows();
+
+    const key = optionsKey(country, false, dropJunk, rows.length);
+    if (!force && key === radioBuiltFrom && radioRows.length > 0) return;
+
+    const result = groupChannels(rows, {
+        ...(country ? { country } : {}),
+        dropJunk,
+        radio: 'only',
+    });
+    radioGrouped = result.channels;
+    radioRows = toDisplayRows(radioGrouped);
+    radioBuiltFrom = key;
+}
+
 /** Pure core, split out so it can be exercised without touching state or module memory. */
 export function buildLiveRows(
     rows: readonly ChannelRow[],
@@ -59,6 +85,7 @@ export function buildLiveRows(
         ...(country ? { country } : {}),
         knownOnly,
         dropJunk,
+        radio: 'exclude',
     });
 }
 
@@ -81,9 +108,16 @@ export function liveChannels(): readonly GroupedChannel[] {
     return grouped;
 }
 
+export function radioDisplayRows(): readonly ChannelRow[] {
+    return radioRows;
+}
+
 /** Discards the cache so the next `ensureLiveRows()` rebuilds — called on source switch and after a settings change. */
 export function invalidateLiveRows(): void {
     grouped = [];
     displayRows = [];
     builtFrom = '';
+    radioGrouped = [];
+    radioRows = [];
+    radioBuiltFrom = '';
 }
