@@ -40,6 +40,7 @@ repeated here, to avoid the two drifting apart.
 | `playlist.demoRows` | playlist | no | — | v1 | Phase 02 density-preview fixture rows — never real data, never persisted. |
 | `playlist.sources` | playlist | no | 200 | v1 | Live projection of the playlists storage table (Feature 07.1.8) — never itself persisted; rebuilt from storage at boot and after every import commit, so there is exactly one source of truth. |
 | `settings.buffering` | settings | yes | — | v1 | MPEG-TS buffering mode — auto (default, adapts to measured stalls), smooth (fixed deep buffer), or lowLatency. |
+| `settings.exportState` | settings | no | — | v1 | Feedback for the Settings configuration export (idle/done/failed) — transient, reset on each attempt. |
 | `settings.liveCountry` | settings | yes | — | v1 | Country token the Live view keeps, matched against the "| NL |"-style prefix providers put on channels and categories. Empty string disables country filtering. |
 | `settings.liveDropJunk` | settings | yes | — | v1 | Drop event-slot placeholders (VIAPLAY 07 and friends), separator rows and adult entries from the Live view. On by default. |
 | `settings.liveKnownOnly` | settings | yes | — | v1 | Live view strict mode — show only channels the curated catalog knows. Off by default; a whitelist silently hides legitimate regional and newly launched channels. |

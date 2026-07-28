@@ -7,6 +7,8 @@ export const SETTINGS_PROXY_ERROR = 'settings.proxyError';
 export const SETTINGS_PROXY_SAVED = 'settings.proxySaved';
 /** Manual channel-list refresh feedback — transient, never persisted. */
 export const SETTINGS_REFRESH_STATE = 'settings.refreshState';
+/** Configuration-export feedback — transient, never persisted. */
+export const SETTINGS_EXPORT_STATE = 'settings.exportState';
 
 export type RefreshFeedbackState = 'idle' | 'busy' | 'done' | 'failed';
 
@@ -99,6 +101,7 @@ export interface SettingsState {
     proxyError: string | null;
     proxySaved: boolean;
     refreshState: RefreshFeedbackState;
+    exportState: 'idle' | 'done' | 'failed';
     playbackEngine: PlaybackEngine;
     buffering: BufferingMode;
     nav: NavVisibility;
@@ -121,6 +124,7 @@ export const SETTINGS_DEFAULTS: SettingsState = {
     proxyError: null,
     proxySaved: false,
     refreshState: 'idle',
+    exportState: 'idle',
     playbackEngine: 'mpegts',
     buffering: 'auto',
     nav: { sources: true, categories: true, radio: true, starred: true, recents: true, guide: true },
@@ -134,6 +138,7 @@ export function initSettingsState(): void {
     setValue(SETTINGS_PROXY_ERROR, SETTINGS_DEFAULTS.proxyError);
     setValue(SETTINGS_PROXY_SAVED, SETTINGS_DEFAULTS.proxySaved);
     setValue(SETTINGS_REFRESH_STATE, SETTINGS_DEFAULTS.refreshState);
+    setValue(SETTINGS_EXPORT_STATE, SETTINGS_DEFAULTS.exportState);
     setValue(SETTINGS_PLAYBACK_ENGINE, SETTINGS_DEFAULTS.playbackEngine);
     setValue(SETTINGS_BUFFERING, SETTINGS_DEFAULTS.buffering);
     setValue(SETTINGS_NAV_SOURCES, SETTINGS_DEFAULTS.nav.sources);

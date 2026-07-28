@@ -26,6 +26,7 @@ import { MAX_PLAYLIST_SOURCES, PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_DEMO_ROWS, PL
 import { LIVE_STATS } from './live';
 import {
     SETTINGS_BUFFERING,
+    SETTINGS_EXPORT_STATE,
     SETTINGS_LIVE_COUNTRY,
     SETTINGS_LIVE_DROP_JUNK,
     SETTINGS_LIVE_KNOWN_ONLY,
@@ -242,6 +243,11 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: false,
         description: 'Feedback for the manual channel-list refresh button (idle/busy/done/failed) — transient, reset on each attempt.',
+    },
+    [SETTINGS_EXPORT_STATE]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'Feedback for the Settings configuration export (idle/done/failed) — transient, reset on each attempt.',
     },
     [SETTINGS_PLAYBACK_ENGINE]: {
         owner: 'settings',

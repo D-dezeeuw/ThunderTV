@@ -151,11 +151,19 @@ export const strings = {
         close: 'Close settings',
         sections: {
             user: 'User',
+            diagnostics: 'Diagnostics',
             liveFilter: 'Live filter',
             navigation: 'Navigation',
             streaming: 'Streaming',
             playback: 'Playback',
             appearance: 'Appearance',
+        },
+        diagnostics: {
+            exportButton: 'Export configuration (XML)',
+            exportHelp:
+                'Downloads every setting, every source, and each channel your provider ships alongside what the filter made of its name — the fastest way to see why a channel is missing. Credentials in URLs are redacted, but check the file before sharing it.',
+            exportDone: 'Export downloaded.',
+            exportFailed: 'Export failed.',
         },
         liveFilter: {
             countryLabel: 'Country',

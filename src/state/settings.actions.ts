@@ -1,11 +1,14 @@
 import { defineFn, refs } from 'spektrum';
 import { isValidProxyTemplate } from '../core/http';
 import { strings } from '../app/strings';
+import { downloadTextFile } from '../ui/download-file';
+import { buildConfigXml } from './config-export';
 import { persist } from './persist';
 import {
     isBufferingMode,
     isPlaybackEngine,
     SETTINGS_BUFFERING,
+    SETTINGS_EXPORT_STATE,
     SETTINGS_LIVE_COUNTRY,
     SETTINGS_LIVE_DROP_JUNK,
     SETTINGS_LIVE_KNOWN_ONLY,
@@ -71,7 +74,29 @@ export function registerSettingsActions(): void {
     defineFn('settings/setLiveCountry', (el) => {
         if (el instanceof HTMLSelectElement) setLiveCountry(el.value);
     });
+    defineFn('settings/exportConfig', () => {
+        exportConfiguration();
+    });
 }
+
+/**
+ * Writes the full configuration to a downloaded XML file. Wrapped in a
+ * try/catch because this runs on a click: a storage quirk or an oversized
+ * source must surface as "export failed" in the panel, never as an
+ * unhandled rejection that leaves the button looking inert.
+ */
+export function exportConfiguration(): void {
+    try {
+        const stamp = new Date().toISOString();
+        const xml = buildConfigXml({ generatedAt: stamp, appVersion: APP_VERSION });
+        downloadTextFile(`thundertv-config-${stamp.slice(0, 19).replace(/[:T]/g, '-')}.xml`, 'application/xml', xml);
+        set(SETTINGS_EXPORT_STATE, 'done');
+    } catch {
+        set(SETTINGS_EXPORT_STATE, 'failed');
+    }
+}
+
+const APP_VERSION = '0.0.0';
 
 /** `data-setting` token → the state key it may write. An allowlist, not a prefix rule: markup must never be able to name an arbitrary path. */
 const TOGGLEABLE: Record<string, string> = {
