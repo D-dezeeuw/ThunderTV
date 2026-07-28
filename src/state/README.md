@@ -12,15 +12,15 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `playlist.ts`        | `playlist.sources`, `playlist.activeSourceId`, `playlist.demoRows`                                                   | `activeSourceId` yes (Feature 08.10.6); `sources` is a live storage projection, `demoRows` is static demo data — neither persists |
 | `player.ts`          | `player.active`, `player.zapHistory`, `player.visualizerPreset`, `player.visualizerPaused`                            | Yes — the §6.4 instant-restore pair; `visualizerPreset` also persists (the listener's Radio visualizer choice); `visualizerPaused` does not (always false on a fresh Radio visit) |
 | `epg.ts`             | `epg.tick`                                                                                                            | No — a heartbeat timestamp, recomputed every boot |
-| `settings.ts`        | `settings.locale`, `settings.proxyTemplate`, `settings.proxyError`, `settings.proxySaved`, …, `settings.audioLanguage`, `settings.subtitleLanguage` | `locale` yes (Settings → User language switcher, i18n follow-up); `proxyTemplate` yes; `audioLanguage`/`subtitleLanguage` yes (Phase 21); the transient feedback keys don't persist |
+| `settings.ts`        | `settings.locale`, `settings.proxyTemplate`, `settings.proxyError`, `settings.proxySaved`, …, `settings.audioLanguage`, `settings.subtitleLanguage`, `settings.nav.movies`, `settings.nav.series` | `locale` yes (Settings → User language switcher, i18n follow-up); `proxyTemplate` yes; `audioLanguage`/`subtitleLanguage` yes (Phase 21); `nav.movies`/`nav.series` yes, same default-on rail-toggle contract as every other `settings.nav.*` key; the transient feedback keys don't persist |
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.storageNoticeDismissed` yes; the rest no |
 | `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`                                                                                      | No — both transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen` |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
 | `list-state.ts`       | `ui.listState`, `ui.activeGroup`, `ui.viewMode`                                                                      | `ui.listState` yes (Feature 08.6, LRU-capped at 20 sources); the two live mirrors restore from it on source entry but aren't separately persisted |
 | `list-groups.ts`      | `list.groups`, `list.groupsTruncated`                                                                                | No — the groups panel's own row set, capped independently of Phase 06's `MAX_GROUPS` (Feature 08.5.9) |
 | `favorites.ts`        | `favorites.ids`                                                                                                       | No — a live projection of the real `favorites` storage table (Feature 08.8.4), exactly like `playlist.sources` |
-| `vod.ts`              | `vod.categories`, `vod.activeCategoryId`, `vod.status`, `vod.errorReason`, `vod.count`, `vod.detailId`, `vod.detail`  | No (Phase 21) — the Movies catalog itself (categories/items/detail cache) lives in `vod-rows.ts`'s module memory and, on the `'full'` storage tier only, in ad hoc `catalog-storage.ts` keys outside the Phase 05 bridge; see "Existing-key decisions" below |
-| `series.ts`           | `series.categories`, `series.activeCategoryId`, `series.status`, `series.errorReason`, `series.count`, `series.detailId`, `series.detail` | No (Phase 21) — same reasoning as `vod.ts`, via `series-rows.ts`/`catalog-storage.ts` |
+| `vod.ts`              | `vod.categories`, `vod.activeCategoryId`, `vod.status`, `vod.errorReason`, `vod.count`, `vod.detailId`, `vod.detail`, `vod.warmStatus` | No (Phase 21) — the Movies catalog itself (categories/items/detail cache) lives in `vod-rows.ts`'s module memory and, on the `'full'` storage tier only, in ad hoc `catalog-storage.ts` keys outside the Phase 05 bridge; see "Existing-key decisions" below |
+| `series.ts`           | `series.categories`, `series.activeCategoryId`, `series.status`, `series.errorReason`, `series.count`, `series.detailId`, `series.detail`, `series.warmStatus` | No (Phase 21) — same reasoning as `vod.ts`, via `series-rows.ts`/`catalog-storage.ts` |
 | `search.ts`           | `search.query`, `search.scope`, `search.active`, `search.resultCounts`, `search.loadedOnly`                           | No (Phase 21) — a live, disposable session activity, reset every boot like `ui.settingsOpen` |
 
 **The rule:** adding a Spektrum key means adding it to `registry.ts`'s
@@ -195,6 +195,70 @@ entry's `selectedId`; returning to Live self-heals via `setDisplayedRows()`'s
 own "selected id absent from the new row set → fall back to the first row"
 rule, so this was left as-is rather than threading a per-view exception
 through `list.actions.ts` (out of this phase's scope).
+
+### Background full-catalog warm (`catalog-warm.ts`/`vod-warm.ts`/`series-warm.ts`)
+
+`get_vod_streams`/`get_series` called with **no** `category_id` return the
+ENTIRE catalog in one request — the same quirk `client.ts` already documents
+for `getLiveStreams()`. `warmVodCatalog()`/`warmSeriesCatalog()` (plus the
+combined `warmCatalogs()`, `warm.ts`) use this once per 24h TTL so
+`search`'s `movies`/`series`/`all` scopes can honestly cover every category,
+not only whichever ones the user happened to open via `vod/selectCategory`/
+`series/selectCategory`. **These functions are exported but never
+self-triggered** — no timer, no interval, nothing wired in `src/state/`; the
+app layer calls them (after first paint, on a Movies/Series tab open, etc.).
+
+- **No-op conditions**, each reported through `vod.warmStatus`/
+  `series.warmStatus` (`'idle' | 'warming' | 'warmed' | 'skipped'`, never
+  persisted — recomputed every session): the storage tier isn't `'full'`,
+  the previous warm (module memory or, after a reload, the storage-cached
+  warm-meta marker) is still within the 24h TTL, there's no active
+  fully-credentialed Xtream account, the fetch failed, or the
+  `WARM_ROW_CAP` (100,000 rows) sanity cap was exceeded. Every "didn't run"
+  reason besides freshness reports `'skipped'` — the distinction between
+  "wrong tier" and "provider dump too large" isn't worth a second flag; a
+  future UI surfacing this can treat both as "still browsing lazily."
+- **The sanity cap** discards the *entire* warm result (publishes nothing,
+  touches no memory/storage) rather than truncating it — a dump that large
+  reads as the provider quirk returning something degenerate, not a normal
+  catalog worth partially trusting.
+- **Reload survival**: warming persists a small `{fetchedAt, categoryIds}`
+  marker (`catalog-storage.ts`'s `StoredWarmMeta`) separately from the
+  per-category item keys it already writes. A fresh warm attempt after a
+  reload (module memory empty) checks this marker first — if still within
+  TTL, `rehydrateWarmedCatalog()` reloads the category list and every
+  category's items back into memory from the existing full-tier storage
+  keys (local reads only, bounded by category count), rather than
+  re-fetching over the network.
+- **`catalog-warm.ts`** is the shared, parameterized core (same shape as
+  `catalog-memory.ts`/`catalog-sort.ts`/`catalog-storage.ts`) — `vod-warm.ts`/
+  `series-warm.ts` stay thin wrappers around their own network call.
+- After a successful warm (fresh fetch or rehydrate), the active category's
+  `vod.count`/`series.count` is recomputed and `search.actions.ts`'s
+  `recomputeSearch()` is re-run (a no-op if no query is active) — so
+  `search.loadedOnly` drops to `false` immediately rather than waiting for
+  the next keystroke.
+- Concurrency: a plain in-flight boolean per catalog (matching
+  `vod.actions.ts`'s existing `openInFlight` pattern) guards a double-warm;
+  a `sequence-token.ts` instance was not needed here since there is only one
+  warm attempt per catalog to protect, not a rapid sequence of
+  user-triggered ones.
+
+### Movies/Series rail visibility (`settings.nav.movies`/`settings.nav.series`)
+
+Added through the exact existing mechanism, unchanged: two more
+`settings.nav.*` keys (default **on**, `settings.ts`), two more entries in
+`settings.actions.ts`'s `TOGGLEABLE` allowlist (`'nav.movies'`/`'nav.series'`,
+both routed through the same generic `settings/toggle` action every other
+rail checkbox already uses), and two more entries in `ui.selectors.ts`'s
+`RAIL_TOGGLES` array — which is what actually registers
+`rail.movies.visible`/`rail.series.visible` (no new selector-registration
+code was needed, the existing loop just grew two rows). The "a hidden rail
+entry still shows while its own view is active" rule applies to these two
+automatically, once the other agent's `src/app/router.ts` change adds
+`'movies'`/`'series'` to the `Route` union — nothing here depends on that
+union directly (the comparison is a plain string match), so no coordination
+was required to land this half first.
 
 ## The persistence bridge, in one paragraph
 

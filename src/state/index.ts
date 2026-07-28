@@ -64,6 +64,9 @@ export { openWizard, openWizardIfNoSources } from './wizard.actions';
 export { shouldOpenWizard } from './wizard';
 export { openVodCatalog } from './vod.actions';
 export { openSeriesCatalog } from './series.actions';
+export { warmVodCatalog } from './vod-warm';
+export { warmSeriesCatalog } from './series-warm';
+export { warmCatalogs } from './warm';
 
 /**
  * Seeds every module's defaults (Feature 05.1.8) — called before

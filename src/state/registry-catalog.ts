@@ -1,4 +1,4 @@
-import { SETTINGS_AUDIO_LANGUAGE, SETTINGS_SUBTITLE_LANGUAGE } from './settings';
+import { SETTINGS_AUDIO_LANGUAGE, SETTINGS_NAV_MOVIES, SETTINGS_NAV_SERIES, SETTINGS_SUBTITLE_LANGUAGE } from './settings';
 import { SEARCH_ACTIVE, SEARCH_LOADED_ONLY, SEARCH_QUERY, SEARCH_RESULT_COUNTS, SEARCH_SCOPE } from './search';
 import {
     SERIES_ACTIVE_CATEGORY_ID,
@@ -9,6 +9,7 @@ import {
     SERIES_DETAIL_ID,
     SERIES_ERROR_REASON,
     SERIES_STATUS,
+    SERIES_WARM_STATUS,
 } from './series';
 import {
     VOD_ACTIVE_CATEGORY_ID,
@@ -19,6 +20,7 @@ import {
     VOD_DETAIL_ID,
     VOD_ERROR_REASON,
     VOD_STATUS,
+    VOD_WARM_STATUS,
 } from './vod';
 import type { KeyMeta } from './registry';
 
@@ -71,6 +73,11 @@ export const CATALOG_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         persisted: false,
         description: 'Denormalized snapshot for the open movie (VodItem fields + get_vod_info once fetched) — always written via replace(), never set(), since two movies\' differing optional fields would otherwise bleed together (state/README.md\'s merge-hazard finding).',
     },
+    [VOD_WARM_STATUS]: {
+        owner: 'vod',
+        persisted: false,
+        description: 'idle/warming/warmed/skipped — the background full-catalog warm\'s status (vod-warm.ts). Never persisted: recomputed from the tier + the storage-cached warm-meta\'s own freshness every session.',
+    },
 
     // --- series (Phase 21 TV Shows catalog) ---
     [SERIES_CATEGORIES]: {
@@ -108,6 +115,11 @@ export const CATALOG_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'series',
         persisted: false,
         description: 'Denormalized snapshot for the open series, including a seasons/episodes structure bounded to SERIES_DETAIL_EPISODES_CAP (series.ts) total episodes — always written via replace(), same merge-hazard reasoning as vod.detail.',
+    },
+    [SERIES_WARM_STATUS]: {
+        owner: 'series',
+        persisted: false,
+        description: 'Same idle/warming/warmed/skipped contract as vod.warmStatus, for the series background warm (series-warm.ts).',
     },
 
     // --- search (scoped fuzzy search across channels/movies/series) ---
@@ -147,5 +159,17 @@ export const CATALOG_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: true,
         description: '\'auto\' (default, resolved against settings.liveCountry at use time via subtitle-language.ts), \'off\', or an explicit ISO 639-1 code.',
+    },
+
+    // --- settings: Movies/Series rail visibility (Phase 21 follow-up) ---
+    [SETTINGS_NAV_MOVIES]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'Show the Movies button in the nav rail. Default on, same reasoning as every other rail toggle (settings.ts) — drives rail.movies.visible (ui.selectors.ts).',
+    },
+    [SETTINGS_NAV_SERIES]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'Show the Series button in the nav rail. Default on — drives rail.series.visible (ui.selectors.ts).',
     },
 };

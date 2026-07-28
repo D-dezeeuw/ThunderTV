@@ -32,6 +32,10 @@ export interface CatalogMemory<TItem, TDetail> {
     detailFetchedAt: (id: number) => number | null;
     setDetail: (id: number, data: TDetail, fetchedAt: number) => void;
 
+    /** When the background full-catalog warm (`catalog-warm.ts`) last completed for this session — `null` until a warm (or a rehydrate of a still-fresh previous warm) has actually run. Distinct from `categoriesFetchedAt`/`itemsFetchedAt`, which track the lazy, per-category fetch path. */
+    warmedAt: () => number | null;
+    setWarmedAt: (fetchedAt: number) => void;
+
     /** Test-only / source-switch reset. */
     reset: () => void;
 }
@@ -49,6 +53,7 @@ interface DetailEntry<TDetail> {
 export function createCatalogMemory<TItem, TDetail>(getId: (item: TItem) => number): CatalogMemory<TItem, TDetail> {
     let categories: XtreamCategory[] = [];
     let categoriesFetchedAt: number | null = null;
+    let warmedAt: number | null = null;
     const itemsByCategory = new Map<string, ItemsBucket<TItem>>();
     const itemIndex = new Map<number, TItem>();
     const details = new Map<number, DetailEntry<TDetail>>();
@@ -87,9 +92,15 @@ export function createCatalogMemory<TItem, TDetail>(getId: (item: TItem) => numb
             details.set(id, { data, fetchedAt });
         },
 
+        warmedAt: () => warmedAt,
+        setWarmedAt: (fetchedAt) => {
+            warmedAt = fetchedAt;
+        },
+
         reset: () => {
             categories = [];
             categoriesFetchedAt = null;
+            warmedAt = null;
             itemsByCategory.clear();
             itemIndex.clear();
             details.clear();

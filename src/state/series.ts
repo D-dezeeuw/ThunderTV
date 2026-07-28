@@ -1,5 +1,6 @@
 import { setValue } from 'spektrum';
 import type { XtreamSeries } from '../xtream/types';
+import type { WarmStatus } from './catalog-warm';
 
 /**
  * The TV Shows (series) catalog's Spektrum surface (Phase 21) — same shape
@@ -16,6 +17,8 @@ export const SERIES_ERROR_REASON = 'series.errorReason';
 export const SERIES_COUNT = 'series.count';
 export const SERIES_DETAIL_ID = 'series.detailId';
 export const SERIES_DETAIL = 'series.detail';
+/** Same role/contract as `vod.ts`'s `VOD_WARM_STATUS` — see its doc. */
+export const SERIES_WARM_STATUS = 'series.warmStatus';
 
 /** Same reasoning as `VOD_CATEGORIES_CAP` — a few hundred provider categories at most, capped defensively. */
 export const SERIES_CATEGORIES_CAP = 500;
@@ -71,6 +74,7 @@ export interface SeriesState {
     count: number;
     detailId: number | null;
     detail: SeriesDetail | null;
+    warmStatus: WarmStatus;
 }
 
 export const SERIES_DEFAULTS: SeriesState = {
@@ -81,6 +85,7 @@ export const SERIES_DEFAULTS: SeriesState = {
     count: 0,
     detailId: null,
     detail: null,
+    warmStatus: 'idle',
 };
 
 export function initSeriesState(): void {
@@ -91,4 +96,5 @@ export function initSeriesState(): void {
     setValue(SERIES_COUNT, SERIES_DEFAULTS.count);
     setValue(SERIES_DETAIL_ID, SERIES_DEFAULTS.detailId);
     setValue(SERIES_DETAIL, SERIES_DEFAULTS.detail);
+    setValue(SERIES_WARM_STATUS, SERIES_DEFAULTS.warmStatus);
 }

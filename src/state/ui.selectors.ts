@@ -3,8 +3,10 @@ import { parseHash, ROUTE_VALUES, type Route } from '../app/router';
 import {
     SETTINGS_NAV_CATEGORIES,
     SETTINGS_NAV_GUIDE,
+    SETTINGS_NAV_MOVIES,
     SETTINGS_NAV_RADIO,
     SETTINGS_NAV_RECENTS,
+    SETTINGS_NAV_SERIES,
     SETTINGS_NAV_SOURCES,
     SETTINGS_NAV_STARRED,
 } from './settings';
@@ -48,6 +50,13 @@ const RAIL_TOGGLES: ReadonlyArray<{ name: string; key: string }> = [
     { name: 'favorites', key: SETTINGS_NAV_STARRED },
     { name: 'recent', key: SETTINGS_NAV_RECENTS },
     { name: 'guide', key: SETTINGS_NAV_GUIDE },
+    // Movies/Series (Phase 21 follow-up) — `name` matches the route value
+    // the other agent's `src/app/router.ts` change adds, so the same "still
+    // shows while its own view is open" rule below applies to them too the
+    // moment that Route union lands; until then this simply never matches
+    // `ui.activeView` and behaves like every other toggle.
+    { name: 'movies', key: SETTINGS_NAV_MOVIES },
+    { name: 'series', key: SETTINGS_NAV_SERIES },
 ];
 
 function registerRailVisibilityComputeds(): void {

@@ -56,6 +56,7 @@ describe('createCatalogMemory()', () => {
         memory.setCategoriesFetchedAt(1_000);
         memory.setItemsFor('a', [{ id: 1, name: 'One' }], 1_000);
         memory.setDetail(1, 'plot', 1_000);
+        memory.setWarmedAt(1_000);
 
         memory.reset();
 
@@ -64,5 +65,13 @@ describe('createCatalogMemory()', () => {
         expect(memory.itemsFor('a')).toBeUndefined();
         expect(memory.findItem(1)).toBeUndefined();
         expect(memory.detail(1)).toBeUndefined();
+        expect(memory.warmedAt()).toBeNull();
+    });
+
+    it('tracks warmedAt independently of categoriesFetchedAt/itemsFetchedAt', () => {
+        const memory = createCatalogMemory<Item, string>((item) => item.id);
+        expect(memory.warmedAt()).toBeNull();
+        memory.setWarmedAt(2_000);
+        expect(memory.warmedAt()).toBe(2_000);
     });
 });

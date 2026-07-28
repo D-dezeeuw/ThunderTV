@@ -93,6 +93,9 @@ export const SETTINGS_NAV_RADIO = 'settings.nav.radio';
 export const SETTINGS_NAV_STARRED = 'settings.nav.starred';
 export const SETTINGS_NAV_RECENTS = 'settings.nav.recents';
 export const SETTINGS_NAV_GUIDE = 'settings.nav.guide';
+/** Movies/Series rail entries (Phase 21 follow-up) — same default-on, same toggle mechanism as every other rail button above. */
+export const SETTINGS_NAV_MOVIES = 'settings.nav.movies';
+export const SETTINGS_NAV_SERIES = 'settings.nav.series';
 
 /**
  * Live-view filter. `liveCountry` is the country token kept from the
@@ -164,6 +167,8 @@ export interface NavVisibility {
     starred: boolean;
     recents: boolean;
     guide: boolean;
+    movies: boolean;
+    series: boolean;
 }
 
 export const SETTINGS_DEFAULTS: SettingsState = {
@@ -180,7 +185,7 @@ export const SETTINGS_DEFAULTS: SettingsState = {
     exportState: 'idle',
     playbackEngine: 'mpegts',
     buffering: 'auto',
-    nav: { sources: false, categories: true, radio: true, starred: true, recents: true, guide: true },
+    nav: { sources: false, categories: true, radio: true, starred: true, recents: true, guide: true, movies: true, series: true },
     liveCountry: 'NL',
     liveKnownOnly: true,
     liveDropJunk: true,
@@ -208,6 +213,8 @@ export function initSettingsState(): void {
     setValue(SETTINGS_NAV_STARRED, SETTINGS_DEFAULTS.nav.starred);
     setValue(SETTINGS_NAV_RECENTS, SETTINGS_DEFAULTS.nav.recents);
     setValue(SETTINGS_NAV_GUIDE, SETTINGS_DEFAULTS.nav.guide);
+    setValue(SETTINGS_NAV_MOVIES, SETTINGS_DEFAULTS.nav.movies);
+    setValue(SETTINGS_NAV_SERIES, SETTINGS_DEFAULTS.nav.series);
     setValue(SETTINGS_LIVE_COUNTRY, SETTINGS_DEFAULTS.liveCountry);
     setValue(SETTINGS_LIVE_KNOWN_ONLY, SETTINGS_DEFAULTS.liveKnownOnly);
     setValue(SETTINGS_LIVE_DROP_JUNK, SETTINGS_DEFAULTS.liveDropJunk);

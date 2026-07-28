@@ -39,6 +39,12 @@ export interface StoredDetail<TDetail> {
     data: TDetail;
 }
 
+/** The background full-catalog warm's own small marker (`catalog-warm.ts`) — just the category ids it covered, never the items themselves (those are the existing per-category keys above, reused as-is). */
+export interface StoredWarmMeta {
+    fetchedAt: number;
+    categoryIds: readonly string[];
+}
+
 function tierIsFull(): boolean {
     return getPlatform().storage.tier === 'full';
 }
@@ -71,4 +77,14 @@ export async function loadStoredDetail<TDetail>(prefix: string, id: number): Pro
 export async function saveStoredDetail<TDetail>(prefix: string, id: number, payload: StoredDetail<TDetail>): Promise<void> {
     if (!tierIsFull()) return;
     await getPlatform().storage.set(`${prefix}.catalog.detail.${String(id)}`, payload);
+}
+
+export async function loadStoredWarmMeta(prefix: string): Promise<StoredWarmMeta | undefined> {
+    if (!tierIsFull()) return undefined;
+    return getPlatform().storage.get<StoredWarmMeta>(`${prefix}.catalog.warm`);
+}
+
+export async function saveStoredWarmMeta(prefix: string, payload: StoredWarmMeta): Promise<void> {
+    if (!tierIsFull()) return;
+    await getPlatform().storage.set(`${prefix}.catalog.warm`, payload);
 }

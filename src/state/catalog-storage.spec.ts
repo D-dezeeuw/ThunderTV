@@ -4,9 +4,11 @@ import {
     loadStoredCategories,
     loadStoredDetail,
     loadStoredItems,
+    loadStoredWarmMeta,
     saveStoredCategories,
     saveStoredDetail,
     saveStoredItems,
+    saveStoredWarmMeta,
 } from './catalog-storage';
 
 describe('catalog-storage (full tier only)', () => {
@@ -34,6 +36,21 @@ describe('catalog-storage (full tier only)', () => {
         await withFakePlatform({ durableStorage: 'none' }, async () => {
             await saveStoredItems('series', '1', { fetchedAt: 1, items: [] });
             expect(await loadStoredItems('series', '1')).toBeUndefined();
+        });
+    });
+
+    it('round-trips warm-meta (category ids only, no items) on the full tier', async () => {
+        await withFakePlatform({ durableStorage: 'full' }, async () => {
+            expect(await loadStoredWarmMeta('vod')).toBeUndefined();
+            await saveStoredWarmMeta('vod', { fetchedAt: 5, categoryIds: ['1', '2'] });
+            expect(await loadStoredWarmMeta('vod')).toEqual({ fetchedAt: 5, categoryIds: ['1', '2'] });
+        });
+    });
+
+    it('warm-meta is a no-op on the partial/none tiers', async () => {
+        await withFakePlatform({ durableStorage: 'partial' }, async () => {
+            await saveStoredWarmMeta('vod', { fetchedAt: 5, categoryIds: ['1'] });
+            expect(await loadStoredWarmMeta('vod')).toBeUndefined();
         });
     });
 

@@ -1,5 +1,6 @@
 import { setValue } from 'spektrum';
 import type { XtreamVodStream } from '../xtream/types';
+import type { WarmStatus } from './catalog-warm';
 
 /**
  * The Movies (VOD) catalog's Spektrum surface (Phase 21). Categories and
@@ -16,6 +17,8 @@ export const VOD_ERROR_REASON = 'vod.errorReason';
 export const VOD_COUNT = 'vod.count';
 export const VOD_DETAIL_ID = 'vod.detailId';
 export const VOD_DETAIL = 'vod.detail';
+/** Background full-catalog warm status (`vod-warm.ts`) — `'idle'` until a warm is ever attempted; `'skipped'` covers every reason a warm didn't (fully) run: a non-`'full'` storage tier, no active Xtream account, a failed fetch, or the `WARM_ROW_CAP` sanity cap — a UI surfacing this later can treat all of those as "still browsing lazily", the distinction between them isn't worth a second flag. */
+export const VOD_WARM_STATUS = 'vod.warmStatus';
 
 /** A provider's VOD category list is a few hundred entries at most — well under the 1000 global bulk-data ceiling, but capped explicitly (`registry-catalog.ts`'s `maxItems`) so a pathological provider can't flood the picker. */
 export const VOD_CATEGORIES_CAP = 500;
@@ -60,6 +63,7 @@ export interface VodState {
     count: number;
     detailId: number | null;
     detail: VodDetail | null;
+    warmStatus: WarmStatus;
 }
 
 export const VOD_DEFAULTS: VodState = {
@@ -70,6 +74,7 @@ export const VOD_DEFAULTS: VodState = {
     count: 0,
     detailId: null,
     detail: null,
+    warmStatus: 'idle',
 };
 
 export function initVodState(): void {
@@ -80,4 +85,5 @@ export function initVodState(): void {
     setValue(VOD_COUNT, VOD_DEFAULTS.count);
     setValue(VOD_DETAIL_ID, VOD_DEFAULTS.detailId);
     setValue(VOD_DETAIL, VOD_DEFAULTS.detail);
+    setValue(VOD_WARM_STATUS, VOD_DEFAULTS.warmStatus);
 }
