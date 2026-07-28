@@ -57,7 +57,7 @@ export const strings = {
 
     radio: {
         note: 'Audio-only stations from this source. Radio has no EPG and no curated list, so only country and filler filtering apply.',
-        empty: 'No radio stations in this source.',
+        empty: 'No radio stations found in this source.',
     },
 
     emptyStates: {
