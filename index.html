@@ -28,7 +28,7 @@
         <script type="importmap">
             { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
         </script>
-      <script type="module" crossorigin src="./assets/index-DADhQBTY.js"></script>
+      <script type="module" crossorigin src="./assets/index-BA3Se08J.js"></script>
       <link rel="stylesheet" crossorigin href="./assets/index-BUfJ7Gj8.css">
     </head>
     <body>
@@ -845,6 +845,28 @@
                             {{ strings.settings.diagnostics.exportFailed }}
                         </p>
                         <p class="settings-section__hint">{{ strings.settings.diagnostics.exportHelp }}</p>
+
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="settings/exportRaw"
+                            data-testid="export-raw-btn"
+                        >
+                            {{ strings.settings.diagnostics.exportRawButton }}
+                        </button>
+                        <p class="settings-section__hint">{{ strings.settings.diagnostics.exportRawHelp }}</p>
+
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="settings/exportEpg"
+                            data-testid="export-epg-btn"
+                        >
+                            {{ strings.settings.diagnostics.exportEpgButton }}
+                        </button>
+                        <p class="settings-section__hint">{{ strings.settings.diagnostics.exportEpgHelp }}</p>
                     </section>
 
                     <!-- Live filter. Every control here can only ever *remove*
