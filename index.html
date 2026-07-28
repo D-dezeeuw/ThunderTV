@@ -1031,6 +1031,28 @@
                         <p data-testid="settings-storage-tier">
                             {{ strings.storageNotice.userSectionTier }}: {{ storage.tier }}
                         </p>
+
+                        <!-- i18n: language switcher — updates immediately, no
+                             Save step (a <select> has no "bad input" the way
+                             free text does). Each option is labeled in its own
+                             language, the standard convention for language
+                             pickers, never translated to the current UI
+                             language. -->
+                        <label class="settings-section__label" for="locale-select">
+                            {{ strings.settings.user.languageLabel }}
+                        </label>
+                        <select
+                            id="locale-select"
+                            class="settings-section__input"
+                            data-action="change"
+                            data-fn="settings/setLocale"
+                            data-testid="locale-select"
+                        >
+                            <option value="en" :selected="settings.locale === 'en'">English</option>
+                            <option value="nl" :selected="settings.locale === 'nl'">Nederlands</option>
+                            <option value="de" :selected="settings.locale === 'de'">Deutsch</option>
+                        </select>
+                        <p class="settings-section__hint">{{ strings.settings.user.languageHelp }}</p>
                     </section>
 
                     <!-- Full-configuration export. The channel entries carry

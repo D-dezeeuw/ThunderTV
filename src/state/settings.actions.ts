@@ -1,6 +1,6 @@
 import { defineFn, refs } from 'spektrum';
 import { isValidProxyTemplate } from '../core/http';
-import { strings } from '../app/strings';
+import { applyLocale, isLocale, strings } from '../app/strings';
 import { getPlatform } from '../core/platform';
 import { downloadTextFile } from '../ui/download-file';
 import { importXtreamSource } from '../xtream/import';
@@ -19,6 +19,7 @@ import {
     SETTINGS_LIVE_COUNTRY,
     SETTINGS_LIVE_DROP_JUNK,
     SETTINGS_LIVE_KNOWN_ONLY,
+    SETTINGS_LOCALE,
     SETTINGS_NAV_CATEGORIES,
     SETTINGS_NAV_GUIDE,
     SETTINGS_NAV_RADIO,
@@ -39,9 +40,6 @@ import {
 import { refreshActiveXtreamSource } from './xtream-refresh';
 import { toImportErrorKind } from './xtream.actions';
 import { get, set } from './typed';
-
-/** Same cast `import.selectors.ts` uses for `strings.http.failure` — `XtreamError['kind']` values map onto its keys via `toImportErrorKind()`. */
-const HTTP_FAILURE_STRINGS: Record<string, string> = strings.http.failure;
 
 /**
  * Settings → Streaming's proxy template field (Feature 07.8.1/07.8.3) — an
@@ -100,6 +98,9 @@ export function registerSettingsActions(): void {
     });
     defineFn('settings/setLiveCountry', (el) => {
         if (el instanceof HTMLSelectElement) setLiveCountry(el.value);
+    });
+    defineFn('settings/setLocale', (el) => {
+        if (el instanceof HTMLSelectElement) setLocale(el.value);
     });
     defineFn('settings/exportConfig', () => {
         exportConfiguration();
@@ -194,6 +195,24 @@ export function setLiveCountry(raw: string): void {
     persist(SETTINGS_LIVE_COUNTRY);
 }
 
+/**
+ * Settings → User's language switcher — updates immediately, no Save step
+ * (a `<select>` has no "bad input" the way free text does). Writes both
+ * halves of the locale mirror: the persisted `settings.locale` key, the
+ * plain-TS `strings` singleton (`applyLocale()`, read live by every
+ * selector/action that imports `strings`), and the Spektrum `strings`
+ * state key (`{{ }}`/`:attr` template bindings) — the same pair
+ * `seedStrings()` keeps in sync at boot. An unrecognised value is a no-op,
+ * since the `<select>`'s own options are the only way to reach here.
+ */
+export function setLocale(raw: string): void {
+    if (!isLocale(raw)) return;
+    set(SETTINGS_LOCALE, raw);
+    persist(SETTINGS_LOCALE);
+    applyLocale(raw);
+    set('strings', strings);
+}
+
 async function runManualRefresh(): Promise<void> {
     set(SETTINGS_REFRESH_STATE, 'busy');
     const outcome = await refreshActiveXtreamSource('manual').catch(() => 'failed' as const);
@@ -282,7 +301,10 @@ export async function saveXtreamAccount(input: { url: string; user: string; pass
     try {
         const outcome = await importXtreamSource({ url, user, pass, name: existing?.name ?? url });
         if (!outcome.ok) {
-            set(SETTINGS_XTREAM_ERROR, HTTP_FAILURE_STRINGS[toImportErrorKind(outcome.error.kind)] ?? strings.http.failure.httpOther);
+            set(
+                SETTINGS_XTREAM_ERROR,
+                (strings.http.failure as Record<string, string>)[toImportErrorKind(outcome.error.kind)] ?? strings.http.failure.httpOther,
+            );
             return;
         }
         await loadPlaylistSources();
