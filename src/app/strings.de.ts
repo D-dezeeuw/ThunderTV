@@ -250,6 +250,8 @@ export const de = {
             xtreamPasswordRequired: 'Für ein neues Konto ist ein Passwort erforderlich.',
             xtreamSaved: 'Konto gespeichert.',
             xtreamHelp: 'Geben Sie Ihre Anbieterdaten ein oder aktualisieren Sie sie hier — dies ist dasselbe Konto, das der Verbinden-Import verwendet.',
+            wizardReopenButton: 'Einrichtungsassistent erneut ausführen',
+            wizardReopenHint: 'Wiederholt die anfängliche Einrichtung von Sprache, Inhaltsland und Xtream-Konto.',
         },
         playback: {
             engine: 'Wiedergabe-Engine',
@@ -269,6 +271,21 @@ export const de = {
             density: 'Dichte',
             densityCompact: 'Kompakt',
             densityComfortable: 'Komfortabel',
+        },
+    },
+
+    wizard: {
+        title: 'Willkommen bei ThunderTV',
+        skip: 'Vorerst überspringen',
+        step1: {
+            heading: 'Richten wir Sie ein',
+            intro: 'Wählen Sie Ihre Sprache und Ihr bevorzugtes Inhaltsland — beides können Sie jederzeit in den Einstellungen ändern.',
+            next: 'Weiter',
+        },
+        step2: {
+            heading: 'Fügen Sie Ihre Sender hinzu',
+            intro: 'Geben Sie Ihr Xtream-Codes-Konto ein, um jetzt Ihre Sender zu importieren, oder überspringen Sie diesen Schritt und fügen Sie später über die Verbinden-Karte eine Quelle hinzu.',
+            back: 'Zurück',
         },
     },
 

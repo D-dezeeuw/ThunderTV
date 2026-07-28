@@ -13,6 +13,7 @@ import {
     loadFavoriteIds,
     loadGuideChannels,
     loadPlaylistSources,
+    openWizardIfNoSources,
     registerActions,
     registerPersistOnHide,
     registerSelectors,
@@ -112,8 +113,16 @@ function registerImportDropzoneDragover(): void {
     });
 }
 
-/** Feature 07.9.7: the sweep runs before the sources list first loads, so a crash-orphaned row never flashes into view even briefly. */
+/**
+ * Feature 07.9.7: the sweep runs before the sources list first loads, so a
+ * crash-orphaned row never flashes into view even briefly. The first-run
+ * wizard's "zero sources" check runs right after — never before, since
+ * `playlist.sources` is a live storage projection that's empty by default
+ * until this load actually resolves (state/README.md's "First-run setup
+ * wizard" section).
+ */
 async function sweepAndLoadPlaylistSources(): Promise<void> {
     await sweepOrphanedPlaylistRows();
     await loadPlaylistSources();
+    openWizardIfNoSources();
 }

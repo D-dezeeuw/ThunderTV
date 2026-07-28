@@ -250,6 +250,8 @@ export const nl = {
             xtreamPasswordRequired: 'Wachtwoord is verplicht voor een nieuw account.',
             xtreamSaved: 'Account opgeslagen.',
             xtreamHelp: 'Voer uw providergegevens in, of werk ze hier bij — dit is hetzelfde account dat de Verbinden-import gebruikt.',
+            wizardReopenButton: 'Installatiewizard opnieuw uitvoeren',
+            wizardReopenHint: 'Doorloop de eerste installatie van taal, inhoudsland en Xtream-account opnieuw.',
         },
         playback: {
             engine: 'Afspeel-engine',
@@ -269,6 +271,21 @@ export const nl = {
             density: 'Dichtheid',
             densityCompact: 'Compact',
             densityComfortable: 'Comfortabel',
+        },
+    },
+
+    wizard: {
+        title: 'Welkom bij ThunderTV',
+        skip: 'Voorlopig overslaan',
+        step1: {
+            heading: 'Laten we u instellen',
+            intro: 'Kies uw taal en gewenste inhoudsland — beide zijn later altijd wijzigbaar in Instellingen.',
+            next: 'Doorgaan',
+        },
+        step2: {
+            heading: 'Voeg uw zenders toe',
+            intro: 'Voer uw Xtream Codes-account in om nu uw zenders te importeren, of sla over en voeg later een bron toe via de Verbinden-kaart.',
+            back: 'Terug',
         },
     },
 

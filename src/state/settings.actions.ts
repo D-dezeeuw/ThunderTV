@@ -278,8 +278,14 @@ async function findXtreamAccountRecord() {
  * storage logic. A blank password keeps the previously stored one (masked
  * as "•••• (unchanged)" in the field's placeholder); a new source with no
  * prior password requires one. Exported for direct testing without a DOM ref.
+ * Returns whether the save actually succeeded — the wizard's step 2
+ * (`wizard.actions.ts`'s `wizard/saveXtreamAccount`) uses this return value
+ * to decide whether to dismiss itself, rather than re-reading
+ * `SETTINGS_XTREAM_SAVED` back out of state immediately afterwards (which,
+ * unlike this in-flight boolean, is only current after Spektrum's next
+ * `tick()` drains the queued write).
  */
-export async function saveXtreamAccount(input: { url: string; user: string; pass: string }): Promise<void> {
+export async function saveXtreamAccount(input: { url: string; user: string; pass: string }): Promise<boolean> {
     set(SETTINGS_XTREAM_ERROR, null);
     set(SETTINGS_XTREAM_SAVED, false);
 
@@ -287,14 +293,14 @@ export async function saveXtreamAccount(input: { url: string; user: string; pass
     const user = input.user.trim();
     if (!url || !user) {
         set(SETTINGS_XTREAM_ERROR, strings.settings.streaming.xtreamMissingFields);
-        return;
+        return false;
     }
 
     const existing = await findXtreamAccountRecord();
     const pass = input.pass.trim() !== '' ? input.pass : existing?.password;
     if (!pass) {
         set(SETTINGS_XTREAM_ERROR, strings.settings.streaming.xtreamPasswordRequired);
-        return;
+        return false;
     }
 
     set(SETTINGS_XTREAM_BUSY, true);
@@ -305,7 +311,7 @@ export async function saveXtreamAccount(input: { url: string; user: string; pass
                 SETTINGS_XTREAM_ERROR,
                 (strings.http.failure as Record<string, string>)[toImportErrorKind(outcome.error.kind)] ?? strings.http.failure.httpOther,
             );
-            return;
+            return false;
         }
         await loadPlaylistSources();
         setActiveSourceId(outcome.summary.sourceId);
@@ -314,6 +320,7 @@ export async function saveXtreamAccount(input: { url: string; user: string; pass
         set(SETTINGS_XTREAM_SAVED, true);
         const passwordInput = refs['xtreamAccountPassInput'];
         if (passwordInput instanceof HTMLInputElement) passwordInput.value = '';
+        return true;
     } finally {
         set(SETTINGS_XTREAM_BUSY, false);
     }

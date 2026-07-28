@@ -52,6 +52,7 @@ import {
     UI_SETTINGS_OPEN,
     UI_STORAGE_NOTICE_DISMISSED,
 } from './ui';
+import { UI_WIZARD_OPEN, UI_WIZARD_STEP } from './wizard';
 
 /**
  * One source of truth for every Spektrum key's persistence class and owner
@@ -353,6 +354,18 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         owner: 'ui',
         persisted: false,
         description: 'Set from the real boot-time probe (Phase 04) every session — persisting a stale tier would be actively wrong.',
+    },
+
+    // --- ui: first-run setup wizard ---
+    [UI_WIZARD_OPEN]: {
+        owner: 'ui',
+        persisted: false,
+        description: 'First-run setup wizard open/closed — computed fresh every boot from whether playlist.sources is empty once the real load finishes (wizard.actions.ts\'s openWizardIfNoSources()), same "never auto-reopen a stale value" reasoning as ui.settingsOpen. Can also be reopened manually (wizard/open, Settings → Streaming).',
+    },
+    [UI_WIZARD_STEP]: {
+        owner: 'ui',
+        persisted: false,
+        description: 'Which of the wizard\'s two steps (1 = language/country, 2 = Xtream credentials) is showing — reset to 1 every time the wizard opens.',
     },
 };
 
