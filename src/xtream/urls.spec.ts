@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { apiUrl, liveStreamUrl, normalizeXtreamUrl, redactUrl } from './urls';
+import { apiUrl, liveStreamUrl, normalizeXtreamUrl, redactUrl, seriesEpisodeUrl, vodStreamUrl } from './urls';
 import type { XtreamSource } from './types';
 
 const source: XtreamSource = { url: 'http://example.com:8080', user: 'bob', pass: 'p@ss&w/rd%1' };
@@ -34,5 +34,22 @@ describe('xtream/urls', () => {
             'http://example.com:8080/player_api.php?username=***&password=***&action=get_live_categories',
         );
         expect(redactUrl(liveStreamUrl(source, 42))).toBe('http://example.com:8080/live/***/***/42.m3u8');
+    });
+
+    it('vodStreamUrl builds the /movie/user/pass/id.ext shape, defaulting to mp4', () => {
+        expect(vodStreamUrl(source, 7)).toBe('http://example.com:8080/movie/bob/p%40ss%26w%2Frd%251/7.mp4');
+        expect(vodStreamUrl(source, 7, 'mkv')).toBe('http://example.com:8080/movie/bob/p%40ss%26w%2Frd%251/7.mkv');
+    });
+
+    it('seriesEpisodeUrl builds the /series/user/pass/id.ext shape and accepts a string episode id', () => {
+        expect(seriesEpisodeUrl(source, 99)).toBe('http://example.com:8080/series/bob/p%40ss%26w%2Frd%251/99.mp4');
+        expect(seriesEpisodeUrl(source, 'abc123', 'mkv')).toBe(
+            'http://example.com:8080/series/bob/p%40ss%26w%2Frd%251/abc123.mkv',
+        );
+    });
+
+    it('redactUrl masks credentials in the movie and series URL shapes', () => {
+        expect(redactUrl(vodStreamUrl(source, 7))).toBe('http://example.com:8080/movie/***/***/7.mp4');
+        expect(redactUrl(seriesEpisodeUrl(source, 99))).toBe('http://example.com:8080/series/***/***/99.mp4');
     });
 });

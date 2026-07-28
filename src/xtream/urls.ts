@@ -19,6 +19,16 @@ export function legacyLiveStreamUrl(source: XtreamSource, streamId: number): str
     return `${source.url}/${encodeURIComponent(source.user)}/${encodeURIComponent(source.pass)}/${String(streamId)}`;
 }
 
+/** Phase 21 Feature 21.4.1 — the movie stream URL shape (`{url}/movie/{user}/{pass}/{id}.{ext}`, masterplan §6.8). `containerExt` defaults to `'mp4'`, matching the client's normalize-boundary fallback for a missing/blank `container_extension`. */
+export function vodStreamUrl(source: XtreamSource, streamId: number, containerExt = 'mp4'): string {
+    return `${source.url}/movie/${encodeURIComponent(source.user)}/${encodeURIComponent(source.pass)}/${String(streamId)}.${containerExt}`;
+}
+
+/** Phase 21 Feature 21.6.1 — the series episode URL shape (`{url}/series/{user}/{pass}/{episodeId}.{ext}`). `episodeId` may be the raw string id `series-coerce.ts` kept when the wire value didn't parse as a number. */
+export function seriesEpisodeUrl(source: XtreamSource, episodeId: number | string, containerExt = 'mp4'): string {
+    return `${source.url}/series/${encodeURIComponent(source.user)}/${encodeURIComponent(source.pass)}/${String(episodeId)}.${containerExt}`;
+}
+
 /**
  * Strips a trailing slash and an accidentally pasted `/player_api.php` path
  * (Feature 19.1.2), and prepends `http://` when no scheme was typed —
@@ -35,9 +45,9 @@ export function normalizeXtreamUrl(rawUrl: string): string {
     return url;
 }
 
-/** Masks user/pass in both path-style and query-style Xtream URLs — the only URL form permitted in logs or error messages (Feature 19.4.6). */
+/** Masks user/pass in both path-style and query-style Xtream URLs — the only URL form permitted in logs or error messages (Feature 19.4.6, extended by 21.4.9 to the `/movie/` and `/series/` path shapes). */
 export function redactUrl(url: string): string {
     return url
         .replace(/([?&])(username|password)=[^&]*/gi, '$1$2=***')
-        .replace(/\/live\/[^/]+\/[^/]+\//i, '/live/***/***/');
+        .replace(/\/(live|movie|series)\/[^/]+\/[^/]+\//i, '/$1/***/***/');
 }
