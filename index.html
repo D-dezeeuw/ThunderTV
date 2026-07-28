@@ -1417,6 +1417,21 @@
                             {{ strings.settings.streaming.refreshBusy }}
                         </p>
                         <p class="settings-section__hint">{{ strings.settings.streaming.xtreamHelp }}</p>
+
+                        <!-- Manual reopen of the first-run wizard (see the
+                             <aside data-if="ui.wizardOpen"> below) — so
+                             redoing the language/country/Xtream setup is
+                             always one click away, never a one-shot trap. -->
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="wizard/open"
+                            data-testid="wizard-reopen-btn"
+                        >
+                            {{ strings.settings.streaming.wizardReopenButton }}
+                        </button>
+                        <p class="settings-section__hint">{{ strings.settings.streaming.wizardReopenHint }}</p>
                     </section>
                     <section class="settings-section">
                         <h3 class="settings-section__title">
@@ -1529,6 +1544,174 @@
                             </button>
                         </div>
                         <!-- TODO(phase-22): remaining Appearance controls -->
+                    </section>
+                </div>
+            </aside>
+
+            <!-- First-run setup wizard: shown automatically when boot finds
+                 zero configured sources (state/wizard.ts's shouldOpenWizard(),
+                 wired in app/bootstrap.ts right after the real
+                 playlist.sources load resolves). Also reachable any time via
+                 the "Run setup wizard again" link in Settings → Streaming
+                 (data-fn="wizard/open" above) — never a one-shot trap. Every
+                 field reuses an existing action/setting: step 1's selects are
+                 the exact same settings/setLocale and settings/setLiveCountry
+                 data-fn's the Settings panel uses; step 2 is the same Xtream
+                 account fields/feedback as Settings → Streaming, saved
+                 through the same settings.actions.ts saveXtreamAccount(). -->
+            <aside
+                class="wizard-modal"
+                data-if="ui.wizardOpen"
+                data-ref="wizardModal"
+                tabindex="-1"
+                role="dialog"
+                aria-modal="true"
+                :aria-label="strings.wizard.title"
+            >
+                <div class="wizard-modal__backdrop"></div>
+                <div class="wizard-modal__body">
+                    <h2 class="wizard-modal__title">{{ strings.wizard.title }}</h2>
+
+                    <section data-if="ui.wizardStep === 1" data-testid="wizard-step-1">
+                        <h3 class="settings-section__title">{{ strings.wizard.step1.heading }}</h3>
+                        <p class="settings-section__hint">{{ strings.wizard.step1.intro }}</p>
+
+                        <label class="settings-section__label" for="wizard-locale-select">
+                            {{ strings.settings.user.languageLabel }}
+                        </label>
+                        <select
+                            id="wizard-locale-select"
+                            class="settings-section__input"
+                            data-action="change"
+                            data-fn="settings/setLocale"
+                            data-testid="wizard-locale-select"
+                        >
+                            <option value="en" :selected="settings.locale === 'en'">English</option>
+                            <option value="nl" :selected="settings.locale === 'nl'">Nederlands</option>
+                            <option value="de" :selected="settings.locale === 'de'">Deutsch</option>
+                        </select>
+
+                        <label class="settings-section__label" for="wizard-country-select">
+                            {{ strings.settings.liveFilter.countryLabel }}
+                        </label>
+                        <select
+                            id="wizard-country-select"
+                            class="settings-section__input"
+                            data-action="change"
+                            data-fn="settings/setLiveCountry"
+                            data-testid="wizard-country-select"
+                        >
+                            <option value="" :selected="settings.liveCountry === ''">
+                                {{ strings.settings.liveFilter.countryAll }}
+                            </option>
+                            <option value="NL" :selected="settings.liveCountry === 'NL'">NL — Nederland</option>
+                            <option value="BE" :selected="settings.liveCountry === 'BE'">BE — België</option>
+                            <option value="DE" :selected="settings.liveCountry === 'DE'">DE — Deutschland</option>
+                            <option value="UK" :selected="settings.liveCountry === 'UK'">UK — United Kingdom</option>
+                            <option value="FR" :selected="settings.liveCountry === 'FR'">FR — France</option>
+                            <option value="ES" :selected="settings.liveCountry === 'ES'">ES — España</option>
+                            <option value="US" :selected="settings.liveCountry === 'US'">US — United States</option>
+                        </select>
+
+                        <div class="wizard-modal__actions">
+                            <button
+                                type="button"
+                                class="btn"
+                                data-action="click"
+                                data-fn="wizard/skip"
+                                data-testid="wizard-skip-btn"
+                            >
+                                {{ strings.wizard.skip }}
+                            </button>
+                            <button
+                                type="button"
+                                class="btn"
+                                data-action="click"
+                                data-fn="wizard/nextStep"
+                                data-testid="wizard-next-btn"
+                            >
+                                {{ strings.wizard.step1.next }}
+                            </button>
+                        </div>
+                    </section>
+
+                    <section data-if="ui.wizardStep === 2" data-testid="wizard-step-2">
+                        <h3 class="settings-section__title">{{ strings.wizard.step2.heading }}</h3>
+                        <p class="settings-section__hint">{{ strings.wizard.step2.intro }}</p>
+
+                        <label class="settings-section__label" for="wizard-xtream-url-input">
+                            {{ strings.settings.streaming.xtreamUrlLabel }}
+                        </label>
+                        <input
+                            type="text"
+                            id="wizard-xtream-url-input"
+                            data-ref="wizardXtreamUrlInput"
+                            class="settings-section__input"
+                            :placeholder="strings.settings.streaming.xtreamUrlPlaceholder"
+                            data-testid="wizard-xtream-url-input"
+                            data-action="input"
+                            data-fn="settings/clearXtreamFeedback"
+                        />
+                        <label class="settings-section__label" for="wizard-xtream-user-input">
+                            {{ strings.settings.streaming.xtreamUserLabel }}
+                        </label>
+                        <input
+                            type="text"
+                            id="wizard-xtream-user-input"
+                            data-ref="wizardXtreamUserInput"
+                            class="settings-section__input"
+                            data-testid="wizard-xtream-user-input"
+                            data-action="input"
+                            data-fn="settings/clearXtreamFeedback"
+                        />
+                        <label class="settings-section__label" for="wizard-xtream-pass-input">
+                            {{ strings.settings.streaming.xtreamPassLabel }}
+                        </label>
+                        <input
+                            type="password"
+                            id="wizard-xtream-pass-input"
+                            data-ref="wizardXtreamPassInput"
+                            class="settings-section__input"
+                            data-testid="wizard-xtream-pass-input"
+                            data-action="input"
+                            data-fn="settings/clearXtreamFeedback"
+                        />
+                        <p class="settings-section__error" data-if="settings.xtreamError" data-testid="wizard-xtream-error">
+                            {{ settings.xtreamError }}
+                        </p>
+                        <p class="settings-section__hint" data-if="settings.xtreamBusy" data-testid="wizard-xtream-busy">
+                            {{ strings.settings.streaming.refreshBusy }}
+                        </p>
+
+                        <div class="wizard-modal__actions">
+                            <button
+                                type="button"
+                                class="btn"
+                                data-action="click"
+                                data-fn="wizard/backStep"
+                                data-testid="wizard-back-btn"
+                            >
+                                {{ strings.wizard.step2.back }}
+                            </button>
+                            <button
+                                type="button"
+                                class="btn"
+                                data-action="click"
+                                data-fn="wizard/skip"
+                                data-testid="wizard-skip-btn-2"
+                            >
+                                {{ strings.wizard.skip }}
+                            </button>
+                            <button
+                                type="button"
+                                class="btn"
+                                data-action="click"
+                                data-fn="wizard/saveXtreamAccount"
+                                data-testid="wizard-xtream-save-btn"
+                            >
+                                {{ strings.settings.streaming.xtreamSave }}
+                            </button>
+                        </div>
                     </section>
                 </div>
             </aside>

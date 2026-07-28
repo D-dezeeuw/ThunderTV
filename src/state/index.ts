@@ -36,6 +36,8 @@ import { initUiState } from './ui';
 import { registerUiActions } from './ui.actions';
 import { registerUiSelectors } from './ui.selectors';
 import { registerXtreamActions } from './xtream.actions';
+import { initWizardState } from './wizard';
+import { registerWizardActions } from './wizard.actions';
 
 export { flushNow, pendingKeys, persist, registerPersistOnHide } from './persist';
 export { setActiveChannel } from './player.actions';
@@ -52,6 +54,8 @@ export { loadActiveSource } from './list-load';
 export { registerViewRowsWatch } from './live.actions';
 export { loadGuideChannels } from './guide-load';
 export { loadDefaultEpg } from './epg-load';
+export { openWizard, openWizardIfNoSources } from './wizard.actions';
+export { shouldOpenWizard } from './wizard';
 
 /**
  * Seeds every module's defaults (Feature 05.1.8) — called before
@@ -73,6 +77,7 @@ export function initState(): void {
     initFavoritesState();
     initDebugState();
     initGuideState();
+    initWizardState();
     applyHistoryPolicy();
 }
 
@@ -89,6 +94,7 @@ export function registerActions(): void {
     registerDebugActions();
     registerXtreamActions();
     registerGuideActions();
+    registerWizardActions();
 }
 
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */

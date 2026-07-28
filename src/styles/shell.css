@@ -426,6 +426,51 @@
     color: var(--color-bg);
 }
 
+/* ---- First-run setup wizard modal ----
+   A centered modal rather than the settings drawer's right-edge slide-in
+   (.settings-panel above) — a first-run wizard is a deliberate, focused
+   stop the user must resolve (skip or complete) before returning to the
+   app, not an ancillary panel kept open alongside other work. Shares the
+   same backdrop/surface tokens as .settings-panel for visual consistency. */
+
+.wizard-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wizard-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--color-scrim);
+}
+
+.wizard-modal__body {
+    position: relative;
+    width: min(480px, calc(100% - var(--space-4) * 2));
+    max-height: calc(100% - var(--space-4) * 2);
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: var(--space-4);
+    overflow-y: auto;
+}
+
+.wizard-modal__title {
+    font-size: var(--text-lg);
+    margin: 0 0 var(--space-4);
+}
+
+.wizard-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+}
+
 /* ---- Icons (Feature 02.9) ---- */
 
 .icon {

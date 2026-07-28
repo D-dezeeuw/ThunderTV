@@ -254,6 +254,8 @@ export const en = {
             xtreamPasswordRequired: 'Password is required for a new account.',
             xtreamSaved: 'Account saved.',
             xtreamHelp: 'Enter your provider details, or update them here — this is the same account used by the Connect import.',
+            wizardReopenButton: 'Run setup wizard again',
+            wizardReopenHint: 'Redo the initial language, content country, and Xtream account setup.',
         },
         playback: {
             engine: 'Playback engine',
@@ -273,6 +275,21 @@ export const en = {
             density: 'Density',
             densityCompact: 'Compact',
             densityComfortable: 'Comfortable',
+        },
+    },
+
+    wizard: {
+        title: 'Welcome to ThunderTV',
+        skip: 'Skip for now',
+        step1: {
+            heading: 'Let’s get you set up',
+            intro: 'Choose your language and preferred content country — both are switchable anytime in Settings.',
+            next: 'Continue',
+        },
+        step2: {
+            heading: 'Add your channels',
+            intro: 'Enter your Xtream Codes account to import your channels now, or skip and add a source later from the Connect card.',
+            back: 'Back',
         },
     },
 
