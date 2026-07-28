@@ -7,3 +7,8 @@ If successful you commit and merge to main and push.
 
 When explicitely asked you do a full verification of that change.
 
+Work concise, without bloat, short input / output and a quick and efficient way.
+
+## Demo data
+
+If working with the channel data, we have a demo file to test against in the /.claude/context/thundertv-config-demo.xml
