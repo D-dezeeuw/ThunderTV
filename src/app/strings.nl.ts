@@ -5,6 +5,7 @@
  * a real localized app would leave them.
  */
 import { nlCatalog } from './strings.nl.catalog';
+import { nlPlayerTracks } from './strings.nl.player';
 
 export const nl = {
     appName: 'ThunderTV',
@@ -347,11 +348,7 @@ export const nl = {
         signalFair: 'Stream buffert af en toe',
         signalPoor: 'Stream sputtert — verbinding te traag of onstabiel',
         nowPlayingEmpty: 'Kies een zender om te beginnen met kijken.',
-        audioTracksLabel: 'Audiotracks',
-        subtitlesLabel: 'Ondertitels',
-        subtitlesOff: 'Uit',
-        noAudioTracks: 'Geen audiotracks in deze stream',
-        noSubtitles: 'Geen ondertitels in deze stream',
+        ...nlPlayerTracks,
     },
 
     import: {

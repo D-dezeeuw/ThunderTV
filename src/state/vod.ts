@@ -20,7 +20,7 @@ export const VOD_DETAIL = 'vod.detail';
 /** Background full-catalog warm status (`vod-warm.ts`) — `'idle'` until a warm is ever attempted; `'skipped'` covers every reason a warm didn't (fully) run: a non-`'full'` storage tier, no active Xtream account, a failed fetch, or the `WARM_ROW_CAP` sanity cap — a UI surfacing this later can treat all of those as "still browsing lazily", the distinction between them isn't worth a second flag. */
 export const VOD_WARM_STATUS = 'vod.warmStatus';
 
-/** A provider's VOD category list is a few hundred entries at most — well under the 1000 global bulk-data ceiling, but capped explicitly (`registry-catalog.ts`'s `maxItems`) so a pathological provider can't flood the picker. */
+/** A provider's VOD category list is a few hundred entries at most — well under the 1000 global bulk-data ceiling, but capped explicitly (`registry-overflow.ts`'s `maxItems`) so a pathological provider can't flood the picker. */
 export const VOD_CATEGORIES_CAP = 500;
 
 export type VodStatus = 'idle' | 'loading' | 'ready' | 'error';
