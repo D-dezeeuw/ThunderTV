@@ -10,8 +10,8 @@ import { KEY_REGISTRY } from './registry-keys';
 export { KEY_REGISTRY } from './registry-keys';
 export type { KeyMeta } from './registry-keys';
 
-/** `strings` (the plain-TS copy mirror, Feature 02.1) is deliberately outside this registry — it is static reference data, not application state, and is never a candidate for persistence. */
-export const NON_REGISTRY_KEYS = ['strings'] as const;
+/** `strings` (the plain-TS copy mirror, Feature 02.1) and `blankImage` (the transparent-pixel `:src` fallback, `blank-image.ts`) are deliberately outside this registry — both are static reference data, not application state, and neither is ever a candidate for persistence. */
+export const NON_REGISTRY_KEYS = ['strings', 'blankImage'] as const;
 
 export function isRegisteredKey(key: string): boolean {
     return key in KEY_REGISTRY;

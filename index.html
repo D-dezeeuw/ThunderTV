@@ -799,7 +799,7 @@
                                         <img
                                             data-if="vod.detail.logo"
                                             class="catalog-detail__poster-img"
-                                            :src="vod.detail.logo"
+                                            :src="vod.detail?.logo || blankImage"
                                             loading="lazy"
                                             decoding="async"
                                             referrerpolicy="no-referrer"
@@ -854,7 +854,7 @@
                                         <img
                                             data-if="series.detail.cover"
                                             class="catalog-detail__poster-img"
-                                            :src="series.detail.cover"
+                                            :src="series.detail?.cover || blankImage"
                                             loading="lazy"
                                             decoding="async"
                                             referrerpolicy="no-referrer"
@@ -907,7 +907,7 @@
                                     <div
                                         class="catalog-seasons"
                                         data-if="series.detailStatus === 'ready' && series.detail.rows.length > 0"
-                                        data-each="series.detail.rows"
+                                        data-each="series.detail?.rows || []"
                                         data-as="row"
                                         data-testid="series-rows"
                                     >
@@ -1061,7 +1061,7 @@
                                             <img
                                                 data-if="item.logo"
                                                 class="channel-row__logo-img"
-                                                :src="item.logo"
+                                                :src="item.logo || blankImage"
                                                 loading="lazy"
                                                 decoding="async"
                                                 referrerpolicy="no-referrer"
@@ -1485,7 +1485,7 @@
                                     <img
                                         data-if="item.logo"
                                         class="recent-zap-history__logo-img"
-                                        :src="item.logo"
+                                        :src="item.logo || blankImage"
                                         loading="lazy"
                                         decoding="async"
                                         referrerpolicy="no-referrer"
@@ -1543,7 +1543,7 @@
                                     <img
                                         data-if="item.icon"
                                         class="guide__channel-logo"
-                                        :src="item.icon"
+                                        :src="item.icon || blankImage"
                                         loading="lazy"
                                         decoding="async"
                                         referrerpolicy="no-referrer"

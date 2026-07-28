@@ -96,6 +96,21 @@ if (routeUnion) {
     }
 }
 
+// A `:src` bound to a possibly-undefined value is applied as a DOM
+// *property* by Spektrum (img.src = value), not via setAttribute — its
+// null-means-remove path only covers hyphenated attribute names. An
+// undefined binding therefore becomes the literal string "undefined" and
+// the browser fetches it: a wasted request and a 404 for every logo-less
+// row. `|| blankImage` (src/state/blank-image.ts) is the required guard.
+for (const match of html.matchAll(/:src="([^"]*)"/g)) {
+    if (!match[1].includes('blankImage')) {
+        errors.push(
+            `:src="${match[1]}" has no blankImage fallback — an undefined value binds as the string "undefined" and the browser fetches /undefined.\n` +
+                '    Write :src="<expr> || blankImage" (see src/state/blank-image.ts).',
+        );
+    }
+}
+
 if (errors.length > 0) {
     console.error('check-reachability: FAILED\n');
     for (const e of errors) console.error(`  • ${e}`);

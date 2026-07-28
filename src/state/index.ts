@@ -46,6 +46,7 @@ import { initVodState } from './vod';
 import { registerXtreamActions } from './xtream.actions';
 import { initWizardState } from './wizard';
 import { registerWizardActions } from './wizard.actions';
+import { seedBlankImage } from './blank-image';
 
 export { flushNow, pendingKeys, persist, registerPersistOnHide } from './persist';
 export { setActiveChannel } from './player.actions';
@@ -76,6 +77,10 @@ export { warmSeriesCatalog } from './series-warm';
  * `bootstrap.ts`) is its sole sanctioned publisher.
  */
 export function initState(): void {
+    // Static reference data, seeded with the module defaults so every
+    // consumer — including the bindDOM test harness, which does not call
+    // seedStrings() — can resolve it before the first bind.
+    seedBlankImage();
     initPlaylistState();
     initImportState();
     initPlayerState();
