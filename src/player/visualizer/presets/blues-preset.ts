@@ -45,10 +45,18 @@ export class BluesPreset implements VisualizerPreset {
         ctx.rotate(this.angle);
         ctx.beginPath();
         for (let i = 0; i <= POINTS; i++) {
-            const sampleIndex = Math.floor((i / POINTS) * (wave.length - 1));
+            const u = i / POINTS;
+            const sampleIndex = Math.floor(u * (wave.length - 1));
             const deviation = ((wave[sampleIndex] ?? 128) - 128) / 128;
-            const r = baseRadius + deviation * amp;
-            const theta = (i / POINTS) * Math.PI * 2;
+            // The first and last waveform samples are unrelated, so an
+            // untapered ring has a radius step where it closes — a jarring
+            // seam. Taper the deviation to zero over the 5% nearest the
+            // join (both sides land on the smooth base circle, matching
+            // exactly); the taper point rotates with the ring, so there's
+            // no static dead spot to notice.
+            const seamWindow = Math.min(1, Math.min(u, 1 - u) / 0.05);
+            const r = baseRadius + deviation * amp * seamWindow;
+            const theta = u * Math.PI * 2;
             const x = Math.cos(theta) * r;
             const y = Math.sin(theta) * r;
             if (i === 0) ctx.moveTo(x, y);
