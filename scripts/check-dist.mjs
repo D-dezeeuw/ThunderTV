@@ -10,7 +10,7 @@
 // must never be reachable from `main.ts`'s import graph. Nothing besides
 // dead-code elimination keeps it out today, so this is the regression guard
 // for that.
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -85,3 +85,41 @@ if (devtoolsLeaks.length > 0) {
 }
 
 console.log(`check-dist: OK — no devtools symbols found in ${jsFiles.length} built JS asset(s)`);
+
+// The entry chunk is what every visitor downloads before anything renders,
+// so it is the only size worth guarding. The player engines are big
+// (hls.js ~509 kB, mpegts.js ~269 kB) and are deliberately behind
+// `await import()` in src/player/ — if either ever lands in the entry
+// chunk, the browse UI starts paying for a decoder it may never use. That
+// is the regression Rollup's generic chunk-size warning cannot distinguish
+// from a lazily-loaded chunk simply being large, which is why
+// vite.config.ts raises that threshold and this check exists instead.
+// Deliberately a size budget rather than a search for library symbols: the
+// entry chunk legitimately contains the *specifier* strings ("hls.js",
+// "mpegts.js") from its own `await import()` calls, so grepping for those
+// can only produce false positives. Size cannot be faked — either engine
+// landing in the entry chunk would multiply it several times over.
+const ENTRY_BUDGET_BYTES = 200 * 1024;
+
+const entryNames = [...html.matchAll(/<script[^>]+src="([^"]+\.js)"/g)].map((m) => m[1].split('/').pop());
+
+if (entryNames.length === 0) {
+    console.error('check-dist: no entry <script src> found in dist/index.html — cannot check the startup budget');
+    process.exit(1);
+}
+
+for (const name of entryNames) {
+    const bytes = statSync(`${assetsDir}/${name}`).size;
+    if (bytes > ENTRY_BUDGET_BYTES) {
+        console.error(
+            `check-dist: entry chunk ${name} is ${(bytes / 1024).toFixed(1)} kB, over the ${String(ENTRY_BUDGET_BYTES / 1024)} kB startup budget.`,
+        );
+        console.error('  Something that should be lazily imported is now in the initial download —');
+        console.error('  most likely a player engine (hls.js / mpegts.js) that stopped being `await import()`ed.');
+        process.exit(1);
+    }
+}
+
+console.log(
+    `check-dist: OK — entry chunk(s) ${entryNames.join(', ')} within the ${String(ENTRY_BUDGET_BYTES / 1024)} kB startup budget`,
+);
