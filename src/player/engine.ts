@@ -3,9 +3,13 @@ import { reportPlaybackError } from '../state/player.actions';
 import { SETTINGS_BUFFERING, SETTINGS_PLAYBACK_ENGINE, type BufferingMode, type PlaybackEngine } from '../state/settings';
 import { get } from '../state/typed';
 import { refreshActiveXtreamSource } from '../state/xtream-refresh';
+import { createHlsTrackEngine } from './hls-tracks';
 import { attachMpegts, detachMpegts } from './mpegts-engine';
+import { createNativeTrackEngine } from './native-tracks';
+import type { PlayerEngine } from './player-engine';
 import { alternateFormatUrl, describeStream } from './stream-probe';
 import { monitorStreamHealth, stopStreamHealthMonitor } from './stream-health';
+import type { TrackSnapshot } from './tracks';
 
 /**
  * Playback engine selection, as an ordered attempt chain. Three real
@@ -41,6 +45,25 @@ let baseStreamUrl: string | null = null;
 let chain: PlaybackEngine[] = [];
 let chainIndex = 0;
 let failures: string[] = [];
+
+/** The track-control surface of whichever attempt is currently attached, if it exposes one — see `player-engine.ts`. */
+let activeTrackEngine: PlayerEngine | null = null;
+/** Cleanup for `activeTrackEngine`'s own listeners (native's `textTracks`/`audioTracks` `addtrack`/`change`); `null` when the engine needs none (hls.js/mpegts — `hls.destroy()`/`detachMpegts()` already tear those down). */
+let activeTrackEngineDispose: (() => void) | null = null;
+/** The (single) external subscriber registered via `onTracksChanged()` below — re-applied to each new `activeTrackEngine` so it survives a chain fallback or a channel switch. */
+let tracksChangedListener: (() => void) | null = null;
+
+/** mpegts.js has no track-switching API — an explicit empty snapshot so callers can tell "attached, nothing to offer" from "nothing attached yet". */
+const MPEGTS_TRACK_ENGINE: PlayerEngine = {
+    getTracks: (): TrackSnapshot => ({ audio: [], subtitles: [] }),
+};
+
+function setActiveTrackEngine(engine: PlayerEngine | null, dispose: (() => void) | null = null): void {
+    activeTrackEngineDispose?.();
+    activeTrackEngine = engine;
+    activeTrackEngineDispose = dispose;
+    if (tracksChangedListener) engine?.onTracksChanged?.(tracksChangedListener);
+}
 
 function supportsNativeHls(video: HTMLVideoElement): boolean {
     return video.canPlayType('application/vnd.apple.mpegurl') !== '';
@@ -167,12 +190,15 @@ async function runCurrentAttempt(video: HTMLVideoElement): Promise<void> {
             },
         });
         if (!result.ok) await advanceChain(video, result.reason ?? 'mpegts unavailable');
+        else setActiveTrackEngine(MPEGTS_TRACK_ENGINE);
         return;
     }
 
     if (engine === 'native') {
         lastStreamUrl = base;
         video.src = base;
+        const native = createNativeTrackEngine(video);
+        setActiveTrackEngine(native.engine, native.dispose);
         await video.play().catch(() => undefined);
         return;
     }
@@ -181,6 +207,8 @@ async function runCurrentAttempt(video: HTMLVideoElement): Promise<void> {
     lastStreamUrl = url;
     if (supportsNativeHls(video)) {
         video.src = url;
+        const native = createNativeTrackEngine(video);
+        setActiveTrackEngine(native.engine, native.dispose);
         await video.play().catch(() => undefined);
         return;
     }
@@ -195,7 +223,12 @@ async function runCurrentAttempt(video: HTMLVideoElement): Promise<void> {
     hls = instance;
     instance.loadSource(url);
     instance.attachMedia(video);
+    const { engine: hlsTrackEngine, notifyTracksChanged } = createHlsTrackEngine(instance);
+    setActiveTrackEngine(hlsTrackEngine);
+    instance.on(HlsCtor.Events.AUDIO_TRACKS_UPDATED, notifyTracksChanged);
+    instance.on(HlsCtor.Events.SUBTITLE_TRACKS_UPDATED, notifyTracksChanged);
     instance.on(HlsCtor.Events.MANIFEST_PARSED, () => {
+        notifyTracksChanged();
         void video.play().catch(() => undefined);
     });
     instance.on(HlsCtor.Events.ERROR, (_event, data) => {
@@ -235,6 +268,27 @@ function detachEngines(): void {
         hls = null;
     }
     detachMpegts();
+    setActiveTrackEngine(null);
+}
+
+/** Track listing/selection for whichever engine attached the current stream — the empty snapshot when nothing is attached, or the attached engine has none to offer. */
+export function getPlayerTracks(): TrackSnapshot {
+    return activeTrackEngine?.getTracks?.() ?? { audio: [], subtitles: [] };
+}
+
+export function setAudioTrack(id: string): void {
+    activeTrackEngine?.setAudioTrack?.(id);
+}
+
+/** `null` turns subtitles off. */
+export function setSubtitleTrack(id: string | null): void {
+    activeTrackEngine?.setSubtitleTrack?.(id);
+}
+
+/** Single-listener: replaces any previously registered callback, and is re-applied to whichever engine becomes active next (chain fallback, channel switch). */
+export function onTracksChanged(cb: () => void): void {
+    tracksChangedListener = cb;
+    activeTrackEngine?.onTracksChanged?.(cb);
 }
 
 export function detach(video: HTMLVideoElement): void {
@@ -264,4 +318,7 @@ export function resetPlayerEngineForTests(): void {
     chain = [];
     chainIndex = 0;
     failures = [];
+    activeTrackEngine = null;
+    activeTrackEngineDispose = null;
+    tracksChangedListener = null;
 }

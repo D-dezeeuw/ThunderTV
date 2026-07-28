@@ -6,6 +6,33 @@ lazy-loaded hls.js/mpegts.js/native engines.
 Owners: Phase 10 — Playback Foundation; Phase 11 — HLS & MPEG-TS Engines;
 Phase 12 — Player UI: Dock & Theater.
 
+## Audio/subtitle tracks
+
+`player-engine.ts` defines `PlayerEngine`'s track-control members
+(`getTracks?`/`setAudioTrack?`/`setSubtitleTrack?`/`onTracksChanged?`) — all
+optional, since mpegts.js exposes none of it and the native fallback only
+partial. `tracks.ts` has the engine-agnostic `MediaTrack`/`TrackSnapshot`
+types. `engine.ts` holds one `PlayerEngine` per attach attempt (built the
+moment that attempt starts, torn down alongside it via `detachEngines()`)
+and dispatches `getPlayerTracks()`/`setAudioTrack()`/`setSubtitleTrack()`/
+`onTracksChanged()` (all exported from there) to whichever is current —
+that dispatch, not the interface, is what a state/UI layer should import.
+
+Per-engine support: hls.js (`hls-tracks.ts`) maps `hls.audioTracks`/
+`hls.subtitleTracks` in full, switching via `hls.audioTrack`/
+`hls.subtitleTrack` (subtitles off = index `-1` and `subtitleDisplay =
+false`); native (`native-tracks.ts`) is feature-detected — audio only where
+the browser exposes Safari's non-standard `video.audioTracks`, subtitles via
+the standard `video.textTracks` (`kind` `subtitles`/`captions`; off = every
+track's `mode` set to `'disabled'`) — both APIs absent means an empty,
+correct-and-expected snapshot; mpegts.js has no track-switching API at all,
+so its `PlayerEngine` only implements `getTracks()` (always empty) and skips
+the setters/`onTracksChanged` entirely. `track-prefs.ts` is the pure
+preference resolver (`normalizeLangCode`, `pickDefaultAudioTrack`,
+`pickDefaultSubtitleTrack`) a later stage calls with the viewer's saved
+language and a `getPlayerTracks()` snapshot — it has no engine or Spektrum
+imports of its own.
+
 ## Radio visualizer
 
 `visualizer/` drives a canvas 2D visualizer over the shared `<video>`
