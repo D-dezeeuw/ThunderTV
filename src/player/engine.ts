@@ -31,8 +31,11 @@ import { monitorStreamHealth, stopStreamHealthMonitor } from './stream-health';
  */
 let hls: Hls | null = null;
 let nativeErrorHandler: (() => void) | null = null;
+let nativePlayingHandler: (() => void) | null = null;
 let nativeErrorVideo: HTMLVideoElement | null = null;
 let lastStreamUrl: string | null = null;
+/** True once the current attach has produced actual playback — see `advanceChain()`. */
+let playing = false;
 /** The URL as baked in the catalog; each attempt derives its own `.ts`/`.m3u8` form from it. */
 let baseStreamUrl: string | null = null;
 let chain: PlaybackEngine[] = [];
@@ -65,8 +68,19 @@ function attachNativeErrorReporting(video: HTMLVideoElement): void {
         console.error('[ThunderTV] native playback error:', detail);
         void advanceChain(video, detail);
     };
+    // Earlier engines in the chain keep emitting for a while after they are
+    // torn down (mpegts.js in particular fires its fatal callback during
+    // destroy), so without this the failures of attempts 1 and 2 were still
+    // being reported after attempt 3 was already on screen and playing —
+    // "Playback failed:" over a perfectly good picture.
+    const onPlaying = (): void => {
+        playing = true;
+        reportPlaybackError(null);
+    };
     video.addEventListener('error', handler);
+    video.addEventListener('playing', onPlaying);
     nativeErrorHandler = handler;
+    nativePlayingHandler = onPlaying;
     nativeErrorVideo = video;
 }
 
@@ -74,6 +88,10 @@ function appendStreamProbe(baseDetail: string): void {
     const url = lastStreamUrl;
     if (!url) return;
     void describeStream(url).then(async (summary) => {
+        // The probe is a network round trip, so a later attempt in the chain
+        // routinely gets a picture up before it answers. Reporting then would
+        // put a failure notice over a stream the user is watching.
+        if (playing) return;
         reportPlaybackError(`${baseDetail} — ${summary}`);
         // A 404 from the provider is either a stale catalog (panels
         // renumber stream ids routinely) or the panel refusing streams to
@@ -81,6 +99,7 @@ function appendStreamProbe(baseDetail: string): void {
         // them: fresh ids that still 404 point at IP blocking.
         if (summary.includes('HTTP 404')) {
             const outcome = await refreshActiveXtreamSource('error');
+            if (playing) return;
             if (outcome === 'refreshed') {
                 reportPlaybackError(`${baseDetail} — ${summary}; channel list refreshed — try the channel again`);
             } else if (outcome === 'skipped') {
@@ -126,6 +145,7 @@ export async function attachAndPlay(video: HTMLVideoElement, streamUrl: string):
     chain = attemptChain(preferredEngine());
     chainIndex = 0;
     failures = [];
+    playing = false;
     attachNativeErrorReporting(video);
     monitorStreamHealth(video);
     await runCurrentAttempt(video);
@@ -191,6 +211,12 @@ async function runCurrentAttempt(video: HTMLVideoElement): Promise<void> {
  * expected noise when the preference does not match the provider's format.
  */
 async function advanceChain(video: HTMLVideoElement, detail: string): Promise<void> {
+    // A stream that is already playing has no failure to report: this is a
+    // late callback from an engine the chain moved past. A stream that
+    // played and then genuinely died still gets through — the element
+    // carries a MediaError in that case.
+    if (playing && !video.error) return;
+
     failures.push(detail);
     detachEngines();
     chainIndex += 1;
@@ -214,9 +240,12 @@ function detachEngines(): void {
 export function detach(video: HTMLVideoElement): void {
     stopStreamHealthMonitor();
     detachEngines();
-    if (nativeErrorHandler && nativeErrorVideo) {
-        nativeErrorVideo.removeEventListener('error', nativeErrorHandler);
+    playing = false;
+    if (nativeErrorVideo) {
+        if (nativeErrorHandler) nativeErrorVideo.removeEventListener('error', nativeErrorHandler);
+        if (nativePlayingHandler) nativeErrorVideo.removeEventListener('playing', nativePlayingHandler);
         nativeErrorHandler = null;
+        nativePlayingHandler = null;
         nativeErrorVideo = null;
     }
     video.removeAttribute('src');
@@ -227,7 +256,9 @@ export function detach(video: HTMLVideoElement): void {
 export function resetPlayerEngineForTests(): void {
     hls = null;
     nativeErrorHandler = null;
+    nativePlayingHandler = null;
     nativeErrorVideo = null;
+    playing = false;
     lastStreamUrl = null;
     baseStreamUrl = null;
     chain = [];

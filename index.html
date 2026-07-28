@@ -452,7 +452,7 @@
                      data-ref="listContainer", so the row set is
                      republished on view change (src/state/live.actions.ts)
                      instead of mounting a second list. -->
-                <section class="view__section" data-if="view.channelList.active">
+                <section class="view__section view__section--fill" data-if="view.channelList.active">
                     <!-- Feature 08.1-08.10: the real virtual-scrolled channel list —
                          the surface Phases 09 (search) and 10 (playback) plug into. -->
                     <div
@@ -643,7 +643,18 @@
                                  keeps it mounted but visually minimal rather than
                                  removing it, see player.css's .list-shell--split rules). -->
                             <div class="now-playing" data-if="view.live.active || view.radio.active" data-testid="now-playing-pane">
-                                <div class="player-shell" data-if="player.active" data-testid="player-shell">
+                                <!-- The radio/live distinction is a class on the shell,
+                                     never a `:has(.radio-now-playing)` selector: Spektrum's
+                                     data-if only sets `display: none`, it does not detach
+                                     the node, so a structural selector would match in Live
+                                     too and collapse the video away (it did — that was the
+                                     "Live shows no picture" bug). -->
+                                <div
+                                    class="player-shell"
+                                    :class="{ 'player-shell--radio': view.radio.active }"
+                                    data-if="player.active"
+                                    data-testid="player-shell"
+                                >
                                     <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
                                     <div class="radio-now-playing" data-if="view.radio.active" data-testid="radio-now-playing">
                                         <span class="radio-now-playing__logo">
