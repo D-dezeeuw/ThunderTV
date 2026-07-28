@@ -42,6 +42,7 @@ export const de = {
         variants: {
             label: 'Weitere Feeds',
             catchUp: 'Catch-up',
+            alt: 'Alt',
         },
         strictFellBack: 'Die kuratierte Liste hat hier nichts gefunden, alle Sender werden angezeigt. Gefundene Namen:',
     },

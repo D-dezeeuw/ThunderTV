@@ -732,7 +732,7 @@
                                             class="signal"
                                             :class="'signal--' + (player.streamHealth ?? 'good')"
                                             data-if="player.streamHealth"
-                                            :title="streamHealthLabel"
+                                            :data-tip="streamHealthLabel"
                                             :aria-label="streamHealthLabel"
                                             role="img"
                                             data-testid="stream-health"
@@ -764,7 +764,12 @@
                                          the full label stays available as the accessible
                                          name — with the playing feed's label spelled out
                                          beside the strip, so the current choice is never
-                                         only an icon. -->
+                                         only an icon. Each chip also carries a short
+                                         always-visible quality caption (icons alone read
+                                         as noise at a glance), and the full label surfaces
+                                         as an instant `data-tip` tooltip on hover/focus
+                                         instead of the native `title`, which never appears
+                                         on touch/TV and lags on hover. -->
                                     <div
                                         class="variants"
                                         data-if="hasVariants"
@@ -784,7 +789,7 @@
                                                 :class="{ 'variants__chip--active': item.id === player.activeVariantId }"
                                                 :aria-pressed="item.id === player.activeVariantId"
                                                 :aria-label="item.label"
-                                                :title="item.label"
+                                                :data-tip="item.label"
                                                 :data-variant-id="item.id"
                                                 data-testid="variant-chip"
                                             >
@@ -800,6 +805,8 @@
                                                 <svg class="icon icon--s variants__catchup" data-if="item.isRecording" aria-hidden="true">
                                                     <use href="#icon-catchup"></use>
                                                 </svg>
+                                                <span class="variants__chip-caption" data-if="item.quality">{{ item.quality }}</span>
+                                                <span class="variants__chip-caption" data-if="!item.quality">{{ strings.live.variants.alt }}</span>
                                             </button>
                                         </div>
                                         <span class="variants__current truncate" data-testid="variant-current">{{ activeVariantLabel }}</span>

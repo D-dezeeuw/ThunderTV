@@ -1,6 +1,7 @@
 import { setValue, tick } from 'spektrum';
 import { describe, expect, it } from 'vitest';
 import { mountTemplate } from '../shared/testing/bind-dom';
+import { seedStrings } from './index';
 import { LIVE_STATS, RADIO_COUNT } from './live';
 import { playVariantById, publishVariantsFor } from './live.actions';
 import { PLAYER_ACTIVE, PLAYER_ACTIVE_VARIANT_ID, PLAYER_VARIANTS } from './player';
@@ -176,6 +177,7 @@ describe('variant switcher', () => {
                     <button
                         :class="{ 'is-active': item.id === player.activeVariantId }"
                         :aria-label="item.label"
+                        :data-tip="item.label"
                         :data-variant-id="item.id"
                         data-testid="chip"
                     >
@@ -186,6 +188,8 @@ describe('variant switcher', () => {
                             <i :class="{ on: item.tier >= 4 }"></i>
                         </span>
                         <span data-testid="catchup" data-if="item.isRecording"></span>
+                        <span data-testid="caption" data-if="item.quality">{{ item.quality }}</span>
+                        <span data-testid="caption-alt" data-if="!item.quality">{{ strings.live.variants.alt }}</span>
                     </button>
                 </div>
                 <span data-testid="current">{{ activeVariantLabel }}</span>
@@ -222,6 +226,18 @@ describe('variant switcher', () => {
         // never only an icon.
         expect(mounted.query('[data-testid="current"]')?.textContent).toBe('FHD');
 
+        // The quality code is an always-visible caption now, not something
+        // that only shows up on hover — icons alone read as noise.
+        const caption = (chip: HTMLElement | undefined): string | undefined =>
+            chip?.querySelector<HTMLElement>('[data-testid="caption"]')?.textContent;
+        expect(caption(chips[0])).toBe('FHD');
+        expect(caption(chips[1])).toBe('HD');
+
+        // The full label drives an instant `data-tip` tooltip instead of
+        // the native `title`, which never shows on touch/TV and lags on
+        // hover.
+        expect(chips.map((c) => c.getAttribute('data-tip'))).toEqual(['FHD', 'HD · catch-up']);
+
         // Click the catch-up chip through the real delegated handler.
         chips[1]?.click();
         tick();
@@ -231,6 +247,30 @@ describe('variant switcher', () => {
         // highlight and favorites keep pointing at one channel.
         expect(get<ActiveChannelSnapshot | null>(PLAYER_ACTIVE)?.id).toBe('a');
         expect(get<string | null>(PLAYER_ACTIVE_VARIANT_ID)).toBe('b');
+
+        mounted.cleanup();
+    });
+
+    it('falls back to a localized "alt" caption for a feed with no parsed quality', () => {
+        const mounted = mountTemplate(`
+            <div data-each="player.variants" data-action="click" data-fn="live/playVariant">
+                <button data-testid="chip">
+                    <span data-testid="caption" data-if="item.quality">{{ item.quality }}</span>
+                    <span data-testid="caption-alt" data-if="!item.quality">{{ strings.live.variants.alt }}</span>
+                </button>
+            </div>
+        `);
+        seedStrings();
+
+        setActiveChannel(NPO);
+        setValue(PLAYER_VARIANTS, [
+            { id: 'a', url: 'http://x/a.ts', label: 'Feed 2', quality: null, isRecording: false, provider: null, tier: 0 },
+        ]);
+        tick();
+
+        const chip = mounted.query('[data-testid="chip"]');
+        expect(chip?.querySelector<HTMLElement>('[data-testid="caption"]')?.style.display).toBe('none');
+        expect(chip?.querySelector<HTMLElement>('[data-testid="caption-alt"]')?.textContent).toBe('alt');
 
         mounted.cleanup();
     });

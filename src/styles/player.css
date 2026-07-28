@@ -104,6 +104,8 @@
     gap: 2px;
     height: 0.85rem;
     flex: none;
+    /* Anchor for the `[data-tip]` tooltip pseudo-element (see below). */
+    position: relative;
 }
 
 .signal__bar {
@@ -173,19 +175,23 @@
 .variants__chip {
     flex: none;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: var(--space-1);
     /* 44px hit target on touch without inflating the visual pill. */
     min-width: 2.25rem;
-    min-height: 2rem;
+    min-height: 2.75rem;
     padding-inline: var(--space-2);
+    padding-block: var(--space-1);
     border: 1px solid var(--color-border);
     border-radius: 8px;
     background: var(--color-bg);
     color: var(--color-text-dim);
     font: inherit;
     cursor: pointer;
+    /* Anchor for the `[data-tip]` tooltip pseudo-element (see below). */
+    position: relative;
 }
 
 .variants__chip--active {
@@ -231,4 +237,48 @@
    recording still has a picture quality worth choosing between. */
 .variants__catchup {
     flex: none;
+}
+
+/* Always-visible quality caption under the bars — the bars/glyphs read as
+   noise at a glance without a code to anchor them to. `flex-basis: 100%`
+   on a `flex-wrap: wrap` parent is what forces it onto its own line below
+   the bars/icons row, without a nested wrapper element. */
+.variants__chip-caption {
+    flex: 1 0 100%;
+    text-align: center;
+    font-size: 0.625rem;
+    line-height: var(--leading-tight);
+    color: inherit;
+}
+
+/* Instant hover/focus tooltip, replacing native `title`: `title` never
+   appears on touch/TV and lags behind the pointer on desktop. `data-tip`
+   drives a pseudo-element pill instead, shown immediately and positioned
+   ABOVE the element — the dock sits low in the viewport, so a tooltip
+   opening downward would clip at the bottom edge. */
+.variants__chip[data-tip]::after,
+.signal[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-surface-raised);
+    color: var(--color-text);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+    display: none;
+}
+
+.variants__chip[data-tip]:hover::after,
+.variants__chip[data-tip]:focus-visible::after,
+.signal[data-tip]:hover::after,
+.signal[data-tip]:focus-visible::after {
+    display: block;
 }
