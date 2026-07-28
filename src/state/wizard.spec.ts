@@ -4,12 +4,15 @@ import { withFakePlatform, type FakeHttpAdapter } from '../core/platform/fake-pl
 import { makePlaylistRecord } from '../core/storage/fixtures';
 import { apiUrl } from '../xtream/urls';
 import type { XtreamSource } from '../xtream/types';
+import { rehydrateState } from './index';
+import { flushNow } from './persist';
 import { initPlaylistState, PLAYLIST_SOURCES, type PlaylistSourceSummary } from './playlist';
 import { loadPlaylistSources } from './playlist-load';
+import { persistedKeys } from './registry';
 import { SETTINGS_XTREAM_ERROR, SETTINGS_XTREAM_SAVED } from './settings';
 import { initSettingsState } from './settings';
-import { openWizard, openWizardIfNoSources } from './wizard.actions';
-import { initWizardState, shouldOpenWizard, UI_WIZARD_OPEN, UI_WIZARD_STEP } from './wizard';
+import { markSetupComplete, openWizard, openWizardIfNoSources } from './wizard.actions';
+import { initWizardState, shouldOpenWizard, UI_SETUP_COMPLETE, UI_WIZARD_OPEN, UI_WIZARD_STEP } from './wizard';
 import { get, set } from './typed';
 
 const SUMMARY: PlaylistSourceSummary = {
@@ -32,12 +35,16 @@ const SUMMARY: PlaylistSourceSummary = {
  * separate from Spektrum state so it's directly unit-testable.
  */
 describe('shouldOpenWizard()', () => {
-    it('opens when there are zero sources', () => {
-        expect(shouldOpenWizard([])).toBe(true);
+    it('opens when there are zero sources and setup was never completed', () => {
+        expect(shouldOpenWizard([], false)).toBe(true);
     });
 
     it('stays closed when at least one source exists', () => {
-        expect(shouldOpenWizard([SUMMARY])).toBe(false);
+        expect(shouldOpenWizard([SUMMARY], false)).toBe(false);
+    });
+
+    it('stays closed once setup is complete, even with zero sources', () => {
+        expect(shouldOpenWizard([], true)).toBe(false);
     });
 });
 
@@ -88,6 +95,75 @@ describe('openWizardIfNoSources() (boot-time check)', () => {
 
             expect(get<boolean>(UI_WIZARD_OPEN)).toBe(false);
         });
+    });
+
+    it('stays closed when a previous session already completed setup, even with zero sources', async () => {
+        await withFakePlatform({}, () => {
+            initWizardState();
+            initPlaylistState();
+            // What rehydrateState() restores at boot for a configured install.
+            set(UI_SETUP_COMPLETE, true);
+            tick();
+
+            openWizardIfNoSources();
+            tick();
+
+            expect(get<boolean>(UI_WIZARD_OPEN)).toBe(false);
+        });
+    });
+
+    it('records setup as complete when boot finds a configured source, so the next boot never asks', async () => {
+        await withFakePlatform({}, () => {
+            initWizardState();
+            initPlaylistState();
+            set(PLAYLIST_SOURCES, [SUMMARY]);
+            tick();
+
+            openWizardIfNoSources();
+            tick();
+
+            expect(get<boolean>(UI_SETUP_COMPLETE)).toBe(true);
+        });
+    });
+});
+
+/**
+ * The cross-session half of the fix: `ui.setupComplete` is a persisted key,
+ * so the flag written this session is exactly what the next boot's
+ * `rehydrateState()` reads back.
+ */
+describe('markSetupComplete() (cross-session persistence)', () => {
+    afterEach(() => {
+        resetState();
+    });
+
+    it('survives a reload — flushed to storage, restored by rehydrateState()', async () => {
+        await withFakePlatform({}, async () => {
+            initWizardState();
+            initPlaylistState();
+
+            markSetupComplete();
+            tick();
+            await flushNow();
+
+            // Second session: defaults reseeded, then rehydrated from storage.
+            resetState();
+            initWizardState();
+            initPlaylistState();
+            await rehydrateState();
+            tick();
+
+            expect(get<boolean>(UI_SETUP_COMPLETE)).toBe(true);
+
+            openWizardIfNoSources();
+            tick();
+
+            expect(get<boolean>(UI_WIZARD_OPEN)).toBe(false);
+        });
+    });
+
+    it('is registered as a persisted key (so it joins the boot getMany automatically)', () => {
+        expect(persistedKeys()).toContain(UI_SETUP_COMPLETE);
     });
 });
 

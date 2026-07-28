@@ -44,7 +44,7 @@ if you need historical "why," not for a routine change.
 - **Never import a concrete platform/storage implementation directly** —
   always `getPlatform()`; see `src/core/platform/README.md`.
 - **No raw UI copy in components** — add it to `src/app/strings.ts`.
-- **Adding a Spektrum key?** Register it in `src/state/registry.ts`'s
+- **Adding a Spektrum key?** Register it in `src/state/registry-keys.ts`'s
   `KEY_REGISTRY` *and* the ownership table in `src/state/README.md`, same
   commit.
 
