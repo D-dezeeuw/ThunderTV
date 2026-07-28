@@ -12,6 +12,7 @@
 // for that.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 const args = process.argv.slice(2);
@@ -108,18 +109,47 @@ if (entryNames.length === 0) {
     process.exit(1);
 }
 
+// The masterplan's standing checklist states the budget in *transfer* terms
+// ("initial JS ≤ ~60 KB gz app code"), which is what a user on a slow link
+// actually pays. The raw ceiling above catches an engine landing in the entry
+// chunk; this one catches the slower rot — text (locale dictionaries, registry
+// descriptions, markup) accreting until first paint costs measurably more.
+// AUDIT.md §4.1 recorded that drifting 12% → 20% over budget across two merges
+// with CI green throughout, because nothing measured it.
+const ENTRY_BUDGET_GZIP_BYTES = 60 * 1024;
+
+const overages = [];
 for (const name of entryNames) {
-    const bytes = statSync(`${assetsDir}/${name}`).size;
-    if (bytes > ENTRY_BUDGET_BYTES) {
-        console.error(
-            `check-dist: entry chunk ${name} is ${(bytes / 1024).toFixed(1)} kB, over the ${String(ENTRY_BUDGET_BYTES / 1024)} kB startup budget.`,
+    const raw = statSync(`${assetsDir}/${name}`).size;
+    const gzip = gzipSync(readFileSync(`${assetsDir}/${name}`)).length;
+    if (raw > ENTRY_BUDGET_BYTES) {
+        overages.push(
+            `entry chunk ${name} is ${(raw / 1024).toFixed(1)} kB raw, over the ${String(ENTRY_BUDGET_BYTES / 1024)} kB startup budget.`,
         );
-        console.error('  Something that should be lazily imported is now in the initial download —');
-        console.error('  most likely a player engine (hls.js / mpegts.js) that stopped being `await import()`ed.');
-        process.exit(1);
+    }
+    if (gzip > ENTRY_BUDGET_GZIP_BYTES) {
+        overages.push(
+            `entry chunk ${name} is ${(gzip / 1024).toFixed(1)} kB gzipped, over the ${String(ENTRY_BUDGET_GZIP_BYTES / 1024)} kB transfer budget.`,
+        );
     }
 }
 
+if (overages.length > 0) {
+    console.error('check-dist: startup budget exceeded');
+    for (const line of overages) console.error(`  ${line}`);
+    console.error('  Either a player engine (hls.js / mpegts.js) stopped being `await import()`ed,');
+    console.error('  or something large became eager — locales, the Radio visualizer, and the');
+    console.error('  diagnostics exports are all lazily loaded precisely to stay under this.');
+    process.exit(1);
+}
+
+const report = entryNames
+    .map((name) => {
+        const raw = statSync(`${assetsDir}/${name}`).size;
+        const gzip = gzipSync(readFileSync(`${assetsDir}/${name}`)).length;
+        return `${name} ${(raw / 1024).toFixed(1)} kB raw / ${(gzip / 1024).toFixed(1)} kB gz`;
+    })
+    .join(', ');
 console.log(
-    `check-dist: OK — entry chunk(s) ${entryNames.join(', ')} within the ${String(ENTRY_BUDGET_BYTES / 1024)} kB startup budget`,
+    `check-dist: OK — ${report} (budget ${String(ENTRY_BUDGET_BYTES / 1024)} kB raw / ${String(ENTRY_BUDGET_GZIP_BYTES / 1024)} kB gz)`,
 );

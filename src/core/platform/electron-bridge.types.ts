@@ -25,4 +25,37 @@ export interface ElectronBridge {
     readonly proxyOrigin: string;
     /** `app.getVersion()` at preload time — surfaced for diagnostics/About, never for feature gating. */
     readonly appVersion: string;
+    /**
+     * Whether the desktop window is currently fullscreen. Synchronous on
+     * purpose (the preload mirrors main-process events into a local cache):
+     * the player's fullscreen toggle runs inside a click handler, and an
+     * `await` there would spend the click's transient user activation
+     * before `requestFullscreen()` ever ran.
+     */
+    isWindowFullscreen(): boolean;
+    /**
+     * Takes the desktop window itself in or out of fullscreen — the
+     * fallback for when page-level fullscreen doesn't happen (see
+     * `src/state/player.actions.ts`'s `player/fullscreen`). Fire-and-forget;
+     * the resulting state arrives back through `isWindowFullscreen()`.
+     */
+    setWindowFullscreen(next: boolean): void;
+    /**
+     * Default first-run config read from a gitignored `desktop/.env` at
+     * startup — `THUNDERTV_XTREAM_URL`/`_USERNAME`/`_PASSWORD` (all three
+     * required together, else `xtream` is `null`), `THUNDERTV_LOCALE`
+     * (`'en'|'nl'|'de'`), `THUNDERTV_LIVE_COUNTRY` (a Live-filter country
+     * code). Each field is independently `null` when unset. Dev-convenience
+     * only — `.env` sits outside `electron-builder.yml`'s files allowlist, so
+     * a packaged build always resolves all-null fields. `bootstrap.ts` applies
+     * these as pre-filled first-run-wizard answers, only while the wizard
+     * would otherwise open.
+     */
+    getDefaultConfig(): Promise<DefaultElectronConfig>;
+}
+
+export interface DefaultElectronConfig {
+    xtream: { url: string; username: string; password: string } | null;
+    locale: string | null;
+    liveCountry: string | null;
 }

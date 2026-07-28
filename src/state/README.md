@@ -15,7 +15,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `epg.ts`             | `epg.tick`                                                                                                            | No — a heartbeat timestamp, recomputed every boot |
 | `settings.ts`        | `settings.locale`, `settings.proxyTemplate`, `settings.proxyError`, `settings.proxySaved`, …, `settings.audioLanguage`, `settings.subtitleLanguage`, `settings.nav.movies`, `settings.nav.series` | `locale` yes (Settings → User language switcher, i18n follow-up); `proxyTemplate` yes; `audioLanguage`/`subtitleLanguage` yes (Phase 21); `nav.movies`/`nav.series` yes, same default-on rail-toggle contract as every other `settings.nav.*` key; the transient feedback keys don't persist |
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.storageNoticeDismissed` yes; the rest no |
-| `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`                                                                                      | No — both transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen` |
+| `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`, `ui.setupComplete`                                                                 | `ui.setupComplete` yes — it is what stops a configured install from being asked again; `wizardOpen`/`wizardStep` no (transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen`) |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
 | `list-state.ts`       | `ui.listState`, `ui.activeGroup`, `ui.viewMode`                                                                      | `ui.listState` yes (Feature 08.6, LRU-capped at 20 sources); the two live mirrors restore from it on source entry but aren't separately persisted |
 | `list-groups.ts`      | `list.groups`, `list.groupsTruncated`                                                                                | No — the groups panel's own row set, capped independently of Phase 06's `MAX_GROUPS` (Feature 08.5.9) |
@@ -24,9 +24,12 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `series.ts`           | `series.categories`, `series.activeCategoryId`, `series.status`, `series.errorReason`, `series.count`, `series.detailId`, `series.detail`, `series.warmStatus` | No (Phase 21) — same reasoning as `vod.ts`, via `series-rows.ts`/`catalog-storage.ts` |
 | `search.ts`           | `search.query`, `search.scope`, `search.active`, `search.resultCounts`, `search.loadedOnly`                           | No (Phase 21) — a live, disposable session activity, reset every boot like `ui.settingsOpen` |
 
-**The rule:** adding a Spektrum key means adding it to `registry.ts`'s
+**The rule:** adding a Spektrum key means adding it to `registry-keys.ts`'s
 `KEY_REGISTRY` (owner, `persisted`, optional `maxItems`/`version`,
-description) and to the table above, in the same commit. `KEY_REGISTRY` is
+description) and to the table above, in the same commit. `registry.ts`
+itself is just the query surface (`isPersistedKey()`, `persistedKeys()`, …)
+and re-exports the table, so every existing `from './registry'` import
+still resolves. `KEY_REGISTRY` is
 the single source of truth the persistence bridge (05.3), boot rehydration
 (05.4), the bulk-data guard (05.8), and the generated reference doc (05.9)
 all read — nothing downstream should ever need a second list.
@@ -146,7 +149,11 @@ recording once rather than re-discovering per call site:
   it and reads as `undefined`/television, unaffected. Only `vod.actions.ts`'s
   `playVod()` and `series.actions.ts`'s `playSeriesEpisode()` set it, both
   reusing `player.actions.ts`'s existing `setActiveChannel()` rather than a
-  parallel action.
+  parallel action. Both also close their detail panel on the way out:
+  `.catalog-detail` is absolutely positioned over the whole
+  `.list-shell__body`, which is where the now-playing pane appears, so
+  leaving it open would hide the picture the viewer just asked for behind
+  the poster they asked for it from.
 - **`sequence-token.ts`**: `selectVodCategory()`/`openVodDetail()` (and their
   series equivalents) need to detect "did a newer call supersede me" after
   an `await`. Re-reading the very key the same call just `set()` moments
@@ -171,6 +178,52 @@ recording once rather than re-discovering per call site:
   click path. A VOD row's `url`, by contrast, is the real playable stream
   URL (`vod-rows.ts`'s `vodItemToRow()`), so it works whether a future click
   handler reuses the generic list-click path or `vod/play`'s own action.
+- **Display-name cleaning (`catalog-clean-name.ts`)**: real Xtream
+  categories/titles carry a repeated pipe-/bracket-delimited decoration tag
+  (`| NL | WK 2026`, `┃NL┃ Show`) on every entry — noise once every
+  chip/row in a Movies/Series list shows it. `cleanCatalogDisplayName()` is
+  a new, small, pure module living beside the catalog state helpers rather
+  than an extension of `src/channels/name-parse.ts`: that module's
+  `COUNTRY_PREFIX` strips exactly one leading tag as part of a
+  country/quality/recording-flag parse feeding Live/Radio's grouping —
+  behavior this must not touch. The catalog cleaner instead strips a
+  *repeated* run of tags and nothing else, called only at the display
+  boundary — `vod-rows.ts`/`series-rows.ts`'s row/detail builders
+  (`vodItemToRow()`/`toVodDetail()`/`seriesItemToRow()`/`toSeriesDetail()`)
+  and `vod.actions.ts`'s/`series.actions.ts`'s category-row builders.
+  Stored catalog memory and search keys keep the raw name; a category's
+  cleaned name cascades into every row's `group` field and every detail's
+  `categoryName` for free, since those are looked up back out of the
+  already-cleaned `vod.categories`/`series.categories` state rather than
+  re-derived from the raw `XtreamCategory`.
+- **`series.detail.rows` replaces a nested `seasons[].episodes[]`
+  structure**: Spektrum's `data-each` clones an element's own *first
+  element child* into its container, so a season block that itself carries
+  `data-each` (the original markup) treats its nested episode-list as a
+  static sibling that only binds once, never rebinding per season — the
+  literal `{{ }}` episode lines a user reported. `series-rows.ts`'s
+  `buildSeriesDetailRows()` flattens seasons/episodes into one ordered
+  `SeriesDetailRow[]` (season-header rows and episode rows interleaved,
+  `series.ts`) so the panel can use a single-level `data-each` + `data-if`
+  per row kind — the same pattern every other list in the app already
+  uses. `durationMins` is rounded when the row is built, never via
+  `Math.round()` inside a `{{ }}` expression (the evaluator has no
+  guaranteed access to `Math` beyond incidental global scope-chain
+  fallthrough — not worth relying on).
+- **`series.detailStatus`/`series.detailErrorReason`**: the open series'
+  own `get_series_info` fetch status, distinct from `series.status` (the
+  *category* list's — reusing it would hide the whole detail overlay on a
+  failed detail fetch, since `series.status === 'ready'` also gates
+  `list-shell__body`). `openSeriesDetail()` previously left a failed fetch
+  completely silent — the panel kept showing its immediate partial
+  snapshot with zero episodes, indistinguishable from a series that
+  genuinely has none. Every code path through `openSeriesDetail()` now
+  resolves this pair to something the panel can show: `'loading'` while in
+  flight, `'error'` + `'no-source'`/`'fetch-failed'` on a real failure with
+  nothing to fall back on (driving a classified message + a Retry button
+  that re-dispatches `series/openDetail`), or `'ready'` — including when a
+  failure still had a stale cached result to fall back on, since slightly
+  stale episodes beat an alarming error the user can't act on.
 
 ### Row publication — which action feeds the shared virtual list
 
@@ -185,11 +238,13 @@ Every catalog/search row set reaches the DOM through the same
 | Search results (any scope)  | `search.actions.ts`'s `setSearchQuery()`/`setSearchScope()`, via the internal `recomputeSearch()` — also exported directly for the UI stage to force a re-publish (e.g. after a catalog fetch completes) |
 
 One deliberate non-goal: a currently-open series' episode list does **not**
-go through `setDisplayedRows()`. `series.detail.seasons[].episodes[]` is
-already bounded (`SERIES_DETAIL_EPISODES_CAP`) and belongs to exactly one
-open series, so the UI stage should template it directly off `series.detail`
-rather than route a small, fixed list through virtual-list windowing built
-for a 90k-row catalog.
+go through `setDisplayedRows()`. `series.detail.rows` (the flattened
+season-header/episode row array — see "`series.detail.rows` replaces a
+nested `seasons[].episodes[]` structure" above) is already bounded
+(`SERIES_DETAIL_EPISODES_CAP`) and belongs to exactly one open series, so
+the UI stage should template it directly off `series.detail` rather than
+route a small, fixed list through virtual-list windowing built for a
+90k-row catalog.
 
 One known, harmless side effect: `setDisplayedRows()` also invalidates/saves
 the shared `list.selectedId` cursor into the active source's `ui.listState`
@@ -337,7 +392,19 @@ before — `playlist.sources` is a live storage projection, empty by default
 until that load actually completes, so checking any earlier would flash the
 wizard open for every returning user for one frame). The "should it open"
 decision itself is a pure function, `wizard.ts`'s `shouldOpenWizard()`
-(`sources.length === 0`), unit-tested without touching Spektrum state.
+(`!setupComplete && sources.length === 0`), unit-tested without touching
+Spektrum state.
+
+The `setupComplete` half is the *durable* answer, and the reason a
+configured install is never asked twice: `ui.setupComplete` is a persisted
+key, so it is rehydrated before the boot check runs. `markSetupComplete()`
+(idempotent, writes at most once) sets it when the wizard saves an account,
+when the user skips/closes it, and when boot finds a source already
+configured — that last one is also how an install predating the flag, or
+one set up through the Connect card instead of the wizard, gets it written.
+An empty `playlist.sources` on a later boot (a demoted storage tier, a
+deleted source, a cleared table) therefore no longer re-triggers the
+wizard; `wizard/open` in Settings → Streaming remains the way back in.
 
 The wizard's two steps reuse existing settings rather than inventing
 parallel ones: step 1's language/country `<select>`s are wired to the exact

@@ -4,7 +4,7 @@ import type { TierControllerOptions } from '../storage/tier-controller';
 import { SETTINGS_PROXY_TEMPLATE } from '../../state/settings';
 import { get } from '../../state/typed';
 import { createElectronCapabilities } from './capabilities';
-import type { PlatformAdapter } from './platform-adapter';
+import type { DefaultConfig, PlatformAdapter, WindowFullscreenControl } from './platform-adapter';
 import { WebFileAdapter } from './web-file-adapter';
 
 /**
@@ -41,6 +41,25 @@ export function effectiveProxyTemplate(): string | undefined {
     return origin ? `${origin}/{url}` : undefined;
 }
 
+/**
+ * The desktop shell's window-fullscreen control, straight off the preload
+ * bridge (`desktop/preload.cjs`). Both members are no-ops rather than
+ * throws when the bridge is somehow absent — the toggle that calls this is
+ * a UI affordance, and a missing bridge should leave the page-level
+ * fullscreen path alone, not break the click.
+ */
+const windowFullscreen: WindowFullscreenControl = {
+    isFullscreen: () => window.electron?.isWindowFullscreen() ?? false,
+    setFullscreen: (next) => {
+        window.electron?.setWindowFullscreen(next);
+    },
+};
+
+async function getDefaultConfig(): Promise<DefaultConfig> {
+    const empty: DefaultConfig = { xtream: null, locale: null, liveCountry: null };
+    return (await window.electron?.getDefaultConfig()) ?? empty;
+}
+
 export interface CreateElectronPlatformOptions {
     /** Forwarded to the storage tier controller — same shape as `CreateWebPlatformOptions` (`web-platform.ts`). */
     onStorageDemote?: TierControllerOptions['onDemote'];
@@ -56,9 +75,10 @@ export interface CreateElectronPlatformOptions {
 /**
  * Assembles the Electron `PlatformAdapter`. Identical collaborators to
  * `createWebPlatform()` (same storage tiers, same `WebHttpAdapter`/
- * `WebFileAdapter`) — the only differences are `name: 'electron'` and
- * `capabilities.corsUnrestricted: true`. See this file's header comment for
- * why that's the whole adapter.
+ * `WebFileAdapter`) — the only differences are `name: 'electron'`,
+ * `capabilities.corsUnrestricted: true`, and `windowFullscreen`, which
+ * exists here because this host has a window of its own to fullscreen. See
+ * this file's header comment for why that's the whole adapter.
  */
 export async function createElectronPlatform(options: CreateElectronPlatformOptions = {}): Promise<PlatformAdapter> {
     const storage = await createStorage({ onDemote: options.onStorageDemote });
@@ -69,6 +89,8 @@ export async function createElectronPlatform(options: CreateElectronPlatformOpti
             options.getProxyTemplate ? { getProxyTemplate: options.getProxyTemplate } : { getProxyTemplate: effectiveProxyTemplate },
         ),
         files: new WebFileAdapter(),
+        windowFullscreen,
+        getDefaultConfig,
         get capabilities() {
             return createElectronCapabilities(storage.tier);
         },

@@ -12,12 +12,12 @@ import { get } from './typed';
  * pattern this mirrors.
  */
 describe('setLocale() (i18n)', () => {
-    afterEach(() => {
+    afterEach(async () => {
         resetState();
         // `strings` is a plain-TS module singleton (app/strings.ts), outside
         // Spektrum's resetState() — reset it too, so a locale switch here
         // never leaks into a later spec file.
-        applyLocale('en');
+        await applyLocale('en');
     });
 
     it('defaults to en', () => {
@@ -25,13 +25,13 @@ describe('setLocale() (i18n)', () => {
     });
 
     it('switches settings.locale and the plain-TS strings singleton together', async () => {
-        await withFakePlatform({}, () => {
+        await withFakePlatform({}, async () => {
             initSettingsState();
             tick();
             expect(strings.appName).toBe('ThunderTV');
             expect(strings.rail.live).toBe('Live');
 
-            setLocale('nl');
+            await setLocale('nl');
             tick();
 
             expect(get<string>(SETTINGS_LOCALE)).toBe('nl');
@@ -40,9 +40,9 @@ describe('setLocale() (i18n)', () => {
     });
 
     it('switching to de picks up German copy', async () => {
-        await withFakePlatform({}, () => {
+        await withFakePlatform({}, async () => {
             initSettingsState();
-            setLocale('de');
+            await setLocale('de');
             tick();
 
             expect(get<string>(SETTINGS_LOCALE)).toBe('de');
@@ -51,12 +51,12 @@ describe('setLocale() (i18n)', () => {
     });
 
     it('rejects an unrecognised locale — the select only ever offers en/nl/de', async () => {
-        await withFakePlatform({}, () => {
+        await withFakePlatform({}, async () => {
             initSettingsState();
-            setLocale('nl');
+            await setLocale('nl');
             tick();
 
-            setLocale('fr');
+            await setLocale('fr');
             tick();
 
             expect(get<string>(SETTINGS_LOCALE)).toBe('nl');
@@ -64,9 +64,9 @@ describe('setLocale() (i18n)', () => {
     });
 
     it('mirrors the switch into the Spektrum "strings" state key for template bindings', async () => {
-        await withFakePlatform({}, () => {
+        await withFakePlatform({}, async () => {
             initSettingsState();
-            setLocale('de');
+            await setLocale('de');
             tick();
 
             // Same mirror seedStrings() performs at boot — round-trips

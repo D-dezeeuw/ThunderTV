@@ -16,12 +16,16 @@
         "lint": "eslint . --max-warnings 0",
         "lint:css": "node scripts/check-css.mjs",
         "lint:file-access": "node scripts/check-file-access-fence.mjs",
+        "lint:importmap": "node scripts/check-importmap.mjs",
+        "lint:reachability": "node scripts/check-reachability.mjs",
+        "lint:dist": "node scripts/check-dist.mjs",
         "format": "prettier --write .",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
         "bench:m3u": "vitest run --config vitest.bench.config.ts src/m3u/parser.bench.ts",
         "bench:list": "vitest run --config vitest.bench.config.ts src/ui/virtual-list.bench.ts",
-        "gen:m3u-fixture": "node scripts/gen-m3u-fixture.mjs"
+        "gen:m3u-fixture": "node scripts/gen-m3u-fixture.mjs",
+        "verify": "npm run typecheck && npm run lint && npm run lint:css && npm run lint:file-access && npm run lint:importmap && npm run lint:reachability && npm test && npm run build && npm run lint:dist"
     },
     "devDependencies": {
         "@eslint/js": "10.0.1",

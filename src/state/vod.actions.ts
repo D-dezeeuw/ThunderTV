@@ -1,4 +1,5 @@
 import { defineFn } from 'spektrum';
+import { cleanCatalogDisplayName } from './catalog-clean-name';
 import { setDisplayedRows } from './list-rows';
 import { sortCategoriesCountryFirst } from './catalog-sort';
 import { loadStoredCategories, loadStoredDetail, loadStoredItems, saveStoredCategories, saveStoredDetail, saveStoredItems } from './catalog-storage';
@@ -129,7 +130,9 @@ export async function openVodCatalog(): Promise<void> {
         }
 
         const sorted = sortCategoriesCountryFirst(categories, get<string>(SETTINGS_LIVE_COUNTRY) ?? '');
-        const rows: VodCategoryRow[] = sorted.slice(0, VOD_CATEGORIES_CAP).map((c) => ({ id: c.id, name: c.name }));
+        const rows: VodCategoryRow[] = sorted
+            .slice(0, VOD_CATEGORIES_CAP)
+            .map((c) => ({ id: c.id, name: cleanCatalogDisplayName(c.name) }));
         set(VOD_CATEGORIES, rows);
 
         const first = rows[0];
@@ -272,4 +275,9 @@ export async function playVod(streamId: number): Promise<void> {
         group: categoryName,
         kind: 'vod',
     });
+    // The detail panel is absolutely positioned over the whole list body
+    // (catalog.css's `.catalog-detail`), which is also where the player
+    // pane appears — leaving it open would hide the picture the viewer just
+    // asked for behind the poster they asked for it from.
+    closeVodDetail();
 }

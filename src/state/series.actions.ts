@@ -2,6 +2,7 @@ import { defineFn } from 'spektrum';
 import { getSeries, getSeriesCategories, getSeriesInfo } from '../xtream/client';
 import type { XtreamSeriesInfo } from '../xtream/types';
 import { seriesEpisodeUrl } from '../xtream/urls';
+import { cleanCatalogDisplayName } from './catalog-clean-name';
 import { setDisplayedRows } from './list-rows';
 import { sortCategoriesCountryFirst } from './catalog-sort';
 import { loadStoredCategories, loadStoredDetail, loadStoredItems, saveStoredCategories, saveStoredDetail, saveStoredItems } from './catalog-storage';
@@ -13,7 +14,9 @@ import {
     SERIES_CATEGORIES_CAP,
     SERIES_COUNT,
     SERIES_DETAIL,
+    SERIES_DETAIL_ERROR_REASON,
     SERIES_DETAIL_ID,
+    SERIES_DETAIL_STATUS,
     SERIES_ERROR_REASON,
     SERIES_STATUS,
     type SeriesCategoryRow,
@@ -116,7 +119,9 @@ export async function openSeriesCatalog(): Promise<void> {
         }
 
         const sorted = sortCategoriesCountryFirst(categories, get<string>(SETTINGS_LIVE_COUNTRY) ?? '');
-        const rows: SeriesCategoryRow[] = sorted.slice(0, SERIES_CATEGORIES_CAP).map((c) => ({ id: c.id, name: c.name }));
+        const rows: SeriesCategoryRow[] = sorted
+            .slice(0, SERIES_CATEGORIES_CAP)
+            .map((c) => ({ id: c.id, name: cleanCatalogDisplayName(c.name) }));
         set(SERIES_CATEGORIES, rows);
 
         const first = rows[0];
@@ -186,32 +191,62 @@ export async function selectSeriesCategory(categoryId: string): Promise<void> {
     setDisplayedRows(items.map((item) => seriesItemToRow(item, categoryName)));
 }
 
-/** Same partial-then-filled publish + `replace()` reasoning as `vod.actions.ts`'s `openVodDetail()`. */
+/**
+ * Same partial-then-filled publish + `replace()` reasoning as
+ * `vod.actions.ts`'s `openVodDetail()`, plus `series.detailStatus`/
+ * `series.detailErrorReason` (`series.ts`'s doc) — every early return below
+ * leaves the panel visibly `'error'`/`'no-source'` or `'fetch-failed'`,
+ * never silently stuck on `'loading'`. A failure with a stale cached `info`
+ * to fall back on still reports `'ready'` (stale beats alarming).
+ */
 export async function openSeriesDetail(seriesId: number): Promise<void> {
     const item = seriesMemory.findItem(seriesId);
     if (!item) return;
 
     const token = detailOpen.begin();
     set(SERIES_DETAIL_ID, seriesId);
+    set(SERIES_DETAIL_STATUS, 'loading');
+    set(SERIES_DETAIL_ERROR_REASON, null);
     const categoryName = seriesCategoryName(item.categoryId);
     replace(SERIES_DETAIL, toSeriesDetail(item, categoryName));
 
     const account = await resolveActiveXtreamSource();
-    if (!account) return;
+    if (!account) {
+        if (!detailOpen.isCurrent(token)) return;
+        set(SERIES_DETAIL_STATUS, 'error');
+        set(SERIES_DETAIL_ERROR_REASON, 'no-source');
+        return;
+    }
     setCachedSeriesSource(account.source);
 
-    const info = await fetchSeriesInfo(seriesId, account);
+    const { info, failed } = await fetchSeriesInfo(seriesId, account);
     if (!detailOpen.isCurrent(token)) return; // superseded — the user moved on
+
+    if (failed && !info) {
+        set(SERIES_DETAIL_STATUS, 'error');
+        set(SERIES_DETAIL_ERROR_REASON, 'fetch-failed');
+        return;
+    }
+
+    set(SERIES_DETAIL_STATUS, 'ready');
     if (info) replace(SERIES_DETAIL, toSeriesDetail(item, categoryName, info));
 }
 
 export function closeSeriesDetail(): void {
     set(SERIES_DETAIL_ID, null);
+    set(SERIES_DETAIL_STATUS, 'idle');
+    set(SERIES_DETAIL_ERROR_REASON, null);
     replace(SERIES_DETAIL, null);
 }
 
+/** One `fetchSeriesInfo()` outcome — `failed` is true only when the network call itself failed; a cache hit (fresh or the stale-but-still-returned fallback) is never a failure, even though `info` can legitimately be `undefined` in both cases. */
+interface SeriesInfoFetch {
+    info: XtreamSeriesInfo | undefined;
+    failed: boolean;
+}
+
 /** Module-memory cache first, then the full-tier storage cache, then the network — shared by `openSeriesDetail()` and `playSeriesEpisode()` (an episode needs the season/episode list too, to find its `containerExtension`). `account` is always already-resolved non-null (both call sites resolve it themselves first). */
-async function fetchSeriesInfo(seriesId: number, account: ResolvedXtreamAccount): Promise<XtreamSeriesInfo | undefined> {
+async function fetchSeriesInfo(seriesId: number, account: ResolvedXtreamAccount): Promise<SeriesInfoFetch> {
     const now = Date.now();
 
     let info = seriesMemory.detail(seriesId);
@@ -224,12 +259,12 @@ async function fetchSeriesInfo(seriesId: number, account: ResolvedXtreamAccount)
     }
     if (!info || !isFresh(seriesMemory.detailFetchedAt(seriesId), now, CATALOG_TTL_MS)) {
         const result = await getSeriesInfo(account.source, seriesId);
-        if (!result.ok) return info;
+        if (!result.ok) return { info, failed: true };
         info = result.data;
         seriesMemory.setDetail(seriesId, info, now);
         void saveStoredDetail('series', seriesId, { fetchedAt: now, data: info });
     }
-    return info;
+    return { info, failed: false };
 }
 
 /**
@@ -248,7 +283,7 @@ export async function playSeriesEpisode(seriesId: number, episodeId: number | st
     if (!account) return;
     setCachedSeriesSource(account.source);
 
-    const info = await fetchSeriesInfo(seriesId, account);
+    const { info } = await fetchSeriesInfo(seriesId, account);
     const episode = (info ?? []).flatMap((season) => season.episodes).find((ep) => String(ep.episodeId) === String(episodeId));
     if (!episode) return;
 
@@ -262,4 +297,7 @@ export async function playSeriesEpisode(seriesId: number, episodeId: number | st
         group: seriesCategoryName(item.categoryId),
         kind: 'series',
     });
+    // Same reason as `playVod()`: the detail panel covers the list body,
+    // player pane included.
+    closeSeriesDetail();
 }

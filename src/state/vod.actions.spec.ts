@@ -4,10 +4,12 @@ import { MemoryStorage, withFakePlatform, type FakeHttpAdapter } from '../core/p
 import { makePlaylistRecord } from '../core/storage/fixtures';
 import { apiUrl } from '../xtream/urls';
 import { resetPersistForTests } from './persist';
+import { PLAYER_ACTIVE } from './player';
 import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
+import type { ActiveChannelSnapshot } from './records';
 import { get } from './typed';
-import { openVodCatalog, selectVodCategory } from './vod.actions';
-import { initVodState, VOD_CATEGORIES, VOD_COUNT, VOD_ERROR_REASON, VOD_STATUS, type VodCategoryRow } from './vod';
+import { openVodCatalog, openVodDetail, playVod, selectVodCategory } from './vod.actions';
+import { initVodState, VOD_CATEGORIES, VOD_COUNT, VOD_DETAIL_ID, VOD_ERROR_REASON, VOD_STATUS, type VodCategoryRow } from './vod';
 import { resetVodMemoryForTests } from './vod-rows';
 
 const source = { url: 'http://example.com', user: 'bob', pass: 'secret' };
@@ -70,6 +72,24 @@ describe('vod.actions', () => {
         });
     });
 
+    it('strips a leading provider decoration tag from published category names (Issue 1)', async () => {
+        await withFakePlatform({}, async ({ http, storage }) => {
+            initVodState();
+            await activateXtreamSource(storage);
+            http.onGet(apiUrl(source, 'get_vod_categories')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ category_id: '1', category_name: '| NL | TOP 100' }]),
+            });
+            http.onGet(apiUrl(source, 'get_vod_streams', '&category_id=1')).reply({ kind: 'ok', body: JSON.stringify([]) });
+
+            await openVodCatalog();
+            tick();
+
+            const categories = get<VodCategoryRow[]>(VOD_CATEGORIES);
+            expect(categories).toEqual([{ id: '1', name: 'TOP 100' }]);
+        });
+    });
+
     it('caches a selected category within the TTL — a second selectCategory call does not refetch', async () => {
         await withFakePlatform({}, async ({ http, storage }) => {
             initVodState();
@@ -89,6 +109,30 @@ describe('vod.actions', () => {
             tick();
             expect(http.calls).toHaveLength(1); // still just the one network call — served from module memory
             expect(get<number>(VOD_COUNT)).toBe(1);
+        });
+    });
+
+    it('closes the detail panel on play, so it does not cover the player pane it opens', async () => {
+        await withFakePlatform({}, async ({ http, storage }) => {
+            initVodState();
+            await activateXtreamSource(storage);
+            http.onGet(apiUrl(source, 'get_vod_streams', '&category_id=1')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ stream_id: 5, name: 'Movie B', category_id: '1', container_extension: 'mkv' }]),
+            });
+            http.onGet(apiUrl(source, 'get_vod_info', '&vod_id=5')).reply({ kind: 'http', status: 500 });
+
+            await selectVodCategory('1');
+            tick();
+            await openVodDetail(5);
+            tick();
+            expect(get<number | null>(VOD_DETAIL_ID)).toBe(5);
+
+            await playVod(5);
+            tick();
+
+            expect(get<ActiveChannelSnapshot | null>(PLAYER_ACTIVE)?.kind).toBe('vod');
+            expect(get<number | null>(VOD_DETAIL_ID)).toBeNull();
         });
     });
 

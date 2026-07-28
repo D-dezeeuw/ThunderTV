@@ -26,21 +26,96 @@
  * (`npm start` builds the web app, swaps the import map to the vendored
  * Spektrum copy via scripts/package-target.mjs, then launches Electron.)
  */
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage, shell } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createProxyServer } from '../scripts/proxy-server.mjs';
 
 const desktopDir = path.dirname(fileURLToPath(import.meta.url));
-// Dev-only (masterplan Feature 29.3.6): resolves for an unpackaged
-// `npm start` run, where `desktop/` and `build/` are repo-root siblings.
-// A packaged build's own OS-level icon (electron-builder.yml's win/mac/
-// linux `icon:` config) is what actually shows in taskbars/docks once
-// installed — `build/` isn't bundled into the asar, so this path silently
-// resolves to nothing there and Electron falls back to its default icon,
-// which is fine since the packaged case is already covered.
-const appIconPath = path.join(desktopDir, '..', 'build', 'icons', '256.png');
 const APP_BACKGROUND_COLOR = '#0b0d10';
+
+// IPC channel names, spelled once and shared with `preload.cjs` by review
+// (a sandboxed CommonJS preload can't import from this ESM module).
+const IPC_SET_WINDOW_FULLSCREEN = 'thundertv:set-window-fullscreen';
+const IPC_WINDOW_FULLSCREEN_STATE = 'thundertv:window-fullscreen';
+const IPC_GET_DEFAULT_CONFIG = 'thundertv:get-default-config';
+
+// The runtime window/dock icon. Both candidates are tried because the file
+// lives in a different place depending on how the app was started:
+//   - packaged: electron-builder copies `build/icons/` into the app as
+//     `icons/` (see `electron-builder.yml`'s `files` mapping — it used to
+//     copy nothing, which is exactly why packaged builds showed Electron's
+//     default icon);
+//   - `npm start` from the repo: `desktop/` and `build/` are siblings.
+const ICON_CANDIDATES = [
+    path.join(desktopDir, 'icons', '512.png'),
+    path.join(desktopDir, '..', 'build', 'icons', '512.png'),
+];
+
+/**
+ * Loads the app icon as a `NativeImage`, or `null` when none of the
+ * candidates exist. Read through `fs` rather than
+ * `nativeImage.createFromPath()`: inside a packaged build the icon lives in
+ * `app.asar`, and Node's `fs` is the layer Electron patches to see into an
+ * asar archive.
+ */
+function loadAppIcon() {
+    for (const candidate of ICON_CANDIDATES) {
+        try {
+            const image = nativeImage.createFromBuffer(fs.readFileSync(candidate));
+            if (!image.isEmpty()) return image;
+        } catch {
+            // Not this one — try the next candidate.
+        }
+    }
+    return null;
+}
+
+const appIcon = loadAppIcon();
+
+/**
+ * Local dev convenience only (never packaged — `.env` is outside
+ * `electron-builder.yml`'s files allowlist, so this always returns all-null
+ * fields in a distributed build unless someone's own checkout happens to
+ * have the file). Lets a developer stop re-answering the first-run wizard
+ * on every fresh profile/storage reset: `bootstrap.ts` treats a non-null
+ * field here as a pre-filled wizard answer — `locale`/`liveCountry` seed
+ * Settings → User/Live filter, `xtream` (only when all three of its own
+ * fields are present) auto-imports the active source — applied only while
+ * the wizard would otherwise open, never as a standing override afterward.
+ */
+function loadDefaultConfig() {
+    let raw;
+    try {
+        raw = fs.readFileSync(path.join(desktopDir, '.env'), 'utf8');
+    } catch {
+        return { xtream: null, locale: null, liveCountry: null };
+    }
+    const env = {};
+    for (const line of raw.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eq = trimmed.indexOf('=');
+        if (eq === -1) continue;
+        const key = trimmed.slice(0, eq).trim();
+        let value = trimmed.slice(eq + 1).trim();
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+        }
+        env[key] = value;
+    }
+    const url = env.THUNDERTV_XTREAM_URL;
+    const username = env.THUNDERTV_XTREAM_USERNAME;
+    const password = env.THUNDERTV_XTREAM_PASSWORD;
+    return {
+        xtream: url && username && password ? { url, username, password } : null,
+        locale: env.THUNDERTV_LOCALE || null,
+        liveCountry: env.THUNDERTV_LIVE_COUNTRY || null,
+    };
+}
+
+const defaultConfig = loadDefaultConfig();
 
 // Single-instance lock (Feature 28.1.6): a second launch attempt quits
 // immediately and focuses the already-running window instead of spawning a
@@ -57,6 +132,29 @@ if (!gotLock) {
         mainWindow.focus();
     });
 
+    // macOS ignores `BrowserWindow.icon` entirely — the dock icon comes from
+    // the bundle. A packaged `.app` carries `build/icon.icns`, but an
+    // unpackaged `npm start` run has no bundle at all and would otherwise
+    // show Electron's own icon in the dock.
+    if (process.platform === 'darwin' && appIcon && app.dock) {
+        app.dock.setIcon(appIcon);
+    }
+
+    // Renderer-driven window fullscreen (see `applySecurityPolicy`'s
+    // fullscreen note). `send`, not `handle`: the renderer never needs a
+    // reply, and the current state travels back on its own channel below so
+    // the bridge can answer `isWindowFullscreen()` synchronously.
+    ipcMain.on(IPC_SET_WINDOW_FULLSCREEN, (event, next) => {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (!win || win.isDestroyed()) return;
+        win.setFullScreen(Boolean(next));
+    });
+
+    // `handle`/`invoke`, not `additionalArguments`/argv: argv is visible to
+    // any local process listing (`ps`), and a password shouldn't sit there
+    // for the process lifetime when a simple round-trip avoids it entirely.
+    ipcMain.handle(IPC_GET_DEFAULT_CONFIG, () => defaultConfig);
+
     async function start() {
         const splash = createSplashWindow();
 
@@ -71,7 +169,7 @@ if (!gotLock) {
             minHeight: 480,
             backgroundColor: APP_BACKGROUND_COLOR,
             show: false,
-            icon: appIconPath,
+            ...(appIcon ? { icon: appIcon } : {}),
             webPreferences: {
                 preload: path.join(desktopDir, 'preload.cjs'),
                 // Explicit, never implicit (masterplan Feature 28.8.1) —
@@ -93,6 +191,7 @@ if (!gotLock) {
         });
 
         applySecurityPolicy(mainWindow);
+        publishFullscreenState(mainWindow);
 
         mainWindow.once('ready-to-show', () => {
             mainWindow?.show();
@@ -163,12 +262,48 @@ function applySecurityPolicy(win) {
         if (isAllowedExternalUrl(url)) void shell.openExternal(url);
     });
 
-    // Feature 28.8.6: deny every permission request by default — this app
-    // needs none of notifications/geolocation/media-device access from the
-    // packaged renderer.
-    win.webContents.session.setPermissionRequestHandler((_wc, _permission, callback) => {
-        callback(false);
+    // Feature 28.8.6: deny every permission request *except* fullscreen —
+    // this app needs none of notifications/geolocation/media-device access
+    // from the packaged renderer.
+    //
+    // `'fullscreen'` is not an optional extra here: in Electron, Chromium
+    // routes `Element.requestFullscreen()` through this very handler, so a
+    // blanket `callback(false)` rejects the promise and the player's
+    // fullscreen button silently does nothing — which is exactly what
+    // hardening this handler did to the desktop build. The default-deny
+    // posture is unchanged for everything else; this is one named
+    // allowance for a capability the app's own UI asks for on purpose,
+    // from a renderer that can only ever load this app's own `file://`
+    // page (the navigation lock above).
+    // No `setPermissionCheckHandler` alongside it, deliberately: nothing
+    // set one before this handler existed, and a deny-all check handler
+    // would be a *new* denial surface rather than a fix for this one.
+    win.webContents.session.setPermissionRequestHandler((_wc, permission, callback) => {
+        callback(permission === 'fullscreen');
     });
+}
+
+/**
+ * Keeps the renderer's cached "is the window fullscreen" answer in step
+ * with reality, so `window.electron.isWindowFullscreen()` can stay
+ * synchronous (the player's toggle runs inside a click handler and must
+ * not spend the click's user activation waiting on IPC).
+ *
+ * Both events fire for HTML fullscreen too, since Electron takes the
+ * window fullscreen when the page asks — which is fine: the renderer
+ * checks `document.fullscreenElement` first and only consults this state
+ * when nothing on the page owns the fullscreen.
+ */
+function publishFullscreenState(win) {
+    const send = () => {
+        if (win.isDestroyed() || win.webContents.isDestroyed()) return;
+        win.webContents.send(IPC_WINDOW_FULLSCREEN_STATE, win.isFullScreen());
+    };
+    win.on('enter-full-screen', send);
+    win.on('leave-full-screen', send);
+    // A reload re-runs the preload with a fresh `false` cache, so re-state
+    // it rather than assuming the enter/leave events cover every path.
+    win.webContents.on('did-finish-load', send);
 }
 
 function isAllowedExternalUrl(url) {

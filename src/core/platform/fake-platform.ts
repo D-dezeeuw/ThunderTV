@@ -10,8 +10,9 @@ import type { HttpAdapter, HttpRequestOptions } from '../http/http-adapter';
 import { MemoryStorage } from '../storage/memory-storage';
 import { getPlatform, resetPlatformForTests, setPlatform } from './index';
 import type { Capabilities } from './capabilities';
+import type { ElectronBridge } from './electron-bridge.types';
 import type { FileAdapter, PickedFile, ReadTextResult } from './file-adapter';
-import type { PlatformAdapter } from './platform-adapter';
+import type { PlatformAdapter, WindowFullscreenControl } from './platform-adapter';
 
 export interface ScriptedReply {
     /** `'pending'` (Feature 07.9.1) never resolves on its own — it rejects with a real `AbortError`-named error the moment the call's `signal` aborts, exactly matching `fetch()`'s own contract, so specs can exercise mid-fetch cancellation without a real network gap. */
@@ -139,6 +140,44 @@ export class FakeFileAdapter implements FileAdapter {
     async readText(file: File): Promise<ReadTextResult> {
         return { kind: 'ok', text: await file.text() };
     }
+}
+
+/**
+ * Test-only `WindowFullscreenControl` (`PlatformAdapter.windowFullscreen`)
+ * — the desktop shell's window-fullscreen fallback without a desktop
+ * shell. `calls` records every request in order, so a spec can tell "never
+ * asked" apart from "asked, then asked to come back out".
+ */
+export class FakeWindowFullscreen implements WindowFullscreenControl {
+    private fullscreen = false;
+    readonly calls: boolean[] = [];
+
+    isFullscreen(): boolean {
+        return this.fullscreen;
+    }
+
+    setFullscreen(next: boolean): void {
+        this.fullscreen = next;
+        this.calls.push(next);
+    }
+}
+
+/**
+ * Test-only stand-in for the `window.electron` bridge `desktop/preload.cjs`
+ * exposes. The fullscreen members are backed by a real boolean, mirroring
+ * the preload's own cached state, so a spec that flips one reads it back.
+ */
+export function fakeElectronBridge(proxyOrigin = 'http://127.0.0.1:52301'): ElectronBridge {
+    let fullscreen = false;
+    return {
+        proxyOrigin,
+        appVersion: '0.0.0',
+        isWindowFullscreen: () => fullscreen,
+        setWindowFullscreen: (next) => {
+            fullscreen = next;
+        },
+        getDefaultConfig: () => Promise.resolve({ xtream: null, locale: null, liveCountry: null }),
+    };
 }
 
 export interface FakePlatformHandle {

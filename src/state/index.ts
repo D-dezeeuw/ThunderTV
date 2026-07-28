@@ -68,7 +68,6 @@ export { openVodCatalog } from './vod.actions';
 export { openSeriesCatalog } from './series.actions';
 export { warmVodCatalog } from './vod-warm';
 export { warmSeriesCatalog } from './series-warm';
-export { warmCatalogs } from './warm';
 
 /**
  * Seeds every module's defaults (Feature 05.1.8) — called before
@@ -167,8 +166,11 @@ export function debugReadState<T>(key: string): T | undefined {
  * app stays inside `src/state/`, with `router.ts`'s `ui.activeView` writes
  * the only sanctioned exception (Feature 05.2.5).
  */
-export function seedStrings(): void {
+export async function seedStrings(): Promise<void> {
     const locale = getPathObj<string>(appState, SETTINGS_LOCALE);
-    applyLocale(isLocale(locale) ? locale : 'en');
+    // Awaited, not fired-and-forgotten: a non-English user's dictionary is
+    // now its own chunk (app/strings.ts), and rendering before it lands
+    // would paint the whole shell in English and then swap it out.
+    await applyLocale(isLocale(locale) ? locale : 'en');
     setValue('strings', strings);
 }

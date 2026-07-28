@@ -1,7 +1,6 @@
 import { defineFn, setValue } from 'spektrum';
 import { getRows } from '../m3u/channel-memory';
 import { resetGroupCache, rowsForGroup } from '../ui/groups';
-import { scrollToIndex } from '../ui/virtual-list';
 import { setDisplayedRows } from './list-rows';
 import { UI_ACTIVE_GROUP, UI_VIEW_MODE } from './list-state';
 import { saveListState } from './list-state-sync';
@@ -17,12 +16,6 @@ import { get } from './typed';
  * saved list state in the same call (Feature 08.5.5/08.5.7).
  */
 export function registerGroupActions(): void {
-    defineFn('list/jumpToGroup', (el) => {
-        const firstIndex = el.dataset['firstIndex'];
-        if (firstIndex === undefined) return;
-        scrollToIndex(Number(firstIndex));
-    });
-
     defineFn('list/expandGroup', (el) => {
         const name = el.dataset['group'];
         if (name === undefined) return;

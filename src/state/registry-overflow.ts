@@ -7,7 +7,9 @@ import {
     SERIES_CATEGORIES_CAP,
     SERIES_COUNT,
     SERIES_DETAIL,
+    SERIES_DETAIL_ERROR_REASON,
     SERIES_DETAIL_ID,
+    SERIES_DETAIL_STATUS,
     SERIES_ERROR_REASON,
     SERIES_STATUS,
     SERIES_WARM_STATUS,
@@ -118,7 +120,17 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     [SERIES_DETAIL]: {
         owner: 'series',
         persisted: false,
-        description: 'Denormalized snapshot for the open series, including a seasons/episodes structure bounded to SERIES_DETAIL_EPISODES_CAP (series.ts) total episodes — always written via replace(), same merge-hazard reasoning as vod.detail.',
+        description: 'Denormalized snapshot for the open series, including a flattened season-header/episode rows array (rows, series.ts\'s SeriesDetailRow) bounded to SERIES_DETAIL_EPISODES_CAP total episode rows — always written via replace(), same merge-hazard reasoning as vod.detail.',
+    },
+    [SERIES_DETAIL_STATUS]: {
+        owner: 'series',
+        persisted: false,
+        description: 'idle/loading/ready/error — the OPEN series\' own get_series_info fetch status, distinct from series.status (the category list\'s). Lets the detail panel show a classified error + Retry instead of silently looking empty on a failed fetch.',
+    },
+    [SERIES_DETAIL_ERROR_REASON]: {
+        owner: 'series',
+        persisted: false,
+        description: 'Same no-source/fetch-failed/null contract as series.errorReason, scoped to series.detailStatus.',
     },
     [SERIES_WARM_STATUS]: {
         owner: 'series',

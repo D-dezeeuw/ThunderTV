@@ -27,5 +27,5 @@ export { createPlatform } from './create-platform';
 export type { CreateWebPlatformOptions } from './web-platform';
 export type { Capabilities } from './capabilities';
 export type { FileAdapter, PickedFile, ReadTextResult } from './file-adapter';
-export type { PlatformAdapter } from './platform-adapter';
+export type { PlatformAdapter, WindowFullscreenControl } from './platform-adapter';
 export type { HttpAdapter, HttpRequestOptions } from '../http/http-adapter';

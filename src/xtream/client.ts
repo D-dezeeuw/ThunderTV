@@ -15,7 +15,7 @@ import type {
 } from './types';
 import { apiUrl } from './urls';
 
-type XtreamResult<T> = { ok: true; data: T } | { ok: false; error: XtreamError };
+export type XtreamResult<T> = { ok: true; data: T } | { ok: false; error: XtreamError };
 
 /** The API URL with credentials stripped — `apiUrl()` embeds username and password as query parameters. */
 function redactApiUrl(source: XtreamSource, action: string): string {

@@ -5,13 +5,18 @@ import type { PlaylistSourceSummary } from './playlist';
  * playable — a provider host that answers imports but serves no working
  * channels is pure noise in a two-tap flow.
  *
+ * Empty by default: unhiding a source has previously left users with an
+ * imported source that never appeared in the picker and could never become
+ * active, since Settings' hidden-sources escape hatch is easy to miss. Add
+ * hosts here deliberately, not as a standing default.
+ *
  * Deliberately *hidden, never deleted*: the source stays in storage and
  * stays selectable in Settings, so this can never silently destroy an
  * import or strand a user whose provider starts working again. Matching is
  * on host only, so credentials, ports and paths in the stored URL do not
  * have to be guessed at.
  */
-export const HIDDEN_SOURCE_HOSTS: readonly string[] = ['line.cloud-ott.net'];
+export const HIDDEN_SOURCE_HOSTS: readonly string[] = [];
 
 /** Host of a stored source URL, lowercased. Null for pasted/uploaded sources, which have no URL and are never hidden. */
 function hostOf(url: string | null): string | null {
@@ -27,9 +32,12 @@ function hostOf(url: string | null): string | null {
     }
 }
 
-export function isHiddenSource(source: Pick<PlaylistSourceSummary, 'url'>): boolean {
+export function isHiddenSource(
+    source: Pick<PlaylistSourceSummary, 'url'>,
+    hiddenHosts: readonly string[] = HIDDEN_SOURCE_HOSTS,
+): boolean {
     const host = hostOf(source.url);
-    return host !== null && HIDDEN_SOURCE_HOSTS.includes(host);
+    return host !== null && hiddenHosts.includes(host);
 }
 
 /** The picker's list: everything except the known-dead hosts. Settings uses the unfiltered `playlist.sources`. */

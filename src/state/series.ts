@@ -17,12 +17,30 @@ export const SERIES_ERROR_REASON = 'series.errorReason';
 export const SERIES_COUNT = 'series.count';
 export const SERIES_DETAIL_ID = 'series.detailId';
 export const SERIES_DETAIL = 'series.detail';
+/**
+ * The currently-open series' OWN fetch status/error, distinct from
+ * `series.status`/`series.errorReason` (the *category* list's status).
+ * `openSeriesDetail()` previously left both silently unset on a failed
+ * `get_series_info` call — the panel just kept showing its immediate
+ * partial snapshot (poster/title, zero episodes), indistinguishable from a
+ * series that genuinely has no episodes listed. These two keys make that
+ * distinction visible: `'error'` + a reason drives the panel's classified
+ * error message and Retry affordance; `'ready'` with an empty
+ * `series.detail.rows` is the honest "no episodes" case, unchanged.
+ * `series.status` is deliberately NOT reused here — it also gates whether
+ * `list-shell__body` (and therefore the detail overlay itself) renders at
+ * all, so writing 'error' into it while a detail fetch fails would hide the
+ * whole panel instead of showing an error inside it.
+ */
+export const SERIES_DETAIL_STATUS = 'series.detailStatus';
+/** Same enum-ish, UI-copy-free contract as `SERIES_ERROR_REASON`, scoped to the open series' own fetch. */
+export const SERIES_DETAIL_ERROR_REASON = 'series.detailErrorReason';
 /** Same role/contract as `vod.ts`'s `VOD_WARM_STATUS` — see its doc. */
 export const SERIES_WARM_STATUS = 'series.warmStatus';
 
 /** Same reasoning as `VOD_CATEGORIES_CAP` — a few hundred provider categories at most, capped defensively. */
 export const SERIES_CATEGORIES_CAP = 500;
-/** One series rarely has more than a few dozen episodes across every season; this ceiling only guards against a pathological provider (`series.detail.seasons[].episodes[]`, flattened count). */
+/** One series rarely has more than a few dozen episodes across every season; this ceiling only guards against a pathological provider (`series.detail.rows`'s episode-kind rows, flattened count — see `series-rows.ts`'s `buildSeriesDetailRows()`). */
 export const SERIES_DETAIL_EPISODES_CAP = 500;
 
 export type SeriesStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -40,20 +58,21 @@ export interface SeriesCategoryRow {
     name: string;
 }
 
-export interface SeriesDetailEpisode {
-    episodeId: number | string;
-    episode: number;
-    title: string;
-    containerExtension: string;
-    durationSecs: number | null;
-}
+/**
+ * One flattened row of `series.detail.rows` — either a season header or one
+ * episode, in the exact order the panel should render them. A discriminated
+ * union rather than a nested `seasons[].episodes[]` structure so the panel
+ * markup can bind it with a single-level `data-each` — see `series-rows.ts`'s
+ * `buildSeriesDetailRows()` for the full "why" and `index.html`'s
+ * series-detail panel comment for the nested-`data-each` bug this replaces.
+ * `durationMins` is rounded when this row is built (`series-rows.ts`), never
+ * in the template — no `Math.*` in a `{{ }}` expression.
+ */
+export type SeriesDetailRow =
+    | { kind: 'season'; season: number }
+    | { kind: 'episode'; episodeId: number | string; episode: number; title: string; durationMins: number | null };
 
-export interface SeriesDetailSeason {
-    season: number;
-    episodes: SeriesDetailEpisode[];
-}
-
-/** Denormalized snapshot for the one currently-open series — bounded to `SERIES_DETAIL_EPISODES_CAP` total episodes across every season. */
+/** Denormalized snapshot for the one currently-open series — `rows` bounded to `SERIES_DETAIL_EPISODES_CAP` total episode rows. */
 export interface SeriesDetail {
     seriesId: number;
     name: string;
@@ -63,7 +82,7 @@ export interface SeriesDetail {
     plot: string | null;
     year: string | null;
     rating: string | null;
-    seasons: SeriesDetailSeason[];
+    rows: SeriesDetailRow[];
 }
 
 export interface SeriesState {
@@ -74,6 +93,8 @@ export interface SeriesState {
     count: number;
     detailId: number | null;
     detail: SeriesDetail | null;
+    detailStatus: SeriesStatus;
+    detailErrorReason: SeriesErrorReason;
     warmStatus: WarmStatus;
 }
 
@@ -85,6 +106,8 @@ export const SERIES_DEFAULTS: SeriesState = {
     count: 0,
     detailId: null,
     detail: null,
+    detailStatus: 'idle',
+    detailErrorReason: null,
     warmStatus: 'idle',
 };
 
@@ -96,5 +119,7 @@ export function initSeriesState(): void {
     setValue(SERIES_COUNT, SERIES_DEFAULTS.count);
     setValue(SERIES_DETAIL_ID, SERIES_DEFAULTS.detailId);
     setValue(SERIES_DETAIL, SERIES_DEFAULTS.detail);
+    setValue(SERIES_DETAIL_STATUS, SERIES_DEFAULTS.detailStatus);
+    setValue(SERIES_DETAIL_ERROR_REASON, SERIES_DEFAULTS.detailErrorReason);
     setValue(SERIES_WARM_STATUS, SERIES_DEFAULTS.warmStatus);
 }

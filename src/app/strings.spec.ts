@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { de } from './strings.de';
 import { en } from './strings.en';
 import { nl } from './strings.nl';
-import { getStrings, isLocale, LOCALES } from './strings';
+import { isLocale, loadStrings, LOCALES } from './strings';
 
 /**
  * The maintainability guarantee this module exists for: `nl`/`de` must
@@ -49,15 +49,18 @@ describe('strings: locale key-set parity', () => {
     });
 });
 
-describe('getStrings()/isLocale()', () => {
+describe('loadStrings()/isLocale()', () => {
     it('LOCALES lists exactly en/nl/de', () => {
         expect(LOCALES).toEqual(['en', 'nl', 'de']);
     });
 
-    it('getStrings() resolves each locale to its own dictionary', () => {
-        expect(getStrings('en')).toBe(en);
-        expect(getStrings('nl')).toBe(nl);
-        expect(getStrings('de')).toBe(de);
+    it('loadStrings() resolves each locale to its own dictionary', async () => {
+        // en is the eagerly-imported baseline; nl/de arrive as their own
+        // lazily-imported chunks (strings.ts's module comment) — this proves
+        // the dynamic path returns the same object the static import does.
+        expect(await loadStrings('en')).toBe(en);
+        expect(await loadStrings('nl')).toBe(nl);
+        expect(await loadStrings('de')).toBe(de);
     });
 
     it('isLocale() accepts exactly the three locales', () => {
