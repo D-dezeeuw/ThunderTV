@@ -28,7 +28,7 @@
         <script type="importmap">
             { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
         </script>
-      <script type="module" crossorigin src="./assets/index-CM6-Q32T.js"></script>
+      <script type="module" crossorigin src="./assets/index-DADhQBTY.js"></script>
       <link rel="stylesheet" crossorigin href="./assets/index-BUfJ7Gj8.css">
     </head>
     <body>
@@ -819,6 +819,32 @@
                         <p data-testid="settings-storage-tier">
                             {{ strings.storageNotice.userSectionTier }}: {{ storage.tier }}
                         </p>
+                    </section>
+
+                    <!-- Full-configuration export. The channel entries carry
+                         each provider name next to what the filter made of it,
+                         which is what turns "a channel is missing" from a guess
+                         into a readable answer. -->
+                    <section class="settings-section">
+                        <h3 class="settings-section__title">
+                            {{ strings.settings.sections.diagnostics }}
+                        </h3>
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="settings/exportConfig"
+                            data-testid="export-config-btn"
+                        >
+                            {{ strings.settings.diagnostics.exportButton }}
+                        </button>
+                        <p class="settings-section__hint" data-if="settings.exportState === 'done'" data-testid="export-done">
+                            {{ strings.settings.diagnostics.exportDone }}
+                        </p>
+                        <p class="settings-section__error" data-if="settings.exportState === 'failed'" data-testid="export-failed">
+                            {{ strings.settings.diagnostics.exportFailed }}
+                        </p>
+                        <p class="settings-section__hint">{{ strings.settings.diagnostics.exportHelp }}</p>
                     </section>
 
                     <!-- Live filter. Every control here can only ever *remove*
