@@ -40,7 +40,22 @@ function loadCategories(): Category[] {
     return [...byGroup].map(([name, names]) => ({ name, names }));
 }
 
+/**
+ * The provider's real station names. They are past the export's 20k
+ * truncation point, but the `<live-filter>` block lists every one of them
+ * — they are the 131 rows that leaked into the Live list, which is what
+ * made this a bug report in the first place.
+ */
+function loadStationNames(): string[] {
+    const xml = readFileSync(xmlPath, 'utf8');
+    const block = xml.slice(xml.indexOf('<live-filter>'), xml.indexOf('</live-filter>'));
+    return [...block.matchAll(/<channel name="([^"]*)"/g)].map((m) =>
+        (m[1] ?? '').replace(/&amp;/g, '&').replace(/&quot;/g, '"'),
+    );
+}
+
 const categories = loadCategories();
+const stations = loadStationNames();
 
 describe('radio detection against the real provider dump', () => {
     it('reads a catalogue of 20k television rows', () => {
@@ -77,5 +92,33 @@ describe('radio detection against the real provider dump', () => {
         for (const name of ['RADIO BREMEN TV', 'ICI RADIO-CANADA TELE', 'RADIO ITALIA HD', 'RTL RADIO HD']) {
             expect(claimed.some((c) => c.includes(name)), name).toBe(false);
         }
+    });
+});
+
+describe("the provider's own radio bundle", () => {
+    it('is the 131 stations that leaked into Live', () => {
+        expect(stations).toHaveLength(131);
+        expect(stations).toContain('NPO RADIO 1');
+        expect(stations).toContain('SLAM!');
+    });
+
+    it('is recognised as a bundle whatever the category is called', () => {
+        // The category name is the one thing the export does not record, so
+        // the majority rule has to carry this on its own. It does, with room
+        // to spare — which is what makes the fix hold regardless of whether
+        // the provider files these under RADIO, MUZIEK, or anything else.
+        expect(isRadioGroup('┃NL┃ MUZIEK | ZENDERS', stations)).toBe(true);
+        expect(isRadioGroup('┃NL┃ AMUSEMENT', stations)).toBe(true);
+        expect(isRadioGroup('Ungrouped', stations)).toBe(true);
+    });
+
+    it('leaves a comfortable margin over the majority threshold', () => {
+        // Individually, well under half of these names say "radio" or carry a
+        // band suffix — the looser group-level hints (OMROEP, ZENDER, …) are
+        // what push the bundle over the line, and the margin is what stops a
+        // slightly different provider list from falling back under it.
+        const share = stations.filter((name) => looksLikeRadioName(name)).length / stations.length;
+        expect(share).toBeLessThan(0.75);
+        expect(share).toBeGreaterThan(0.35);
     });
 });
