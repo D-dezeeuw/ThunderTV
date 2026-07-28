@@ -4,6 +4,23 @@ import { barAt } from './preset-utils';
 const RIBBONS = 6;
 const POINTS = 90;
 
+/**
+ * INTEGER frequency pairs only: a Lissajous curve closes at t = 2π exactly
+ * when both frequencies are integers. The original fractional values
+ * (2.6, 3.37, …) produced figures that never returned to their start —
+ * every ribbon had two loose ends hanging mid-air, a visible seam in an
+ * otherwise flowing figure. Distinct coprime-ish pairs keep the six
+ * ribbons from collapsing onto the same path.
+ */
+const FREQ_PAIRS: ReadonlyArray<[number, number]> = [
+    [2, 3],
+    [3, 4],
+    [2, 5],
+    [3, 5],
+    [4, 5],
+    [3, 7],
+];
+
 interface Ribbon {
     freqA: number;
     freqB: number;
@@ -35,8 +52,8 @@ export class JazzPreset implements VisualizerPreset {
         this.time = 0;
         this.beatRotor = 0;
         this.ribbons = Array.from({ length: RIBBONS }, (_, i) => ({
-            freqA: 2 + i * 0.6,
-            freqB: 3 + i * 0.37,
+            freqA: FREQ_PAIRS[i % FREQ_PAIRS.length]?.[0] ?? 2,
+            freqB: FREQ_PAIRS[i % FREQ_PAIRS.length]?.[1] ?? 3,
             phase: Math.random() * Math.PI * 2,
             bandT: (i / RIBBONS) * 0.85,
             hueOffset: (i / RIBBONS) * 40,

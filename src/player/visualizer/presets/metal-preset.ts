@@ -67,8 +67,11 @@ export class MetalPreset implements VisualizerPreset {
         ctx.rotate(this.angle);
         for (let i = 0; i < SPIKE_COUNT; i++) {
             const v = barAtMirrored(bars, i / SPIKE_COUNT);
-            const jaggedness = (Math.sin(ts * 0.02 + i) + 1) * 0.5;
             const theta = (i / SPIKE_COUNT) * Math.PI * 2;
+            // Jitter keyed to theta with an INTEGER cycle count, so it's
+            // periodic around the circle — keyed to the spike index it
+            // jumped where the last spike met the first (a visible seam).
+            const jaggedness = (Math.sin(ts * 0.02 + theta * 5) + 1) * 0.5;
             const len = maxLen * (v * 0.72 + jaggedness * 0.28 * treble);
             const lightness = 26 + v * 46;
 

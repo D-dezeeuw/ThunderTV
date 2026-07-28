@@ -127,7 +127,9 @@ export class EdmPreset implements VisualizerPreset {
             const v = barAtMirrored(bars, u);
             const theta = u * Math.PI * 2;
             const len = baseRadius * 0.15 + v * maxRadius * 0.55 * lengthScale;
-            const hue = (hueBase + u * 300) % 360;
+            // Full 360° hue sweep so the color wheel wraps seamlessly where
+            // the ring closes — a partial sweep left a hue step at the seam.
+            const hue = (hueBase + u * 360) % 360;
 
             ctx.strokeStyle = `hsla(${hue.toFixed(1)}, 95%, ${(52 + v * 28).toFixed(1)}%, ${alpha})`;
             ctx.lineWidth = 3;

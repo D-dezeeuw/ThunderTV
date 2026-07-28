@@ -1,5 +1,5 @@
 import type { FrameContext, VisualizerPreset } from '../types';
-import { barAt, decay } from './preset-utils';
+import { barAtMirrored, decay } from './preset-utils';
 
 /** Nested squares get closer to a genuine fractal look with every extra level, but each level costs a `strokeRect` — 6 is the point where it reads as "fractal" without being the frame's bottleneck. */
 const CORE_DEPTH = 6;
@@ -82,7 +82,11 @@ export class FractalTunnelPreset implements VisualizerPreset {
         ctx.beginPath();
         for (let k = 0; k <= STAR_POINTS; k++) {
             const u = (k % STAR_POINTS) / STAR_POINTS;
-            const r = coreSize * (1.4 + barAt(bars, u) * 1.6);
+            // Mirrored sampling: the star's radius runs bass → treble →
+            // bass around the polygon, so the closing vertex meets its
+            // neighbor at the same level instead of jumping from quiet
+            // treble straight to loud bass — a jarring "wall" at the seam.
+            const r = coreSize * (1.4 + barAtMirrored(bars, u) * 1.6);
             const theta = u * Math.PI * 2;
             const x = Math.cos(theta) * r;
             const y = Math.sin(theta) * r;
