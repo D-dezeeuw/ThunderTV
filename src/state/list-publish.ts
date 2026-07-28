@@ -1,6 +1,6 @@
 import { setValue } from 'spektrum';
 import { proxyImageUrl } from '../core/http/proxy';
-import { effectiveProxyTemplate } from '../core/platform/desktop-proxy';
+import { effectiveProxyTemplate } from '../core/platform/electron-platform';
 import type { ChannelRow } from '../m3u/types';
 import { LIST_PAD_BOTTOM, LIST_PAD_TOP, LIST_VISIBLE_ROWS } from './list';
 import { set } from './typed';

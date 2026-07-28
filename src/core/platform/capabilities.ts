@@ -27,3 +27,23 @@ export function createWebCapabilities(durableStorage: Capabilities['durableStora
         durableStorage,
     });
 }
+
+/**
+ * Desktop values: `corsUnrestricted` is `true` here — not because the
+ * renderer itself skips CORS (it doesn't; browser defaults stay on, per
+ * `desktop/main.mjs`'s security hardening), but because every request that
+ * matters is routed through the proxy `desktop/main.mjs` embeds on
+ * 127.0.0.1 (`src/core/platform/electron-platform.ts`), which fetches from
+ * the main process and re-serves same-origin to the renderer. The net
+ * effect for every caller gating on this flag (the CORS warning surface,
+ * import flows) is identical to a real CORS-free HTTP adapter, so the flag
+ * reports the true, honest capability rather than the mechanism. See that
+ * module's header comment for the full architecture decision.
+ */
+export function createElectronCapabilities(durableStorage: Capabilities['durableStorage']): Capabilities {
+    return Object.freeze({
+        corsUnrestricted: true,
+        externalPlayers: false,
+        durableStorage,
+    });
+}

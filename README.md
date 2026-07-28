@@ -96,8 +96,18 @@ npm start   # builds the web app, swaps the import map to the vendored
 ```
 
 A user-saved proxy template still wins over the embedded default (Settings →
-Streaming). Packaging/signing installers is Phase 29's scope — `npm start`
-is the supported way to run it today.
+Streaming).
+
+To build an installable artifact instead of running from source:
+`cd desktop && npm run package` (or `package:linux`/`package:win`/
+`package:mac`) builds the web app, applies the vendored-Spektrum import-map
+swap, and runs electron-builder (config: `electron-builder.yml`) into
+`release/`. Verified locally: Linux AppImage. Windows (nsis/portable) and
+macOS (dmg) configs are in place but unverified in this environment (no
+cross-compile toolchain) — cut a `v*` tag to build all three in CI
+(`.github/workflows/desktop-build.yml`). Artifacts are unsigned (no
+code-signing certificate for a local-build project); expect a Gatekeeper/
+SmartScreen warning on first run.
 
 **When the provider blocks datacenter IPs:** many panels serve their API to
 anything but 404 all stream endpoints for cloud IPs (Cloudflare included) as

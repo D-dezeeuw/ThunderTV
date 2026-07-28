@@ -8,7 +8,7 @@ otherwise web), and everything downstream reaches it only through
 implementation directly.
 
 ```
-createPlatform() → WebPlatform (today) | ElectronPlatform (Phase 28)
+createPlatform() → WebPlatform | ElectronPlatform (electron-platform.ts)
                         │
                         ▼
                   setPlatform(platform)   // main.ts, once, before render
@@ -17,10 +17,41 @@ createPlatform() → WebPlatform (today) | ElectronPlatform (Phase 28)
         getPlatform().http / .files / .storage / .capabilities
 ```
 
-When Phase 28 lands, the swap is: one new `createElectronPlatform()` plus a
-preload bridge. Zero UI changes — every consumer already goes through
-`capabilities`, never `window.electron` directly (enforced by an ESLint fence
-outside this folder).
+Zero UI changes — every consumer already goes through `capabilities`, never
+`window.electron` directly (enforced by an ESLint fence outside this
+folder).
+
+## The desktop adapter, and the decision behind it
+
+`electron-platform.ts` is the real, non-throwing `ElectronPlatformAdapter`
+(there used to be a `create-platform.ts` throw here — "not yet implemented,
+arrives in Phase 28" — but nothing in `desktop/` ever set `window.electron`,
+only `window.thunderDesktop`, so the throw was unreachable and the desktop
+shell silently ran the *web* adapter the whole time; that bug is fixed).
+
+The masterplan's full Phase 28 scope (Feature 28.4) was a main-process
+`net.request` HTTP passthrough behind IPC — `window.electron.http.request()`
+with chunked streaming, cancel-by-id, conditional-GET passthrough, and a
+full error-taxonomy remap. Instead, `createElectronPlatform()` formalizes
+the simpler thing `desktop/main.mjs` already had running: the proven
+`WebHttpAdapter`/`classifiedFetch` pipeline, unmodified, defaulted to route
+through the proxy `desktop/main.mjs` embeds on `127.0.0.1` (every provider
+request leaves from the desktop machine's own IP — the whole point for
+panels that block datacenter IPs). `window.electron` is the typed bridge
+(`electron-bridge.types.ts`) preload exposes with `{ proxyOrigin,
+appVersion }`; `capabilities.corsUnrestricted` reports `true` on desktop
+because the proxy does in fact make every request CORS-free from the
+renderer's point of view, even though the mechanism differs from a literal
+main-process fetch.
+
+Why this over the full IPC HTTP adapter: smaller, safer diff against
+everything already built on the current behavior — chunked bodies,
+conditional-GET, and the classified-fetch error taxonomy all already work
+end-to-end through the existing web stack; an IPC passthrough would have to
+re-implement or bridge all of that from scratch for zero renderer-visible
+behavior change. Native file dialogs, main-process error logging, and
+window-state persistence remain main-process-only concerns (`desktop/`)
+and are out of this adapter's scope.
 
 ## Capabilities, not environment checks
 
