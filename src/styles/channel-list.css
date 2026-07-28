@@ -149,10 +149,14 @@
 
 /* ---- Groups panel (Feature 08.5) ---- */
 
+/* Height comes from the row it sits in, so it ends level with the channel
+   list beside it. The old fixed 28rem cap was sized for a list that stopped
+   at 60vh; against a full-height list it left the panel floating in the top
+   third of the column. */
 .groups-panel {
     flex: none;
     width: 14rem;
-    max-height: 28rem;
+    min-height: 0;
     overflow-y: auto;
     border: 1px solid var(--color-border);
     border-radius: 8px;
