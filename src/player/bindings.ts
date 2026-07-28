@@ -1,7 +1,13 @@
 import { refs, watch } from 'spektrum';
 import { applyProxy } from '../core/http/proxy';
 import { effectiveProxyTemplate } from '../core/platform/electron-platform';
-import { PLAYER_ACTIVE, PLAYER_VISUALIZER_PAUSED, PLAYER_VISUALIZER_PRESET } from '../state/player';
+import {
+    isAudioVisual,
+    PLAYER_ACTIVE,
+    PLAYER_AUDIO_MODE,
+    PLAYER_VISUALIZER_PAUSED,
+    PLAYER_VISUALIZER_PRESET,
+} from '../state/player';
 import { UI_ACTIVE_VIEW } from '../state/ui';
 import { attachAndPlay, detach } from './engine';
 import {
@@ -53,10 +59,21 @@ export function registerPlayerBindings(): () => void {
     // so calling it here on every dependency change never stomps an
     // in-flight preset crossfade.
     const unwatchVisualizer = watch(
-        [PLAYER_ACTIVE, UI_ACTIVE_VIEW, PLAYER_VISUALIZER_PRESET, PLAYER_VISUALIZER_PAUSED],
+        [
+            PLAYER_ACTIVE,
+            UI_ACTIVE_VIEW,
+            PLAYER_VISUALIZER_PRESET,
+            PLAYER_VISUALIZER_PAUSED,
+            PLAYER_AUDIO_MODE,
+        ],
         (state: unknown) => {
             const typed = state as {
-                player?: { active?: unknown; visualizerPreset?: string; visualizerPaused?: boolean };
+                player?: {
+                    active?: unknown;
+                    visualizerPreset?: string;
+                    visualizerPaused?: boolean;
+                    audioMode?: boolean;
+                };
                 ui?: { activeView?: string };
             };
             const video = refs['playerVideo'];
@@ -64,7 +81,12 @@ export function registerPlayerBindings(): () => void {
 
             setRadioVisualizerPreset(typed.player?.visualizerPreset ?? 'auto');
             setRadioVisualizerPaused(typed.player?.visualizerPaused ?? false);
-            if (typed.player?.active && typed.ui?.activeView === 'radio') {
+            // Radio always, Live/Categories only when the viewer asked for
+            // audio-only — the same predicate the `visualizerActive`
+            // selector and `player/fullscreen` use, so the canvas is
+            // running exactly when it is on screen.
+            const audioVisual = isAudioVisual(typed.ui?.activeView, typed.player?.audioMode ?? false);
+            if (typed.player?.active && audioVisual) {
                 startRadioVisualizer(video);
             } else {
                 stopRadioVisualizer();

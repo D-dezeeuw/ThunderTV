@@ -30,6 +30,28 @@ export const PLAYER_ACTIVE_VARIANT_ID = 'player.activeVariantId';
 export const PLAYER_VISUALIZER_PRESET = 'player.visualizerPreset';
 /** Transient, session-only: whether the listener paused the Radio visualizer's render loop. Never persisted — reopening Radio always starts unpaused. */
 export const PLAYER_VISUALIZER_PAUSED = 'player.visualizerPaused';
+/**
+ * "Play this TV channel like a radio station": collapse the picture and put
+ * the visualizer up instead. Persisted, because it is a viewing preference
+ * (a TV used as a stereo stays that way between sessions), not a per-channel
+ * accident — and the player bar always carries the switch back.
+ * Radio ignores this key entirely: it has no picture to give up.
+ */
+export const PLAYER_AUDIO_MODE = 'player.audioMode';
+
+/**
+ * Should the visualizer pane stand in for the picture right now? True for
+ * Radio always, and for a TV channel-list view whenever the viewer asked for
+ * audio-only. Pure, so the selector (`player.selectors.ts`), the fullscreen
+ * action (`player.actions.ts`) and the visualizer watch
+ * (`src/player/bindings.ts`) all decide this the same way instead of each
+ * spelling out its own route comparison.
+ */
+export function isAudioVisual(view: string | null | undefined, audioMode: boolean): boolean {
+    if (view === 'radio') return true;
+    if (view === 'live' || view === 'categories') return audioMode;
+    return false;
+}
 
 /** Feature 05.5.3: capped at 20 entries; the Recent view (Phase 13) may trim its own display further. */
 export const ZAP_HISTORY_CAP = 20;
@@ -46,6 +68,7 @@ export interface PlayerState {
     activeVariantId: string | null;
     visualizerPreset: string;
     visualizerPaused: boolean;
+    audioMode: boolean;
 }
 
 export const PLAYER_DEFAULTS: PlayerState = {
@@ -57,6 +80,7 @@ export const PLAYER_DEFAULTS: PlayerState = {
     activeVariantId: null,
     visualizerPreset: 'auto',
     visualizerPaused: false,
+    audioMode: false,
 };
 
 /** Seeds this module's defaults — called once from `state/index.ts`'s `initState()`, before rehydration can overwrite it (Feature 05.1.8). */
@@ -69,4 +93,5 @@ export function initPlayerState(): void {
     setValue(PLAYER_ACTIVE_VARIANT_ID, PLAYER_DEFAULTS.activeVariantId);
     setValue(PLAYER_VISUALIZER_PRESET, PLAYER_DEFAULTS.visualizerPreset);
     setValue(PLAYER_VISUALIZER_PAUSED, PLAYER_DEFAULTS.visualizerPaused);
+    setValue(PLAYER_AUDIO_MODE, PLAYER_DEFAULTS.audioMode);
 }

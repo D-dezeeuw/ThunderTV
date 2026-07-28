@@ -10,7 +10,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | Module              | Keys                                                                                                          | Persisted?                                  |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | `playlist.ts`        | `playlist.sources`, `playlist.activeSourceId`, `playlist.demoRows`                                                   | `activeSourceId` yes (Feature 08.10.6); `sources` is a live storage projection, `demoRows` is static demo data — neither persists |
-| `player.ts`          | `player.active`, `player.zapHistory`, `player.visualizerPreset`, `player.visualizerPaused`                            | Yes — the §6.4 instant-restore pair; `visualizerPreset` also persists (the listener's Radio visualizer choice); `visualizerPaused` does not (always false on a fresh Radio visit) |
+| `player.ts`          | `player.active`, `player.zapHistory`, `player.visualizerPreset`, `player.visualizerPaused`, `player.audioMode`        | Yes — the §6.4 instant-restore pair; `visualizerPreset` also persists (the listener's Radio visualizer choice) and so does `audioMode` (watch TV channels audio-only, with the visualizer standing in for the picture — a viewing preference, and the player bar always carries the switch back); `visualizerPaused` does not (always false on a fresh Radio visit) |
 | `epg.ts`             | `epg.tick`                                                                                                            | No — a heartbeat timestamp, recomputed every boot |
 | `settings.ts`        | `settings.locale`, `settings.proxyTemplate`, `settings.proxyError`, `settings.proxySaved`, …, `settings.audioLanguage`, `settings.subtitleLanguage`, `settings.nav.movies`, `settings.nav.series` | `locale` yes (Settings → User language switcher, i18n follow-up); `proxyTemplate` yes; `audioLanguage`/`subtitleLanguage` yes (Phase 21); `nav.movies`/`nav.series` yes, same default-on rail-toggle contract as every other `settings.nav.*` key; the transient feedback keys don't persist |
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.storageNoticeDismissed` yes; the rest no |
@@ -114,10 +114,13 @@ constants, `KEY_REGISTRY` entries, `set()`/`replace()` discipline, module
 memory for anything unbounded) but introduce a few decisions worth
 recording once rather than re-discovering per call site:
 
-- **`registry-catalog.ts`**: `registry.ts` was already at eslint's 400-line
+- **`registry-overflow.ts`**: `registry.ts` was already at eslint's 400-line
   `max-lines` ceiling with zero slack, so the ~20 new `KEY_REGISTRY` entries
   for `vod`/`series`/`search`/the two new `settings.*` language keys live in
-  their own file and are merged into `KEY_REGISTRY` via one spread.
+  their own file and are merged into `KEY_REGISTRY` via one spread. It has
+  stayed full since, so **every new `KEY_REGISTRY` entry goes here**,
+  whichever module owns it — that's why the file is named for the role
+  rather than the phase that created it.
   `KEY_REGISTRY` itself is still the one object every consumer
   (`persist.ts`, `bulk-policy.ts`, `index.ts`'s `rehydrateState()`) reads —
   this only changes how it's assembled. `KeyMeta.owner`'s union gained

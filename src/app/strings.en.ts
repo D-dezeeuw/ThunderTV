@@ -315,6 +315,9 @@ export const en = {
         playerNextVisual: 'Next visual',
         playerPauseVisual: 'Pause visual',
         playerResumeVisual: 'Resume visual',
+        /** Switches a TV channel to Radio's audio + visualizer presentation, and back. */
+        playerAudioOnly: 'Audio only',
+        playerShowPicture: 'Show picture',
         visualizerPickerLabel: 'Visualizer',
         visualizerAuto: 'Auto (cycle)',
         visualizerGenreGroup: 'By genre',

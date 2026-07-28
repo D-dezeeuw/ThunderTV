@@ -1,10 +1,11 @@
-import { appState, bindDOM, getPathObj, resetState, tick } from 'spektrum';
+import { appState, bindDOM, getPathObj, resetState, setValue, tick } from 'spektrum';
 import { afterEach, describe, expect, it } from 'vitest';
 import { withFakePlatform } from '../core/platform/fake-platform';
 import { flushNow, pendingKeys } from './persist';
-import { registerPlayerActions, setActiveChannel } from './player.actions';
-import { PLAYER_ACTIVE, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
+import { audioVisualActive, registerPlayerActions, setActiveChannel, toggleAudioMode } from './player.actions';
+import { isAudioVisual, PLAYER_ACTIVE, PLAYER_AUDIO_MODE, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
 import type { ActiveChannelSnapshot } from './records';
+import { UI_ACTIVE_VIEW } from './ui';
 
 function channel(id: string): ActiveChannelSnapshot {
     return { id, sourceId: 'src-1', name: `Channel ${id}`, streamUrl: `https://example.test/${id}`, logo: null, group: null };
@@ -74,6 +75,51 @@ describe('setActiveChannel (Feature 05.2.2/05.5.1-05.5.3)', () => {
             expect(await storage.get(PLAYER_ACTIVE)).toEqual({ v: 1, data: channel('1') });
             expect(await storage.get(PLAYER_ZAP_HISTORY)).toEqual({ v: 1, data: [channel('1')] });
         });
+    });
+});
+
+describe('audio-only mode for TV channels', () => {
+    afterEach(() => {
+        resetState();
+    });
+
+    it('isAudioVisual: Radio always, TV only when audio mode is on, never off a channel-list view', () => {
+        expect(isAudioVisual('radio', false)).toBe(true);
+        expect(isAudioVisual('radio', true)).toBe(true);
+        expect(isAudioVisual('live', false)).toBe(false);
+        expect(isAudioVisual('live', true)).toBe(true);
+        expect(isAudioVisual('categories', true)).toBe(true);
+        // Nothing outside the channel-list views renders the visualizer
+        // canvas, so audio mode must not claim it there.
+        expect(isAudioVisual('guide', true)).toBe(false);
+        expect(isAudioVisual(undefined, true)).toBe(false);
+    });
+
+    it('toggleAudioMode flips the key and marks it dirty for the persistence bridge', () => {
+        toggleAudioMode();
+        tick();
+        expect(getPathObj(appState, PLAYER_AUDIO_MODE)).toBe(true);
+        expect(pendingKeys()).toContain(PLAYER_AUDIO_MODE);
+
+        toggleAudioMode();
+        tick();
+        expect(getPathObj(appState, PLAYER_AUDIO_MODE)).toBe(false);
+    });
+
+    it('audioVisualActive reads the live view/mode pair the fullscreen action branches on', () => {
+        setValue(UI_ACTIVE_VIEW, 'live');
+        setValue(PLAYER_AUDIO_MODE, false);
+        tick();
+        expect(audioVisualActive()).toBe(false);
+
+        setValue(PLAYER_AUDIO_MODE, true);
+        tick();
+        expect(audioVisualActive()).toBe(true);
+
+        setValue(UI_ACTIVE_VIEW, 'radio');
+        setValue(PLAYER_AUDIO_MODE, false);
+        tick();
+        expect(audioVisualActive()).toBe(true);
     });
 });
 

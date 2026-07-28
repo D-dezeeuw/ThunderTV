@@ -22,20 +22,23 @@ import {
     VOD_STATUS,
     VOD_WARM_STATUS,
 } from './vod';
+import { PLAYER_AUDIO_MODE } from './player';
 import type { KeyMeta } from './registry';
 
 /**
- * The Movies/Series/Search/settings-language `KEY_REGISTRY` entries (Phase
- * 21), split out of `registry.ts` and merged in there via a spread —
- * `registry.ts` was already sitting at the 400-line hard ESLint ceiling
- * (`max-lines`, `eslint.config.js`) with no slack for ~20 new entries'
- * worth of documentation, and trimming existing entries' prose to make room
- * would have cost more than it saved. `KEY_REGISTRY` itself (`registry.ts`)
- * is still the single object every consumer (`persist.ts`, `bulk-policy.ts`,
+ * `KEY_REGISTRY`'s overflow: entries that no longer fit in `registry.ts`,
+ * merged back in there via one spread. `registry.ts` has been sitting on the
+ * 400-line hard ESLint ceiling (`max-lines`, `eslint.config.js`) since Phase
+ * 21's ~20 Movies/Series/Search entries, and trimming existing entries'
+ * prose to make room costs more than it saves — so anything added after that
+ * lands here regardless of which module owns it (the file started out
+ * catalog-only, hence its original name; `player.audioMode` is the first
+ * entry that isn't). `KEY_REGISTRY` itself (`registry.ts`) is still the
+ * single object every consumer (`persist.ts`, `bulk-policy.ts`,
  * `index.ts`'s `rehydrateState()`) reads — this file only changes *how* it
  * gets built, not what it is.
  */
-export const CATALOG_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
+export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     // --- vod (Phase 21 Movies catalog) ---
     [VOD_CATEGORIES]: {
         owner: 'vod',
@@ -171,5 +174,12 @@ export const CATALOG_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: true,
         description: 'Show the Series button in the nav rail. Default on — drives rail.series.visible (ui.selectors.ts).',
+    },
+
+    // --- player: audio-only TV ---
+    [PLAYER_AUDIO_MODE]: {
+        owner: 'player',
+        persisted: true,
+        description: 'Play TV channels audio-only, with the Radio visualizer standing in for the picture. A viewing preference (a TV used as a stereo stays that way), so persisted; the player bar always carries the switch back.',
     },
 };

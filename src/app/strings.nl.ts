@@ -311,6 +311,8 @@ export const nl = {
         playerNextVisual: 'Volgende visual',
         playerPauseVisual: 'Visual pauzeren',
         playerResumeVisual: 'Visual hervatten',
+        playerAudioOnly: 'Alleen geluid',
+        playerShowPicture: 'Beeld tonen',
         visualizerPickerLabel: 'Visualizer',
         visualizerAuto: 'Automatisch (wisselen)',
         visualizerGenreGroup: 'Op genre',

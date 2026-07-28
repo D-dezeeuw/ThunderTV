@@ -311,6 +311,8 @@ export const de = {
         playerNextVisual: 'Nächster Visual',
         playerPauseVisual: 'Visual pausieren',
         playerResumeVisual: 'Visual fortsetzen',
+        playerAudioOnly: 'Nur Ton',
+        playerShowPicture: 'Bild anzeigen',
         visualizerPickerLabel: 'Visualizer',
         visualizerAuto: 'Automatisch (Wechsel)',
         visualizerGenreGroup: 'Nach Genre',
