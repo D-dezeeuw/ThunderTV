@@ -1,13 +1,13 @@
 import { computed, type State } from 'spektrum';
 import type { Route } from '../app/router';
 import type { ChannelVariant } from '../m3u/types';
-import { LIVE_STATS, type LiveStats } from './live';
+import { LIVE_STATS, RADIO_COUNT, type LiveStats } from './live';
 import { UI_ACTIVE_VIEW } from './ui';
 
 interface LiveShapedState extends State {
-    live?: { stats?: Partial<LiveStats> };
+    live?: { stats?: Partial<LiveStats>; radioCount?: number };
     ui?: { activeView?: Route };
-    player?: { variants?: ChannelVariant[] };
+    player?: { variants?: ChannelVariant[]; activeVariantId?: string | null };
     activeSource?: { channelCount?: number } | null;
 }
 
@@ -16,6 +16,20 @@ export function registerLiveSelectors(): void {
     registerFilteredEverythingComputed();
     registerHasVariantsComputed();
     registerDroppedSamplesComputed();
+    registerRadioIsEmptyComputed();
+}
+
+/**
+ * The Radio view, on a source that shipped channels but no stations. A
+ * blank list under a header reads as a broken app, so this gates a real
+ * empty state that says which of the two it is.
+ */
+function registerRadioIsEmptyComputed(): void {
+    computed('radioIsEmpty', [RADIO_COUNT, UI_ACTIVE_VIEW, 'activeSource.channelCount'], (state: State) => {
+        const shaped = state as LiveShapedState;
+        if (shaped.ui?.activeView !== 'radio') return false;
+        return (shaped.activeSource?.channelCount ?? 0) > 0 && (shaped.live?.radioCount ?? 0) === 0;
+    });
 }
 
 /**
@@ -57,5 +71,16 @@ function registerFilteredEverythingComputed(): void {
 function registerHasVariantsComputed(): void {
     computed('hasVariants', ['player.variants'], (state: State) => {
         return ((state as LiveShapedState).player?.variants?.length ?? 0) > 1;
+    });
+
+    /**
+     * The playing feed spelled out beside the icon strip. The icons carry
+     * the choice; this makes sure the *current* choice is never only an
+     * icon — the one label that has to be readable at a glance.
+     */
+    computed('activeVariantLabel', ['player.variants', 'player.activeVariantId'], (state: State) => {
+        const player = (state as LiveShapedState).player;
+        const active = player?.variants?.find((variant) => variant.id === player.activeVariantId);
+        return active?.label ?? '';
     });
 }

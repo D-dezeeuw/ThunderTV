@@ -82,6 +82,17 @@ function providerOf(group: string | null): string | null {
 }
 
 /**
+ * `QUALITY_RANK` counts up from the best (UHD = 0) because it sorts; the
+ * switcher draws lit bars, which count the other way. One inversion here
+ * beats a lookup table the markup cannot express.
+ */
+export const MAX_QUALITY_TIER = 4;
+
+function qualityTier(quality: Quality | null): number {
+    return quality ? MAX_QUALITY_TIER - QUALITY_RANK[quality] : 0;
+}
+
+/**
  * Quality is the thing a viewer is actually choosing between, so it leads.
  * The category name is only worth showing when it carries information — a
  * bundle like `ODIDO HD` identifies an alternate source, while a plain
@@ -218,6 +229,7 @@ export function groupChannels(rows: readonly ChannelRow[], options: GroupingOpti
             quality: parsed.quality,
             isRecording: parsed.isRecording,
             provider: providerOf(row.group),
+            tier: qualityTier(parsed.quality),
         };
 
         const existing = buckets.get(identity.key);

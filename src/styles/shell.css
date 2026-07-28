@@ -100,11 +100,28 @@
 
 /* ---- View container (Feature 02.5) ---- */
 
+/* A flex column so a view that wants the full window can ask for it
+   (.view__section--fill) instead of guessing at a viewport fraction. Views
+   that don't opt in keep their natural height and the container scrolls,
+   exactly as before. */
 .view {
     grid-row: 2;
     grid-column: 2;
+    display: flex;
+    flex-direction: column;
     padding: var(--space-5);
     min-width: 0;
+    min-height: 0;
+}
+
+/* The channel list is the one surface that must fill the viewport: its
+   windowing needs a bounded height, and anything less leaves dead space
+   below the list. */
+.view__section--fill {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
 }
 
 .view__heading {
@@ -241,15 +258,92 @@
 }
 
 .recent-zap-history__row {
+    border-bottom: 1px solid var(--color-border);
+}
+
+/* The whole row is the control — a watched channel exists to be gone back
+   to, so the affordance is the row, not a separate button inside it. */
+.recent-zap-history__play {
     display: flex;
     align-items: center;
-    height: var(--row-h);
-    padding-inline: var(--row-pad-x);
-    border-bottom: 1px solid var(--color-border);
+    gap: var(--space-3);
+    width: 100%;
+    min-height: var(--row-h);
+    padding: var(--space-2) var(--row-pad-x);
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+
+.recent-zap-history__play:hover {
+    background: var(--color-surface-raised);
+}
+
+.recent-zap-history__play--active {
+    background: var(--color-surface-raised);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.recent-zap-history__logo {
+    flex: none;
+    width: var(--logo-box);
+    height: var(--logo-box);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: var(--color-surface-raised);
+    overflow: hidden;
+    color: var(--color-text-dim);
+}
+
+.recent-zap-history__logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.recent-zap-history__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
 }
 
 .recent-zap-history__name {
     font-size: var(--text-sm);
+}
+
+.recent-zap-history__group {
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+.recent-zap-history__badge {
+    flex: none;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+/* The play cue only reads as an affordance once the row is under the
+   pointer or focused; permanently visible it turns a list into a wall of
+   arrows. */
+.recent-zap-history__cue {
+    flex: none;
+    color: var(--color-accent);
+    visibility: hidden;
+}
+
+.recent-zap-history__play:hover .recent-zap-history__cue,
+.recent-zap-history__play:focus-visible .recent-zap-history__cue,
+.recent-zap-history__play--active .recent-zap-history__cue {
+    visibility: visible;
 }
 
 /* ---- Settings panel overlay (Feature 02.7) ---- */

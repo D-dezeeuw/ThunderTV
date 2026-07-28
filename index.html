@@ -58,6 +58,8 @@
             <symbol id="icon-play" viewBox="0 0 24 24"><path d="M6 4.5v15l14-7.5z" fill="currentColor" stroke="none"/></symbol>
             <symbol id="icon-live" viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><polyline points="8,3 12,7 16,3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="13.5" r="2.2" fill="currentColor" stroke="none"/></symbol>
             <symbol id="icon-radio" viewBox="0 0 24 24"><rect x="2.5" y="8.5" width="19" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="16.5" cy="14.5" r="3" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="12.5" x2="10.5" y2="12.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="16.5" x2="10.5" y2="16.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="7" y1="8" x2="17.5" y2="3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <symbol id="icon-catchup" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.6-5.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="3.5,3.5 3.5,8.5 8.5,8.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="12,7.5 12,12 15.5,14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+            <symbol id="icon-feed" viewBox="0 0 24 24"><path d="M12 3.5l8.5 4.5-8.5 4.5-8.5-4.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><polyline points="3.5,12.5 12,17 20.5,12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="3.5,16.5 12,21 20.5,16.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
             <symbol id="icon-categories" viewBox="0 0 24 24"><line x1="9" y1="6" x2="20.5" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="18" x2="20.5" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.6" fill="currentColor" stroke="none"/></symbol>
         </svg>
 
@@ -452,7 +454,7 @@
                      data-ref="listContainer", so the row set is
                      republished on view change (src/state/live.actions.ts)
                      instead of mounting a second list. -->
-                <section class="view__section" data-if="view.channelList.active">
+                <section class="view__section view__section--fill" data-if="view.channelList.active">
                     <!-- Feature 08.1-08.10: the real virtual-scrolled channel list —
                          the surface Phases 09 (search) and 10 (playback) plug into. -->
                     <div
@@ -547,7 +549,28 @@
                             </div>
                         </div>
 
-                        <div class="list-shell__body" data-if="!activeSource.needsReupload && activeSource.channelCount > 0 && !liveFilteredEverything">
+                        <!-- The source has channels but none of them are radio.
+                             Without this the Radio view was a silent empty box
+                             with a header above it, which reads as a broken app
+                             rather than "this provider ships no stations". -->
+                        <div class="list-shell__empty" data-if="radioIsEmpty" data-testid="radio-empty">
+                            <p class="list-shell__empty-heading">{{ strings.radio.empty }}</p>
+                            <p>{{ strings.radio.emptyHint }}</p>
+                            <div class="list-shell__empty-actions">
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    data-view="categories"
+                                    data-action="click"
+                                    data-fn="ui/navigate"
+                                    data-testid="radio-empty-categories-btn"
+                                >
+                                    {{ strings.live.empty.openCategories }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="list-shell__body" data-if="!activeSource.needsReupload && activeSource.channelCount > 0 && !liveFilteredEverything && !radioIsEmpty">
                             <!-- Feature 08.5: groups panel — renders from GroupMeta alone
                                  (list.groups), so it's ready before channel rows are even
                                  streamed in. Hidden for single-group playlists (08.5.6). -->
@@ -634,7 +657,18 @@
                                  keeps it mounted but visually minimal rather than
                                  removing it, see player.css's .list-shell--split rules). -->
                             <div class="now-playing" data-if="view.live.active || view.radio.active" data-testid="now-playing-pane">
-                                <div class="player-shell" data-if="player.active" data-testid="player-shell">
+                                <!-- The radio/live distinction is a class on the shell,
+                                     never a `:has(.radio-now-playing)` selector: Spektrum's
+                                     data-if only sets `display: none`, it does not detach
+                                     the node, so a structural selector would match in Live
+                                     too and collapse the video away (it did — that was the
+                                     "Live shows no picture" bug). -->
+                                <div
+                                    class="player-shell"
+                                    :class="{ 'player-shell--radio': view.radio.active }"
+                                    data-if="player.active"
+                                    data-testid="player-shell"
+                                >
                                     <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
                                     <div class="radio-now-playing" data-if="view.radio.active" data-testid="radio-now-playing">
                                         <span class="radio-now-playing__logo">
@@ -675,15 +709,30 @@
                                             {{ strings.list.playerStop }}
                                         </button>
                                     </div>
-                                    <!-- Variant switcher. Lives here rather than under
-                                         each list row on purpose: the list republishes
-                                         its window on every scroll frame, so a nested
-                                         data-each per row would rebuild these chips
-                                         continuously across a 90k-channel source. The
-                                         alternate feeds only matter for the channel
-                                         you are actually watching. -->
-                                    <div class="variants" data-if="hasVariants" data-testid="variant-strip">
-                                        <span class="variants__label">{{ strings.live.variants.label }}</span>
+                                    <!-- Variant switcher for the channel being watched.
+                                         Lives here rather than under each list row on
+                                         purpose: the list republishes its window on every
+                                         scroll frame, so a nested data-each per row would
+                                         rebuild these continuously across a 90k-channel
+                                         source. The alternate feeds only matter for the
+                                         channel you are actually watching.
+
+                                         Icons, not a row of text tabs: a channel carried
+                                         by several bundles produced labels like
+                                         "FHD · NEDERLAND ULTRA" that overran the pane and
+                                         clipped. Picture tier reads as lit bars (4 = UHD
+                                         down to 1 = SD), catch-up gets its own glyph, and
+                                         the full label stays available as the accessible
+                                         name — with the playing feed's label spelled out
+                                         beside the strip, so the current choice is never
+                                         only an icon. -->
+                                    <div
+                                        class="variants"
+                                        data-if="hasVariants"
+                                        role="group"
+                                        :aria-label="strings.live.variants.label"
+                                        data-testid="variant-strip"
+                                    >
                                         <div
                                             class="variants__chips"
                                             data-each="player.variants"
@@ -695,12 +744,26 @@
                                                 class="variants__chip"
                                                 :class="{ 'variants__chip--active': item.id === player.activeVariantId }"
                                                 :aria-pressed="item.id === player.activeVariantId"
+                                                :aria-label="item.label"
+                                                :title="item.label"
                                                 :data-variant-id="item.id"
                                                 data-testid="variant-chip"
                                             >
-                                                {{ item.label }}
+                                                <span class="variants__bars" data-if="item.tier" aria-hidden="true">
+                                                    <span class="variants__bar" :class="{ 'variants__bar--on': item.tier >= 1 }"></span>
+                                                    <span class="variants__bar" :class="{ 'variants__bar--on': item.tier >= 2 }"></span>
+                                                    <span class="variants__bar" :class="{ 'variants__bar--on': item.tier >= 3 }"></span>
+                                                    <span class="variants__bar" :class="{ 'variants__bar--on': item.tier >= 4 }"></span>
+                                                </span>
+                                                <svg class="icon icon--s" data-if="!item.tier" aria-hidden="true">
+                                                    <use href="#icon-feed"></use>
+                                                </svg>
+                                                <svg class="icon icon--s variants__catchup" data-if="item.isRecording" aria-hidden="true">
+                                                    <use href="#icon-catchup"></use>
+                                                </svg>
                                             </button>
                                         </div>
+                                        <span class="variants__current truncate" data-testid="variant-current">{{ activeVariantLabel }}</span>
                                     </div>
                                     <p class="player-shell__error" data-if="player.playbackError" data-testid="player-error">
                                         {{ strings.list.playerErrorPrefix }} {{ player.playbackError }}
@@ -746,22 +809,54 @@
                         <p class="empty-state__heading">{{ strings.emptyStates.recent.heading }}</p>
                         <p class="empty-state__message">{{ strings.emptyStates.recent.message }}</p>
                     </div>
-                    <!-- TODO(phase-13): temporary proof of Feature 05.4.6/05.5.6 — the
-                         player.active/zapHistory cache rendering from state alone,
-                         restored before any playlist loads. Phase 13 replaces this
-                         with the real recent/favorites UI (thumbnails, play
-                         affordance, remove). -->
                     <p class="recent-now-playing" data-if="player.active" data-testid="now-playing">
                         {{ strings.recent.nowPlaying }} {{ player.active.name }}
                     </p>
+                    <!-- Every row replays. A zap-history entry is a full
+                         channel snapshot (stream URL included), so this works
+                         on a cold boot before any source has finished loading
+                         — the click delegates from the list, one binding for
+                         the whole set rather than one per row. -->
                     <ul
                         class="recent-zap-history cv-auto"
                         data-if="!hasNoZapHistory"
                         data-each="player.zapHistory"
                         data-testid="zap-history-list"
+                        data-action="click"
+                        data-fn="recent/play"
                     >
                         <li class="recent-zap-history__row">
-                            <span class="recent-zap-history__name truncate">{{ item.name }}</span>
+                            <button
+                                type="button"
+                                class="recent-zap-history__play"
+                                :class="{ 'recent-zap-history__play--active': player.active && player.active.id === item.id }"
+                                :data-id="item.id"
+                                :title="strings.recent.playTitle + ' ' + item.name"
+                                data-testid="zap-history-play"
+                            >
+                                <span class="recent-zap-history__logo">
+                                    <img
+                                        data-if="item.logo"
+                                        class="recent-zap-history__logo-img"
+                                        :src="item.logo"
+                                        loading="lazy"
+                                        decoding="async"
+                                        referrerpolicy="no-referrer"
+                                        alt=""
+                                    />
+                                    <svg class="icon icon--s recent-zap-history__logo-icon" data-if="!item.logo" aria-hidden="true">
+                                        <use href="#icon-play"></use>
+                                    </svg>
+                                </span>
+                                <span class="recent-zap-history__text">
+                                    <span class="recent-zap-history__name truncate">{{ item.name }}</span>
+                                    <span class="recent-zap-history__group truncate" data-if="item.group">{{ item.group }}</span>
+                                </span>
+                                <span class="recent-zap-history__badge" data-if="item.radio">{{ strings.recent.radioBadge }}</span>
+                                <svg class="icon icon--s recent-zap-history__cue" aria-hidden="true">
+                                    <use href="#icon-play"></use>
+                                </svg>
+                            </button>
                         </li>
                     </ul>
                 </section>

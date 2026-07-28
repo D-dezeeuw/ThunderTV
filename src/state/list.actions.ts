@@ -118,6 +118,7 @@ export function playChannelById(id: string): void {
         streamUrl: row.url,
         logo: row.logo,
         group: row.group,
+        radio: row.radio,
     });
 }
 

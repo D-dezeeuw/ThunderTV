@@ -53,8 +53,10 @@ export const strings = {
     },
 
     radio: {
-        note: 'Audio-only stations from this source. Radio has no EPG and no curated list, and stations carry no country marker, so only filler filtering applies.',
-        empty: 'No radio stations found in this source.',
+        note: 'Audio-only stations from this source. Radio has no EPG and no curated list, so only country and filler filtering apply.',
+        empty: 'No radio stations found in this source',
+        emptyHint:
+            'Your provider ships no audio-only stations, or labels them in a way this list did not recognise — the untouched catalog under Categories shows everything it sent.',
     },
 
     emptyStates: {
@@ -99,10 +101,10 @@ export const strings = {
     },
 
     recent: {
-        // TODO(phase-13): temporary proof of Feature 05.4.6/05.5.6 (the
-        // player.active/zapHistory cache rendering from state alone) —
-        // removed once the real recent/favorites UI lands.
         nowPlaying: 'Now playing:',
+        /** Prefixed to the channel name in each row's tooltip. */
+        playTitle: 'Play',
+        radioBadge: 'Radio',
     },
 
     storageNotice: {

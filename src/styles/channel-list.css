@@ -73,14 +73,16 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    height: 100%;
+    flex: 1;
     min-height: 0;
 }
 
 .list-shell__header {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
+    row-gap: var(--space-2);
 }
 
 .list-shell__title {
@@ -95,17 +97,20 @@
     font-size: var(--text-sm);
 }
 
-/* A definite height (not the ancestor "fill remaining grid/flex space"
-   chain, which .view/.view__section don't provide — .view is a plain
-   scrolling block container per base.css's "only .scroll-y elements
-   scroll" model, Feature 02.5) — this is what makes .list a real bounded
-   viewport instead of growing to fit all 90k rows and defeating the whole
-   point of windowing (Feature 08.1/08.9's "DOM stays ~40 rows" contract
-   depends on this). */
+/* A definite height is what makes .list a real bounded viewport instead of
+   growing to fit all 90k rows and defeating the whole point of windowing
+   (Feature 08.1/08.9's "DOM stays ~40 rows" contract depends on this).
+
+   It now comes from the ancestor chain — .view is a flex column, the
+   channel-list section is .view__section--fill, and .list-shell flexes
+   inside it — rather than a hard `60vh`, which stopped the list a long way
+   short of the window bottom and left a dead band of empty background
+   under it at any viewport taller than ~1000px. min-height keeps it usable
+   when the window is genuinely short. */
 .list-shell__body {
     display: flex;
+    flex: 1;
     gap: var(--space-4);
-    height: 60vh;
     min-height: 20rem;
 }
 
@@ -139,10 +144,14 @@
 
 /* ---- Groups panel (Feature 08.5) ---- */
 
+/* Height comes from the row it sits in, so it ends level with the channel
+   list beside it. The old fixed 28rem cap was sized for a list that stopped
+   at 60vh; against a full-height list it left the panel floating in the top
+   third of the column. */
 .groups-panel {
     flex: none;
     width: 14rem;
-    max-height: 28rem;
+    min-height: 0;
     overflow-y: auto;
     border: 1px solid var(--color-border);
     border-radius: 8px;
@@ -355,25 +364,18 @@
     }
 }
 
-/* Live filter readout. Sits between the source name and the view toggle,
-   collapsing to its own line on narrow screens rather than squeezing the
-   title — the counts are context, never the primary thing on the row. */
+/* Live filter readout. Always its own row under the source name — the
+   counts plus the "these names were filtered out" sample can run the full
+   width of the header, and sharing the row squeezed the title out of
+   existence and pushed the samples off the right edge at every window size,
+   not just narrow ones. */
 .list-shell__stats {
-    flex: none;
+    flex: 1 1 100%;
+    order: 3;
+    min-width: 0;
     margin: 0;
     font-size: var(--text-xs);
     color: var(--color-text-dim);
-}
-
-@media (max-width: 40rem) {
-    .list-shell__header {
-        flex-wrap: wrap;
-    }
-
-    .list-shell__stats {
-        flex-basis: 100%;
-        order: 3;
-    }
 }
 
 .list-shell__empty-heading {

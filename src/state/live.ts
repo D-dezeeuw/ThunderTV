@@ -9,6 +9,14 @@ import { setValue } from 'spektrum';
  */
 export const LIVE_STATS = 'live.stats';
 
+/**
+ * How many stations the Radio list ended up with. A count, not the rows —
+ * the rows go through the virtual list like every other channel list. It
+ * exists so an empty Radio view can say *why* it is empty instead of
+ * rendering a blank box with a header over it.
+ */
+export const RADIO_COUNT = 'live.radioCount';
+
 export interface LiveStats {
     /** Rows the provider actually shipped for this source. */
     inputRows: number;
@@ -43,4 +51,5 @@ export const LIVE_STATS_DEFAULT: LiveStats = {
 
 export function initLiveState(): void {
     setValue(LIVE_STATS, LIVE_STATS_DEFAULT);
+    setValue(RADIO_COUNT, 0);
 }
