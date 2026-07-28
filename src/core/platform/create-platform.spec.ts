@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createPlatform } from './create-platform';
+import { fakeElectronBridge } from './fake-platform';
 
 afterEach(() => {
     delete window.electron;
@@ -13,7 +14,7 @@ describe('createPlatform', () => {
     });
 
     it('selects the Electron adapter when window.electron is present, non-throwing', async () => {
-        window.electron = { proxyOrigin: 'http://127.0.0.1:52301', appVersion: '0.0.0' };
+        window.electron = fakeElectronBridge('http://127.0.0.1:52301');
         const platform = await createPlatform();
         expect(platform.name).toBe('electron');
         expect(platform.capabilities.corsUnrestricted).toBe(true);

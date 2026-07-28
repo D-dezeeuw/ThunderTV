@@ -21,6 +21,7 @@ import {
     SERIES_COUNT,
     SERIES_DETAIL,
     SERIES_DETAIL_ERROR_REASON,
+    SERIES_DETAIL_ID,
     SERIES_DETAIL_STATUS,
     SERIES_ERROR_REASON,
     SERIES_STATUS,
@@ -244,6 +245,8 @@ describe('series.actions', () => {
 
             await selectSeriesCategory('1');
             tick();
+            await openSeriesDetail(7);
+            tick();
             await playSeriesEpisode(7, 100);
             tick();
 
@@ -251,6 +254,9 @@ describe('series.actions', () => {
             expect(active?.name).toBe('Pilot');
             expect(active?.kind).toBe('series');
             expect(active?.streamUrl).toBe(`${source.url}/series/${source.user}/${source.pass}/100.mp4`);
+            // The detail panel covers the whole list body, player pane
+            // included — leaving it open hides the episode you just started.
+            expect(get<number | null>(SERIES_DETAIL_ID)).toBeNull();
         });
     });
 });

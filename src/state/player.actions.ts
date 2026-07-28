@@ -1,5 +1,6 @@
 import { appState, defineFn, getPathObj, refs, setValue } from 'spektrum';
-import { requestElementFullscreen, requestVideoFullscreen } from '../player/fullscreen';
+import { getPlatform } from '../core/platform';
+import { currentFullscreenElement, exitFullscreen, requestElementFullscreen, requestVideoFullscreen } from '../player/fullscreen';
 import { cycleRadioVisualizerPreset } from '../player/visualizer';
 import { pushCapped } from './collections';
 import { persist } from './persist';
@@ -48,25 +49,9 @@ export function registerPlayerActions(): void {
     // No state mutation involved (only a read) — registered here anyway
     // because every defineFn is registered before bindDOM()
     // (registerActions()'s contract); the fullscreen mechanics live in
-    // src/player/fullscreen.ts. Whenever the visualizer is standing in for
-    // the picture — Radio always, a TV channel in audio mode — there is no
-    // picture to fullscreen, so it targets the visualizer pane instead of
-    // the (visually collapsed) `<video>`; see player.css's
-    // `.player-shell--audio` rule.
+    // src/player/fullscreen.ts.
     defineFn('player/fullscreen', () => {
-        if (audioVisualActive()) {
-            // The whole shell, not just `.radio-now-playing`: the control
-            // bar (preset picker, pause, next, stop) is a sibling of the
-            // visualizer pane, so fullscreening the pane alone left the
-            // viewer with no controls and no way back but Escape — which a
-            // TV remote may not even have.
-            const canvas = refs['radioVisualizer'];
-            const shell = canvas instanceof HTMLElement ? canvas.closest('.player-shell') : null;
-            if (shell instanceof HTMLElement) requestElementFullscreen(shell);
-            return;
-        }
-        const video = refs['playerVideo'];
-        if (video instanceof HTMLVideoElement) requestVideoFullscreen(video);
+        togglePlayerFullscreen();
     });
     // Manual skip alongside the visualizer's own auto-cycle
     // (src/player/visualizer/index.ts's AUTO_CYCLE_MS) — a no-op if the
@@ -102,6 +87,76 @@ export function audioVisualActive(): boolean {
 export function toggleAudioMode(): void {
     set(PLAYER_AUDIO_MODE, !(get<boolean>(PLAYER_AUDIO_MODE) ?? false));
     persist(PLAYER_AUDIO_MODE);
+}
+
+/**
+ * How long to give the browser to actually go fullscreen before the
+ * desktop shell falls back to fullscreening its own window. Long enough to
+ * cover a real `requestFullscreen()` transition, short enough that a
+ * viewer who pressed a button doesn't sit there wondering.
+ */
+const HOST_FULLSCREEN_FALLBACK_MS = 350;
+
+/**
+ * The fullscreen button, for every view that plays something — Live,
+ * Radio, Movies, TV Shows.
+ *
+ * Everything down to the `requestFullscreen()` call is synchronous on
+ * purpose: this runs inside the click handler, and an `await` anywhere
+ * above it would spend the click's transient user activation, which is the
+ * one thing browsers require for page-level fullscreen.
+ *
+ * The desktop fallback exists because page-level fullscreen is not always
+ * granted (Electron routes it through the session's permission handler;
+ * `desktop/main.mjs` allows it now, but a refusal for any other reason used
+ * to leave the button doing nothing at all). Where the host owns its own
+ * window, taking *that* fullscreen is a perfectly good answer — so if
+ * nothing on the page claimed fullscreen a moment later, the window does.
+ */
+export function togglePlayerFullscreen(): void {
+    // Toggle, not enter: a TV remote has no dependable Escape key
+    // (src/player/fullscreen.ts's header).
+    if (currentFullscreenElement()) {
+        exitFullscreen();
+        return;
+    }
+    const host = getPlatform().windowFullscreen;
+    if (host?.isFullscreen()) {
+        // We got here through the fallback below, so the way back out is
+        // the same door — `document.exitFullscreen()` has nothing to exit.
+        host.setFullscreen(false);
+        return;
+    }
+
+    requestFullscreenForActiveView();
+
+    if (!host) return;
+    window.setTimeout(() => {
+        if (currentFullscreenElement() || host.isFullscreen()) return;
+        host.setFullscreen(true);
+    }, HOST_FULLSCREEN_FALLBACK_MS);
+}
+
+/**
+ * Whenever the visualizer stands in for the picture — Radio always, a TV
+ * channel in audio mode — there is nothing in the `<video>` to fullscreen,
+ * so this targets the whole player shell instead. The whole shell, not just
+ * `.radio-now-playing`: the control bar (preset picker, pause, next, stop)
+ * is a sibling of the visualizer pane, so fullscreening the pane alone left
+ * the viewer with no controls and no way back but Escape — which a TV
+ * remote may not even have. Everything with a real picture — Live, Movies,
+ * TV Shows — fullscreens the shared `<video>`, which carries its own native
+ * controls.
+ */
+function requestFullscreenForActiveView(): void {
+    if (audioVisualActive()) {
+        const canvas = refs['radioVisualizer'];
+        const shell = canvas instanceof HTMLElement ? canvas.closest('.player-shell') : null;
+        if (shell instanceof HTMLElement) requestElementFullscreen(shell);
+        return;
+    }
+    const video = refs['playerVideo'];
+    if (video instanceof HTMLVideoElement) requestVideoFullscreen(video);
 }
 
 /** MVP playback slice: clears `player.active`, which `src/player/bindings.ts`'s `watch()` reacts to by tearing the `<video>` element down — the `setValue()` fence (Feature 05.2.5) keeps that write here, not in `src/player/`. */

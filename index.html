@@ -556,7 +556,7 @@
                          the surface Phases 09 (search) and 10 (playback) plug into. -->
                     <div
                         class="list-shell"
-                        :class="{ 'list-shell--group-view': view.categories.active && ui.viewMode === 'groups', 'list-shell--has-groups': view.categories.active && groupsPanelVisible, 'list-shell--split': view.channelList.active, 'list-shell--catalog': view.movies.active || view.series.active }"
+                        :class="{ 'list-shell--group-view': view.categories.active && ui.viewMode === 'groups', 'list-shell--has-groups': view.categories.active && groupsPanelVisible, 'list-shell--split': view.channelList.active || ((view.movies.active || view.series.active) && player.active), 'list-shell--catalog': view.movies.active || view.series.active }"
                         data-if="(view.channelList.active && activeSource) || view.movies.active || view.series.active"
                         data-testid="channel-list-shell"
                     >
@@ -1088,8 +1088,20 @@
                                  see player.css's .list-shell--split rules.
 
                                  Categories gets the same column, which is what makes it
-                                 three: categories -> channels -> preview. -->
-                            <div class="now-playing" data-if="view.channelList.active" data-testid="now-playing-pane">
+                                 three: categories -> channels -> preview.
+
+                                 Movies/TV Shows play into that same <video> (vod.actions.ts
+                                 and series.actions.ts both go through setActiveChannel), so
+                                 they get this pane too — but only once something is
+                                 actually playing, since a permanent empty player beside a
+                                 poster grid is just noise. Without this, pressing Play on a
+                                 movie left the <video> in a `display: none` pane: audio
+                                 only, no picture, and nothing to fullscreen. -->
+                            <div
+                                class="now-playing"
+                                data-if="view.channelList.active || ((view.movies.active || view.series.active) && player.active)"
+                                data-testid="now-playing-pane"
+                            >
                                 <!-- The picture/audio-only distinction is a class on the
                                      shell, never a `:has(.radio-now-playing)` selector:
                                      Spektrum's data-if only sets `display: none`, it does
@@ -1290,7 +1302,12 @@
                                         >
                                             {{ player.audioMode ? strings.list.playerShowPicture : strings.list.playerAudioOnly }}
                                         </button>
-                                        <button type="button" class="btn" data-if="view.channelList.active" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
+                                        <!-- No data-if: this whole shell only renders while
+                                             something is playing, and everything that plays
+                                             — Live, Radio, Categories, Movies, TV Shows —
+                                             can be fullscreened (state/player.actions.ts
+                                             picks the right element per view). -->
+                                        <button type="button" class="btn" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
                                             {{ strings.list.playerFullscreen }}
                                         </button>
                                         <button type="button" class="btn" data-action="click" data-fn="player/stop" data-testid="player-stop-btn">

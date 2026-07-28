@@ -25,6 +25,13 @@ const stripComments = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, 
 const playerCss = stripComments(readFileSync(`${repoRoot}/src/styles/player.css`, 'utf8'));
 const indexHtml = readFileSync(`${repoRoot}/index.html`, 'utf8');
 
+/**
+ * The real `.now-playing` gate, read straight out of index.html rather than
+ * copied into this file — so the specs below assert the expression that
+ * actually ships, and mounting it here exercises the same one.
+ */
+const NOW_PLAYING_GATE = /class="now-playing"\s+data-if="([^"]+)"/.exec(indexHtml)?.[1] ?? '';
+
 const CHANNEL: ActiveChannelSnapshot = {
     id: 'a',
     sourceId: 's',
@@ -91,7 +98,8 @@ describe('player shell: audio-only layout is class-driven, not structural', () =
  */
 describe('Categories preview column', () => {
     it('mounts the now-playing pane for every channel-list view', () => {
-        expect(indexHtml).toContain('class="now-playing" data-if="view.channelList.active"');
+        expect(indexHtml).toContain(`data-if="${NOW_PLAYING_GATE}"`);
+        expect(NOW_PLAYING_GATE.startsWith('view.channelList.active')).toBe(true);
     });
 
     it('puts the list and the preview side by side in Categories too', () => {
@@ -103,6 +111,41 @@ describe('Categories preview column', () => {
         expect(channelListCss).toContain(
             '.list-shell--has-groups:not(.list-shell--group-view) .list-shell__body > .now-playing',
         );
+    });
+});
+
+/**
+ * Movies/TV Shows played into the same `<video>` as the channel-list views
+ * — but the pane holding it was gated on those views alone, and `data-if`
+ * only sets `display: none`. Pressing Play on a movie therefore gave you
+ * audio, no picture, and nothing to fullscreen.
+ */
+describe('now-playing pane covers every view that plays something', () => {
+    it('index.html shows the pane in Movies/TV Shows once something is playing', () => {
+        expect(NOW_PLAYING_GATE).toContain('(view.movies.active || view.series.active) && player.active');
+    });
+
+    it('the fullscreen button carries no view gate — the shell itself is the gate', () => {
+        const button = /<button[^>]*data-fn="player\/fullscreen"[^>]*>/.exec(indexHtml)?.[0] ?? '';
+        expect(button).not.toBe('');
+        expect(button).not.toContain('data-if');
+    });
+
+    it('renders the pane in Movies only while a title is playing', () => {
+        const mounted = mountTemplate(`
+            <div class="now-playing" data-if="${NOW_PLAYING_GATE}" data-testid="now-playing-pane"></div>
+        `);
+        const pane = (): HTMLElement | null => mounted.query('[data-testid="now-playing-pane"]');
+
+        setValue(UI_ACTIVE_VIEW, 'movies');
+        tick();
+        expect(pane()?.style.display).toBe('none');
+
+        setActiveChannel({ ...CHANNEL, kind: 'vod' });
+        tick();
+        expect(pane()?.style.display).toBe('');
+
+        mounted.cleanup();
     });
 });
 

@@ -297,4 +297,7 @@ export async function playSeriesEpisode(seriesId: number, episodeId: number | st
         group: seriesCategoryName(item.categoryId),
         kind: 'series',
     });
+    // Same reason as `playVod()`: the detail panel covers the list body,
+    // player pane included.
+    closeSeriesDetail();
 }

@@ -275,4 +275,9 @@ export async function playVod(streamId: number): Promise<void> {
         group: categoryName,
         kind: 'vod',
     });
+    // The detail panel is absolutely positioned over the whole list body
+    // (catalog.css's `.catalog-detail`), which is also where the player
+    // pane appears — leaving it open would hide the picture the viewer just
+    // asked for behind the poster they asked for it from.
+    closeVodDetail();
 }

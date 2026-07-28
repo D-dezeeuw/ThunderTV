@@ -35,6 +35,14 @@ files:
   - '!node_modules/electron-builder${/*}'
   - from: ../dist
     to: dist
+  # The runtime window/dock icon, distinct from the OS-level `icon:` entries
+  # below: those brand the installer, the .exe and the .desktop file, but
+  # `BrowserWindow`'s own icon is read at runtime from inside the app — and
+  # with nothing mapped in here it found nothing and every packaged build
+  # showed Electron's default icon in the taskbar. `desktop/main.mjs`'s
+  # ICON_CANDIDATES looks for `icons/512.png` first for exactly this.
+  - from: ../build/icons
+    to: icons
 
 # No publish config (see header comment) — releases are manual, per
 # masterplan Phase 29's "zero GitHub Actions publishes" rule. The desktop

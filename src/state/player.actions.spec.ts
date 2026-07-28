@@ -1,8 +1,8 @@
-import { appState, bindDOM, getPathObj, resetState, setValue, tick } from 'spektrum';
-import { afterEach, describe, expect, it } from 'vitest';
-import { withFakePlatform } from '../core/platform/fake-platform';
+import { appState, bindDOM, getPathObj, refs, resetState, setValue, tick } from 'spektrum';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { FakeWindowFullscreen, withFakePlatform } from '../core/platform/fake-platform';
 import { flushNow, pendingKeys } from './persist';
-import { audioVisualActive, registerPlayerActions, setActiveChannel, toggleAudioMode } from './player.actions';
+import { audioVisualActive, registerPlayerActions, setActiveChannel, toggleAudioMode, togglePlayerFullscreen } from './player.actions';
 import { isAudioVisual, PLAYER_ACTIVE, PLAYER_AUDIO_MODE, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
 import type { ActiveChannelSnapshot } from './records';
 import { UI_ACTIVE_VIEW } from './ui';
@@ -120,6 +120,141 @@ describe('audio-only mode for TV channels', () => {
         setValue(PLAYER_AUDIO_MODE, false);
         tick();
         expect(audioVisualActive()).toBe(true);
+    });
+});
+
+/**
+ * The desktop bug these cover: Electron routes `requestFullscreen()`
+ * through the session permission handler, and `desktop/main.mjs` used to
+ * deny every permission — so the button did nothing at all. The permission
+ * is allowed now; this is the belt to that braces. Where the host owns its
+ * own window, a refusal for *any* reason falls back to fullscreening the
+ * window itself, which is a perfectly good answer to "make this big."
+ */
+describe('togglePlayerFullscreen', () => {
+    function stubFullscreenElement(value: Element | null): void {
+        Object.defineProperty(document, 'fullscreenElement', { value, configurable: true, writable: true });
+    }
+
+    function mountVideo(requestFullscreen?: () => void): HTMLVideoElement {
+        const video = document.createElement('video');
+        if (requestFullscreen) {
+            (video as unknown as Record<string, unknown>)['requestFullscreen'] = requestFullscreen;
+        }
+        refs['playerVideo'] = video;
+        return video;
+    }
+
+    afterEach(() => {
+        stubFullscreenElement(null);
+        delete refs['playerVideo'];
+        delete refs['radioVisualizer'];
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+        resetState();
+    });
+
+    it('requests fullscreen on the video, and never reaches for a host window on web', async () => {
+        await withFakePlatform({}, () => {
+            const request = vi.fn();
+            mountVideo(request);
+            stubFullscreenElement(null);
+
+            togglePlayerFullscreen();
+
+            expect(request).toHaveBeenCalledOnce();
+        });
+    });
+
+    it('falls back to the desktop window when nothing on the page took fullscreen', async () => {
+        vi.useFakeTimers();
+        await withFakePlatform({}, ({ platform }) => {
+            const host = new FakeWindowFullscreen();
+            platform.windowFullscreen = host;
+            // No `requestFullscreen` on the element at all — the same
+            // outcome a denied permission produces.
+            mountVideo();
+            stubFullscreenElement(null);
+
+            togglePlayerFullscreen();
+            expect(host.calls).toEqual([]);
+
+            vi.runAllTimers();
+            expect(host.calls).toEqual([true]);
+        });
+    });
+
+    it('leaves the window alone when page fullscreen did take', async () => {
+        vi.useFakeTimers();
+        await withFakePlatform({}, ({ platform }) => {
+            const host = new FakeWindowFullscreen();
+            platform.windowFullscreen = host;
+            const video = mountVideo(() => {
+                stubFullscreenElement(video);
+            });
+            stubFullscreenElement(null);
+
+            togglePlayerFullscreen();
+            vi.runAllTimers();
+
+            expect(host.calls).toEqual([]);
+        });
+    });
+
+    it('exits the window fullscreen it entered, rather than requesting page fullscreen again', async () => {
+        await withFakePlatform({}, ({ platform }) => {
+            const host = new FakeWindowFullscreen();
+            host.setFullscreen(true);
+            platform.windowFullscreen = host;
+            const request = vi.fn();
+            mountVideo(request);
+            stubFullscreenElement(null);
+
+            togglePlayerFullscreen();
+
+            expect(host.calls).toEqual([true, false]);
+            expect(request).not.toHaveBeenCalled();
+        });
+    });
+
+    it('exits page fullscreen first, whatever the host is', async () => {
+        await withFakePlatform({}, ({ platform }) => {
+            const host = new FakeWindowFullscreen();
+            platform.windowFullscreen = host;
+            const exit = vi.fn();
+            Object.defineProperty(document, 'exitFullscreen', { value: exit, configurable: true });
+            const video = mountVideo(vi.fn());
+            stubFullscreenElement(video);
+
+            togglePlayerFullscreen();
+
+            expect(exit).toHaveBeenCalledOnce();
+            expect(host.calls).toEqual([]);
+        });
+    });
+
+    it('fullscreens the whole player shell in Radio, not the collapsed video', async () => {
+        await withFakePlatform({}, () => {
+            const shell = document.createElement('div');
+            shell.className = 'player-shell';
+            const canvas = document.createElement('canvas');
+            shell.appendChild(canvas);
+            document.body.appendChild(shell);
+            const shellRequest = vi.fn();
+            (shell as unknown as Record<string, unknown>)['requestFullscreen'] = shellRequest;
+            refs['radioVisualizer'] = canvas;
+            const videoRequest = vi.fn();
+            mountVideo(videoRequest);
+            stubFullscreenElement(null);
+            setValue(UI_ACTIVE_VIEW, 'radio');
+            tick();
+
+            togglePlayerFullscreen();
+
+            expect(shellRequest).toHaveBeenCalledOnce();
+            expect(videoRequest).not.toHaveBeenCalled();
+            shell.remove();
+        });
     });
 });
 

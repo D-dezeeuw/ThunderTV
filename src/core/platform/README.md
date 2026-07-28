@@ -67,6 +67,20 @@ if (!getPlatform().capabilities.corsUnrestricted) {
 New capabilities are added as new fields with safe defaults, never by
 widening an existing one's meaning.
 
+## `windowFullscreen` — the one optional adapter member
+
+`PlatformAdapter.windowFullscreen` is present only where the host owns a
+window of its own to fullscreen (Electron), and absent on web, where the
+page is a guest in somebody else's browser window. It is the "new adapter
+method added when a real consumer needs it" case `platform-adapter.ts`'s
+header describes: the player's fullscreen toggle
+(`src/state/player.actions.ts`) falls back to it when page-level fullscreen
+doesn't take. Both members are synchronous — the toggle runs inside a click
+handler, and an `await` there would spend the click's transient user
+activation before `requestFullscreen()` ever ran — which is why
+`desktop/preload.cjs` mirrors the main process's fullscreen state into a
+local cache rather than answering over IPC on demand.
+
 ## Testing against `FakePlatform`
 
 `fake-platform.ts` is test-only (never imported outside `*.spec.ts` —

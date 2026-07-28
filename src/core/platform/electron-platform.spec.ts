@@ -2,6 +2,7 @@ import { resetState, setValue, tick } from 'spektrum';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SETTINGS_PROXY_TEMPLATE } from '../../state/settings';
 import { effectiveProxyTemplate, createElectronPlatform } from './electron-platform';
+import { fakeElectronBridge } from './fake-platform';
 import { getPlatform, resetPlatformForTests, setPlatform } from './index';
 
 afterEach(() => {
@@ -17,12 +18,12 @@ describe('effectiveProxyTemplate (desktop shell default)', () => {
     });
 
     it('defaults to the embedded desktop proxy when the bridge is present', () => {
-        window.electron = { proxyOrigin: 'http://127.0.0.1:52301', appVersion: '0.0.0' };
+        window.electron = fakeElectronBridge('http://127.0.0.1:52301');
         expect(effectiveProxyTemplate()).toBe('http://127.0.0.1:52301/{url}');
     });
 
     it('a user-saved template wins over the desktop default', () => {
-        window.electron = { proxyOrigin: 'http://127.0.0.1:52301', appVersion: '0.0.0' };
+        window.electron = fakeElectronBridge('http://127.0.0.1:52301');
         setValue(SETTINGS_PROXY_TEMPLATE, 'https://my-proxy.example/{url}');
         tick();
         expect(effectiveProxyTemplate()).toBe('https://my-proxy.example/{url}');
