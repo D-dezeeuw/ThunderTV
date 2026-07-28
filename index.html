@@ -28,8 +28,8 @@
         <script type="importmap">
             { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
         </script>
-      <script type="module" crossorigin src="./assets/index-LgoAv-tf.js"></script>
-      <link rel="stylesheet" crossorigin href="./assets/index-BAQc8t9x.css">
+      <script type="module" crossorigin src="./assets/index-CM6-Q32T.js"></script>
+      <link rel="stylesheet" crossorigin href="./assets/index-BUfJ7Gj8.css">
     </head>
     <body>
         <!--
@@ -537,6 +537,25 @@
                                 {{ live.stats.channels }} {{ strings.live.channelsLabel }} ·
                                 {{ liveHiddenCount }} {{ strings.live.hiddenLabel }} ·
                                 {{ live.stats.collapsed }} {{ strings.live.mergedLabel }}
+                            </p>
+                            <!-- A blank list teaches nothing. When the curated
+                                 list matched nothing at all, the view shows
+                                 everything instead and names what it saw, so a
+                                 naming mismatch is distinguishable from an
+                                 absent channel. -->
+                            <p
+                                class="list-shell__stats list-shell__stats--warn"
+                                data-if="view.live.active && live.stats.strictFellBack"
+                                data-testid="live-strict-fallback"
+                            >
+                                {{ strings.live.strictFellBack }} {{ liveDroppedSamples }}
+                            </p>
+                            <p
+                                class="list-shell__stats"
+                                data-if="view.live.active && !live.stats.strictFellBack && liveHiddenCount > 0"
+                                data-testid="live-dropped-samples"
+                            >
+                                {{ strings.live.missingHint }} {{ liveDroppedSamples }}
                             </p>
                             <p class="list-shell__stats" data-if="view.categories.active" data-testid="categories-note">
                                 {{ strings.categories.note }}
