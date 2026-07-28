@@ -57,3 +57,18 @@ describe('createElectronPlatform', () => {
         expect(getPlatform()).toBe(platform);
     });
 });
+
+describe('createElectronPlatform.getDefaultXtreamAccount', () => {
+    it('delegates to window.electron.getDefaultXtreamAccount()', async () => {
+        const fixture = { url: 'http://example.com:8080', username: 'bob', password: 'secret' };
+        window.electron = { ...fakeElectronBridge(), getDefaultXtreamAccount: () => Promise.resolve(fixture) };
+        const platform = await createElectronPlatform();
+        await expect(platform.getDefaultXtreamAccount?.()).resolves.toEqual(fixture);
+    });
+
+    it('resolves null when the bridge has no default account configured', async () => {
+        window.electron = fakeElectronBridge();
+        const platform = await createElectronPlatform();
+        await expect(platform.getDefaultXtreamAccount?.()).resolves.toBeNull();
+    });
+});

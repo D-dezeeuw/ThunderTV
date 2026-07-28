@@ -40,4 +40,14 @@ export interface ElectronBridge {
      * the resulting state arrives back through `isWindowFullscreen()`.
      */
     setWindowFullscreen(next: boolean): void;
+    /**
+     * Default Xtream credentials read from a gitignored `desktop/.env` at
+     * startup (`THUNDERTV_XTREAM_URL`/`_USERNAME`/`_PASSWORD`), or `null` when
+     * no such file/keys exist. Dev-convenience only — `.env` sits outside
+     * `electron-builder.yml`'s files allowlist, so a packaged build always
+     * resolves `null` here. `bootstrap.ts` uses a non-null result to seed the
+     * first Xtream account automatically instead of opening the first-run
+     * wizard.
+     */
+    getDefaultXtreamAccount(): Promise<{ url: string; username: string; password: string } | null>;
 }

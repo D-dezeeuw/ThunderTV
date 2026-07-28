@@ -39,6 +39,7 @@ const APP_BACKGROUND_COLOR = '#0b0d10';
 // (a sandboxed CommonJS preload can't import from this ESM module).
 const IPC_SET_WINDOW_FULLSCREEN = 'thundertv:set-window-fullscreen';
 const IPC_WINDOW_FULLSCREEN_STATE = 'thundertv:window-fullscreen';
+const IPC_GET_DEFAULT_XTREAM_ACCOUNT = 'thundertv:get-default-xtream-account';
 
 // The runtime window/dock icon. Both candidates are tried because the file
 // lives in a different place depending on how the app was started:
@@ -73,6 +74,44 @@ function loadAppIcon() {
 
 const appIcon = loadAppIcon();
 
+/**
+ * Local dev convenience only (never packaged — `.env` is outside
+ * `electron-builder.yml`'s files allowlist, so this always returns `null`
+ * in a distributed build unless someone's own checkout happens to have the
+ * file). Lets a developer stop retyping Xtream credentials on every fresh
+ * profile/storage reset — `bootstrap.ts` auto-imports this as the active
+ * source when no playlist source exists yet, instead of opening the
+ * first-run wizard.
+ */
+function loadDefaultXtreamAccount() {
+    let raw;
+    try {
+        raw = fs.readFileSync(path.join(desktopDir, '.env'), 'utf8');
+    } catch {
+        return null;
+    }
+    const env = {};
+    for (const line of raw.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eq = trimmed.indexOf('=');
+        if (eq === -1) continue;
+        const key = trimmed.slice(0, eq).trim();
+        let value = trimmed.slice(eq + 1).trim();
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+        }
+        env[key] = value;
+    }
+    const url = env.THUNDERTV_XTREAM_URL;
+    const username = env.THUNDERTV_XTREAM_USERNAME;
+    const password = env.THUNDERTV_XTREAM_PASSWORD;
+    if (!url || !username || !password) return null;
+    return { url, username, password };
+}
+
+const defaultXtreamAccount = loadDefaultXtreamAccount();
+
 // Single-instance lock (Feature 28.1.6): a second launch attempt quits
 // immediately and focuses the already-running window instead of spawning a
 // duplicate proxy server and BrowserWindow.
@@ -105,6 +144,11 @@ if (!gotLock) {
         if (!win || win.isDestroyed()) return;
         win.setFullScreen(Boolean(next));
     });
+
+    // `handle`/`invoke`, not `additionalArguments`/argv: argv is visible to
+    // any local process listing (`ps`), and a password shouldn't sit there
+    // for the process lifetime when a simple round-trip avoids it entirely.
+    ipcMain.handle(IPC_GET_DEFAULT_XTREAM_ACCOUNT, () => defaultXtreamAccount);
 
     async function start() {
         const splash = createSplashWindow();

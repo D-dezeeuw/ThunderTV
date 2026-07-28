@@ -8,7 +8,7 @@ import { normalizeXtreamUrl } from '../xtream/urls';
 import { buildConfigXml } from './config-export';
 import { buildEpgXml, buildRawResponsesXml } from './raw-export';
 import { loadPlaylistSources } from './playlist-load';
-import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
+import { PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_SOURCES, type PlaylistSourceSummary } from './playlist';
 import { setActiveSourceId } from './playlist.actions';
 import { persist } from './persist';
 import {
@@ -352,4 +352,21 @@ export async function saveXtreamAccount(input: { url: string; user: string; pass
     } finally {
         set(SETTINGS_XTREAM_BUSY, false);
     }
+}
+
+/**
+ * Dev-convenience auto-seed (Electron only): if `desktop/.env` configured a
+ * default Xtream account (`window.electron.getDefaultXtreamAccount()`) and
+ * no playlist source exists yet, imports it as the active source — the
+ * same gate `wizard.actions.ts`'s `openWizardIfNoSources()` uses, so a
+ * fresh/reset install gets seeded silently instead of showing the wizard,
+ * while an install with any existing source (Xtream or M3U) is left alone.
+ * No-op on web, where the platform has no `getDefaultXtreamAccount`.
+ */
+export async function importDefaultXtreamAccountIfConfigured(): Promise<void> {
+    const sources = get<PlaylistSourceSummary[]>(PLAYLIST_SOURCES) ?? [];
+    if (sources.length > 0) return;
+    const defaults = await getPlatform().getDefaultXtreamAccount?.();
+    if (!defaults) return;
+    await saveXtreamAccount({ url: defaults.url, user: defaults.username, pass: defaults.password });
 }

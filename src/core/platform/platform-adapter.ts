@@ -33,6 +33,12 @@ export interface PlatformAdapter {
      * to it when page-level fullscreen doesn't take.
      */
     windowFullscreen?: WindowFullscreenControl;
+    /**
+     * Present only on the Electron adapter (`electron-platform.ts`), backed by
+     * `window.electron.getDefaultXtreamAccount()`. See that bridge method's
+     * comment for the dev-only/never-packaged guarantee.
+     */
+    getDefaultXtreamAccount?(): Promise<XtreamAccountDefaults | null>;
 }
 
 /** @see PlatformAdapter.windowFullscreen */
@@ -40,4 +46,11 @@ export interface WindowFullscreenControl {
     /** Synchronous by design — the toggle runs inside a click handler, where an `await` would spend the click's transient user activation. */
     isFullscreen(): boolean;
     setFullscreen(next: boolean): void;
+}
+
+/** @see PlatformAdapter.getDefaultXtreamAccount */
+export interface XtreamAccountDefaults {
+    url: string;
+    username: string;
+    password: string;
 }

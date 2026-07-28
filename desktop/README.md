@@ -14,6 +14,17 @@ cd desktop && npm install
 npm start             # builds the web app, swaps to vendored Spektrum, launches
 ```
 
+## Default Xtream credentials for local dev
+
+Copy `.env.example` to `.env` in this directory and fill in your own Xtream
+panel URL/username/password. `main.mjs` reads it at startup and, if no
+playlist source exists yet, `bootstrap.ts` auto-imports it as the active
+source instead of showing the first-run wizard — see
+`src/core/platform/electron-bridge.types.ts`'s `getDefaultXtreamAccount`
+comment. `.env` is gitignored and outside `electron-builder.yml`'s files
+allowlist, so this never affects a packaged build, only `npm start` from
+your own checkout.
+
 ## Packaging
 
 ```bash
