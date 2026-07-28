@@ -702,22 +702,6 @@
                             <p class="catalog-search__hint" data-if="search.active && search.loadedOnly" data-testid="movies-search-loaded-only">{{ strings.search.loadedOnlyHint }}</p>
                         </div>
 
-                        <div class="catalog-categories" data-if="view.movies.active && vod.categories.length > 0" data-testid="movies-categories-wrap">
-                            <div class="catalog-chips catalog-chips--scroll" role="group" :aria-label="strings.movies.categoriesAria" data-each="vod.categories" data-testid="movies-categories">
-                                <button
-                                    type="button"
-                                    class="catalog-chip"
-                                    :class="{ 'catalog-chip--active': item.id === vod.activeCategoryId }"
-                                    data-action="click"
-                                    data-fn="vod/selectCategory"
-                                    :data-category-id="item.id"
-                                    data-testid="movies-category-chip"
-                                >
-                                    {{ item.name }}
-                                </button>
-                            </div>
-                        </div>
-
                         <div class="list-shell__empty" data-if="view.movies.active && vod.status === 'error' && vod.errorReason === 'no-source'" data-testid="movies-no-source">
                             <p>{{ strings.catalog.noSource }}</p>
                             <div class="list-shell__empty-actions">
@@ -771,22 +755,6 @@
                             <p class="catalog-search__hint" data-if="search.active && search.loadedOnly" data-testid="series-search-loaded-only">{{ strings.search.loadedOnlyHint }}</p>
                         </div>
 
-                        <div class="catalog-categories" data-if="view.series.active && series.categories.length > 0" data-testid="series-categories-wrap">
-                            <div class="catalog-chips catalog-chips--scroll" role="group" :aria-label="strings.series.categoriesAria" data-each="series.categories" data-testid="series-categories">
-                                <button
-                                    type="button"
-                                    class="catalog-chip"
-                                    :class="{ 'catalog-chip--active': item.id === series.activeCategoryId }"
-                                    data-action="click"
-                                    data-fn="series/selectCategory"
-                                    :data-category-id="item.id"
-                                    data-testid="series-category-chip"
-                                >
-                                    {{ item.name }}
-                                </button>
-                            </div>
-                        </div>
-
                         <div class="list-shell__empty" data-if="view.series.active && series.status === 'error' && series.errorReason === 'no-source'" data-testid="series-no-source">
                             <p>{{ strings.catalog.noSource }}</p>
                             <div class="list-shell__empty-actions">
@@ -805,9 +773,16 @@
                             {{ strings.catalog.emptyCategory }}
                         </p>
 
+                        <!-- The catalog halves of this condition ask only for categories,
+                             never for a non-empty item count: the category rail lives
+                             inside the body now, so gating on `count > 0` would take the
+                             rail down along with the list the moment a category came back
+                             empty (or was merely still loading) — leaving no way to pick
+                             a different one. The empty/loading notes above stay put
+                             either way; the list column just renders empty beside them. -->
                         <div
                             class="list-shell__body"
-                            data-if="(view.channelList.active && !activeSource.needsReupload && activeSource.channelCount > 0 && !liveFilteredEverything && !radioIsEmpty) || (view.movies.active && vod.status === 'ready' && vod.count > 0) || (view.series.active && series.status === 'ready' && series.count > 0)"
+                            data-if="(view.channelList.active && !activeSource.needsReupload && activeSource.channelCount > 0 && !liveFilteredEverything && !radioIsEmpty) || (view.movies.active && vod.categories.length > 0) || (view.series.active && series.categories.length > 0)"
                         >
                             <!-- Movies detail (Phase 21): floats over just the list area
                                  (list-shell__body has position:relative), so the header/
@@ -912,6 +887,66 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Movies/Series category rail. Same `.groups-panel`
+                                 component as the channel groups below, in the same
+                                 column, for the same reason: a provider ships dozens
+                                 of categories, and the horizontal chip scroller this
+                                 replaced showed about four of them at a time with the
+                                 rest hidden behind a sideways drag no remote can do. -->
+                            <nav
+                                class="groups-panel"
+                                data-if="view.movies.active && vod.categories.length > 0"
+                                role="listbox"
+                                tabindex="0"
+                                :aria-label="strings.movies.categoriesAria"
+                                data-action="keydown"
+                                data-fn="list/handleCategoryRailKeydown"
+                                data-testid="movies-categories-wrap"
+                            >
+                                <div class="groups-panel__list" data-each="vod.categories" data-testid="movies-categories">
+                                    <button
+                                        type="button"
+                                        class="groups-panel__item"
+                                        :class="{ 'groups-panel__item--active': item.id === vod.activeCategoryId }"
+                                        role="option"
+                                        :aria-selected="item.id === vod.activeCategoryId"
+                                        data-action="click"
+                                        data-fn="vod/selectCategory"
+                                        :data-category-id="item.id"
+                                        data-testid="movies-category-chip"
+                                    >
+                                        <span class="groups-panel__name truncate">{{ item.name }}</span>
+                                    </button>
+                                </div>
+                            </nav>
+
+                            <nav
+                                class="groups-panel"
+                                data-if="view.series.active && series.categories.length > 0"
+                                role="listbox"
+                                tabindex="0"
+                                :aria-label="strings.series.categoriesAria"
+                                data-action="keydown"
+                                data-fn="list/handleCategoryRailKeydown"
+                                data-testid="series-categories-wrap"
+                            >
+                                <div class="groups-panel__list" data-each="series.categories" data-testid="series-categories">
+                                    <button
+                                        type="button"
+                                        class="groups-panel__item"
+                                        :class="{ 'groups-panel__item--active': item.id === series.activeCategoryId }"
+                                        role="option"
+                                        :aria-selected="item.id === series.activeCategoryId"
+                                        data-action="click"
+                                        data-fn="series/selectCategory"
+                                        :data-category-id="item.id"
+                                        data-testid="series-category-chip"
+                                    >
+                                        <span class="groups-panel__name truncate">{{ item.name }}</span>
+                                    </button>
+                                </div>
+                            </nav>
 
                             <!-- Feature 08.5: groups panel — renders from GroupMeta alone
                                  (list.groups), so it's ready before channel rows are even

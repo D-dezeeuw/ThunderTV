@@ -188,10 +188,13 @@
 /* Height comes from the row it sits in, so it ends level with the channel
    list beside it. The old fixed 28rem cap was sized for a list that stopped
    at 60vh; against a full-height list it left the panel floating in the top
-   third of the column. */
+   third of the column.
+
+   Also the Movies/Series category rail (see catalog.css): one vertical
+   category list, one set of styles, whatever the rows behind it are. */
 .groups-panel {
     flex: none;
-    width: 14rem;
+    width: var(--groups-panel-w);
     min-height: 0;
     overflow-y: auto;
     border: 1px solid var(--color-border);

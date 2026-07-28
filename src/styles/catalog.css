@@ -1,8 +1,9 @@
 /*
  * Movies/Series catalog views (Phase 21): header/status readout, the
- * search bar + scope chips shared by both views' headers, the horizontal
- * category strip, the detail-panel overlay (poster/plot/seasons/episodes),
- * and episode lines. Token-only, no transitions/animations
+ * search bar + scope chips shared by both views' headers, the detail-panel
+ * overlay (poster/plot/seasons/episodes), and episode lines. The category
+ * rail itself is not here — it is channel-list.css's `.groups-panel`,
+ * shared with the Categories view. Token-only, no transitions/animations
  * (scripts/check-css.mjs enforces both) — mirrors channel-list.css's own
  * header comment.
  */
@@ -63,23 +64,16 @@
     color: var(--color-text-dim);
 }
 
-/* ---- Chips (search scopes + category strip) ---- */
+/* ---- Chips (search scopes) ----
+   Categories are NOT chips: they're a vertical rail in the list body, the
+   same `.groups-panel` the Categories view uses (channel-list.css). The
+   horizontal scroller they started as showed about four entries at a time
+   out of the dozens a provider ships, and needed a sideways drag no remote
+   can perform. What's left here is the fixed, four-item search scope row. */
 
 .catalog-chips {
     display: flex;
     gap: var(--space-2);
-}
-
-/* The category strip can run to dozens of entries — a horizontal scroller,
-   not a wrap, keeps the header a fixed height regardless of provider size. */
-.catalog-chips--scroll {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: var(--space-1);
-}
-
-.catalog-categories {
-    min-width: 0;
 }
 
 .catalog-chip {
@@ -100,13 +94,18 @@
     color: var(--color-bg);
 }
 
-/* ---- Detail panel — floats over the list area only (list-shell__body has
-   position:relative, channel-list.css), leaving the header/search/category
-   strip above it reachable while it's open. ---- */
+/* ---- Detail panel — floats over the item list only (list-shell__body has
+   position:relative, channel-list.css), leaving the header/search above it
+   reachable while it's open. ---- */
 
 .catalog-detail {
     position: absolute;
     inset: 0;
+    /* ...and the category rail beside it, too: it now lives *inside* the
+       body, so a plain `inset: 0` would bury it and cost the one-click
+       category switch the horizontal strip used to keep. Offset by exactly
+       the rail's own width plus the body's column gap. */
+    inset-inline-start: calc(var(--groups-panel-w) + var(--space-4));
     z-index: 2;
     overflow-y: auto;
     background: var(--color-surface);
@@ -238,4 +237,22 @@
     flex: none;
     font-size: var(--text-xs);
     color: var(--color-text-dim);
+}
+
+/* ---- Narrow screens ---- */
+
+@media (max-width: 700px) {
+    /* The body stacks (channel-list.css), so the rail sits above the items
+       rather than beside them — a bounded, scrollable strip instead of the
+       `flex: 1` half-and-half split the channel drill-down wants, since the
+       catalog has no drill-down to hide one of the two behind. */
+    .list-shell--catalog .groups-panel {
+        flex: none;
+        max-height: 12rem;
+    }
+
+    /* Nothing is to the rail's inline-start once they're stacked. */
+    .catalog-detail {
+        inset-inline-start: 0;
+    }
 }

@@ -6,7 +6,7 @@ import { get } from '../state/typed';
 import { VOD_ACTIVE_CATEGORY_ID } from '../state/vod';
 
 /**
- * End-to-end proof that index.html's Movies/Series category strip, detail
+ * End-to-end proof that index.html's Movies/Series category rail, detail
  * panel, and search box actually wire up through the real `bindDOM()`/
  * `data-action` path (Feature 05.10.3's convention, `settings.locale.markup.spec.ts`'s
  * pattern) — hand-authored fragments mirroring the real markup's bindings,
@@ -21,19 +21,21 @@ async function flush(): Promise<void> {
 }
 
 describe('Movies/Series catalog markup (Phase 21, DOM-bound)', () => {
-    it("clicking a category chip dispatches vod/selectCategory with that chip's own category id", async () => {
+    it("clicking a category row dispatches vod/selectCategory with that row's own category id", async () => {
         await withFakePlatform({}, async () => {
             const mounted = mountTemplate(`
-                <div class="catalog-chips" data-each="vod.categories">
+                <div class="groups-panel__list" data-each="vod.categories">
                     <button
                         type="button"
-                        class="catalog-chip"
-                        :class="{ 'catalog-chip--active': item.id === vod.activeCategoryId }"
+                        class="groups-panel__item"
+                        :class="{ 'groups-panel__item--active': item.id === vod.activeCategoryId }"
+                        role="option"
+                        :aria-selected="item.id === vod.activeCategoryId"
                         data-action="click"
                         data-fn="vod/selectCategory"
                         :data-category-id="item.id"
                         data-testid="category-chip"
-                    >{{ item.name }}</button>
+                    ><span class="groups-panel__name truncate">{{ item.name }}</span></button>
                 </div>
             `);
             setValue('vod.categories', [

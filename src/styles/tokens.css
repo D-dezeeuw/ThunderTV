@@ -42,6 +42,10 @@
 
     /* Chrome dimensions */
     --rail-w: 56px;
+    /* The vertical category rail shared by Categories' groups panel and the
+       Movies/Series category lists — a token because catalog.css offsets the
+       detail overlay by exactly this width. */
+    --groups-panel-w: 14rem;
     --panel-w: 320px;
     --dock-h: 96px;
 
