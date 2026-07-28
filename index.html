@@ -787,22 +787,54 @@
                         <p class="empty-state__heading">{{ strings.emptyStates.recent.heading }}</p>
                         <p class="empty-state__message">{{ strings.emptyStates.recent.message }}</p>
                     </div>
-                    <!-- TODO(phase-13): temporary proof of Feature 05.4.6/05.5.6 — the
-                         player.active/zapHistory cache rendering from state alone,
-                         restored before any playlist loads. Phase 13 replaces this
-                         with the real recent/favorites UI (thumbnails, play
-                         affordance, remove). -->
                     <p class="recent-now-playing" data-if="player.active" data-testid="now-playing">
                         {{ strings.recent.nowPlaying }} {{ player.active.name }}
                     </p>
+                    <!-- Every row replays. A zap-history entry is a full
+                         channel snapshot (stream URL included), so this works
+                         on a cold boot before any source has finished loading
+                         — the click delegates from the list, one binding for
+                         the whole set rather than one per row. -->
                     <ul
                         class="recent-zap-history cv-auto"
                         data-if="!hasNoZapHistory"
                         data-each="player.zapHistory"
                         data-testid="zap-history-list"
+                        data-action="click"
+                        data-fn="recent/play"
                     >
                         <li class="recent-zap-history__row">
-                            <span class="recent-zap-history__name truncate">{{ item.name }}</span>
+                            <button
+                                type="button"
+                                class="recent-zap-history__play"
+                                :class="{ 'recent-zap-history__play--active': player.active && player.active.id === item.id }"
+                                :data-id="item.id"
+                                :title="strings.recent.playTitle + ' ' + item.name"
+                                data-testid="zap-history-play"
+                            >
+                                <span class="recent-zap-history__logo">
+                                    <img
+                                        data-if="item.logo"
+                                        class="recent-zap-history__logo-img"
+                                        :src="item.logo"
+                                        loading="lazy"
+                                        decoding="async"
+                                        referrerpolicy="no-referrer"
+                                        alt=""
+                                    />
+                                    <svg class="icon icon--s recent-zap-history__logo-icon" data-if="!item.logo" aria-hidden="true">
+                                        <use href="#icon-play"></use>
+                                    </svg>
+                                </span>
+                                <span class="recent-zap-history__text">
+                                    <span class="recent-zap-history__name truncate">{{ item.name }}</span>
+                                    <span class="recent-zap-history__group truncate" data-if="item.group">{{ item.group }}</span>
+                                </span>
+                                <span class="recent-zap-history__badge" data-if="item.radio">{{ strings.recent.radioBadge }}</span>
+                                <svg class="icon icon--s recent-zap-history__cue" aria-hidden="true">
+                                    <use href="#icon-play"></use>
+                                </svg>
+                            </button>
                         </li>
                     </ul>
                 </section>
