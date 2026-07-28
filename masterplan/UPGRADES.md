@@ -39,7 +39,7 @@ unbound" a **deliberate, reviewed, one-line act** rather than a silent default.
 
 The bulk of this item was completed while the audit was being written: the
 Movies/TV-Shows rail, views, category chips, search and detail panes shipped,
-taking unbound actions from 19/74 to 6/78. `catalog-activation.ts` now drives
+taking unbound actions from 19/74 to 6/79. `catalog-activation.ts` now drives
 `openVodCatalog()`/`openSeriesCatalog()` and the per-catalog warms on view
 entry. **No action needed on the main body of this item.**
 
@@ -81,16 +81,16 @@ Extend `check-dist.mjs` with gzipped-size assertions read from a committed
 
 ```jsonc
 {
-  "app-js-gz":  61440,   // masterplan's ≤60 kB — currently 71.46 kB, FAILING
+  "app-js-gz":  61440,   // masterplan's ≤60 kB — currently 71.75 kB, FAILING
   "css-gz":     10240,
-  "html-gz":    20480,   // currently 21.43 kB, FAILING
+  "html-gz":    20480,   // currently 21.79 kB, FAILING
   "worker-gz":  10240
 }
 ```
 
 **This item got more urgent, not less.** During the audit window the app JS went
-67.37 → 71.46 kB gz and the HTML shell 16.58 → 21.43 kB gz, moving the breach
-from 12% to 19% over budget in a single merge, with CI green throughout. The
+67.37 → 71.75 kB gz and the HTML shell 16.58 → 21.79 kB gz, moving the breach
+from 12% to 20% over budget across two merges, with CI green throughout. The
 budget is drifting away from its target at a measurable rate precisely because
 nothing measures it.
 

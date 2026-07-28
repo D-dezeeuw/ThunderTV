@@ -1,7 +1,7 @@
 # ThunderTV — Application Audit
 
 > **Revised.** First measured at `6818418`; re-measured and revised against
-> `origin/main` at `a7baa42` after the Movies/TV-Shows UI landed mid-audit.
+> `origin/main` at `6b721fe` after the Movies/TV-Shows UI landed mid-audit.
 > Every claim below was verified by running the toolchain or reading the
 > code — no finding is inferred from documentation alone.
 >
@@ -24,14 +24,14 @@ production codebases. The failure is not in how code is written; it is in
 Three facts define the current state:
 
 1. **Feature reachability is now good, but nothing guarantees it.** Unbound
-   actions dropped from 19 of 74 to **6 of 78** when `70fccf2` shipped the
+   actions dropped from 19 of 74 to **6 of 79** when `70fccf2` shipped the
    Movies/Series/Search UI. Two of the remaining six are genuinely orphaned.
    No check would have caught the original 19, and none would catch the next.
 2. **The masterplan tracker reports 0/100 for phases 09–30**, while the code
    for phases 09–13, 16–22 and 28–29 demonstrably ships. The project's own
    navigation document is now actively misleading. **Unchanged by the merge.**
 3. **The performance budget is drifting away, not toward, its target.** The
-   breach widened from 12% over to **19% over** in a single merge, because
+   breach widened from 12% over to **20% over** across two merges, because
    nothing measures it.
 
 ### Health scorecard
@@ -42,9 +42,9 @@ Three facts define the current state:
 | ESLint (`--max-warnings 0`) | ✅ Clean | `npm run lint` |
 | CSS fence / file-access fence | ✅ Clean | both custom guards pass |
 | Tests | ⚠️ 1,073 pass, **~23% flaky** | 3 red runs in 13 full-suite runs (§4.3) |
-| Build | ✅ Succeeds | 1.17 s |
-| Perf budget | ❌ **Breached, widening** | 71.46 kB gz vs. ≤60 kB budget (was 67.37) |
-| Feature reachability | ⚠️ **6/78 unbound** | improved from 19/74; still ungated |
+| Build | ✅ Succeeds | 616 ms |
+| Perf budget | ❌ **Breached, widening** | 71.75 kB gz vs. ≤60 kB budget (was 67.37) |
+| Feature reachability | ⚠️ **6/79 unbound** | improved from 19/74; still ungated |
 | Plan ↔ code fidelity | ❌ **Detached** | phases 09–30 report 0% while shipping |
 | Security posture | ✅ Strong | with two gaps (§4.7) |
 
@@ -95,13 +95,13 @@ of passing specs — 18% of the codebase — that no user could reach.**
 
 **What happened next:** while this audit was being written, commit `70fccf2`
 ("Add Movies and TV Shows tabs: rail, views, category chips, search, detail")
-landed on `main` and fixed most of it. Re-measured at `a7baa42`:
+landed on `main` and fixed most of it. Re-measured at `6b721fe`:
 
-| | Before (`6818418`) | After (`a7baa42`) |
+| | Before (`6818418`) | After (`6b721fe`) |
 | --- | --- | --- |
-| Actions registered | 74 | 78 |
-| Actions bound in markup | 55 | **72** |
-| **Unreachable** | **19 (26%)** | **6 (7.7%)** |
+| Actions registered | 74 | 79 |
+| Actions bound in markup | 55 | **73** |
+| **Unreachable** | **19 (26%)** | **6 (7.6%)** |
 | `movies`/`series` in `index.html` | 0 | 112 |
 
 Of the six remaining, four are legitimately programmatic and belong on an
@@ -161,22 +161,22 @@ after Phase 08. Actual branches are ad-hoc: `claude/vod-filtering-search-plan-eq
 ### 4.1 Performance budget breached, and nothing enforces it
 
 The masterplan's standing verification checklist mandates **"initial JS ≤ ~60 KB
-gz app code (+ ~6 KB Spektrum)."** Actual, at `a7baa42`:
+gz app code (+ ~6 KB Spektrum)."** Actual, at `6b721fe`:
 
 ```
-dist/assets/index-*.js    210.81 kB │ gzip:  71.46 kB   ← 19% over budget
-dist/index.html           158.73 kB │ gzip:  21.43 kB
-dist/assets/index-*.css    29.50 kB │ gzip:   4.92 kB
+dist/assets/index-*.js    211.68 kB │ gzip:  71.75 kB   ← 20% over budget
+dist/index.html           160.58 kB │ gzip:  21.79 kB
+dist/assets/index-*.css    29.68 kB │ gzip:   4.96 kB
 ```
 
 Lazy-loaded engines (`hls` 157 kB gz, `mpegts` 62 kB gz) are correctly split
 and not counted. The breach is in first-load app code.
 
-**The trend is the finding, not the number.** One merge moved app JS from
-67.37 kB to 71.46 kB gz (+6%) and the HTML shell from 16.58 kB to 21.43 kB gz
-(+29%). The budget went from 12% over to 19% over **in a single commit range,
-silently**, because no script measures it and nothing in CI would ever notice.
-An unmeasured budget is not a budget.
+**The trend is the finding, not the number.** Across the two merges observed
+during this audit, app JS went 67.37 → 71.75 kB gz (+6.5%) and the HTML shell
+16.58 → 21.79 kB gz (+31%). The breach went from 12% over to 20% over **in two
+commit ranges, silently**, because no script measures it and nothing in CI
+would ever notice. An unmeasured budget is not a budget.
 
 ### 4.2 Guard scripts exist but never run
 
@@ -280,7 +280,7 @@ Each is honestly documented, which is how they were found:
   `src/state/`-only mandate."* VOD/series catalogs now persist through ad-hoc
   small-keyed writes, on the `'full'` tier only, outside the versioning
   envelope and the storage README's documented "two surfaces" contract.
-- **`registry-catalog.ts` exists only because `registry.ts` hit the 400-line
+- **`registry-overflow.ts` exists only because `registry.ts` hit the 400-line
   ESLint ceiling** — *"registry.ts was already at eslint's 400-line max-lines
   ceiling with zero slack."* The single source of truth is now assembled from
   two files by a spread, for a lint reason.
@@ -308,16 +308,16 @@ the scars are permanent and compound.
   the web target, with no CSP to contain it. (Packaged builds swap to the
   vendored copy via `package-target.mjs` and are unaffected.)
 
-### 4.8 `index.html` is an unlinted 2,340-line monolith — and growing fast
+### 4.8 `index.html` is an unlinted 2,366-line monolith — and growing fast
 
-158.73 kB raw, 21.43 kB gzipped — nearly a third of the app JS payload again, on
+160.58 kB raw, 21.79 kB gzipped — nearly a third of the app JS payload again, on
 the critical path, shipped on every load with no code splitting. It contains the
 nav rail, every view, the entire settings panel (11 `<section>` blocks), the
 wizard, the debug panel, and a 6 KB inline SVG sprite.
 
-It grew **28% in one merge** (1,829 → 2,340 lines) when the Movies/Series views
-landed, which is the predictable consequence of the asymmetry below rather than
-a criticism of that commit.
+It grew **29% across two merges** (1,829 → 2,366 lines) as the Movies/Series and
+Categories-preview views landed — the predictable consequence of the asymmetry
+below, rather than a criticism of those commits.
 
 The asymmetry is the finding: **TypeScript files are hard-capped at 400 lines by
 ESLint; the single largest and most-edited UI artifact in the repo has no limit
@@ -342,7 +342,7 @@ warming, then abandoned before actions and rows.
 
 ### 4.10 Priority inversion: the radio visualizer
 
-Production LOC only (specs excluded), at `a7baa42`:
+Production LOC only (specs excluded), at `6b721fe`:
 
 | Module | LOC | In the 30-phase plan? |
 | --- | --- | --- |
@@ -369,7 +369,7 @@ plan does not mention at all.
 - **i18n has no fallback path at runtime.** `strings.spec.ts` asserts key-set
   parity across `en`/`nl`/`de` at build time, which is good, but a missing leaf
   at runtime renders `undefined` rather than falling back to `en`.
-- **`src/state/` is 37% of the production codebase** (7,470 of 20,013 LOC across
+- **`src/state/` is 37% of the production codebase** (7,537 of 20,127 LOC across
   80 files). Some of that is genuine state; a substantial fraction is
   application logic that landed in `state/` because the layering rule made it
   the path of least resistance.
