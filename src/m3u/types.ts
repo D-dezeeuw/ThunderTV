@@ -45,6 +45,14 @@ export interface ChannelVariant {
     quality: string | null;
     isRecording: boolean;
     provider: string | null;
+    /**
+     * Picture tier as a count, best to worst: 4 = UHD, 3 = FHD, 2 = HD,
+     * 1 = SD, 0 = the provider said nothing. The variant switcher draws
+     * this as lit bars — a number is what markup can render directly,
+     * where the `quality` string would need a lookup the template layer
+     * has no way to express.
+     */
+    tier: number;
 }
 
 /**

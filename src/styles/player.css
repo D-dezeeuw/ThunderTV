@@ -136,10 +136,17 @@
 }
 
 /* Variant strip — the playing channel's other feeds (quality, provider
-   bundle, catch-up). Scrolls horizontally rather than wrapping, so a
-   channel carried by several bundles never pushes the video up the page. */
+   bundle, catch-up), as icons.
+
+   Text labels were the original design and did not survive contact with
+   real data: "FHD · NEDERLAND ULTRA" in a 22rem column pushed the row past
+   its edge and clipped the rest of the feeds out of reach. Icons are a
+   fixed width, so any number of feeds fits; the label lives on the button
+   as its accessible name, and the *playing* one is spelled out in
+   `.variants__current` so the current choice is never only a glyph. */
 .variants {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
@@ -147,42 +154,81 @@
     min-width: 0;
 }
 
-.variants__label {
-    flex: none;
-    font-size: var(--text-xs);
-    color: var(--color-text-dim);
-}
-
 .variants__chips {
     display: flex;
+    flex: none;
     gap: var(--space-2);
-    overflow-x: auto;
-    /* Touch targets stay reachable on a phone without a visible bar. */
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
 }
 
-.variants__chips::-webkit-scrollbar {
-    display: none;
+/* Wraps to its own line rather than truncating: this is the one label that
+   has to stay readable, since the chips themselves carry theirs only as an
+   accessible name. */
+.variants__current {
+    flex: 1 1 9rem;
+    min-width: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
 }
 
 .variants__chip {
     flex: none;
-    padding: var(--space-1) var(--space-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    /* 44px hit target on touch without inflating the visual pill. */
+    min-width: 2.25rem;
+    min-height: 2rem;
+    padding-inline: var(--space-2);
     border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border-radius: 8px;
     background: var(--color-bg);
     color: var(--color-text-dim);
     font: inherit;
-    font-size: var(--text-xs);
-    white-space: nowrap;
     cursor: pointer;
-    /* 44px hit target on touch without inflating the visual pill. */
-    min-height: 2rem;
 }
 
 .variants__chip--active {
     border-color: var(--color-accent);
     background: var(--color-accent);
     color: var(--color-bg);
+}
+
+/* Picture tier as lit bars — same idiom as the stream-health signal above,
+   counting up: 1 = SD, 4 = UHD. */
+.variants__bars {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 1px;
+    height: 0.85rem;
+}
+
+.variants__bar {
+    width: 3px;
+    border-radius: 1px;
+    background: currentColor;
+    opacity: 0.25;
+}
+
+.variants__bar--on {
+    opacity: 1;
+}
+
+.variants__bar:nth-child(1) {
+    height: 35%;
+}
+.variants__bar:nth-child(2) {
+    height: 55%;
+}
+.variants__bar:nth-child(3) {
+    height: 78%;
+}
+.variants__bar:nth-child(4) {
+    height: 100%;
+}
+
+/* Catch-up rides alongside the tier bars rather than replacing them: a
+   recording still has a picture quality worth choosing between. */
+.variants__catchup {
+    flex: none;
 }

@@ -7,7 +7,7 @@ import { UI_ACTIVE_VIEW } from './ui';
 interface LiveShapedState extends State {
     live?: { stats?: Partial<LiveStats>; radioCount?: number };
     ui?: { activeView?: Route };
-    player?: { variants?: ChannelVariant[] };
+    player?: { variants?: ChannelVariant[]; activeVariantId?: string | null };
     activeSource?: { channelCount?: number } | null;
 }
 
@@ -71,5 +71,16 @@ function registerFilteredEverythingComputed(): void {
 function registerHasVariantsComputed(): void {
     computed('hasVariants', ['player.variants'], (state: State) => {
         return ((state as LiveShapedState).player?.variants?.length ?? 0) > 1;
+    });
+
+    /**
+     * The playing feed spelled out beside the icon strip. The icons carry
+     * the choice; this makes sure the *current* choice is never only an
+     * icon — the one label that has to be readable at a glance.
+     */
+    computed('activeVariantLabel', ['player.variants', 'player.activeVariantId'], (state: State) => {
+        const player = (state as LiveShapedState).player;
+        const active = player?.variants?.find((variant) => variant.id === player.activeVariantId);
+        return active?.label ?? '';
     });
 }
