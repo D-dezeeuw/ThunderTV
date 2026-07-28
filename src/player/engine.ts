@@ -33,6 +33,19 @@ import type { TrackSnapshot } from './tracks';
  * player bar) with a probe of what the provider actually sent — on a phone
  * there is no devtools console, so a dead stream must say why on screen.
  */
+/**
+ * Bumped by every `attachAndPlay()`/`detach()`. Attaching is asynchronous
+ * (`import('mpegts.js')`, `import('hls.js')`, `video.play()`) while all the
+ * state below it — plus the single shared `<video>` — is module-global, so
+ * switching channels mid-attach left the *previous* attempt's continuations
+ * running against the new stream: the old attempt resumed after its import,
+ * tore down the player that had replaced it and attached its own. That is
+ * "stream 1 kept playing and stream 2 failed", and two MediaSources on one
+ * element is what Chromium's "non-existent mailbox"/"Invalid mailbox"
+ * overlay errors report. Every async continuation and engine callback
+ * carries the token it started with and bails once it is stale.
+ */
+let attachToken = 0;
 let hls: Hls | null = null;
 let nativeErrorHandler: (() => void) | null = null;
 let nativePlayingHandler: (() => void) | null = null;
@@ -57,6 +70,11 @@ let tracksChangedListener: (() => void) | null = null;
 const MPEGTS_TRACK_ENGINE: PlayerEngine = {
     getTracks: (): TrackSnapshot => ({ audio: [], subtitles: [] }),
 };
+
+/** True once a newer `attachAndPlay()`/`detach()` has superseded the attach that took `token`. */
+function isStale(token: number): boolean {
+    return token !== attachToken;
+}
 
 function setActiveTrackEngine(engine: PlayerEngine | null, dispose: (() => void) | null = null): void {
     activeTrackEngineDispose?.();
@@ -83,13 +101,13 @@ const MEDIA_ERROR_LABELS: Record<number, string> = {
  * through `advanceChain()` like any other engine failure — which reports
  * and probes once the chain is exhausted.
  */
-function attachNativeErrorReporting(video: HTMLVideoElement): void {
+function attachNativeErrorReporting(video: HTMLVideoElement, token: number): void {
     const handler = (): void => {
         const err = video.error;
         const label = err ? (MEDIA_ERROR_LABELS[err.code] ?? `code ${String(err.code)}`) : 'unknown';
         const detail = err?.message ? `${label} — ${err.message}` : label;
         console.error('[ThunderTV] native playback error:', detail);
-        void advanceChain(video, detail);
+        void advanceChain(video, detail, token);
     };
     // Earlier engines in the chain keep emitting for a while after they are
     // torn down (mpegts.js in particular fires its fatal callback during
@@ -107,14 +125,15 @@ function attachNativeErrorReporting(video: HTMLVideoElement): void {
     nativeErrorVideo = video;
 }
 
-function appendStreamProbe(baseDetail: string): void {
+function appendStreamProbe(baseDetail: string, token: number): void {
     const url = lastStreamUrl;
     if (!url) return;
     void describeStream(url).then(async (summary) => {
         // The probe is a network round trip, so a later attempt in the chain
+        // — or an entirely different channel the viewer has since picked —
         // routinely gets a picture up before it answers. Reporting then would
         // put a failure notice over a stream the user is watching.
-        if (playing) return;
+        if (playing || isStale(token)) return;
         reportPlaybackError(`${baseDetail} — ${summary}`);
         // A 404 from the provider is either a stale catalog (panels
         // renumber stream ids routinely) or the panel refusing streams to
@@ -122,7 +141,7 @@ function appendStreamProbe(baseDetail: string): void {
         // them: fresh ids that still 404 point at IP blocking.
         if (summary.includes('HTTP 404')) {
             const outcome = await refreshActiveXtreamSource('error');
-            if (playing) return;
+            if (playing || isStale(token)) return;
             if (outcome === 'refreshed') {
                 reportPlaybackError(`${baseDetail} — ${summary}; channel list refreshed — try the channel again`);
             } else if (outcome === 'skipped') {
@@ -161,35 +180,46 @@ function attemptChain(preference: PlaybackEngine): PlaybackEngine[] {
     return [preference, ...rest];
 }
 
+/**
+ * Every attach starts by fully stopping whatever was playing — `detach()`
+ * tears the engines down *and* the `<video>` element itself, and bumps
+ * `attachToken` so an attach still in flight can no longer touch either.
+ */
 export async function attachAndPlay(video: HTMLVideoElement, streamUrl: string): Promise<void> {
     detach(video);
+    const token = attachToken;
     reportPlaybackError(null);
     baseStreamUrl = streamUrl;
     chain = attemptChain(preferredEngine());
     chainIndex = 0;
     failures = [];
     playing = false;
-    attachNativeErrorReporting(video);
+    attachNativeErrorReporting(video, token);
     monitorStreamHealth(video);
-    await runCurrentAttempt(video);
+    await runCurrentAttempt(video, token);
 }
 
 /** Runs `chain[chainIndex]`; engine failures call `advanceChain()`, which re-enters here until the chain is exhausted. */
-async function runCurrentAttempt(video: HTMLVideoElement): Promise<void> {
+async function runCurrentAttempt(video: HTMLVideoElement, token: number): Promise<void> {
     const engine = chain[chainIndex];
     const base = baseStreamUrl;
-    if (!engine || !base) return;
+    if (!engine || !base || isStale(token)) return;
 
     if (engine === 'mpegts') {
         const url = tsFormOf(base);
         lastStreamUrl = url;
         const result = await attachMpegts(video, url, {
             buffering: get<BufferingMode | null>(SETTINGS_BUFFERING) ?? 'auto',
+            // Re-checked inside `attachMpegts()` after its own dynamic
+            // import, so a superseded attempt never destroys the player that
+            // replaced it.
+            isStale: () => isStale(token),
             onFatalError: (detail) => {
-                void advanceChain(video, detail);
+                void advanceChain(video, detail, token);
             },
         });
-        if (!result.ok) await advanceChain(video, result.reason ?? 'mpegts unavailable');
+        if (isStale(token)) return;
+        if (!result.ok) await advanceChain(video, result.reason ?? 'mpegts unavailable', token);
         else setActiveTrackEngine(MPEGTS_TRACK_ENGINE);
         return;
     }
@@ -214,8 +244,11 @@ async function runCurrentAttempt(video: HTMLVideoElement): Promise<void> {
     }
 
     const { default: HlsCtor } = await import('hls.js');
+    // The import can outlive the channel that asked for it; attaching now
+    // would put a second MediaSource on an element another stream owns.
+    if (isStale(token)) return;
     if (!HlsCtor.isSupported()) {
-        await advanceChain(video, 'hls.js unsupported on this device');
+        await advanceChain(video, 'hls.js unsupported on this device', token);
         return;
     }
 
@@ -228,13 +261,14 @@ async function runCurrentAttempt(video: HTMLVideoElement): Promise<void> {
     instance.on(HlsCtor.Events.AUDIO_TRACKS_UPDATED, notifyTracksChanged);
     instance.on(HlsCtor.Events.SUBTITLE_TRACKS_UPDATED, notifyTracksChanged);
     instance.on(HlsCtor.Events.MANIFEST_PARSED, () => {
+        if (isStale(token)) return;
         notifyTracksChanged();
         void video.play().catch(() => undefined);
     });
     instance.on(HlsCtor.Events.ERROR, (_event, data) => {
-        if (!data.fatal) return;
+        if (!data.fatal || isStale(token)) return;
         console.error('[ThunderTV] hls.js fatal error:', data.type, data.details);
-        void advanceChain(video, `${String(data.type)}: ${String(data.details)}`);
+        void advanceChain(video, `${String(data.type)}: ${String(data.details)}`, token);
     });
 }
 
@@ -243,7 +277,11 @@ async function runCurrentAttempt(video: HTMLVideoElement): Promise<void> {
  * last failure is reported (with a probe) — the intermediate ones are
  * expected noise when the preference does not match the provider's format.
  */
-async function advanceChain(video: HTMLVideoElement, detail: string): Promise<void> {
+async function advanceChain(video: HTMLVideoElement, detail: string, token: number): Promise<void> {
+    // A callback from a stream the viewer has already switched away from:
+    // its chain is gone, and advancing the *current* one would tear down a
+    // stream that is fine.
+    if (isStale(token)) return;
     // A stream that is already playing has no failure to report: this is a
     // late callback from an engine the chain moved past. A stream that
     // played and then genuinely died still gets through — the element
@@ -254,12 +292,12 @@ async function advanceChain(video: HTMLVideoElement, detail: string): Promise<vo
     detachEngines();
     chainIndex += 1;
     if (chainIndex < chain.length) {
-        await runCurrentAttempt(video);
+        await runCurrentAttempt(video, token);
         return;
     }
     const summary = failures.join('; ');
     reportPlaybackError(summary);
-    appendStreamProbe(summary);
+    appendStreamProbe(summary, token);
 }
 
 function detachEngines(): void {
@@ -291,10 +329,45 @@ export function onTracksChanged(cb: () => void): void {
     activeTrackEngine?.onTracksChanged?.(cb);
 }
 
+/**
+ * Stops the element itself, not just the engine feeding it. mpegts.js and
+ * hls.js hand the `<video>` a MediaSource (an object-URL `src`, or
+ * `srcObject` on newer hls.js), and destroying the engine does not reliably
+ * take that with it — a stale MediaSource keeps a decoder and its GPU
+ * surfaces alive for a stream nobody is watching — which is what Chromium's
+ * "non-existent mailbox"/"Invalid mailbox" errors report once the next
+ * stream attaches on top. Pause first: `load()` on a still-playing element
+ * is what leaves the old pipeline half-torn-down.
+ */
+function stopVideoElement(video: HTMLVideoElement): void {
+    try {
+        video.pause();
+    } catch {
+        // A half-initialized element can throw here; never let that stop the
+        // rest of the teardown.
+    }
+    if (video.srcObject) video.srcObject = null;
+    video.removeAttribute('src');
+    // `removeAttribute` alone leaves the previously resolved URL loaded —
+    // `load()` is what makes the element let go of it.
+    video.load();
+}
+
+/**
+ * Full stop: engines, health monitor, element, and the chain state. Bumps
+ * `attachToken`, so an attach still waiting on a dynamic import resumes
+ * into a no-op instead of attaching over whatever plays next.
+ */
 export function detach(video: HTMLVideoElement): void {
+    attachToken += 1;
     stopStreamHealthMonitor();
     detachEngines();
     playing = false;
+    baseStreamUrl = null;
+    lastStreamUrl = null;
+    chain = [];
+    chainIndex = 0;
+    failures = [];
     if (nativeErrorVideo) {
         if (nativeErrorHandler) nativeErrorVideo.removeEventListener('error', nativeErrorHandler);
         if (nativePlayingHandler) nativeErrorVideo.removeEventListener('playing', nativePlayingHandler);
@@ -302,12 +375,12 @@ export function detach(video: HTMLVideoElement): void {
         nativePlayingHandler = null;
         nativeErrorVideo = null;
     }
-    video.removeAttribute('src');
-    video.load();
+    stopVideoElement(video);
 }
 
 /** Test-only reset — mirrors `resetVirtualListForTests()`'s convention (Phase 08). @internal */
 export function resetPlayerEngineForTests(): void {
+    attachToken = 0;
     hls = null;
     nativeErrorHandler = null;
     nativePlayingHandler = null;

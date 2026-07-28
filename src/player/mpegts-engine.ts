@@ -79,6 +79,14 @@ export interface AttachMpegtsOptions {
     buffering: BufferingMode;
     /** Called only for failures the engine cannot recover from — the caller then advances its engine chain. */
     onFatalError: (detail: string) => void;
+    /**
+     * True once the caller has moved on to another stream. Checked after the
+     * dynamic import below, which is long enough for the viewer to press a
+     * different channel: without it a superseded attach walked straight into
+     * `detachMpegts()` and destroyed the player that had replaced it, then
+     * attached its own — the old channel kept playing and the new one died.
+     */
+    isStale?: () => boolean;
 }
 
 export async function attachMpegts(
@@ -87,6 +95,7 @@ export async function attachMpegts(
     options: AttachMpegtsOptions,
 ): Promise<MpegtsAttachResult> {
     const { default: mpegts } = await import('mpegts.js');
+    if (options.isStale?.()) return { ok: false, reason: 'superseded by a newer stream' };
     if (!mpegts.isSupported()) {
         return {
             ok: false,
