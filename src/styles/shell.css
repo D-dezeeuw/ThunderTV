@@ -446,3 +446,141 @@
         width: 100%;
     }
 }
+
+/* ---- Debug panel (on-screen console) ----
+   A dialog rather than a drawer: it is read, screenshotted and closed, and
+   on a phone a side drawer would leave no room for the log lines. Same
+   scrim and surface tokens as the settings panel so it reads as part of the
+   app rather than a dev artifact. */
+
+.debug-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+}
+
+.debug-panel__backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--color-scrim);
+}
+
+.debug-panel__body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    width: 60rem;
+    max-width: 100%;
+    max-height: 100%;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface-raised);
+    overflow: hidden;
+}
+
+.debug-panel__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.debug-panel__title {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: var(--text-md);
+}
+
+.debug-panel__subtitle {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+}
+
+/* The first thing to read, so it is the only thing here with a border. */
+.debug-panel__diagnosis {
+    margin: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
+.debug-panel__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--space-1) var(--space-4);
+    margin: 0;
+}
+
+.debug-panel__fact {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-width: 0;
+    padding-block: var(--space-1);
+    border-bottom: 1px solid var(--color-border);
+    font-size: var(--text-xs);
+}
+
+.debug-panel__fact dt {
+    flex: none;
+    color: var(--color-text-dim);
+}
+
+.debug-panel__fact dd {
+    margin: 0;
+    min-width: 0;
+    color: var(--color-text);
+}
+
+.debug-panel__empty {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+}
+
+.debug-panel__log {
+    flex: 1;
+    min-height: 6rem;
+    margin: 0;
+    padding: var(--space-2);
+    list-style: none;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+}
+
+.debug-panel__entry {
+    display: flex;
+    gap: var(--space-3);
+    padding-block: var(--space-1);
+    /* Monospace and wrapping, not truncation: a stack-ish message is only
+       useful in full, and this is meant to be screenshotted. */
+    font-family: monospace;
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+    overflow-wrap: anywhere;
+}
+
+.debug-panel__entry--error {
+    color: var(--color-danger);
+}
+
+.debug-panel__entry--warn {
+    color: var(--color-text);
+}
+
+.debug-panel__at {
+    flex: none;
+    color: var(--color-text-dim);
+}

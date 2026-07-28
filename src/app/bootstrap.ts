@@ -4,6 +4,8 @@ import { effectiveProxyTemplate } from '../core/platform/desktop-proxy';
 import { sweepOrphanedPlaylistRows } from '../m3u/import-sweep';
 import { registerListBindings } from '../ui/list-bindings';
 import { registerPlayerBindings } from '../player/bindings';
+import { installDebugCapture } from '../state/debug';
+import { registerDebugShortcut } from '../state/debug.actions';
 import { installDevtools } from '../state/devtools';
 import {
     initState,
@@ -36,6 +38,10 @@ import { registerViewSwitching } from './views';
  * visible on first paint, with zero playlist data loaded (Feature 05.4.6).
  */
 export async function bootstrap(): Promise<void> {
+    // First line of the boot, before the platform even exists: the errors
+    // most worth capturing are the ones thrown before anything renders.
+    installDebugCapture();
+
     const platform = await createPlatform({
         onStorageDemote: handleStorageDemotion,
         // Feature 07.8.1: only ever *called* well after initState()/
@@ -71,6 +77,7 @@ export async function bootstrap(): Promise<void> {
     void sweepAndLoadPlaylistSources();
     void loadFavoriteIds();
     registerImportDropzoneDragover();
+    registerDebugShortcut();
     registerListBindings();
     registerPlayerBindings();
     // Xtream catalogs rot (panels renumber stream ids) — silently re-import

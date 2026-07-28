@@ -455,6 +455,37 @@
                      republished on view change (src/state/live.actions.ts)
                      instead of mounting a second list. -->
                 <section class="view__section view__section--fill" data-if="view.channelList.active">
+                    <!-- Everything below is gated on `activeSource`. When that
+                         resolves to null — no source imported, none selected, or
+                         a stored id pointing at a source that is no longer in
+                         storage — Live, Radio and Categories all rendered an
+                         entirely empty pane: no list, no message, nothing. This
+                         is that case, said out loud, with the way out. -->
+                    <div class="empty-state" data-if="!activeSource" data-testid="no-active-source">
+                        <svg class="icon icon--empty" aria-hidden="true">
+                            <use href="#icon-sources"></use>
+                        </svg>
+                        <p class="empty-state__heading">{{ strings.list.noActiveSource.heading }}</p>
+                        <p class="empty-state__message">
+                            {{ hasNoSources ? strings.list.noActiveSource.noSources : strings.list.noActiveSource.pickOne }}
+                        </p>
+                        <div class="list-shell__empty-actions">
+                            <button
+                                type="button"
+                                class="btn"
+                                data-view="sources"
+                                data-action="click"
+                                data-fn="ui/navigate"
+                                data-testid="no-active-source-sources-btn"
+                            >
+                                {{ strings.list.noActiveSource.openSources }}
+                            </button>
+                            <button type="button" class="btn" data-action="click" data-fn="debug/toggle" data-testid="no-active-source-debug-btn">
+                                {{ strings.debug.open }}
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Feature 08.1-08.10: the real virtual-scrolled channel list —
                          the surface Phases 09 (search) and 10 (playback) plug into. -->
                     <div
@@ -979,6 +1010,18 @@
                             {{ strings.settings.diagnostics.exportEpgButton }}
                         </button>
                         <p class="settings-section__hint">{{ strings.settings.diagnostics.exportEpgHelp }}</p>
+
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="debug/toggle"
+                            data-testid="open-debug-btn"
+                        >
+                            {{ strings.debug.open }}
+                            <span data-if="debug.errorCount">({{ debug.errorCount }})</span>
+                        </button>
+                        <p class="settings-section__hint">{{ strings.debug.openHelp }}</p>
                     </section>
 
                     <!-- Live filter. Every control here can only ever *remove*
@@ -1297,6 +1340,79 @@
                         </div>
                         <!-- TODO(phase-22): remaining Appearance controls -->
                     </section>
+                </div>
+            </aside>
+
+            <!-- On-screen console. ThunderTV runs on phones, TVs and packaged
+                 Electron windows where devtools cannot be opened at all, so
+                 when a view comes up blank this is the only way to see the
+                 error and the state behind it. Reachable from Settings >
+                 Diagnostics and from Ctrl/Cmd+Shift+D — the shortcut matters,
+                 because the panel has to work when the UI is what is broken. -->
+            <aside
+                class="debug-panel"
+                data-if="debug.open"
+                role="dialog"
+                aria-modal="true"
+                :aria-label="strings.debug.title"
+                data-action="keydown.esc"
+                data-fn="debug/close"
+                data-testid="debug-panel"
+            >
+                <div class="debug-panel__backdrop" data-action="click" data-fn="debug/close"></div>
+                <div class="debug-panel__body">
+                    <div class="debug-panel__header">
+                        <h2 class="debug-panel__title">{{ strings.debug.title }}</h2>
+                        <button type="button" class="btn" data-action="click" data-fn="debug/refresh" data-testid="debug-refresh-btn">
+                            {{ strings.debug.refresh }}
+                        </button>
+                        <button type="button" class="btn" data-action="click" data-fn="debug/copy" data-testid="debug-copy-btn">
+                            {{ strings.debug.copy }}
+                        </button>
+                        <button type="button" class="btn" data-action="click" data-fn="debug/clear" data-testid="debug-clear-btn">
+                            {{ strings.debug.clear }}
+                        </button>
+                        <button
+                            type="button"
+                            class="icon-btn"
+                            :aria-label="strings.debug.close"
+                            data-action="click"
+                            data-fn="debug/close"
+                            data-testid="debug-close-btn"
+                        >
+                            <svg class="icon icon--m" aria-hidden="true"><use href="#icon-close"></use></svg>
+                        </button>
+                    </div>
+
+                    <!-- The one line worth reading first: what, if anything, is
+                         inconsistent about the state the blank view depends on. -->
+                    <p class="debug-panel__diagnosis" data-testid="debug-diagnosis">{{ debug.snapshot.diagnosis }}</p>
+
+                    <dl class="debug-panel__facts" data-testid="debug-facts">
+                        <div class="debug-panel__fact"><dt>{{ strings.debug.facts.view }}</dt><dd>{{ debug.snapshot.view }}</dd></div>
+                        <div class="debug-panel__fact"><dt>{{ strings.debug.facts.sources }}</dt><dd>{{ debug.snapshot.sourceCount }}</dd></div>
+                        <div class="debug-panel__fact"><dt>{{ strings.debug.facts.activeId }}</dt><dd class="truncate">{{ debug.snapshot.activeSourceId }}</dd></div>
+                        <div class="debug-panel__fact"><dt>{{ strings.debug.facts.activeResolved }}</dt><dd class="truncate">{{ debug.snapshot.activeSourceResolved }}</dd></div>
+                        <div class="debug-panel__fact"><dt>{{ strings.debug.facts.rowsInMemory }}</dt><dd>{{ debug.snapshot.rowsInMemory }}</dd></div>
+                        <div class="debug-panel__fact"><dt>{{ strings.debug.facts.liveChannels }}</dt><dd>{{ debug.snapshot.liveChannels }}</dd></div>
+                        <div class="debug-panel__fact"><dt>{{ strings.debug.facts.radioCount }}</dt><dd>{{ debug.snapshot.radioCount }}</dd></div>
+                        <div class="debug-panel__fact"><dt>{{ strings.debug.facts.storage }}</dt><dd>{{ debug.snapshot.storageTier }}</dd></div>
+                        <div class="debug-panel__fact"><dt>{{ strings.debug.facts.platform }}</dt><dd>{{ debug.snapshot.platform }}</dd></div>
+                    </dl>
+
+                    <h3 class="debug-panel__subtitle">
+                        {{ strings.debug.logTitle }}
+                        <span data-if="debug.errorCount">— {{ debug.errorCount }} {{ strings.debug.errorsLabel }}</span>
+                    </h3>
+                    <p class="debug-panel__empty" data-if="!debug.entries.length" data-testid="debug-log-empty">
+                        {{ strings.debug.logEmpty }}
+                    </p>
+                    <ul class="debug-panel__log scroll-y" data-each="debug.entries" data-testid="debug-log">
+                        <li class="debug-panel__entry" :class="'debug-panel__entry--' + item.level">
+                            <span class="debug-panel__at">{{ item.at }}</span>
+                            <span class="debug-panel__text">{{ item.text }}</span>
+                        </li>
+                    </ul>
                 </div>
             </aside>
         </div>

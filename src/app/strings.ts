@@ -48,6 +48,31 @@ export const strings = {
         strictFellBack: 'Curated list matched nothing here, showing all channels. Names seen:',
     },
 
+    debug: {
+        title: 'Debug',
+        open: 'Open debug panel',
+        openHelp:
+            'Shows captured errors and the list state behind them. Also opens with Ctrl/Cmd+Shift+D — useful when a view is blank and the rest of the UI is not reachable.',
+        close: 'Close debug panel',
+        refresh: 'Refresh',
+        copy: 'Copy report',
+        clear: 'Clear log',
+        logTitle: 'Captured log',
+        logEmpty: 'Nothing captured yet.',
+        errorsLabel: 'error(s)',
+        facts: {
+            view: 'Active view',
+            sources: 'Sources stored',
+            activeId: 'Active source id',
+            activeResolved: 'Resolves to',
+            rowsInMemory: 'Channel rows in memory',
+            liveChannels: 'Live channels after filter',
+            radioCount: 'Radio stations',
+            storage: 'Storage tier',
+            platform: 'Platform',
+        },
+    },
+
     categories: {
         note: 'Every category and channel exactly as your provider ships them — unfiltered and ungrouped.',
     },
@@ -235,6 +260,13 @@ export const strings = {
         groupsTruncatedTemplate: 'Showing the first {count} groups.',
         radioLabel: 'Radio station',
         noChannels: 'No channels loaded for this source yet.',
+        noActiveSource: {
+            heading: 'No source is selected',
+            noSources: 'Nothing has been imported on this device yet. Add a playlist or an Xtream account to start.',
+            pickOne:
+                'A source is stored but none is active — this also happens when the last selected source is no longer in storage. Pick one and this view fills in.',
+            openSources: 'Go to Sources',
+        },
         backToGroups: '← Groups',
         playerStop: 'Stop',
         playerFullscreen: 'Full screen',

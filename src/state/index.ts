@@ -17,6 +17,8 @@ import { initListGroupsState } from './list-groups';
 import { initListStateModule } from './list-state';
 import { unwrapPersisted } from './persist';
 import { initPlayerState } from './player';
+import { registerDebugActions } from './debug.actions';
+import { initDebugState } from './debug';
 import { registerPlayerActions } from './player.actions';
 import { registerRecentActions } from './recent.actions';
 import { registerPlayerSelectors } from './player.selectors';
@@ -63,6 +65,7 @@ export function initState(): void {
     initListGroupsState();
     initLiveState();
     initFavoritesState();
+    initDebugState();
     applyHistoryPolicy();
 }
 
@@ -76,6 +79,7 @@ export function registerActions(): void {
     registerGroupActions();
     registerLiveActions();
     registerRecentActions();
+    registerDebugActions();
     registerXtreamActions();
 }
 
