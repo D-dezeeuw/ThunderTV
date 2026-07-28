@@ -6,9 +6,10 @@ import { downloadTextFile } from '../ui/download-file';
 import { importXtreamSource } from '../xtream/import';
 import { normalizeXtreamUrl } from '../xtream/urls';
 import { loadPlaylistSources } from './playlist-load';
-import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
+import { PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_SOURCES, type PlaylistSourceSummary } from './playlist';
 import { setActiveSourceId } from './playlist.actions';
 import { persist } from './persist';
+import { shouldOpenWizard, UI_SETUP_COMPLETE } from './wizard';
 import {
     isBufferingMode,
     isPlaybackEngine,
@@ -364,5 +365,33 @@ export async function saveXtreamAccount(input: { url: string; user: string; pass
         return true;
     } finally {
         set(SETTINGS_XTREAM_BUSY, false);
+    }
+}
+
+/**
+ * Dev-convenience auto-seed (Electron only): if `desktop/.env` configured
+ * defaults — language/region (`THUNDERTV_LOCALE`/`THUNDERTV_LIVE_COUNTRY`)
+ * and/or a full Xtream account — applies them once, but only while the
+ * first-run wizard would otherwise open (`wizard.ts`'s `shouldOpenWizard()`:
+ * setup not yet marked complete, zero playlist sources). `.env` is treated
+ * as pre-filled wizard answers, never a standing override: once setup is
+ * complete (or any source exists), later boots leave whatever the user has
+ * since configured in-app alone. An Xtream default (if present) ends up
+ * importing a source and thereby skips the wizard outright regardless of
+ * whether locale/region were also set; locale/region alone (no Xtream
+ * default) still opens the wizard, just with step 1 pre-filled. No-op on
+ * web, where the platform has no `getDefaultConfig`.
+ */
+export async function applyDefaultConfigIfFirstRun(): Promise<void> {
+    const sources = get<PlaylistSourceSummary[]>(PLAYLIST_SOURCES) ?? [];
+    if (!shouldOpenWizard(sources, get<boolean>(UI_SETUP_COMPLETE) ?? false)) return;
+
+    const defaults = await getPlatform().getDefaultConfig?.();
+    if (!defaults) return;
+
+    if (defaults.locale) setLocale(defaults.locale);
+    if (defaults.liveCountry) setLiveCountry(defaults.liveCountry);
+    if (defaults.xtream) {
+        await saveXtreamAccount({ url: defaults.xtream.url, user: defaults.xtream.username, pass: defaults.xtream.password });
     }
 }

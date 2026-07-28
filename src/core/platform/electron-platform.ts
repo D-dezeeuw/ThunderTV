@@ -4,7 +4,7 @@ import type { TierControllerOptions } from '../storage/tier-controller';
 import { SETTINGS_PROXY_TEMPLATE } from '../../state/settings';
 import { get } from '../../state/typed';
 import { createElectronCapabilities } from './capabilities';
-import type { PlatformAdapter, WindowFullscreenControl } from './platform-adapter';
+import type { DefaultConfig, PlatformAdapter, WindowFullscreenControl } from './platform-adapter';
 import { WebFileAdapter } from './web-file-adapter';
 
 /**
@@ -55,6 +55,11 @@ const windowFullscreen: WindowFullscreenControl = {
     },
 };
 
+async function getDefaultConfig(): Promise<DefaultConfig> {
+    const empty: DefaultConfig = { xtream: null, locale: null, liveCountry: null };
+    return (await window.electron?.getDefaultConfig()) ?? empty;
+}
+
 export interface CreateElectronPlatformOptions {
     /** Forwarded to the storage tier controller — same shape as `CreateWebPlatformOptions` (`web-platform.ts`). */
     onStorageDemote?: TierControllerOptions['onDemote'];
@@ -85,6 +90,7 @@ export async function createElectronPlatform(options: CreateElectronPlatformOpti
         ),
         files: new WebFileAdapter(),
         windowFullscreen,
+        getDefaultConfig,
         get capabilities() {
             return createElectronCapabilities(storage.tier);
         },

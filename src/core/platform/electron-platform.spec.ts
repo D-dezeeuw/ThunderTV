@@ -57,3 +57,22 @@ describe('createElectronPlatform', () => {
         expect(getPlatform()).toBe(platform);
     });
 });
+
+describe('createElectronPlatform.getDefaultConfig', () => {
+    it('delegates to window.electron.getDefaultConfig()', async () => {
+        const fixture = {
+            xtream: { url: 'http://example.com:8080', username: 'bob', password: 'secret' },
+            locale: 'nl',
+            liveCountry: 'NL',
+        };
+        window.electron = { ...fakeElectronBridge(), getDefaultConfig: () => Promise.resolve(fixture) };
+        const platform = await createElectronPlatform();
+        await expect(platform.getDefaultConfig?.()).resolves.toEqual(fixture);
+    });
+
+    it('resolves all-null fields when the bridge has no defaults configured', async () => {
+        window.electron = fakeElectronBridge();
+        const platform = await createElectronPlatform();
+        await expect(platform.getDefaultConfig?.()).resolves.toEqual({ xtream: null, locale: null, liveCountry: null });
+    });
+});

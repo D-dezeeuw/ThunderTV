@@ -40,4 +40,22 @@ export interface ElectronBridge {
      * the resulting state arrives back through `isWindowFullscreen()`.
      */
     setWindowFullscreen(next: boolean): void;
+    /**
+     * Default first-run config read from a gitignored `desktop/.env` at
+     * startup — `THUNDERTV_XTREAM_URL`/`_USERNAME`/`_PASSWORD` (all three
+     * required together, else `xtream` is `null`), `THUNDERTV_LOCALE`
+     * (`'en'|'nl'|'de'`), `THUNDERTV_LIVE_COUNTRY` (a Live-filter country
+     * code). Each field is independently `null` when unset. Dev-convenience
+     * only — `.env` sits outside `electron-builder.yml`'s files allowlist, so
+     * a packaged build always resolves all-null fields. `bootstrap.ts` applies
+     * these as pre-filled first-run-wizard answers, only while the wizard
+     * would otherwise open.
+     */
+    getDefaultConfig(): Promise<DefaultElectronConfig>;
+}
+
+export interface DefaultElectronConfig {
+    xtream: { url: string; username: string; password: string } | null;
+    locale: string | null;
+    liveCountry: string | null;
 }
