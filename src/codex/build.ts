@@ -1,4 +1,5 @@
 import { getPlatform } from '../core/platform';
+import { mappingKey, type StoredMapping } from '../epg/match';
 import { allHealthRecords } from '../health/store';
 import { CODEX_FORMAT_VERSION, sortClaims, type CodexBody, type CodexDocument, type CodexHealthClaim, type CodexIdentityClaim } from './format';
 import { loadOrCreateIdentity, signBody } from './signing';
@@ -17,14 +18,6 @@ import { loadOrCreateIdentity, signBody } from './signing';
 
 const GENERATOR = 'ThunderTV';
 
-/** Mapping snapshots are stored per country under `epg.mapping.<country>` (`src/epg/match.ts`). */
-interface StoredMapping {
-    savedAt: number;
-    matches: { channelKey: string; catalogId: string; method: string }[];
-}
-
-const MAPPING_PREFIX = 'epg.mapping.';
-
 export async function buildCodex(countries: readonly string[]): Promise<CodexDocument> {
     const identity = await loadOrCreateIdentity();
     const body: CodexBody = sortClaims({
@@ -42,7 +35,7 @@ async function collectIdentityClaims(countries: readonly string[]): Promise<Code
     const storage = getPlatform().storage;
     const claims: CodexIdentityClaim[] = [];
     for (const country of countries) {
-        const stored = await storage.get<StoredMapping>(`${MAPPING_PREFIX}${country}`);
+        const stored = await storage.get<StoredMapping>(mappingKey(country));
         if (!stored) continue;
         for (const match of stored.matches) {
             claims.push({
@@ -50,11 +43,12 @@ async function collectIdentityClaims(countries: readonly string[]): Promise<Code
                 channelKey: match.channelKey,
                 catalogId: match.catalogId,
                 method: match.method,
-                // The mapping is snapshotted wholesale rather than per entry,
-                // so every claim from one snapshot shares its timestamp. Good
-                // enough for merge ordering, and honest about the precision
-                // actually available.
-                observedAt: stored.savedAt,
+                // An entry a Codex merge folded in carries the timestamp it
+                // was actually observed at; one this device derived does not,
+                // because the mapping is snapshotted wholesale rather than per
+                // entry, so the snapshot's own time stands in. Honest about
+                // the precision actually available, and enough for ordering.
+                observedAt: match.observedAt ?? stored.savedAt,
             });
         }
     }

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { withFakePlatform } from '../core/platform/fake-platform';
+import { getMappingSync, resetMappingCacheForTests } from '../epg/match';
 import { observe, primeHealthCache, resetHealthCacheForTests } from '../health/store';
 import { importCodex } from './apply';
 import { buildCodex } from './build';
@@ -11,6 +12,7 @@ const URL_B = 'http://p.example/live/bob/hunter2/2.ts';
 
 afterEach(() => {
     resetHealthCacheForTests();
+    resetMappingCacheForTests();
 });
 
 /** Seeds one country mapping plus some health, then exports. */
@@ -181,6 +183,68 @@ describe('importing a Codex', () => {
 
             const mapping = await storage.get<{ matches: { catalogId: string }[] }>('epg.mapping.NL');
             expect(mapping?.matches[0]?.catalogId).toBe('NEWER-LOCAL.nl');
+        });
+    });
+
+    it('is a no-op the second time — the merge is idempotent end to end', async () => {
+        let exported: CodexDocument | undefined;
+        await withFakePlatform({}, async ({ storage }) => {
+            exported = await seedAndBuild(storage);
+        });
+
+        resetHealthCacheForTests();
+        resetMappingCacheForTests();
+
+        await withFakePlatform({}, async ({ storage }) => {
+            const first = await importCodex(JSON.stringify(exported));
+            expect(first.identityApplied + first.healthApplied).toBeGreaterThan(0);
+            const after = JSON.stringify(await storage.getAll('streamHealth'));
+
+            // Re-importing a file you already took must not inflate anything
+            // or report phantom work — the property that rules out summing.
+            const second = await importCodex(JSON.stringify(exported));
+            expect(second).toMatchObject({ ok: true, identityApplied: 0, healthApplied: 0 });
+            expect(JSON.stringify(await storage.getAll('streamHealth'))).toBe(after);
+        });
+    });
+
+    it('records every contributor to a health claim, so one can be pruned later', async () => {
+        let exported: CodexDocument | undefined;
+        let remoteAuthor = '';
+        await withFakePlatform({}, async () => {
+            observe(URL_A, 'ok', 400);
+            exported = await buildCodex([]);
+            remoteAuthor = exported.body.author.id;
+        });
+
+        resetHealthCacheForTests();
+
+        await withFakePlatform({}, async ({ storage }) => {
+            observe(URL_A, 'ok', 900);
+            await Promise.resolve();
+            await importCodex(JSON.stringify(exported));
+
+            const rows = await storage.getAll('streamHealth');
+            // Both sides are named: this device's own evidence and theirs.
+            expect(rows[0]?.authors).toEqual([remoteAuthor, 'local'].sort());
+        });
+    });
+
+    it('makes imported identity claims visible to the channel list without a reload', async () => {
+        let exported: CodexDocument | undefined;
+        await withFakePlatform({}, async ({ storage }) => {
+            exported = await seedAndBuild(storage);
+        });
+
+        resetHealthCacheForTests();
+        resetMappingCacheForTests();
+
+        await withFakePlatform({}, async () => {
+            await importCodex(JSON.stringify(exported));
+            // `getMappingSync` is a module-memory mirror the list reads on its
+            // synchronous rebuild; a storage-only write would leave it empty
+            // until the next boot.
+            expect(getMappingSync('NL').map((match) => match.catalogId)).toEqual(['NPO 1.nl']);
         });
     });
 });

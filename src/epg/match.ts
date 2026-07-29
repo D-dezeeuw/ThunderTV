@@ -28,7 +28,21 @@ export type MatchMethod = 'tvg-id' | 'name' | 'alias';
 export interface EpgChannelMatch {
     channelKey: string;
     catalogId: string;
-    method: MatchMethod;
+    /**
+     * A `MatchMethod` when this device derived the match. Typed as `string`
+     * because an imported Codex may name a method a newer build understands
+     * and this one does not — `src/codex/merge.ts` ranks those below every
+     * method it knows rather than discarding the claim.
+     */
+    method: string;
+    /**
+     * Provenance, present only on entries a Codex merge folded in
+     * (`src/codex/apply.ts`). A locally derived match carries neither: the
+     * snapshot's `savedAt` and the local author stand in, which is why both
+     * are optional rather than backfilled.
+     */
+    observedAt?: number;
+    authorId?: string;
 }
 
 export interface MatchResult {
@@ -123,12 +137,13 @@ export function matchedCatalogIds(result: MatchResult): ReadonlySet<string> {
     return new Set(result.matches.map((m) => m.catalogId));
 }
 
-interface StoredMapping {
+/** The persisted snapshot. Exported so `src/codex/` reads and writes the same shape rather than re-declaring it. */
+export interface StoredMapping {
     savedAt: number;
     matches: EpgChannelMatch[];
 }
 
-function mappingKey(country: string): string {
+export function mappingKey(country: string): string {
     return `epg.mapping.${country}`;
 }
 
