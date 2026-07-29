@@ -62,6 +62,7 @@ export type {
     GroupRecord,
     EpgChannelRecord,
     EpgProgramRecord,
+    EpgCatalogRecord,
     FavoriteRecord,
     RecentRecord,
 } from './records';

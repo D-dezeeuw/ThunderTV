@@ -97,6 +97,25 @@ export interface EpgProgramRecord {
 }
 
 /**
+ * One canonical channel identity derived from a country's XMLTV feed
+ * (`src/epg/catalog.ts`) — Phase 31's country catalog. `id` is the feed's
+ * own `<channel id>` (e.g. `24 Kitchen.nl`), kept as the join key for
+ * `EpgChannelRecord`/`EpgProgramRecord` and any future Codex export;
+ * `displayName` is `id` with the registry's country suffix stripped;
+ * `normKey` is `normalizeKey(displayName)` (`src/channels/name-parse.ts`),
+ * computed once at derivation time so the matcher never re-derives it.
+ * Re-parseable cache, like `channels`/`epgPrograms` — no `v` field.
+ */
+export interface EpgCatalogRecord {
+    country: string;
+    id: string;
+    displayName: string;
+    normKey: string;
+    icon: string | null;
+    sourceFile: string;
+}
+
+/**
  * Denormalized snapshot (Feature 04.5.7, shape finalized by Feature 08.8.3
  * per masterplan §5/§9) — playable and renderable without the source
  * playlist loaded. `sourceId` lets a favorite be traced back to (and
@@ -132,7 +151,7 @@ export interface RecentRecord {
  * methods instead of table ops; mixing the two is a review reject.
  */
 export type TableName =
-    'playlists' | 'channels' | 'groups' | 'epgChannels' | 'epgPrograms' | 'favorites' | 'recent';
+    'playlists' | 'channels' | 'groups' | 'epgChannels' | 'epgPrograms' | 'epgCatalog' | 'favorites' | 'recent';
 
 export interface TableRowMap {
     playlists: PlaylistRecord;
@@ -140,6 +159,7 @@ export interface TableRowMap {
     groups: GroupRecord;
     epgChannels: EpgChannelRecord;
     epgPrograms: EpgProgramRecord;
+    epgCatalog: EpgCatalogRecord;
     favorites: FavoriteRecord;
     recent: RecentRecord;
 }
