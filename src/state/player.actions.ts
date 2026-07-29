@@ -159,8 +159,21 @@ function requestFullscreenForActiveView(): void {
     if (video instanceof HTMLVideoElement) requestVideoFullscreen(video);
 }
 
-/** MVP playback slice: clears `player.active`, which `src/player/bindings.ts`'s `watch()` reacts to by tearing the `<video>` element down — the `setValue()` fence (Feature 05.2.5) keeps that write here, not in `src/player/`. */
+/**
+ * MVP playback slice: clears `player.active`, which `src/player/bindings.ts`'s
+ * `watch()` reacts to by tearing the `<video>` element down — the
+ * `setValue()` fence (Feature 05.2.5) keeps that write here, not in
+ * `src/player/`.
+ *
+ * Exits fullscreen first, before any teardown: ESC works today because the
+ * browser's own native exit-fullscreen algorithm runs and repaints the page
+ * before app code does anything; Stop skipped that entirely and tore the
+ * `<video>` down (and hid its ancestor) while the browser still believed it
+ * owned the fullscreen layer, leaving that layer stuck on screen with
+ * nothing underneath reachable.
+ */
 export function stopPlayback(): void {
+    if (currentFullscreenElement()) exitFullscreen();
     setValue(PLAYER_ACTIVE, null);
     setValue(PLAYER_PLAYBACK_ERROR, null);
     setValue(PLAYER_STREAM_HEALTH, null);

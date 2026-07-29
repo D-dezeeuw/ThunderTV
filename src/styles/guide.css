@@ -43,6 +43,15 @@
     pointer-events: none;
 }
 
+/* Spektrum's data-each clones a host's single element child, so the
+   channel/timeline pair (`.guide__row`) needs a non-repeated wrapper to
+   host `data-each="guide.view.channels"` on — `display: contents` keeps it
+   out of the box model so `.guide__row`'s sticky/grid layout inside
+   `.guide__rows` is unaffected. */
+.guide__row-list {
+    display: contents;
+}
+
 .guide__row {
     position: relative;
     display: grid;
