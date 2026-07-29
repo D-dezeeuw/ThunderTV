@@ -22,7 +22,7 @@ if you need historical "why," not for a routine change.
 | Which channels show in Live, dedup/variants, junk filtering  | `src/channels/README.md` |
 | M3U/M3U8 parsing, import pipeline, worker protocol           | `src/m3u/README.md` |
 | Xtream Codes API client, endpoints, error taxonomy           | `src/xtream/README.md` |
-| EPG (XMLTV ingest, now/next, guide)                          | `src/epg/README.md` |
+| EPG (XMLTV ingest, country catalog, matching, now/next, guide) | `src/epg/README.md` |
 | Player engine (hls.js/mpegts.js/native), dock, theater mode  | `src/player/README.md` |
 | Virtual list scrolling, group filtering, logo fallback, gestures | `src/ui/README.md` |
 | Any Spektrum state key, action, or selector                 | `src/state/README.md` (has the module-ownership table — check it before adding a key anywhere) |

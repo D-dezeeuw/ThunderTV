@@ -1,18 +1,15 @@
-import { getPlatform } from '../core/platform';
 import type { EpgChannelRecord, EpgProgramRecord } from '../core/storage';
 
 /**
- * Bulk XMLTV ingestion (README's "Phase 16 — EPG Ingestion"). Replaces an
- * earlier per-channel Xtream `get_short_epg` design: two community-
- * maintained NL feeds, fetched and parsed once, beat dozens of per-stream
- * API calls for both provider etiquette and simplicity.
+ * XMLTV parsing (README's "Phase 16 — EPG Ingestion" / Phase 31's country
+ * catalog): timestamp math and `<channel>`/`<programme>` extraction shared
+ * by `src/epg/catalog.ts` (catalog derivation) and `src/state/epg-load.ts`
+ * (the Guide's `epgChannels`/`epgPrograms` tables) — one parse per fetched
+ * file, two consumers. Fetching itself lives in `src/epg/feed-fetch.ts`;
+ * this module used to also own a hardcoded NL-only fetch/match pair
+ * (`XMLTV_SOURCE_URLS`/`matchXmltvChannels`), replaced by the
+ * registry-driven, alias-aware pipeline in Phase 31.
  */
-
-/** globetvapp/epg's NL feeds — updated daily at 03:00 UTC upstream. Two files (likely a public/commercial split); both are ingested identically. */
-export const XMLTV_SOURCE_URLS = [
-    'https://raw.githubusercontent.com/globetvapp/epg/main/Netherlands/netherlands1.xml',
-    'https://raw.githubusercontent.com/globetvapp/epg/main/Netherlands/netherlands2.xml',
-] as const;
 
 export interface XmltvChannel {
     /** The feed's own channel id, e.g. `"24 Kitchen.nl"` — human-readable, not opaque, per the open-epg convention this feed follows. */
@@ -97,46 +94,6 @@ export function parseXmltvDocument(xmlText: string): XmltvDocument {
     }
 
     return { channels, programs };
-}
-
-/** Fetches one XMLTV source's raw text. Resolves `null` on any classified failure — a down feed must not blow up the whole two-file batch. */
-export async function fetchXmltvSource(url: string): Promise<string | null> {
-    const result = await getPlatform().http.get(url, { timeoutMs: 20_000 });
-    if (result.kind !== 'ok') return null;
-    return result.res.text();
-}
-
-/** Loose key a locally-known channel is matched against — a subset of `ChannelRecord`. */
-export interface LocalChannelKey {
-    tvgId: string | null;
-    name: string;
-}
-
-export function normalizeChannelName(name: string): string {
-    return name.trim().toLowerCase();
-}
-
-/**
- * Which of a fetched feed's channels are worth storing — matched against
- * the id (`tvgId`/`epgChannelId`, the common case for NL open-epg-style
- * playlists) and, as a fallback/supplement, a normalized display-name
- * match. Storing only the matched subset keeps `epgChannels`/`epgPrograms`
- * proportional to the user's actual channel list, not the full feed.
- */
-export function matchXmltvChannels(
-    xmltvChannels: readonly XmltvChannel[],
-    localChannels: readonly LocalChannelKey[],
-): Set<string> {
-    const tvgIds = new Set(localChannels.map((c) => c.tvgId).filter((id): id is string => Boolean(id)));
-    const names = new Set(localChannels.map((c) => normalizeChannelName(c.name)));
-
-    const matched = new Set<string>();
-    for (const channel of xmltvChannels) {
-        if (tvgIds.has(channel.id) || names.has(normalizeChannelName(channel.displayName))) {
-            matched.add(channel.id);
-        }
-    }
-    return matched;
 }
 
 /** Maps a matched subset of one parsed document into the storage record shapes (Feature: keeps `EpgProgramRecord.channelId` equal to the feed's own channel id — `raw-export.ts`'s documented "tvg-id a channel row must carry" contract, since this feed's ids already follow that convention for a matched channel). */

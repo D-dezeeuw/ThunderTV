@@ -1,4 +1,10 @@
-import { SETTINGS_AUDIO_LANGUAGE, SETTINGS_NAV_MOVIES, SETTINGS_NAV_SERIES, SETTINGS_SUBTITLE_LANGUAGE } from './settings';
+import {
+    SETTINGS_AUDIO_LANGUAGE,
+    SETTINGS_LIVE_EPG_VERIFIED_ONLY,
+    SETTINGS_NAV_MOVIES,
+    SETTINGS_NAV_SERIES,
+    SETTINGS_SUBTITLE_LANGUAGE,
+} from './settings';
 import { PLAYER_AUDIO_TRACKS, PLAYER_SUBTITLE_TRACKS, PLAYER_TRACK_MENU, TRACK_LIST_CAP } from './player-tracks';
 import { SEARCH_ACTIVE, SEARCH_LOADED_ONLY, SEARCH_QUERY, SEARCH_RESULT_COUNTS, SEARCH_SCOPE } from './search';
 import {
@@ -229,5 +235,12 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         persisted: false,
         description:
             'Id of the one transfer currently running, or null. The queue is serial (most Xtream panels cap concurrent connections per account), so this is a single id rather than a set, and it is what downloads.actions.ts guards late progress/completion callbacks against.',
+    },
+
+    // --- live: EPG country catalog filter (Phase 31) ---
+    [SETTINGS_LIVE_EPG_VERIFIED_ONLY]: {
+        owner: 'settings',
+        persisted: true,
+        description: 'Live view strict mode — show only channels the Phase 31 EPG country catalog matched. Off by default; a not-yet-matched channel is far more often a catalog gap than an absent channel.',
     },
 };

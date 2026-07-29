@@ -8,7 +8,7 @@
  * empty `*.spec.ts` file with no tests of its own.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import { makeEpgProgramRows, makeFavoriteRows } from './fixtures';
+import { makeEpgCatalogRows, makeEpgProgramRows, makeFavoriteRows } from './fixtures';
 import { MemoryStorage } from './memory-storage';
 import type { StorageAdapter } from './storage-adapter';
 
@@ -141,6 +141,46 @@ export function describeStorageContract(
                     upper: ['ch1', rows[3]!.start],
                 });
                 expect(viaGetAll).toEqual(viaRange);
+            });
+        });
+
+        describe('epgCatalog (Phase 31 country catalog — [country, id] composite key)', () => {
+            it('bulkPut() upserts by [country, id]; a re-derive replaces a changed row in place', async () => {
+                const rows = makeEpgCatalogRows('NL', 'nl', 3);
+                await storage.bulkPut('epgCatalog', rows, (r) => [r.country, r.id]);
+                await storage.bulkPut('epgCatalog', [{ ...rows[0]!, displayName: 'Updated' }], (r) => [r.country, r.id]);
+
+                const all = await storage.getRange('epgCatalog', ['NL', ''], ['NL', '\uffff']);
+                expect(all).toHaveLength(3);
+                expect(all.find((r) => r.id === rows[0]!.id)?.displayName).toBe('Updated');
+            });
+
+            it('getRange()/getAll() with a [country, ""]..[country, "\\uffff"] bound scopes to exactly one country', async () => {
+                await storage.bulkPut('epgCatalog', makeEpgCatalogRows('NL', 'nl', 4), (r) => [r.country, r.id]);
+                await storage.bulkPut('epgCatalog', makeEpgCatalogRows('DE', 'de', 2), (r) => [r.country, r.id]);
+
+                const nlOnly = await storage.getRange('epgCatalog', ['NL', ''], ['NL', '\uffff']);
+                expect(nlOnly).toHaveLength(4);
+                expect(nlOnly.every((r) => r.country === 'NL')).toBe(true);
+
+                const viaGetAll = await storage.getAll('epgCatalog', { lower: ['DE', ''], upper: ['DE', '\uffff'] });
+                expect(viaGetAll).toHaveLength(2);
+                expect(viaGetAll.every((r) => r.country === 'DE')).toBe(true);
+            });
+
+            it('deleteRow() removes exactly the one [country, id] row — the replace-per-country primitive', async () => {
+                const rows = makeEpgCatalogRows('NL', 'nl', 3);
+                await storage.bulkPut('epgCatalog', rows, (r) => [r.country, r.id]);
+                await storage.deleteRow('epgCatalog', [rows[0]!.country, rows[0]!.id]);
+
+                const remaining = await storage.getRange('epgCatalog', ['NL', ''], ['NL', '\uffff']);
+                expect(remaining.map((r) => r.id)).toEqual(rows.slice(1).map((r) => r.id));
+            });
+
+            it('getAll() with no range returns every country', async () => {
+                await storage.bulkPut('epgCatalog', makeEpgCatalogRows('NL', 'nl', 2), (r) => [r.country, r.id]);
+                await storage.bulkPut('epgCatalog', makeEpgCatalogRows('DE', 'de', 2), (r) => [r.country, r.id]);
+                expect(await storage.getAll('epgCatalog')).toHaveLength(4);
             });
         });
     });

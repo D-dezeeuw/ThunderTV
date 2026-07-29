@@ -75,3 +75,21 @@ rows with the same canonical name, which reads as a bug. (Caught by
 A row's own `| NL |` prefix wins. When it has none, the row inherits its
 category's prefix — provider bundles label the category, not every channel
 inside it, so `Discovery Channel` under `| NL | DOCU` is correctly Dutch.
+
+## EPG-verified filtering (Phase 31)
+
+`groupChannels()` takes two more options: `epgMatches` (a `Map<channelKey,
+catalogId>` from `src/epg/match.ts`'s `getMappingSync()`, built by
+`src/state/live-rows.ts`) and `epgVerifiedOnly`. Presence in the map alone
+never drops a row — it only supplies `GroupedChannel.epgId` (carried through
+`toDisplayRows()` onto the `ChannelRow`, for a future now/next span to key
+off directly). `epgVerifiedOnly` is the actual filter, off by default, same
+never-empty-screen contract as `knownOnly`, and — like `knownOnly` — never
+applied to Radio (`src/epg/countries.ts`'s catalog is TV-only).
+
+**Naming precedence stays curated-first.** A channel the curated catalog
+already knows displays its curated canonical name regardless of what the EPG
+catalog's `displayName` says; the EPG match only adds `epgId`, never
+overrides `name`/`rank`. Catalog membership answers "does this channel have
+guide data," not "is this a real channel" — that judgement is still
+`dutch-catalog.ts` + `junk-filter.ts`'s job.

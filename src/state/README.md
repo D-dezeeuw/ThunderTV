@@ -13,7 +13,8 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `player.ts`          | `player.active`, `player.zapHistory`, `player.visualizerPreset`, `player.visualizerPaused`, `player.audioMode`        | Yes — the §6.4 instant-restore pair; `visualizerPreset` also persists (the listener's Radio visualizer choice) and so does `audioMode` (watch TV channels audio-only, with the visualizer standing in for the picture — a viewing preference, and the player bar always carries the switch back); `visualizerPaused` does not (always false on a fresh Radio visit) |
 | `player-tracks.ts`   | `player.audioTracks`, `player.subtitleTracks`, `player.trackMenu`                                                     | No — the dock/theater track-menu popups' own published lists (`player-tracks.actions.ts`'s `registerTrackSync()` republishes them from `getPlayerTracks()`) and which menu is open; rebuilt every stream, never restored |
 | `epg.ts`             | `epg.tick`                                                                                                            | No — a heartbeat timestamp, recomputed every boot |
-| `settings.ts`        | `settings.locale`, `settings.proxyTemplate`, `settings.proxyError`, `settings.proxySaved`, …, `settings.audioLanguage`, `settings.subtitleLanguage`, `settings.nav.movies`, `settings.nav.series` | `locale` yes (Settings → User language switcher, i18n follow-up); `proxyTemplate` yes; `audioLanguage`/`subtitleLanguage` yes (Phase 21); `nav.movies`/`nav.series` yes, same default-on rail-toggle contract as every other `settings.nav.*` key; the transient feedback keys don't persist |
+| `epg-settings.ts`    | `settings.epgCacheState`, `settings.epgCatalogCount`                                                                  | No — transient Settings → Diagnostics feedback (`epg-settings.actions.ts`'s `refreshEpgCatalog()`/`clearEpgCache()`) and a derived count `state/epg-load.ts`'s `loadDefaultEpg()` re-publishes on every run; neither survives a reload (nor should — the count is wrong the instant the underlying `epgCatalog` table changes) |
+| `settings.ts`        | `settings.locale`, `settings.proxyTemplate`, `settings.proxyError`, `settings.proxySaved`, …, `settings.audioLanguage`, `settings.subtitleLanguage`, `settings.nav.movies`, `settings.nav.series`, `settings.liveEpgVerifiedOnly` | `locale` yes (Settings → User language switcher, i18n follow-up); `proxyTemplate` yes; `audioLanguage`/`subtitleLanguage` yes (Phase 21); `nav.movies`/`nav.series` yes, same default-on rail-toggle contract as every other `settings.nav.*` key; `liveEpgVerifiedOnly` yes (Phase 31, off by default); the transient feedback keys don't persist |
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.storageNoticeDismissed` yes; the rest no |
 | `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`, `ui.setupComplete`                                                                 | `ui.setupComplete` yes — it is what stops a configured install from being asked again; `wizardOpen`/`wizardStep` no (transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen`) |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
@@ -388,6 +389,55 @@ touches markup:
   did not catch it because that spec mirrors the markup by hand and happened
   to use the plain-path form. When mirroring markup in a spec, copy the
   binding verbatim.
+
+## EPG country catalog (Phase 31) — decisions worth recording once
+
+`epg-load.ts` (rewired), `epg-settings.ts`/`epg-settings.actions.ts` (new)
+sit on top of `src/epg/**`'s pure/storage-touching modules — see
+`src/epg/README.md` for the pipeline itself. What's specific to the state
+layer:
+
+- **`src/epg/match.ts` keeps its own synchronous mapping cache**, outside
+  `KEY_REGISTRY` entirely — `live-rows.ts`'s `ensureLiveRows()` is a
+  synchronous hot path (same "bulk data bypasses Spektrum state" rule as
+  `m3u/channel-memory.ts`) and cannot `await` a storage read on every
+  rebuild. `saveMapping()` keeps the cache current; `epg-load.ts`'s
+  `primeEpgMapping()` restores it from storage once at boot, called
+  alongside `loadGuideChannels()`, before `live-rows.ts` ever needs it for
+  real. `getMappingSync(country)` is the one sanctioned synchronous reader.
+- **`groupChannels()` gained `epgMatches`/`epgVerifiedOnly`, not the phase
+  plan's literal `epgKnownKeys: Set<string>`.** A `Map<channelKey,
+  catalogId>` is a strict superset — membership works identically, and the
+  value doubles as `GroupedChannel.epgId` for row enrichment (Phase 17's
+  future now/next span) in the same pass, instead of a second lookup.
+  `live-rows.ts` builds this map from `getMappingSync()` on every
+  `ensureLiveRows()` call; it is not itself a Spektrum value.
+- **`loadDefaultEpg()` re-matches on every call, not only when a feed was
+  actually fetched.** Matching is cheap (<50ms even for a large country,
+  Feature 31.5.7) and a newly-imported playlist needs to see EPG matches
+  immediately, even while the feed itself is still inside its 12h TTL
+  window — otherwise a fresh import would show zero EPG data until the
+  next scheduled fetch.
+- **`epg-load.ts` calls `refreshLiveRows()` (from `live.actions.ts`)
+  directly** after a fresh match, and `clearEpgCache()` does the same —
+  the one exception to "state modules don't call each other's actions"
+  elsewhere in this codebase, justified because Live's cache has no other
+  way to learn "the mapping changed" (Feature 31.6.9). No import cycle:
+  nothing `live.actions.ts` transitively imports reaches back into
+  `epg-load.ts`.
+- **The Live-filter country prefix (`groupChannels({country})`) is
+  deliberately NOT applied when building the channel list `matchChannels()`
+  sees.** The EPG catalog is already scoped to one country per run, so it's
+  the only boundary that needs to hold; reusing the "| NL |"-prefix filter
+  on the channel side too would silently exclude legitimate channels a
+  provider didn't prefix, for no matching benefit (see `epg-load.ts`'s own
+  comment at the call site).
+- **`settings.liveEpgVerifiedOnly` reuses the exact `strictFellBack`
+  never-empty-screen pattern** (`live.ts`'s `epgFellBack` field,
+  `live-rows.ts`'s fallback branch) rather than inventing a second
+  mechanism — a catalog that hasn't matched anything yet is far more often
+  "not fetched" or "wrong country" than "every channel genuinely lacks
+  guide data."
 
 ## The persistence bridge, in one paragraph
 

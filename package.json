@@ -25,6 +25,7 @@
         "bench:m3u": "vitest run --config vitest.bench.config.ts src/m3u/parser.bench.ts",
         "bench:list": "vitest run --config vitest.bench.config.ts src/ui/virtual-list.bench.ts",
         "gen:m3u-fixture": "node scripts/gen-m3u-fixture.mjs",
+        "gen:epg-countries": "node scripts/generate-epg-countries.mjs",
         "verify": "npm run typecheck && npm run lint && npm run lint:css && npm run lint:file-access && npm run lint:importmap && npm run lint:reachability && npm test && npm run build && npm run lint:dist"
     },
     "devDependencies": {

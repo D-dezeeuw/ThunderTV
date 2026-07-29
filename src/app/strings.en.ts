@@ -1,11 +1,6 @@
-/**
- * English copy — the baseline locale (Feature 02.6.7/i18n). Every
- * user-facing literal lives in one of the three `strings.<locale>.ts`
- * files; `strings.ts` re-exports the active one via `getStrings()`/the
- * mutable `strings` singleton. `nl`/`de` mirror this exact key shape —
- * `strings.spec.ts` asserts they never drift.
- */
+/** English copy — the baseline locale (Feature 02.6.7/i18n). `nl`/`de` mirror this exact key shape — `strings.spec.ts` asserts they never drift. */
 import { enCatalog } from './strings.en.catalog';
+import { enEpg } from './strings.en.epg';
 import { enPlayerTracks } from './strings.en.player';
 
 export const en = {
@@ -57,6 +52,7 @@ export const en = {
         },
         /** Shown instead of an empty list when the curated list matched nothing — a naming mismatch, not an absent channel. */
         strictFellBack: 'Curated list matched nothing here, showing all channels. Names seen:',
+        ...enEpg.live,
     },
 
     debug: {
@@ -217,6 +213,7 @@ export const en = {
             exportEpgButton: 'Export EPG (XML)',
             exportEpgHelp:
                 'Every stored guide channel and programme. An empty guide next to a full channel list usually means the channel tvg-id and the EPG channel id do not match.',
+            ...enEpg.diagnostics,
         },
         liveFilter: {
             countryLabel: 'Country',
@@ -229,6 +226,7 @@ export const en = {
             dropJunk: 'Hide filler channels',
             dropJunkHelp:
                 'Removes numbered event slots (VIAPLAY 07, PPV 12…), separator rows and adult entries. Judged on the channel name only — nothing here checks whether a stream is actually alive.',
+            ...enEpg.liveFilter,
         },
         navigation: {
             help: 'Choose which buttons appear in the sidebar. Live is always shown.',

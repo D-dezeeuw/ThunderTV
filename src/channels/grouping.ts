@@ -33,6 +33,8 @@ export interface GroupedChannel {
     rank: number;
     /** Audio-only station (M3U `radio="true"`) — kept so `toDisplayRows()` can hand the player its radio layout. */
     radio: boolean;
+    /** The EPG country catalog's own channel id (Feature 31.6.5) when `epgMatches` resolved one for this identity, else `null` — carried through `toDisplayRows()` so now/next (Phase 17) and the timeline (stone 7) can key straight off the row without re-matching. */
+    epgId: string | null;
 }
 
 export interface GroupingOptions {
@@ -49,6 +51,20 @@ export interface GroupingOptions {
      * them out of the TV list; `'only'` builds the Radio list.
      */
     radio?: 'exclude' | 'only';
+    /**
+     * Channel key → matched EPG country-catalog id (Feature 31.6.1) —
+     * `src/epg/match.ts`'s `getMappingSync()` output, keyed the same way
+     * `resolveIdentity()` below produces `identity.key`. A superset of the
+     * plan's literal `ReadonlySet<string>`: the map's values double as
+     * `GroupedChannel.epgId` for free, so filtering and row enrichment are
+     * one pass instead of two. Presence alone doesn't filter anything —
+     * `epgVerifiedOnly` decides that — so passing this without the flag is
+     * how row enrichment stays available (e.g. for a future now/next span)
+     * even when the user hasn't opted into hiding unverified channels.
+     */
+    epgMatches?: ReadonlyMap<string, string>;
+    /** Strict mode: keep only channels the EPG catalog matched for the current country (Feature 31.6.2) — off by default, same never-empty-screen contract as `knownOnly`. Never applies to Radio, which the catalog says nothing about. */
+    epgVerifiedOnly?: boolean;
 }
 
 export interface GroupingResult {
@@ -59,7 +75,11 @@ export interface GroupingResult {
         droppedByCountry: number;
         droppedAsJunk: number;
         droppedAsUnknown: number;
+        /** Dropped by `epgVerifiedOnly` — the EPG catalog had no match for this identity (Feature 31.6.4). */
+        droppedByEpg: number;
         collapsedVariants: number;
+        /** How many kept channels carry a non-null `epgId` — the Settings readout's "matched" count, independent of whether `epgVerifiedOnly` is even on. */
+        epgMatched: number;
         /** A few names the filter removed, for the "why is my channel missing?" readout — the provider's raw spelling is the only way to tell a naming mismatch from a genuinely absent channel. */
         droppedSamples: string[];
     };
@@ -170,7 +190,7 @@ function compareVariants(a: ChannelVariant, b: ChannelVariant): number {
 }
 
 export function groupChannels(rows: readonly ChannelRow[], options: GroupingOptions = {}): GroupingResult {
-    const { country, knownOnly = false, dropJunk = true, radio = 'exclude' } = options;
+    const { country, knownOnly = false, dropJunk = true, radio = 'exclude', epgMatches, epgVerifiedOnly = false } = options;
     const wanted = country?.toUpperCase();
 
     const buckets = new Map<string, GroupedChannel>();
@@ -180,7 +200,9 @@ export function groupChannels(rows: readonly ChannelRow[], options: GroupingOpti
         droppedByCountry: 0,
         droppedAsJunk: 0,
         droppedAsUnknown: 0,
+        droppedByEpg: 0,
         collapsedVariants: 0,
+        epgMatched: 0,
         droppedSamples: [] as string[],
     };
 
@@ -222,6 +244,13 @@ export function groupChannels(rows: readonly ChannelRow[], options: GroupingOpti
             continue;
         }
 
+        const epgId = epgMatches?.get(identity.key) ?? null;
+        if (epgVerifiedOnly && radio !== 'only' && !epgId) {
+            stats.droppedByEpg += 1;
+            sample(parsed.base);
+            continue;
+        }
+
         const variant: ChannelVariant = {
             id: row.id,
             url: row.url,
@@ -235,7 +264,7 @@ export function groupChannels(rows: readonly ChannelRow[], options: GroupingOpti
         const existing = buckets.get(identity.key);
         if (existing) {
             existing.variants.push(variant);
-            // Keep the first non-empty logo/EPG id we see: variants from a
+            // Keep the first non-empty logo/tvg-id we see: variants from a
             // bundle often ship neither.
             existing.logo ??= row.logo;
             existing.tvgId ??= row.tvgId;
@@ -253,6 +282,7 @@ export function groupChannels(rows: readonly ChannelRow[], options: GroupingOpti
             isKnown: identity.isKnown,
             rank: identity.rank,
             radio: row.radio === true,
+            epgId,
         });
     }
 
@@ -264,10 +294,12 @@ export function groupChannels(rows: readonly ChannelRow[], options: GroupingOpti
         channel.primary = channel.variants[0] ?? channel.primary;
     }
     // Catalog order first (broadcast order, not the provider's dump order),
-    // then everything unknown alphabetically.
+    // then everything unknown alphabetically — epgVerifiedOnly/epgMatches
+    // never affect ordering, only membership (Feature 31.6.7).
     channels.sort((a, b) => (a.rank !== b.rank ? a.rank - b.rank : a.name.localeCompare(b.name)));
 
     stats.keptChannels = channels.length;
+    stats.epgMatched = channels.filter((c) => c.epgId !== null).length;
     return { channels, stats };
 }
 
@@ -282,5 +314,6 @@ export function toDisplayRows(channels: readonly GroupedChannel[]): ChannelRow[]
         tvgId: channel.tvgId,
         radio: channel.radio,
         variants: channel.variants,
+        epgId: channel.epgId,
     }));
 }

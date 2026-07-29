@@ -3,6 +3,8 @@ import { applyLocale, isLocale, strings } from '../app/strings';
 import { SETTINGS_LOCALE } from './settings';
 import { getPlatform } from '../core/platform';
 import { initEpgState } from './epg';
+import { initEpgSettingsState } from './epg-settings';
+import { registerEpgSettingsActions } from './epg-settings.actions';
 import { initFavoritesState } from './favorites';
 import { registerGroupActions } from './groups.actions';
 import { applyHistoryPolicy } from './history-policy';
@@ -65,7 +67,7 @@ export { loadFavoriteIds } from './favorites-load';
 export { loadActiveSource } from './list-load';
 export { registerViewRowsWatch } from './live.actions';
 export { loadGuideChannels } from './guide-load';
-export { loadDefaultEpg } from './epg-load';
+export { loadDefaultEpg, primeEpgMapping } from './epg-load';
 export { openWizard, openWizardIfNoSources } from './wizard.actions';
 export { shouldOpenWizard } from './wizard';
 export { openVodCatalog } from './vod.actions';
@@ -89,6 +91,7 @@ export function initState(): void {
     initPlayerState();
     initPlayerTracksState();
     initEpgState();
+    initEpgSettingsState();
     initSettingsState();
     initUiState();
     initListState();
@@ -125,6 +128,7 @@ export function registerActions(): void {
     registerSeriesActions();
     registerSearchActions();
     registerDownloadActions();
+    registerEpgSettingsActions();
 }
 
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */

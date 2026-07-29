@@ -1,5 +1,7 @@
 import { setValue, tick } from 'spektrum';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { withFakePlatform } from '../core/platform/fake-platform';
+import { resetMappingCacheForTests, saveMapping } from '../epg/match';
 import { setRows as setMemoryRows } from '../m3u/channel-memory';
 import type { ChannelRow } from '../m3u/types';
 import { mountTemplate } from '../shared/testing/bind-dom';
@@ -144,5 +146,74 @@ describe('strict-mode fallback', () => {
 
         expect(get<LiveStats>(LIVE_STATS)?.strictFellBack).toBe(false);
         mounted.cleanup();
+    });
+});
+
+describe('EPG-verified filter (Feature 31.6)', () => {
+    afterEach(() => {
+        resetMappingCacheForTests();
+    });
+
+    it('carries epgMatched into the stats readout without filtering when epgVerifiedOnly is off', async () => {
+        await withFakePlatform({}, async () => {
+            await saveMapping('NL', {
+                matches: [{ channelKey: 'NPO 1', catalogId: 'NPO 1.nl', method: 'name' }],
+                unmatchedChannels: [],
+                unmatchedCatalog: [],
+            });
+
+            const mounted = mountWithCatalog();
+            setValue(UI_ACTIVE_VIEW, 'live');
+            tick();
+            publishRowsForCurrentView();
+            tick();
+
+            expect(rowCount()).toBe(2); // NPO 1 and RTL 4, nothing dropped
+            const stats = get<LiveStats>(LIVE_STATS);
+            expect(stats?.epgMatched).toBe(1);
+            expect(stats?.hiddenByEpg).toBe(0);
+
+            mounted.cleanup();
+        });
+    });
+
+    it('epgVerifiedOnly keeps only channels the mapping matched', async () => {
+        await withFakePlatform({}, async () => {
+            await saveMapping('NL', {
+                matches: [{ channelKey: 'NPO 1', catalogId: 'NPO 1.nl', method: 'name' }],
+                unmatchedChannels: ['RTL 4'],
+                unmatchedCatalog: [],
+            });
+
+            const mounted = mountWithCatalog();
+            setValue(UI_ACTIVE_VIEW, 'live');
+            tick();
+            toggleSetting('liveEpgVerifiedOnly');
+            tick();
+            refreshLiveRows();
+            tick();
+
+            expect(liveDisplayRows().map((r) => r.name)).toEqual(['NPO 1']);
+            expect(get<LiveStats>(LIVE_STATS)?.hiddenByEpg).toBe(1);
+
+            mounted.cleanup();
+        });
+    });
+
+    it('falls back to the unfiltered set (never a blank screen) when nothing has been matched yet', async () => {
+        await withFakePlatform({}, () => {
+            const mounted = mountWithCatalog();
+            setValue(UI_ACTIVE_VIEW, 'live');
+            tick();
+            toggleSetting('liveEpgVerifiedOnly');
+            tick();
+            refreshLiveRows();
+            tick();
+
+            expect(liveDisplayRows().map((r) => r.name)).toEqual(['NPO 1', 'RTL 4']);
+            expect(get<LiveStats>(LIVE_STATS)?.epgFellBack).toBe(true);
+
+            mounted.cleanup();
+        });
     });
 });
