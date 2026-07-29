@@ -1,8 +1,6 @@
 /**
- * Dutch copy. Must mirror `strings.en.ts`'s exact key shape — verified by
- * `strings.spec.ts`. Deliberately untranslated: proper nouns and technical
- * acronyms (M3U, EPG, Xtream Codes, CORS, HLS, MPEG-TS, DRM), exactly like
- * a real localized app would leave them.
+ * Dutch copy. Mirrors `strings.en.ts`'s exact key shape (`strings.spec.ts` asserts it).
+ * Proper nouns and technical acronyms (M3U, EPG, Xtream Codes, CORS, HLS, DRM) stay untranslated.
  */
 import { nlCatalog } from './strings.nl.catalog';
 import { nlEpg } from './strings.nl.epg';
@@ -138,6 +136,7 @@ export const nl = {
     guide: {
         nowLabel: 'Nu',
         detailEmpty: 'Selecteer een programma om de details hier te bekijken.',
+        ...nlEpg.guide,
     },
 
     recent: {
@@ -313,6 +312,7 @@ export const nl = {
     },
 
     list: {
+        ...nlEpg.list,
         chooseSource: 'Kies een playlist',
         backToSources: '← Bronnen',
         allChannels: 'Alle zenders',

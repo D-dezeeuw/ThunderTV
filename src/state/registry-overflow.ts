@@ -33,6 +33,7 @@ import {
 } from './vod';
 import { PLAYER_AUDIO_MODE } from './player';
 import { DOWNLOAD_QUEUE_CAP, DOWNLOADS_ACTIVE_ID, DOWNLOADS_ITEMS } from './downloads';
+import { GUIDE_CHANNELS, GUIDE_LOADING, GUIDE_OFFSET_MS, GUIDE_SELECTED_KEY } from './guide';
 import type { KeyMeta } from './registry';
 
 /**
@@ -235,6 +236,36 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         persisted: false,
         description:
             'Id of the one transfer currently running, or null. The queue is serial (most Xtream panels cap concurrent connections per account), so this is a single id rather than a set, and it is what downloads.actions.ts guards late progress/completion callbacks against.',
+    },
+
+    // --- guide (EPG display) ---
+    // Owner `epg`: the Guide view is the EPG's display surface, and
+    // `epg.ts`'s `epg.tick` (already `epg`-owned) is what drives it — a
+    // separate `'guide'` owner would split one concern across two names.
+    // These four went unregistered when the Guide first shipped ad hoc,
+    // outside the phase framework; registered here as part of Phase 32,
+    // which is the first change to actually add one of them.
+    [GUIDE_CHANNELS]: {
+        owner: 'epg',
+        persisted: false,
+        description:
+            'Live projection of the epgChannels/epgPrograms storage tables (guide-load.ts), exactly like playlist.sources projects the playlists table — never itself persisted, rebuilt at boot and after any ingest that wrote rows.',
+    },
+    [GUIDE_SELECTED_KEY]: {
+        owner: 'epg',
+        persisted: false,
+        description: 'Which programme block is selected in the Guide grid ("<channelId>|<start>"), or null — view-local UI state, reset every boot.',
+    },
+    [GUIDE_LOADING]: {
+        owner: 'epg',
+        persisted: false,
+        description: 'True while guide-load.ts is reading the EPG tables — transient.',
+    },
+    [GUIDE_OFFSET_MS]: {
+        owner: 'epg',
+        persisted: false,
+        description:
+            'How far the Guide timetable window is shifted from "now", in ms (Phase 32). 0 means it tracks the clock. Not persisted: a returning user expects the guide to open on what is on now, not on wherever they had scrolled to yesterday.',
     },
 
     // --- live: EPG country catalog filter (Phase 31) ---

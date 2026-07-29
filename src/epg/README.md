@@ -55,6 +55,7 @@ the Guide's display tables — never two separate parses of the same text.
 | `catalog-storage.ts`  | The `epgCatalog` storage integration: `getCountryCatalog()`, `replaceCountryCatalog()`, `replaceFileCatalog()`. | No — storage |
 | `match.ts`            | `matchChannels()` — the resolver (tvg-id → name → curated-alias ladder), plus the mapping's storage (`saveMapping`/`loadMapping`) and its synchronous sync cache (`getMappingSync`/`primeMappingCache`/`clearMapping`). | Matching itself yes; persistence no |
 | `prune.ts`            | `pruneStalePrograms()` — deletes `epgPrograms` rows more than 24h past their `stop`. | No — storage |
+| `now-next.ts`         | `nowNext()` — binary search for what is airing and what follows (masterplan §6.7), plus `progressPercent()`. Phase 32. | Yes |
 
 `src/state/epg-load.ts`, `epg-settings.ts`, `epg-settings.actions.ts` are
 the state-layer orchestration and Settings surface — see
@@ -139,13 +140,41 @@ display tables) are unchanged from Phase 16/17's original shapes; only
 call, matched against `match.ts`'s output instead of an exact-equality
 check).
 
-## What Phase 31 deliberately did not build
+## Phase 32 — what's on now (stone 7)
 
-- **Guide timetable UI changes** (stone 7) — the existing Guide grid
-  (`src/state/guide.ts`/`guide-load.ts`/`guide.selectors.ts`,
-  `index.html`'s `.guide` markup) is untouched. `GroupedChannel.epgId`
-  (carried onto `ChannelRow`) is there for a future now/next span to key
-  off, but nothing renders it yet.
+Where Phase 31 ended at "which channels are real", Phase 32 answers "what
+is on them":
+
+- **Per-row now/next.** `src/state/epg-index.ts` holds every stored
+  programme bucketed by channel and sorted by start — module memory, never
+  Spektrum state (same bulk-data rule as `m3u/channel-memory.ts`), and
+  populated by `guide-load.ts` from the `getAll('epgPrograms')` it already
+  performs, so it costs no extra read. `state/list-publish.ts` enriches
+  each *visible* row with now/next + progress on every windowed republish,
+  and `src/ui/list-bindings.ts` re-triggers that republish on each
+  `epg.tick` beat — masterplan §5.5's "one global tick re-enriches the
+  visible slice", never a timer per row. The join is `ChannelRow.epgId`,
+  Phase 31's matcher output, so an unmatched channel simply renders no EPG
+  line rather than a wrong guess.
+- **Guide time navigation.** `guide.offsetMs` shifts the timetable window
+  in half-window steps (a half-window keeps the previous view's second
+  half on screen as an anchor; a full-window jump leaves nothing shared).
+  Travel is clamped to −24h (the programme retention horizon — further
+  back is guaranteed-empty track) and +7 days. At offset 0 the window
+  keeps tracking the clock with no extra bookkeeping, which is also why
+  "back to now" is a single write of `0`.
+- **Play from the guide.** A guide row's channel cell is a real button:
+  `playChannelByEpgId()` resolves the EPG channel id back to a Live row via
+  the same `epgId`. It returns `false` — a quiet no-op, not an error — when
+  the current subscription doesn't carry that channel, because the Guide
+  legitimately describes the whole country's catalog.
+
+## What Phase 31/32 deliberately did not build
+
+- **The catch-up scrubber** (the rest of stone 7's "time as an axis"):
+  scrubbing back from live into catch-up needs per-provider URL-template
+  handling (`src/m3u/catchup.utils.ts` has the parsing groundwork) and a
+  transport UI that does not exist yet.
 - **A registry-driven country `<select>`** replacing the existing 7-option
   curated shortlist in Settings/the first-run wizard — kept as-is
   deliberately (see `masterplan/phases/phase-31-epg-country-catalog.md`'s

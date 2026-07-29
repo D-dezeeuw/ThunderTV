@@ -1208,8 +1208,28 @@
                                         <span class="channel-row__logo channel-row__logo--radio" data-if="item.radio" :title="strings.list.radioLabel" aria-hidden="true"></span>
                                         <span class="channel-row__name truncate">{{ item.name }}</span>
                                         <span class="channel-row__favorite" data-if="favorites.ids[item.id]" aria-hidden="true" data-testid="favorite-star">★</span>
-                                        <!-- Feature 08.3.4: reserved for Phase 17's now/next + progress bar. -->
-                                        <span class="channel-row__epg"></span>
+                                        <!-- Feature 08.3.4's reserved column, filled by Phase 32.
+                                             `data-if` only toggles display, so every binding inside
+                                             still evaluates on an unmatched row — each one therefore
+                                             reads a field that is safely absent (renders empty)
+                                             rather than an optional-chained path
+                                             (state/README.md's "two Spektrum gotchas"). -->
+                                        <span class="channel-row__epg" data-if="item.epgNowTitle">
+                                            <span class="channel-row__epg-now truncate">{{ item.epgNowTitle }}</span>
+                                            <span
+                                                class="channel-row__epg-bar"
+                                                aria-hidden="true"
+                                                data-testid="channel-row-epg-bar"
+                                            >
+                                                <span
+                                                    class="channel-row__epg-fill"
+                                                    :style="'width:' + item.epgProgress + '%'"
+                                                ></span>
+                                            </span>
+                                            <span class="channel-row__epg-next truncate" data-if="item.epgNextTitle">
+                                                {{ strings.list.epgNextPrefix }} {{ item.epgNextTitle }}
+                                            </span>
+                                        </span>
                                         <!-- Movies/Series catalog rows (Phase 21): `.rows`' own
                                              data-fn="list/selectChannel" (above) always plays via
                                              the row's `url` — right for a live channel, wrong for
@@ -1660,14 +1680,60 @@
                     </div>
 
                     <div class="guide" data-if="guide.view.hasData" data-testid="guide-grid">
+                        <!-- Time navigation. The window follows the clock until
+                             one of these is used; "back to now" only appears
+                             once it has been shifted, so the default state
+                             carries no control the user has to reason about. -->
+                        <div class="guide__nav">
+                            <button
+                                type="button"
+                                class="icon-btn"
+                                data-action="click"
+                                data-fn="guide/shiftEarlier"
+                                :aria-label="strings.guide.earlier"
+                                :title="strings.guide.earlier"
+                                data-testid="guide-earlier-btn"
+                            >
+                                ‹
+                            </button>
+                            <button
+                                type="button"
+                                class="btn"
+                                data-if="guide.view.isShifted"
+                                data-action="click"
+                                data-fn="guide/backToNow"
+                                data-testid="guide-now-btn"
+                            >
+                                {{ strings.guide.backToNow }}
+                            </button>
+                            <span class="guide__nav-date" data-if="guide.view.dateLabel" data-testid="guide-date">
+                                {{ guide.view.dateLabel }}
+                            </span>
+                            <button
+                                type="button"
+                                class="icon-btn"
+                                data-action="click"
+                                data-fn="guide/shiftLater"
+                                :aria-label="strings.guide.later"
+                                :title="strings.guide.later"
+                                data-testid="guide-later-btn"
+                            >
+                                ›
+                            </button>
+                        </div>
+
                         <div class="guide__header">
                             <span>{{ guide.view.rangeStartLabel }}</span>
                             <span>{{ guide.view.rangeEndLabel }}</span>
                         </div>
 
                         <div class="guide__rows" data-testid="guide-rows">
+                            <!-- nowPercent is -1 once the window is shifted off
+                                 "now"; pinning the line to an edge instead would
+                                 read as a real position. -->
                             <div
                                 class="guide__now-line"
+                                data-if="guide.view.nowPercent >= 0"
                                 :style="'left:' + guide.view.nowPercent + '%'"
                                 :aria-label="strings.guide.nowLabel"
                                 role="img"
@@ -1675,7 +1741,15 @@
                             ></div>
 
                             <div class="guide__row" data-each="guide.view.channels" data-testid="guide-row">
-                                <div class="guide__channel">
+                                <button
+                                    type="button"
+                                    class="guide__channel"
+                                    data-action="click"
+                                    data-fn="guide/playChannel"
+                                    :data-epg-id="item.id"
+                                    :title="strings.guide.playChannel"
+                                    data-testid="guide-channel-btn"
+                                >
                                     <img
                                         data-if="item.icon"
                                         class="guide__channel-logo"
@@ -1686,7 +1760,7 @@
                                         alt=""
                                     />
                                     <span class="guide__channel-name truncate">{{ item.displayName }}</span>
-                                </div>
+                                </button>
                                 <div
                                     class="guide__timeline"
                                     data-each="item.programs"

@@ -38,10 +38,21 @@ export interface ChannelRow {
     /**
      * The EPG country catalog's own channel id (Phase 31's
      * `src/epg/match.ts`), when `src/channels/grouping.ts` resolved one for
-     * this channel — `null`/absent otherwise. Lets Phase 17's now/next span
-     * and stone 7's timeline key straight off the row without re-matching.
+     * this channel — `null`/absent otherwise. Lets the now/next span and
+     * stone 7's timeline key straight off the row without re-matching.
      */
     epgId?: string | null;
+    /**
+     * Display-only EPG enrichment, attached per *visible window* by
+     * `src/state/list-publish.ts` and refreshed on every `epg.tick` beat —
+     * never stored, never part of a row's identity. Absent on any row the
+     * catalog didn't match or that has no programme data (masterplan §5.5:
+     * one global tick re-enriches the visible slice, no per-row timers).
+     */
+    epgNowTitle?: string | null;
+    epgNextTitle?: string | null;
+    /** 0–100 through the currently-airing programme; 0 when nothing is on. */
+    epgProgress?: number;
 }
 
 /** One playable alternative of a grouped channel — see `src/channels/grouping.ts`. */

@@ -21,4 +21,13 @@ export const nlEpg = {
         epgVerifiedOnlyHelp:
             'Standaard uit: een zender die de EPG-catalogus nog niet heeft gekoppeld, is vaker een ontbrekend stukje programmagegevens dan een niet-bestaande zender. Zet dit aan zodra uw catalogus gevuld is om zenders zonder programmagegevens te verbergen. Geldt nooit voor Radio.',
     },
+    guide: {
+        earlier: 'Eerder',
+        later: 'Later',
+        backToNow: 'Terug naar nu',
+        playChannel: 'Deze zender afspelen',
+    },
+    list: {
+        epgNextPrefix: 'Straks ·',
+    },
 } as const;

@@ -135,6 +135,7 @@ export const en = {
     guide: {
         nowLabel: 'Now',
         detailEmpty: 'Select a programme to see its details here.',
+        ...enEpg.guide,
     },
 
     recent: {
@@ -311,6 +312,7 @@ export const en = {
     },
 
     list: {
+        ...enEpg.list,
         chooseSource: 'Choose a playlist',
         backToSources: '← Sources',
         allChannels: 'All channels',

@@ -21,4 +21,13 @@ export const deEpg = {
         epgVerifiedOnlyHelp:
             'Standardmäßig aus: Ein Sender, den der EPG-Katalog noch nicht zugeordnet hat, ist weit häufiger eine Lücke in den Programmdaten als ein nicht existierender Sender. Aktivieren, sobald Ihr Katalog gefüllt ist, um Sender ohne Programmdaten auszublenden. Gilt nie für Radio.',
     },
+    guide: {
+        earlier: 'Früher',
+        later: 'Später',
+        backToNow: 'Zurück zu jetzt',
+        playChannel: 'Diesen Sender abspielen',
+    },
+    list: {
+        epgNextPrefix: 'Danach ·',
+    },
 } as const;

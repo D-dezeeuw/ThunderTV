@@ -1,8 +1,6 @@
 /**
- * German copy. Must mirror `strings.en.ts`'s exact key shape — verified by
- * `strings.spec.ts`. Deliberately untranslated: proper nouns and technical
- * acronyms (M3U, EPG, Xtream Codes, CORS, HLS, MPEG-TS, DRM), exactly like
- * a real localized app would leave them.
+ * German copy. Mirrors `strings.en.ts`'s exact key shape (`strings.spec.ts` asserts it).
+ * Proper nouns and technical acronyms (M3U, EPG, Xtream Codes, CORS, HLS, DRM) stay untranslated.
  */
 import { deCatalog } from './strings.de.catalog';
 import { deEpg } from './strings.de.epg';
@@ -138,6 +136,7 @@ export const de = {
     guide: {
         nowLabel: 'Jetzt',
         detailEmpty: 'Wählen Sie eine Sendung, um hier deren Details zu sehen.',
+        ...deEpg.guide,
     },
 
     recent: {
@@ -313,6 +312,7 @@ export const de = {
     },
 
     list: {
+        ...deEpg.list,
         chooseSource: 'Playlist auswählen',
         backToSources: '← Quellen',
         allChannels: 'Alle Sender',

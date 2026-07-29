@@ -55,16 +55,42 @@
     border-bottom: none;
 }
 
+/* A real <button> since Phase 32 (it plays the channel), reset to look
+   exactly like the static cell it replaced — the affordance is the pointer
+   cursor and the hover tint, not a button chrome the grid has no room for. */
 .guide__channel {
     display: flex;
     align-items: center;
     gap: var(--space-2);
     padding: 0 var(--row-pad-x);
+    border: none;
     border-right: 1px solid var(--color-border);
     background: var(--color-surface-raised);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
     position: sticky;
     left: 0;
     z-index: 1;
+}
+
+.guide__channel:hover,
+.guide__channel:focus-visible {
+    background: var(--surface-hover);
+}
+
+/* Time navigation above the grid. */
+.guide__nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0 var(--space-2);
+}
+
+.guide__nav-date {
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
 }
 
 .guide__channel-logo {

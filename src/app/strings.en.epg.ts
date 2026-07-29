@@ -29,4 +29,15 @@ export const enEpg = {
         epgVerifiedOnlyHelp:
             'Off by default: a channel the EPG catalog has not matched yet is far more often a guide-data gap than a channel that does not exist. Switch this on once your catalog is populated to hide channels with no programme data. Never applies to Radio.',
     },
+    /** Phase 32 — the timetable's own navigation and the per-row now/next line. */
+    guide: {
+        earlier: 'Earlier',
+        later: 'Later',
+        backToNow: 'Back to now',
+        playChannel: 'Play this channel',
+    },
+    list: {
+        /** Prefixes the upcoming programme on a channel row: "Then · The Nine O'Clock News". */
+        epgNextPrefix: 'Then ·',
+    },
 } as const;

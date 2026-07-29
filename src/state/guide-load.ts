@@ -1,4 +1,5 @@
 import { getPlatform } from '../core/platform';
+import { setEpgProgramIndex } from './epg-index';
 import { GUIDE_CHANNELS, GUIDE_LOADING, type GuideChannel, type GuideProgram } from './guide';
 import { set } from './typed';
 
@@ -27,6 +28,13 @@ export async function loadGuideChannels(): Promise<void> {
             else byChannel.set(program.channelId, [program]);
         }
         for (const bucket of byChannel.values()) bucket.sort((a, b) => a.start - b.start);
+
+        // The channel list's per-row now/next line reads this same bucketed,
+        // sorted set synchronously on every windowed republish (Phase 32) —
+        // published here rather than built separately so the one
+        // `getAll('epgPrograms')` above serves both consumers, exactly like
+        // `epg-load.ts`'s one-parse-two-consumers rule on the ingest side.
+        setEpgProgramIndex(byChannel);
 
         const channels: GuideChannel[] = channelRows
             .filter((c) => (byChannel.get(c.id)?.length ?? 0) > 0)

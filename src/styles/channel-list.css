@@ -365,11 +365,44 @@
     font-size: var(--text-sm);
 }
 
-/* Feature 08.3.4: reserved, fixed-width — Phase 17 fills this with now/next
-   text and a progress bar without any row reflow or restructuring. */
+/* Feature 08.3.4's reserved column, filled by Phase 32: what's on now, how
+   far through it is, and what follows. Fixed width by design — the row's
+   name column must not reflow as programmes change under it every 30s tick,
+   which a content-sized column would cause on every beat. */
 .channel-row__epg {
     flex: none;
-    width: 6rem;
+    width: 11rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.channel-row__epg-now {
+    font-size: var(--text-xs);
+    color: var(--color-text);
+}
+
+.channel-row__epg-next {
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+/* No transition on the fill (repo-wide no-animation policy): the bar steps
+   forward once per 30s tick, which reads as deliberate rather than laggy. */
+.channel-row__epg-bar {
+    display: block;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--color-border);
+    overflow: hidden;
+}
+
+.channel-row__epg-fill {
+    display: block;
+    height: 100%;
+    background: var(--color-accent);
 }
 
 /* ---- Narrow-screen labels (default: desktop) ---- */
@@ -409,8 +442,9 @@
         display: none;
     }
 
-    /* Reclaim the reserved EPG column — a phone-width row has no room for
-       it, and Phase 17 will design its own narrow treatment. */
+    /* Reclaim the EPG column — a phone-width row has no room for a second
+       text column beside the channel name. The Guide view remains the full
+       programme surface on narrow screens. */
     .channel-row__epg {
         display: none;
     }
