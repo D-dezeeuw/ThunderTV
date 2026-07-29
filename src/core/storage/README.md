@@ -31,8 +31,9 @@ the contract or the adapter, not the test.
   affects what's stored.
 - `bulkPut`/`getAll`/`getRange`/`clearTable`/`count` — bulk table rows
   (`playlists`, `channels`, `groups`, `epgChannels`, `epgPrograms`,
-  `favorites`, `recent`). `channels`/`epgPrograms` rows are unversioned —
-  they're re-parseable caches, never long-lived user data.
+  `epgCatalog`, `favorites`, `recent`). `channels`/`epgPrograms`/`epgCatalog`
+  rows are unversioned — they're re-parseable caches, never long-lived user
+  data.
 
 Every write resolves `{ ok: true } | { ok: false, reason }` — never throws.
 A `{ ok: false }` result is what drives tier demotion (below); nothing else
@@ -87,6 +88,31 @@ corrupt envelope resolves `undefined`, never throws. Call
 registering every hook for a key family, so a missing link is a
 registry-time error — not something a user hits on a cold read months
 later.
+
+## `epgCatalog` (Phase 31) — a second bulk table keyed `[country, id]`
+
+`src/epg/countries.ts`'s XMLTV feeds derive one canonical channel identity
+per feed entry (`src/epg/catalog.ts`); `catalog-storage.ts`'s
+`replaceCountryCatalog()`/`replaceFileCatalog()` write them here, keyed
+`[country, id]` the same way `epgPrograms` keys `[channelId, start]` — no
+secondary index needed, the composite primary key already answers "every
+row for this country" via a `getRange([country, ''], [country, '￿'])`
+bound. `replaceFileCatalog()` scopes the delete-before-write to one feed
+file's previous contribution (`sourceFile` field), not the whole country —
+a TTL-fresh file that wasn't re-fetched this run keeps its stored rows
+instead of being wiped by an incomplete replace. See `src/epg/README.md`
+for the full ingestion pipeline this table feeds.
+
+**DB_VERSION bumped 1 → 2** to add this store — the first version bump
+since Phase 04. `idb-storage.ts`'s `upgrade()` callback had to change at the
+same time: it previously created every `BULK_STORE_NAMES` entry
+unconditionally, which was harmless only because the version had never
+bumped before (an `upgradeneeded` event that starts from v0 sees no
+existing stores to collide with). A same-version-jump `upgrade()` runs
+against every store from the *stored* version to `DB_VERSION`, so
+`createObjectStore` on an already-existing store now throws — fixed by
+guarding each call with `objectStoreNames.contains()`. Any future store
+addition must keep that guard; nothing else about the pattern changes.
 
 ## Testing
 
