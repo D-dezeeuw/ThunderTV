@@ -1,24 +1,33 @@
 import { getPlatform } from '../core/platform';
 import type { StreamHealthRecord } from '../core/storage';
+import { mappingKey, primeMappingCache, type StoredMapping } from '../epg/match';
 import { primeHealthCache } from '../health/store';
-import { isCodexDocument, type CodexDocument, type CodexHealthClaim } from './format';
+import { isCodexDocument, type CodexDocument } from './format';
+import {
+    LOCAL_AUTHOR,
+    attributeBody,
+    mergeKnowledge,
+    type AttributedHealthClaim,
+    type AttributedIdentityClaim,
+} from './merge';
 import { verifyDocument } from './signing';
 
 /**
  * Taking someone else's Codex in.
  *
- * v0's merge rule is **newest observation wins, per claim key** — not a
- * CRDT. That is a deliberate, stated limitation: real convergence (merge
- * by evidence weight with provenance per claim, so two devices that have
- * both learned things end up agreeing regardless of import order) is
- * stone 6, Phase 36. What v0 does guarantee is that the shape it reads and
- * writes is the shape that merge will need, so adopting it later is not a
- * format break.
+ * Since Phase 36 (stone 6) the merge rule is `src/codex/merge.ts`'s CRDT
+ * join, not v0's newest-wins: import order no longer changes the result, so
+ * two people who trade Codexes converge on the same state. This file is
+ * only the *plumbing* around that — read local state, join, write back. All
+ * the ordering decisions live in `merge.ts`, and its three laws are what
+ * make this safe to run repeatedly.
  *
- * Health claims merge by *taking the maximum* of each side's decayed
- * weights rather than replacing: two people's independent evidence about
- * the same feed genuinely is more evidence, and replacing would throw away
- * whichever half arrived first.
+ * The projection back into storage matters as much as the join. Local
+ * knowledge lives in the shapes the rest of the app already reads
+ * (`streamHealth` rows and `epg.mapping.<country>` snapshots), so those stay
+ * the source of truth and gain two optional provenance fields rather than
+ * being replaced by a parallel store. Nothing downstream has to change, and
+ * the next merge can still tell whose evidence is whose.
  */
 
 export type CodexImportProblem = 'not-json' | 'not-a-codex' | 'bad-signature';
@@ -56,87 +65,124 @@ export async function importCodex(text: string): Promise<CodexImportResult> {
         return { ...FAILED, problem: 'bad-signature', authorId: document.body.author.id };
     }
 
-    const healthApplied = await applyHealth(document.body.health);
-    const identityApplied = await applyIdentity(document);
+    const incoming = attributeBody(document.body);
+    const healthApplied = await applyHealth(incoming.health);
+    const identityApplied = await applyIdentity(incoming.identity, document.body.generatedAt);
     await primeHealthCache();
 
     return { ok: true, authorId: document.body.author.id, identityApplied, healthApplied };
 }
 
-async function applyHealth(claims: readonly CodexHealthClaim[]): Promise<number> {
-    if (claims.length === 0) return 0;
-    const storage = getPlatform().storage;
-    const existing = new Map((await storage.getAll('streamHealth')).map((row) => [row.key, row]));
+function recordToClaim(row: StreamHealthRecord): AttributedHealthClaim {
+    return {
+        streamKey: row.key,
+        okWeight: row.okWeight,
+        failWeight: row.failWeight,
+        ttffMs: row.ttffMs,
+        observedAt: row.updatedAt,
+        authors: row.authors ?? [LOCAL_AUTHOR],
+    };
+}
 
-    const merged: StreamHealthRecord[] = claims.map((claim) => {
+/** True when the join actually moved this record — an import that changes nothing must not be reported as if it did. */
+function differs(row: StreamHealthRecord, claim: AttributedHealthClaim): boolean {
+    return (
+        row.okWeight !== claim.okWeight ||
+        row.failWeight !== claim.failWeight ||
+        row.updatedAt !== claim.observedAt ||
+        row.ttffMs !== claim.ttffMs ||
+        (row.authors ?? [LOCAL_AUTHOR]).join(',') !== claim.authors.join(',')
+    );
+}
+
+async function applyHealth(incoming: readonly AttributedHealthClaim[]): Promise<number> {
+    if (incoming.length === 0) return 0;
+    const storage = getPlatform().storage;
+    const rows = await storage.getAll('streamHealth');
+    const existing = new Map(rows.map((row) => [row.key, row]));
+
+    const merged = mergeKnowledge({ identity: [], health: rows.map(recordToClaim) }, { identity: [], health: [...incoming] });
+
+    const changed: StreamHealthRecord[] = [];
+    for (const claim of merged.health) {
         const mine = existing.get(claim.streamKey);
-        if (!mine) {
-            return {
-                key: claim.streamKey,
-                okWeight: claim.okWeight,
-                failWeight: claim.failWeight,
-                updatedAt: claim.observedAt,
-                ttffMs: claim.ttffMs,
-                lastOutcome: claim.okWeight >= claim.failWeight ? 'ok' : 'failed',
-                lastAt: claim.observedAt,
-            };
-        }
-        // Both sides' weights are already decayed to their own `updatedAt`.
-        // Taking the max of each, and the later timestamp, keeps the result
-        // conservative: no one's evidence is erased by someone else's, and
-        // the record cannot be aged backwards into looking fresher than it is.
-        const newer = Math.max(mine.updatedAt, claim.observedAt);
-        return {
-            ...mine,
-            okWeight: Math.max(mine.okWeight, claim.okWeight),
-            failWeight: Math.max(mine.failWeight, claim.failWeight),
-            updatedAt: newer,
-            ttffMs: mine.ttffMs ?? claim.ttffMs,
-            lastAt: Math.max(mine.lastAt, claim.observedAt),
-        };
-    });
+        if (mine && !differs(mine, claim)) continue;
+        changed.push({
+            key: claim.streamKey,
+            okWeight: claim.okWeight,
+            failWeight: claim.failWeight,
+            updatedAt: claim.observedAt,
+            ttffMs: claim.ttffMs,
+            // `lastOutcome` and `lastAt` are this device's own playback log,
+            // not shared evidence, so a merge never overwrites them — only a
+            // key we have never seen needs one synthesised from the weights.
+            lastOutcome: mine?.lastOutcome ?? (claim.okWeight >= claim.failWeight ? 'ok' : 'failed'),
+            lastAt: Math.max(mine?.lastAt ?? 0, claim.observedAt),
+            authors: claim.authors,
+        });
+    }
 
-    await storage.bulkPut('streamHealth', merged, (row) => row.key);
-    return merged.length;
+    if (changed.length > 0) await storage.bulkPut('streamHealth', changed, (row) => row.key);
+    return changed.length;
 }
 
-interface StoredMapping {
-    savedAt: number;
-    matches: { channelKey: string; catalogId: string; method: string }[];
-}
-
-async function applyIdentity(document: CodexDocument): Promise<number> {
-    const storage = getPlatform().storage;
-    const byCountry = new Map<string, CodexDocument['body']['identity']>();
-    for (const claim of document.body.identity) {
+async function applyIdentity(incoming: readonly AttributedIdentityClaim[], generatedAt: number): Promise<number> {
+    const byCountry = new Map<string, AttributedIdentityClaim[]>();
+    for (const claim of incoming) {
         const bucket = byCountry.get(claim.country);
         if (bucket) bucket.push(claim);
         else byCountry.set(claim.country, [claim]);
     }
 
     let applied = 0;
-    for (const [country, claims] of byCountry) {
-        const key = `epg.mapping.${country}`;
-        const mine = await storage.get<StoredMapping>(key);
-        const merged = new Map((mine?.matches ?? []).map((match) => [match.channelKey, match]));
+    for (const [country, claims] of byCountry) applied += await applyCountry(country, claims, generatedAt);
+    return applied;
+}
 
-        for (const claim of claims) {
-            // Newest wins. A local mapping that is already newer than the
-            // imported claim is left alone — importing a Codex must never
-            // undo something this device has since re-derived.
-            if (mine && mine.savedAt > claim.observedAt && merged.has(claim.channelKey)) continue;
-            merged.set(claim.channelKey, {
-                channelKey: claim.channelKey,
-                catalogId: claim.catalogId,
-                method: claim.method,
-            });
-            applied += 1;
-        }
+async function applyCountry(country: string, claims: readonly AttributedIdentityClaim[], generatedAt: number): Promise<number> {
+    const storage = getPlatform().storage;
+    const key = mappingKey(country);
+    const mine = await storage.get<StoredMapping>(key);
 
-        await storage.set(key, {
-            savedAt: Math.max(mine?.savedAt ?? 0, document.body.generatedAt),
-            matches: [...merged.values()],
-        });
+    // A locally derived entry has no per-claim timestamp — the snapshot was
+    // written wholesale — so `savedAt` stands in. That is what preserves v0's
+    // guarantee that importing never undoes something this device has since
+    // re-derived: a fresher local snapshot simply outranks the claim.
+    const local: AttributedIdentityClaim[] = (mine?.matches ?? []).map((match) => ({
+        country,
+        channelKey: match.channelKey,
+        catalogId: match.catalogId,
+        method: match.method,
+        observedAt: match.observedAt ?? mine?.savedAt ?? 0,
+        authorId: match.authorId ?? LOCAL_AUTHOR,
+    }));
+
+    const merged = mergeKnowledge({ identity: local, health: [] }, { identity: [...claims], health: [] });
+
+    const before = new Map(local.map((claim) => [claim.channelKey, claim]));
+    let applied = 0;
+    for (const claim of merged.identity) {
+        const previous = before.get(claim.channelKey);
+        if (!previous || previous.catalogId !== claim.catalogId || previous.method !== claim.method) applied += 1;
     }
+
+    await storage.set(key, {
+        savedAt: Math.max(mine?.savedAt ?? 0, generatedAt),
+        matches: merged.identity.map((claim) => ({
+            channelKey: claim.channelKey,
+            catalogId: claim.catalogId,
+            method: claim.method,
+            observedAt: claim.observedAt,
+            authorId: claim.authorId,
+        })),
+    } satisfies StoredMapping);
+
+    // The channel list reads the mapping through `getMappingSync()`, a
+    // module-memory mirror that only storage writes do not update. Without
+    // this the import's own `refreshLiveRows()` would rebuild from the
+    // pre-merge mapping and the claims would appear to do nothing until the
+    // next boot.
+    await primeMappingCache(country);
+
     return applied;
 }

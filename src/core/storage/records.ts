@@ -133,6 +133,15 @@ export interface StreamHealthRecord {
     ttffMs: number | null;
     lastOutcome: 'ok' | 'failed';
     lastAt: number;
+    /**
+     * Every Codex author whose evidence is folded into this record, plus
+     * `'local'` for this device's own observations (Phase 36). Absent on a
+     * record no merge has touched — the health join is `max`, so a merged
+     * record is genuinely several people's evidence at once and the set is
+     * what lets stone 10 prune a contributor without discarding the rest.
+     * Never exported: a Codex claim carries only its signer.
+     */
+    authors?: readonly string[];
 }
 
 /**

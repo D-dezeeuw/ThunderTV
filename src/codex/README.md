@@ -14,7 +14,8 @@ Not a cache. Not a sync account. A file."* This module is v0 of that file.
 | `format.ts`  | The document shape, canonical (key-sorted) serialization, and structural validation of an untrusted file. |
 | `signing.ts` | ECDSA P-256 via WebCrypto: this device's identity, signing, verification, author fingerprints. |
 | `build.ts`   | Collecting local knowledge into a document. |
-| `apply.ts`   | Verifying and merging an imported document. |
+| `merge.ts`   | The CRDT join — every ordering decision lives here. |
+| `apply.ts`   | Verifying an imported document, then plumbing it through the join and back into storage. |
 
 State surface: `src/state/codex.ts` (feedback) and `codex.actions.ts` (the
 export/import buttons).
@@ -57,22 +58,55 @@ The private key never leaves the device: nothing exports it, and no
 document contains it (there is a test asserting the JWK's private `d`
 parameter is absent from an exported file).
 
-## v0's merge rule, and why it is not yet a CRDT
+## The merge rule (Phase 36, stone 6)
 
-- **identity** — newest observation wins per channel key, and a local
-  mapping *newer* than the imported claim is left alone. Importing a Codex
-  must never undo something this device has since re-derived.
-- **health** — the maximum of each side's decayed weights, not a
-  replacement. Two people's independent evidence about the same feed
-  genuinely is more evidence, and replacing would discard whichever half
-  arrived first.
+`merge.ts` is a CRDT: the merge function is a **join**, so it is
+commutative, associative and idempotent. That is not decoration — those
+three properties are exactly what makes import order stop mattering, which
+is what lets people trade Codexes with no server, no sync protocol and no
+coordination and still end up agreeing. All three are asserted directly in
+`merge.spec.ts` against randomised claim sets.
 
-This is not convergent: import order can still matter in edge cases. Real
-CRDT semantics — merge by evidence weight with provenance per claim, so two
-devices agree regardless of order — is stone 6 (Phase 36). What v0
-guarantees is that the *shape* it reads and writes is the shape that merge
-will need (every claim carries its own `observedAt` and is addressed by a
-stable key, never by array position), so adopting it is not a format break.
+- **health** is grow-only in every component: weights and `observedAt` join
+  with `max`, `ttffMs` with `min` over the measurements that exist, and the
+  contributing authors with set union. Nothing anyone learned is ever
+  erased. It deliberately does not *sum* — summing is neither idempotent
+  (re-importing the same file would inflate it) nor honest.
+- **identity** is a last-writer-wins register over a *total* order:
+  `(observedAt, method strength, method, authorId, catalogId)`. A local
+  mapping newer than the imported claim still wins, so importing never
+  undoes something this device has since re-derived.
+
+Two things that look like over-engineering and are not, both caught by the
+randomised sweep rather than by inspection:
+
+- The comparator has to be total **over the claims**, not just their
+  metadata. Two claims naming different `catalogId`s with otherwise equal
+  fields compared 0, and "keep whichever is already in the map" put import
+  order straight back in.
+- `ttffMs` cannot use "the newest observation's value, or the other side's
+  if it has none". That rule is commutative but **not associative** — the
+  fallback lets a merged value carry a startup time that outranks a
+  genuinely newer null, and which one survives depends on the merge order.
+
+## Provenance, and what pruning can actually do
+
+Merged claims carry who contributed them, persisted alongside the data the
+app already reads (`streamHealth` rows gain `authors`, mapping entries gain
+`observedAt`/`authorId`) rather than in a parallel store. `'local'` stands
+for this device's own observations; it can never collide with a real author
+id, and it never leaves the device — an exported claim is attributed to
+whoever signs the file, which is all a single-signature format can honestly
+say.
+
+`pruneAuthors()` is therefore **exact for identity and best-effort for
+health**. An identity claim has one author, so dropping theirs is clean. A
+health claim several people contributed to is kept with the pruned author
+removed from its set, but its `max`-joined weights cannot be unwound — that
+needs per-author history, not just the join. A claim only the pruned
+authors ever made is removed outright. The exact recovery is to re-merge
+the retained Codexes from scratch with `mergeAll()`, which works precisely
+because the merge is associative.
 
 ## Format versioning
 

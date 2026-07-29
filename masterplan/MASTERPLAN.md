@@ -171,9 +171,18 @@ Phases past 30 are not part of the 1.0 road; they execute
 [`VISION-3.0.md`](./VISION-3.0.md)'s stepping stones with the same phase
 template and way of working.
 
-| #   | Phase                                                                        | Stones served                                        |
-| --- | ---------------------------------------------------------------------------- | ---------------------------------------------------- |
-| 31  | [EPG Country Catalog](./phases/phase-31-epg-country-catalog.md)              | 1 (entity seam), 2 (knowledge store), 5 (resolver v0); groundwork for 4 and 7 |
+Phase 31 has a full phase file. Phases 32 onward are documented in the
+module README each one created or owns — that is where a change to them
+starts, so a separate phase file would be a second copy to keep honest.
+
+| #   | Phase                                                                        | Stones served                                        | Reference |
+| --- | ---------------------------------------------------------------------------- | ---------------------------------------------------- | --------- |
+| 31  | [EPG Country Catalog](./phases/phase-31-epg-country-catalog.md)              | 1 (entity seam), 2 (knowledge store), 5 (resolver v0); groundwork for 4 and 7 | phase file |
+| 32  | EPG Display & Timeline                                                       | 7 (now/next on rows, guide time travel)              | `src/epg/README.md` |
+| 33  | Passive Health Signals                                                       | 3 (which feeds actually play)                        | `src/health/README.md` |
+| 34  | Codex v0 — Export & Import                                                   | 4 (the signed file the user owns)                    | `src/codex/README.md` |
+| 35  | Spatial Navigation                                                           | 8 (D-pad as a first-class input model)               | `src/ui/README.md` |
+| 36  | Codex Merge (CRDT)                                                           | 6 (convergence with no sync server)                  | `src/codex/README.md` |
 
 ---
 
