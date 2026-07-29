@@ -4,6 +4,8 @@ import { getRows } from '../m3u/channel-memory';
 import type { ChannelVariant } from '../m3u/types';
 import { findRowById } from '../ui/virtual-list';
 import { setDisplayedRows } from './list-rows';
+import { compareForPlayback } from '../health/score';
+import { healthForUrl } from '../health/store';
 import { ensureLiveRows, ensureRadioRows, invalidateLiveRows, liveDisplayRows, radioDisplayRows } from './live-rows';
 import { PLAYER_ACTIVE, PLAYER_ACTIVE_VARIANT_ID, PLAYER_VARIANTS, VARIANTS_CAP } from './player';
 import { setActiveChannel } from './player.actions';
@@ -104,7 +106,16 @@ export function playVariantById(variantId: string): void {
  */
 export function publishVariantsFor(id: string, playingUrl: string): void {
     const row = findRowById(id);
-    const variants = (row?.variants ?? []).slice(0, VARIANTS_CAP);
+    // Stone 3: order the strip by accumulated playback evidence before
+    // capping it, so the feed most likely to actually work is the one on
+    // offer — and so a known-bad feed is the one that falls off the end
+    // when there are more variants than the cap allows. Ties keep the
+    // existing quality/catch-up ordering (`Array.prototype.sort` is stable),
+    // so this only ever reorders feeds health can actually distinguish.
+    const nowMs = Date.now();
+    const variants = [...(row?.variants ?? [])]
+        .sort((a, b) => compareForPlayback(healthForUrl(a.url), healthForUrl(b.url), nowMs))
+        .slice(0, VARIANTS_CAP);
     // `replace()` rather than `set()`: Spektrum's setValue deep-merges
     // objects, so a shorter array would otherwise keep the previous
     // channel's trailing variants.

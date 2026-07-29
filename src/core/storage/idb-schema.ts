@@ -4,6 +4,7 @@ import type {
     EpgCatalogRecord,
     EpgChannelRecord,
     EpgProgramRecord,
+    StreamHealthRecord,
     FavoriteRecord,
     GroupRecord,
     PlaylistRecord,
@@ -12,12 +13,12 @@ import type {
 
 export const DB_NAME = 'thundertv';
 /**
- * v2 (Phase 31) added the `epgCatalog` store — a structural change only;
+ * v3 (Phase 33) added `streamHealth`; v2 (Phase 31) added the `epgCatalog` store — a structural change only;
  * no existing store's shape changed, so no data migration is needed, just
  * a new store created on upgrade (`idb-storage.ts`'s `upgrade()`, guarded
  * so it never re-creates a store that already exists).
  */
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 /**
  * Backs the plain `get`/`set`/`getMany`/`setMany` kv methods — Feature
@@ -42,6 +43,7 @@ export interface ThunderTvDb extends DBSchema {
     epgChannels: { key: string; value: EpgChannelRecord };
     epgPrograms: { key: [channelId: string, start: number]; value: EpgProgramRecord };
     epgCatalog: { key: [country: string, id: string]; value: EpgCatalogRecord };
+    streamHealth: { key: string; value: StreamHealthRecord };
     favorites: { key: string; value: FavoriteRecord };
     recent: { key: string; value: RecentRecord };
     [SETTINGS_STORE]: { key: string; value: unknown };
@@ -54,6 +56,7 @@ export const BULK_STORE_NAMES = [
     'epgChannels',
     'epgPrograms',
     'epgCatalog',
+    'streamHealth',
     'favorites',
     'recent',
 ] as const;

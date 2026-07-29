@@ -9,7 +9,7 @@ import { createHlsTrackEngine } from './hls-tracks';
 import { attachMpegts, detachMpegts } from './mpegts-engine';
 import { createNativeTrackEngine } from './native-tracks';
 import type { PlayerEngine } from './player-engine';
-import { monitorStreamHealth, stopStreamHealthMonitor } from './stream-health';
+import { monitorStreamHealth, reportAttachFailed, stopStreamHealthMonitor } from './stream-health';
 import type { TrackSnapshot } from './tracks';
 
 /**
@@ -168,7 +168,7 @@ export async function attachAndPlay(
     failures = [];
     playing = false;
     attachNativeErrorReporting(video, token);
-    monitorStreamHealth(video);
+    monitorStreamHealth(video, streamUrl);
     await runCurrentAttempt(video, token);
 }
 
@@ -286,6 +286,10 @@ async function advanceChain(video: HTMLVideoElement, detail: string, token: numb
     }
     const summary = failures.join('; ');
     reportPlaybackError(summary);
+    // Stone 3's failure evidence, recorded once the whole chain is spent —
+    // not per attempt. One channel that needed three engines before giving
+    // up is one failure for that feed, not three.
+    reportAttachFailed();
     appendStreamProbe(lastStreamUrl, summary, () => playing || isStale(token));
 }
 

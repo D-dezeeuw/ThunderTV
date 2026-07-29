@@ -39,5 +39,18 @@ export const enEpg = {
     list: {
         /** Prefixes the upcoming programme on a channel row: "Then · The Nine O'Clock News". */
         epgNextPrefix: 'Then ·',
+        streamLikelyDead: 'This feed has failed most times it was tried recently. It may still work — this is a guess from your own playback history.',
+    },
+    /** Complete top-level blocks, spread as one line into `strings.<locale>.ts` — that file has no room left for a nested block of its own. */
+    topLevel: {
+        health: {
+            sectionTitle: 'Stream health',
+            readout: 'Feeds with playback history:',
+            deadReadout: '· probably dead:',
+            clearButton: 'Forget stream health',
+            clearHelp:
+                'Deletes everything ThunderTV has learned about which feeds play and which fail. Only your own playback is ever recorded, and only a credential-free fingerprint of each URL is stored — never your username or password.',
+            cleared: 'Stream health forgotten.',
+        },
     },
 } as const;

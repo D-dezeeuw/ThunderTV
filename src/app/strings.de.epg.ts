@@ -29,5 +29,18 @@ export const deEpg = {
     },
     list: {
         epgNextPrefix: 'Danach ·',
+        streamLikelyDead: 'Dieser Feed ist zuletzt meistens fehlgeschlagen. Er kann trotzdem funktionieren — dies ist eine Schätzung aus Ihrem eigenen Wiedergabeverlauf.',
+    },
+    /** Complete top-level blocks, spread as one line into `strings.<locale>.ts` — that file has no room left for a nested block of its own. */
+    topLevel: {
+        health: {
+            sectionTitle: 'Streamqualität',
+            readout: 'Feeds mit Wiedergabeverlauf:',
+            deadReadout: '· vermutlich tot:',
+            clearButton: 'Streamqualität vergessen',
+            clearHelp:
+                'Löscht alles, was ThunderTV darüber gelernt hat, welche Feeds abspielen und welche fehlschlagen. Aufgezeichnet wird nur Ihre eigene Wiedergabe, und von jeder URL nur ein Fingerabdruck ohne Zugangsdaten — nie Ihr Benutzername oder Passwort.',
+            cleared: 'Streamqualität vergessen.',
+        },
     },
 } as const;

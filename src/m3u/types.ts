@@ -53,6 +53,13 @@ export interface ChannelRow {
     epgNextTitle?: string | null;
     /** 0–100 through the currently-airing programme; 0 when nothing is on. */
     epgProgress?: number;
+    /**
+     * Set per visible window (same enrichment pass as the EPG fields) when
+     * `src/health/` has enough recent evidence that this feed is probably
+     * dead — Phase 33, stone 3. Display-only and advisory: the row is
+     * marked, never removed, unless the user opts into hiding.
+     */
+    unhealthy?: boolean;
 }
 
 /** One playable alternative of a grouped channel — see `src/channels/grouping.ts`. */

@@ -116,6 +116,26 @@ export interface EpgCatalogRecord {
 }
 
 /**
+ * Accumulated playback evidence for one stream (Phase 33, stone 3), keyed
+ * by `src/health/stream-key.ts`'s credential-free fingerprint — never a raw
+ * URL, since this table is both persisted and a Codex export candidate.
+ * `okWeight`/`failWeight` are decay-weighted counts rebased to `updatedAt`
+ * on every write (`src/health/score.ts`), so a read at any later time needs
+ * no history walk. Re-derivable in principle but expensive to relearn (it
+ * costs the user real failed clicks), so unlike `channels`/`epgPrograms`
+ * this is treated as durable data rather than a cache.
+ */
+export interface StreamHealthRecord {
+    key: string;
+    okWeight: number;
+    failWeight: number;
+    updatedAt: number;
+    ttffMs: number | null;
+    lastOutcome: 'ok' | 'failed';
+    lastAt: number;
+}
+
+/**
  * Denormalized snapshot (Feature 04.5.7, shape finalized by Feature 08.8.3
  * per masterplan §5/§9) — playable and renderable without the source
  * playlist loaded. `sourceId` lets a favorite be traced back to (and
@@ -151,7 +171,7 @@ export interface RecentRecord {
  * methods instead of table ops; mixing the two is a review reject.
  */
 export type TableName =
-    'playlists' | 'channels' | 'groups' | 'epgChannels' | 'epgPrograms' | 'epgCatalog' | 'favorites' | 'recent';
+    'playlists' | 'channels' | 'groups' | 'epgChannels' | 'epgPrograms' | 'epgCatalog' | 'streamHealth' | 'favorites' | 'recent';
 
 export interface TableRowMap {
     playlists: PlaylistRecord;
@@ -160,6 +180,7 @@ export interface TableRowMap {
     epgChannels: EpgChannelRecord;
     epgPrograms: EpgProgramRecord;
     epgCatalog: EpgCatalogRecord;
+    streamHealth: StreamHealthRecord;
     favorites: FavoriteRecord;
     recent: RecentRecord;
 }

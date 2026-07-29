@@ -6,6 +6,8 @@ import { initEpgState } from './epg';
 import { initEpgSettingsState } from './epg-settings';
 import { registerEpgSettingsActions } from './epg-settings.actions';
 import { initFavoritesState } from './favorites';
+import { initHealthState } from './health';
+import { registerHealthActions } from './health.actions';
 import { registerGroupActions } from './groups.actions';
 import { applyHistoryPolicy } from './history-policy';
 import { initImportState } from './import';
@@ -106,6 +108,7 @@ export function initState(): void {
     initSeriesState();
     initSearchState();
     initDownloadsState();
+    initHealthState();
     applyHistoryPolicy();
 }
 
@@ -129,6 +132,7 @@ export function registerActions(): void {
     registerSearchActions();
     registerDownloadActions();
     registerEpgSettingsActions();
+    registerHealthActions();
 }
 
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */

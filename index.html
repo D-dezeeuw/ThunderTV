@@ -1208,6 +1208,18 @@
                                         <span class="channel-row__logo channel-row__logo--radio" data-if="item.radio" :title="strings.list.radioLabel" aria-hidden="true"></span>
                                         <span class="channel-row__name truncate">{{ item.name }}</span>
                                         <span class="channel-row__favorite" data-if="favorites.ids[item.id]" aria-hidden="true" data-testid="favorite-star">★</span>
+                                        <!-- Stone 3: advisory only. The row stays
+                                             clickable — health is an estimate, and a
+                                             wrong estimate must cost a click, never a
+                                             channel the user can no longer reach. -->
+                                        <span
+                                            class="channel-row__dead"
+                                            data-if="item.unhealthy"
+                                            :title="strings.list.streamLikelyDead"
+                                            :aria-label="strings.list.streamLikelyDead"
+                                            data-testid="channel-row-dead"
+                                            >!</span
+                                        >
                                         <!-- Feature 08.3.4's reserved column, filled by Phase 32.
                                              `data-if` only toggles display, so every binding inside
                                              still evaluates on an unmatched row — each one therefore
@@ -2032,6 +2044,24 @@
                         </p>
                         <p class="settings-section__error" data-if="settings.epgCacheState === 'failed'" data-testid="epg-cache-failed">
                             {{ strings.settings.diagnostics.epgCacheFailed }}
+                        </p>
+
+                        <p class="settings-section__hint" data-testid="health-readout">
+                            {{ strings.health.readout }} {{ settings.healthTrackedCount }}
+                            {{ strings.health.deadReadout }} {{ settings.healthDeadCount }}
+                        </p>
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="settings/clearStreamHealth"
+                            data-testid="clear-health-btn"
+                        >
+                            {{ strings.health.clearButton }}
+                        </button>
+                        <p class="settings-section__hint">{{ strings.health.clearHelp }}</p>
+                        <p class="settings-section__hint" data-if="settings.healthCleared" data-testid="health-cleared">
+                            {{ strings.health.cleared }}
                         </p>
 
                         <button

@@ -55,7 +55,6 @@ export const de = {
         strictFellBack: 'Die kuratierte Liste hat hier nichts gefunden, alle Sender werden angezeigt. Gefundene Namen:',
         ...deEpg.live,
     },
-
     debug: {
         title: 'Debug',
         open: 'Debug-Panel öffnen',
@@ -133,6 +132,7 @@ export const de = {
         detected: 'Verbindungslink erkannt — dieses Gerät wird in Kürze konfiguriert.',
     },
 
+    ...deEpg.topLevel,
     guide: {
         nowLabel: 'Jetzt',
         detailEmpty: 'Wählen Sie eine Sendung, um hier deren Details zu sehen.',

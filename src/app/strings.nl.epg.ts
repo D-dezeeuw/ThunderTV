@@ -29,5 +29,18 @@ export const nlEpg = {
     },
     list: {
         epgNextPrefix: 'Straks ·',
+        streamLikelyDead: 'Deze feed is de laatste tijd meestal mislukt. Hij kan nog steeds werken — dit is een inschatting op basis van uw eigen kijkgeschiedenis.',
+    },
+    /** Complete top-level blocks, spread as one line into `strings.<locale>.ts` — that file has no room left for a nested block of its own. */
+    topLevel: {
+        health: {
+            sectionTitle: 'Streamkwaliteit',
+            readout: 'Feeds met afspeelgeschiedenis:',
+            deadReadout: '· waarschijnlijk dood:',
+            clearButton: 'Streamkwaliteit vergeten',
+            clearHelp:
+                'Verwijdert alles wat ThunderTV heeft geleerd over welke feeds afspelen en welke mislukken. Alleen uw eigen afspeelgedrag wordt vastgelegd, en van elke URL alleen een vingerafdruk zonder inloggegevens — nooit uw gebruikersnaam of wachtwoord.',
+            cleared: 'Streamkwaliteit vergeten.',
+        },
     },
 } as const;

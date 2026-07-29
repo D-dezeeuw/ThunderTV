@@ -1,5 +1,6 @@
 import { bindDOM, run } from 'spektrum';
 import { createPlatform, setPlatform } from '../core/platform';
+import { primeHealthCache } from '../health/store';
 import { effectiveProxyTemplate } from '../core/platform/electron-platform';
 import { sweepOrphanedPlaylistRows } from '../m3u/import-sweep';
 import { registerListBindings } from '../ui/list-bindings';
@@ -93,6 +94,11 @@ export async function bootstrap(): Promise<void> {
     // matched in a previous session shows as verified before any fetch.
     void loadGuideChannels();
     void primeEpgMapping();
+    // Passive stream health (stone 3): restores the synchronous cache the
+    // channel list ranks rows against. Non-blocking like every other
+    // background load — an unprimed cache simply means no row is annotated
+    // yet, never a wrong annotation.
+    void primeHealthCache();
     void loadDefaultEpg();
     registerImportDropzoneDragover();
     registerDebugShortcut();

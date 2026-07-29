@@ -54,7 +54,6 @@ export const en = {
         strictFellBack: 'Curated list matched nothing here, showing all channels. Names seen:',
         ...enEpg.live,
     },
-
     debug: {
         title: 'Debug',
         open: 'Open debug panel',
@@ -132,6 +131,7 @@ export const en = {
         detected: 'Connect link detected — this device will be configured shortly.',
     },
 
+    ...enEpg.topLevel,
     guide: {
         nowLabel: 'Now',
         detailEmpty: 'Select a programme to see its details here.',

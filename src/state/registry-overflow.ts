@@ -34,6 +34,7 @@ import {
 import { PLAYER_AUDIO_MODE } from './player';
 import { DOWNLOAD_QUEUE_CAP, DOWNLOADS_ACTIVE_ID, DOWNLOADS_ITEMS } from './downloads';
 import { GUIDE_CHANNELS, GUIDE_LOADING, GUIDE_OFFSET_MS, GUIDE_SELECTED_KEY } from './guide';
+import { HEALTH_CLEARED, HEALTH_DEAD_COUNT, HEALTH_TRACKED_COUNT } from './health';
 import type { KeyMeta } from './registry';
 
 /**
@@ -266,6 +267,26 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         persisted: false,
         description:
             'How far the Guide timetable window is shifted from "now", in ms (Phase 32). 0 means it tracks the clock. Not persisted: a returning user expects the guide to open on what is on now, not on wherever they had scrolled to yesterday.',
+    },
+
+    // --- stream health (Phase 33, stone 3) ---
+    // Counts only. The records themselves never reach Spektrum state: they
+    // can run to thousands (one per feed ever played), and the channel list
+    // reads them synchronously inside a windowed republish.
+    [HEALTH_TRACKED_COUNT]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'How many feeds have accumulated playback evidence — Settings readout only, recomputed on demand from src/health/store.ts.',
+    },
+    [HEALTH_DEAD_COUNT]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'How many of those score below the likely-dead threshold. Advisory: such rows are marked in the list, never removed.',
+    },
+    [HEALTH_CLEARED]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'One-shot confirmation that the forget-stream-health button ran.',
     },
 
     // --- live: EPG country catalog filter (Phase 31) ---

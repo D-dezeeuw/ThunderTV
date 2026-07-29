@@ -487,3 +487,16 @@
 .list-shell__stats--warn {
     color: var(--color-danger);
 }
+
+/* Stone 3's "probably dead" marker. Deliberately understated — the row is
+   still playable, and health is an estimate, so this warns rather than
+   forbids. Danger colour, but no background fill or strikethrough: those
+   read as "removed", which is exactly what this must not claim. */
+.channel-row__dead {
+    flex: none;
+    width: 1rem;
+    text-align: center;
+    color: var(--color-danger);
+    font-size: var(--text-sm);
+    font-weight: 700;
+}

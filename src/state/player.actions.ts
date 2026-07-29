@@ -171,7 +171,7 @@ export function stopPlayback(): void {
     replace(PLAYER_VARIANTS, []);
 }
 
-/** Called by `src/player/engine.ts` when a stream dies (hls.js fatal error or the native element's `error` event) — the one visible diagnostic a phone user can screenshot. `null` clears it on a fresh attach. */
+/** Called by `src/player/engine.ts` when a stream dies (hls.js fatal error or the native element's `error` event) — the one visible diagnostic a phone user can screenshot. `null` clears it on a fresh attach. Stone 3's failure evidence is recorded by the engine itself (`advanceChain()`), not here: the player layer already owns the health monitor, and hooking it here would have `src/state/` reach into `src/player/`. */
 export function reportPlaybackError(detail: string | null): void {
     setValue(PLAYER_PLAYBACK_ERROR, detail);
 }

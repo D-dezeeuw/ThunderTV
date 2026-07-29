@@ -55,7 +55,6 @@ export const nl = {
         strictFellBack: 'De samengestelde lijst kwam hier nergens mee overeen, alle zenders worden getoond. Geziene namen:',
         ...nlEpg.live,
     },
-
     debug: {
         title: 'Debug',
         open: 'Debugpaneel openen',
@@ -133,6 +132,7 @@ export const nl = {
         detected: 'Verbindingslink gedetecteerd — dit apparaat wordt zo geconfigureerd.',
     },
 
+    ...nlEpg.topLevel,
     guide: {
         nowLabel: 'Nu',
         detailEmpty: 'Selecteer een programma om de details hier te bekijken.',
