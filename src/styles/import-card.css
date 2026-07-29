@@ -248,3 +248,39 @@
     height: 1.15rem;
     accent-color: var(--color-accent);
 }
+
+/* Followed Codexes (Phase 37, stone 10). Wraps rather than scrolls: the
+   URL is the row's identity and truncating it to a column width would
+   make two Codexes on the same host indistinguishable. */
+.codex-library {
+    list-style: none;
+    margin: var(--space-3) 0 0;
+    padding: 0;
+}
+
+.codex-library__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.codex-library__url {
+    flex: 1 1 100%;
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
+.codex-library__meta {
+    flex: 1 1 auto;
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+.codex-library__problem {
+    flex: 1 1 100%;
+    font-size: var(--text-xs);
+    color: var(--color-danger);
+}

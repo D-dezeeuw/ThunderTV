@@ -18,5 +18,31 @@ export const deCodex = {
         unavailable: 'Dieser Browser kann keine Dateien signieren, daher ist der Codex-Export hier nicht verfügbar.',
         signatureNote:
             'Eine gültige Signatur beweist, dass ein Codex seit dem Schreiben nicht verändert wurde und dass zwei Dateien vom selben Autor stammen. Sie sagt nichts darüber aus, ob dieser Autor recht hat.',
+        library: {
+            title: 'Geteilte Codizes',
+            about:
+                'Folgen Sie einem Codex, den jemand veröffentlicht hat — ein Link zu einer Datei auf einem beliebigen Host. Er wird täglich erneut geprüft, und was er weiß, wird mit Ihrem Wissen zusammengeführt. Nichts wird hochgeladen, und es gibt kein Konto: Der Link ist der ganze Mechanismus.',
+            urlLabel: 'Codex-Adresse',
+            urlPlaceholder: 'https://beispiel.de/codex.json',
+            addButton: 'Folgen',
+            refreshButton: 'Nach Aktualisierungen suchen',
+            removeButton: 'Nicht mehr folgen',
+            blockButton: 'Nicht mehr vertrauen',
+            unblockButton: 'Wieder vertrauen',
+            empty: 'Sie folgen noch keinen geteilten Codizes.',
+            signedBy: 'signiert von',
+            claimCounts: 'Senderzuordnungen · Feeds',
+            neverFetched: 'noch nicht abgerufen',
+            unreachable: 'Diese Adresse konnte nicht abgerufen werden.',
+            tooMany: 'Sie können höchstens 16 Codizes gleichzeitig folgen.',
+            blockedAuthorProblem: 'Dieser Codex ist von einem Autor signiert, dem Sie nicht mehr vertrauen.',
+            added: 'Sie folgen diesem jetzt.',
+            refreshed: 'Aktuell. Geänderte Senderzuordnungen · Feeds:',
+            blockNote:
+                'Das Entziehen des Vertrauens entfernt die Beiträge dieses Autors und baut alles, was Sie wissen, aus Ihrer eigenen Erfahrung plus den weiterhin gefolgten Codizes neu auf. Da die Dateien aufbewahrt werden, ist das exakt und keine Schätzung.',
+            trustNote:
+                'Ein geteilter Codex kann Ihr Wissen ergänzen, aber nie überstimmen: Was Sie tatsächlich gesehen haben, zählt mehr als die Behauptung einer fremden Person.',
+            blockedTitle: 'Nicht mehr vertraut',
+        },
     },
 } as const;

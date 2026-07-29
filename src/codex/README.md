@@ -14,11 +14,16 @@ Not a cache. Not a sync account. A file."* This module is v0 of that file.
 | `format.ts`  | The document shape, canonical (key-sorted) serialization, and structural validation of an untrusted file. |
 | `signing.ts` | ECDSA P-256 via WebCrypto: this device's identity, signing, verification, author fingerprints. |
 | `build.ts`   | Collecting local knowledge into a document. |
-| `merge.ts`   | The CRDT join — every ordering decision lives here. |
-| `apply.ts`   | Verifying an imported document, then plumbing it through the join and back into storage. |
+| `merge.ts`   | The CRDT join — every *ordering* decision lives here. |
+| `trust.ts`   | How much of a stranger's file to believe — every *weight* decision lives here. |
+| `blocklist.ts` | Who this device has stopped believing. |
+| `knowledge.ts` | The storage boundary: read local state into claim shape, write merged claims back. |
+| `apply.ts`   | One document in: parse → verify → trust → join → commit. |
+| `library.ts` | Following published Codexes: fetch, retain, refresh, rebuild. |
 
-State surface: `src/state/codex.ts` (feedback) and `codex.actions.ts` (the
-export/import buttons).
+State surface: `src/state/codex.ts`/`codex.actions.ts` (export/import) and
+`codex-library.ts`/`codex-library.actions.ts` (subscriptions and trust).
+
 
 ## What a Codex contains — and what it must never contain
 
@@ -99,14 +104,60 @@ id, and it never leaves the device — an exported claim is attributed to
 whoever signs the file, which is all a single-signature format can honestly
 say.
 
-`pruneAuthors()` is therefore **exact for identity and best-effort for
-health**. An identity claim has one author, so dropping theirs is clean. A
-health claim several people contributed to is kept with the pruned author
-removed from its set, but its `max`-joined weights cannot be unwound — that
-needs per-author history, not just the join. A claim only the pruned
-authors ever made is removed outright. The exact recovery is to re-merge
-the retained Codexes from scratch with `mergeAll()`, which works precisely
-because the merge is associative.
+`pruneAuthors()` operating on merged knowledge alone is therefore **exact
+for identity and best-effort for health**. An identity claim has one author,
+so dropping theirs is clean. A health claim several people contributed to
+keeps its `max`-joined weights, which cannot be unwound from the merged
+value.
+
+That is why `library.ts` retains every document it fetches. Pruning does not
+try to subtract; it **rebuilds** — start from this device's own evidence
+(`streamHealth.local`, maintained by `observe()`) and re-fold the Codexes
+the user still trusts. The result is not a repair, it is the exact state
+this device would have had if the pruned author's file had never existed,
+and it is only correct because the join is associative.
+
+## Following published Codexes (Phase 37, stone 10)
+
+Four verbs, and only three of them are code.
+
+**Publish** is deliberately not implemented. A Codex is already a signed
+JSON file; publishing means putting it somewhere with a URL. Building an
+upload path would mean operating the service this entire pillar exists to
+avoid, and would fail the vision's disappearance test the day it stopped
+being paid for.
+
+**Discover** is a list of URLs the user chose, re-checked once a day —
+conditional on ETag, sequential, spaced, TTL-gated, exactly as
+`src/epg/feed-fetch.ts` treats the upstream EPG feeds, and for the same
+reason: these are other people's servers.
+
+**Merge** is `merge.ts` bounded by `trust.ts`. **Prune** is the rebuild
+above.
+
+## The poisoning vector, and what closes it
+
+Phase 36's grow-only join is right between people who trust each other and
+wrong on a file published to strangers: a hostile Codex can claim
+`failWeight: 1e9` for a competitor's feeds, and `max` never goes down.
+Signature verification does not help — the file is *authentically* signed by
+a liar.
+
+`trust.ts` clamps **on ingest, never in the join**, so the lattice stays
+pure and the rebuild stays exact:
+
+- a remote claim contributes at most `REMOTE_WEIGHT_CEILING` to either
+  weight, which — because the score is a ratio — means a feed the user has
+  actually watched cannot be talked into looking dead, while a feed they
+  have never tried still takes the community's word for it;
+- `observedAt` is clamped to now, so nobody can date a claim into the future
+  to freeze a record's decay or win every tie forever;
+- blocked authors are dropped entirely.
+
+Identity needs less defending than health because a poisoned mapping is
+self-healing — the local matcher re-derives it on the next catalog refresh.
+Health is accumulated evidence that cannot be recomputed from anything,
+which is why the ceiling exists for one and not the other.
 
 ## Format versioning
 

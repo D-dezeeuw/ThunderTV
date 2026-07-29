@@ -142,6 +142,20 @@ export interface StreamHealthRecord {
      * Never exported: a Codex claim carries only its signer.
      */
     authors?: readonly string[];
+    /**
+     * This device's own evidence, kept apart from the merged weights above
+     * (Phase 37). The health join is `max`, which cannot be run backwards —
+     * so pruning a bad contributor and rebuilding needs a record of what we
+     * actually saw ourselves, not a maximum that already includes them.
+     * Absent on a record no merge has touched, where the row *is* the local
+     * evidence.
+     */
+    local?: {
+        okWeight: number;
+        failWeight: number;
+        ttffMs: number | null;
+        updatedAt: number;
+    };
 }
 
 /**

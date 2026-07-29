@@ -13,7 +13,7 @@ import { streamKey } from './stream-key';
  * (memory immediately, storage in the background); `primeHealthCache()`
  * restores memory from storage once at boot.
  */
-let cache = new Map<string, HealthRecord>();
+let cache = new Map<string, StreamHealthRecord>();
 
 export async function primeHealthCache(): Promise<void> {
     const rows = await getPlatform().storage.getAll('streamHealth');
@@ -24,12 +24,12 @@ export function resetHealthCacheForTests(): void {
     cache = new Map();
 }
 
-/** Every known record — the Settings readout's source, and the Codex export candidate (stone 4). */
-export function allHealthRecords(): readonly HealthRecord[] {
+/** Every known record — the Settings readout's source, and the Codex export candidate (stone 4). Typed as the *stored* record, not the bare scoring shape, because callers need the merge provenance too. */
+export function allHealthRecords(): readonly StreamHealthRecord[] {
     return [...cache.values()];
 }
 
-export function healthForUrl(url: string | null | undefined): HealthRecord | null {
+export function healthForUrl(url: string | null | undefined): StreamHealthRecord | null {
     if (!url) return null;
     const key = streamKey(url);
     return key ? (cache.get(key) ?? null) : null;
@@ -59,9 +59,36 @@ export function observe(url: string | null | undefined, outcome: 'ok' | 'failed'
 
     const nowMs = Date.now();
     const previous = cache.get(key) ?? emptyRecord(key, nowMs);
-    const next = outcome === 'ok' ? recordSuccess(previous, nowMs, ttffMs) : recordFailure(previous, nowMs);
+    const apply = (record: HealthRecord): HealthRecord =>
+        outcome === 'ok' ? recordSuccess(record, nowMs, ttffMs) : recordFailure(record, nowMs);
+
+    // The merged row and this device's own evidence advance together: the
+    // row is what the UI reads, the local snapshot is what a rebuild after
+    // pruning starts from (`src/codex/trust.ts`).
+    const nextLocal = apply(localEvidence(previous));
+    const next: StreamHealthRecord = {
+        ...apply(previous),
+        local: { okWeight: nextLocal.okWeight, failWeight: nextLocal.failWeight, ttffMs: nextLocal.ttffMs, updatedAt: nextLocal.updatedAt },
+    };
     cache.set(key, next);
     void persist(next);
+}
+
+/**
+ * What this device saw for itself, separated from anything a Codex merge
+ * contributed.
+ *
+ * Three cases, and the third is a deliberate under-count: a record written
+ * before this field existed that has *already* absorbed remote claims
+ * cannot be unpicked, so it yields nothing rather than crediting someone
+ * else's evidence as our own. Being wrong toward "we know less than we
+ * thought" is recoverable by watching something; being wrong the other way
+ * would make a prune fail to remove what it promised to.
+ */
+export function localEvidence(record: StreamHealthRecord): HealthRecord {
+    if (record.local) return { ...record, ...record.local };
+    const merged = record.authors && record.authors.some((author) => author !== 'local');
+    return merged ? emptyRecord(record.key, record.updatedAt) : { ...record };
 }
 
 async function persist(record: StreamHealthRecord): Promise<void> {

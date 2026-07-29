@@ -71,6 +71,7 @@ const PROBLEM_MESSAGES: Record<CodexImportProblem, () => string> = {
     'not-json': () => strings.codex.notJson,
     'not-a-codex': () => strings.codex.notACodex,
     'bad-signature': () => strings.codex.badSignature,
+    'blocked-author': () => strings.codex.library.blockedAuthorProblem,
 };
 
 export async function importCodexFromFile(): Promise<void> {

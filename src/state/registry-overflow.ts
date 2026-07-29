@@ -35,6 +35,7 @@ import { PLAYER_AUDIO_MODE } from './player';
 import { DOWNLOAD_QUEUE_CAP, DOWNLOADS_ACTIVE_ID, DOWNLOADS_ITEMS } from './downloads';
 import { GUIDE_CHANNELS, GUIDE_LOADING, GUIDE_OFFSET_MS, GUIDE_SELECTED_KEY } from './guide';
 import { CODEX_AUTHOR_ID, CODEX_MESSAGE, CODEX_STATE } from './codex';
+import { CODEX_BLOCKED_ROWS, CODEX_LIBRARY_MESSAGE, CODEX_LIBRARY_ROWS, CODEX_LIBRARY_STATE } from './codex-library';
 import { HEALTH_CLEARED, HEALTH_DEAD_COUNT, HEALTH_TRACKED_COUNT } from './health';
 import type { KeyMeta } from './registry';
 
@@ -307,6 +308,30 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: false,
         description: "This device's Codex author fingerprint. Not persisted here: the keypair itself is the durable thing (codex.identity.* kv keys), and this is derived from it at boot.",
+    },
+
+    // --- codex library (Phase 37, stone 10) ---
+    // The retained documents are storage-owned; only this small view model
+    // and its feedback are reactive.
+    [CODEX_LIBRARY_ROWS]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'Subscription list view model — one flattened row per followed Codex. Rebuilt from storage, never the source of truth.',
+    },
+    [CODEX_LIBRARY_STATE]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'idle/busy/done/failed for the follow, unfollow, refresh and trust actions.',
+    },
+    [CODEX_LIBRARY_MESSAGE]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'Human-readable outcome of the last shared-Codex action.',
+    },
+    [CODEX_BLOCKED_ROWS]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'Authors this device has stopped trusting, for the Settings list. The durable copy is the codex.blocked kv key.',
     },
 
     // --- live: EPG country catalog filter (Phase 31) ---
