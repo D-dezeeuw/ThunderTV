@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>OceanSkips — ¡Fiesta en la Playa! 🐟🎉</title>
+<link rel="icon" href="data:,">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Segoe UI', system-ui, sans-serif;
+    background: #0b2438; color: #123;
+    -webkit-user-select: none; user-select: none; touch-action: none;
+  }
+  #game { position: fixed; inset: 0; display: block; }
+
+  /* ---------- overlay screens ---------- */
+  .screen {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    padding: 12px calc(10px + env(safe-area-inset-right)) 12px calc(10px + env(safe-area-inset-left));
+    text-align: center; z-index: 10;
+  }
+  .hidden { display: none !important; }
+  h1.logo {
+    font-size: clamp(30px, 7vw, 64px); color: #fff; letter-spacing: 2px; line-height: 1;
+    text-shadow: 0 3px 0 #c2185b, 0 7px 16px #04293a99;
+    transform: rotate(-2deg);
+  }
+  h1.logo .o2 { color: #ffd93b; }
+  .tagline { color: #fff3d6; font-size: clamp(13px, 2.4vw, 18px); text-shadow: 0 2px 6px #04293a99; }
+
+  .btn {
+    font: inherit; font-size: 18px; font-weight: bold; color: #5a3a00;
+    background: linear-gradient(#ffe27a, #ffc531);
+    border: 3px solid #b97f00; border-radius: 16px;
+    padding: 9px 24px; min-height: 44px; cursor: pointer;
+    box-shadow: 0 4px 0 #b97f00, 0 8px 14px #0006;
+    transition: transform .06s;
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #b97f00; }
+  .btn.pink { color: #fff; background: linear-gradient(#f95fa2, #d81b74); border-color: #96114f; box-shadow: 0 4px 0 #96114f, 0 8px 14px #0006; }
+  .btn:disabled { filter: grayscale(.8) brightness(.85); cursor: default; }
+
+  /* fish cards — one scrollable row, centers itself when it fits */
+  .cards {
+    display: flex; flex-wrap: nowrap; gap: 10px; max-width: 100%;
+    overflow-x: auto; padding: 6px 4px; scrollbar-width: thin;
+  }
+  .cards::before, .cards::after { content: ''; margin: auto; }
+  .card {
+    flex: 0 0 auto; width: 150px; background: #fffdf5ee;
+    border: 3px solid #d81b74; border-radius: 16px;
+    padding: 8px 8px 10px; cursor: pointer; position: relative;
+    box-shadow: 0 6px 14px #04293a66; transition: transform .08s;
+  }
+  .card:hover { transform: translateY(-3px) rotate(-1deg); }
+  .card.sel { outline: 4px solid #ffd93b; box-shadow: 0 0 0 3px #b97f00, 0 8px 18px #04293a88; }
+  .card canvas { width: 104px; height: 58px; }
+  .card h3 { font-size: 16px; color: #b3125c; }
+  .card .species { font-size: 11px; color: #467; margin-bottom: 4px; }
+  .card .blurb { font-size: 10.5px; color: #245; min-height: 40px; margin-top: 5px; }
+  .stat { display: flex; align-items: center; gap: 5px; font-size: 9.5px; color: #245; }
+  .stat b { width: 44px; text-align: right; font-weight: normal; }
+  .bar { flex: 1; height: 7px; background: #ffe0ec; border-radius: 4px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff9800, #d81b74); border-radius: 4px; }
+
+  .panel {
+    background: #fffdf5ee; border: 3px solid #d81b74; border-radius: 20px;
+    padding: 16px 20px; max-width: 540px; width: min(94vw, 540px);
+    max-height: 92vh; overflow-y: auto;
+    box-shadow: 0 10px 26px #04293a88;
+  }
+  .panel h2 { margin-bottom: 8px; color: #b3125c; }
+  .uprow {
+    display: flex; align-items: center; gap: 10px; text-align: left;
+    padding: 7px 0; border-bottom: 2px dashed #f3b8d1;
+  }
+  .uprow:last-of-type { border-bottom: 0; }
+  .uprow .nm { flex: 1; }
+  .uprow .nm b { font-size: 14px; }
+  .uprow .nm small { display: block; font-size: 10.5px; color: #467; }
+  .pips { display: flex; gap: 3px; }
+  .pip { width: 10px; height: 10px; border-radius: 50%; background: #ffe0ec; border: 1px solid #d98cb0; }
+  .pip.on { background: #ffd93b; border-color: #b97f00; }
+  .buy { font: inherit; font-size: 13px; font-weight: bold; padding: 6px 10px; min-height: 36px; border-radius: 10px;
+    border: 2px solid #b97f00; background: linear-gradient(#ffe27a, #ffc531); color: #5a3a00; cursor: pointer; min-width: 72px; }
+  .buy:disabled { filter: grayscale(.9) brightness(.9); cursor: default; }
+
+  .foodbal { font-size: 16px; color: #5a3a00; background: #ffe27acc; border: 2px solid #b97f00;
+    border-radius: 12px; padding: 3px 14px; display: inline-block; }
+
+  /* ---------- HUD ---------- */
+  #hud {
+    position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 0; right: 0;
+    display: flex; justify-content: center; gap: 8px; z-index: 5; pointer-events: none;
+  }
+  .chip { background: #04293aa8; color: #fff; border-radius: 999px; padding: 4px 14px;
+    font-size: 14px; text-shadow: 0 1px 2px #000a; white-space: nowrap; }
+  .chip small { opacity: .75; font-size: 10px; }
+  #hint {
+    position: fixed; top: calc(52px + env(safe-area-inset-top)); left: 0; right: 0;
+    text-align: center; z-index: 5; color: #fff3d6; font-size: clamp(13px, 2.4vw, 16px);
+    text-shadow: 0 2px 6px #000c; pointer-events: none; padding: 0 60px;
+  }
+  #energy {
+    position: fixed; left: calc(14px + env(safe-area-inset-left)); bottom: calc(12px + env(safe-area-inset-bottom));
+    display: flex; align-items: center; gap: 6px; z-index: 5; pointer-events: none;
+  }
+  #energy span { font-size: 22px; filter: drop-shadow(0 2px 3px #000a); }
+  .ebar { width: min(240px, 34vw); height: 16px; background: #04293ab8; border-radius: 999px;
+    border: 2px solid #ffffff55; overflow: hidden; }
+  .ebar i { display: block; height: 100%; width: 50%;
+    background: linear-gradient(90deg, #ff9800, #f44336); border-radius: 999px;
+    transition: width .1s linear; }
+
+  .cornerBtns { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right));
+    display: flex; gap: 6px; z-index: 20; }
+  .cornerBtns button { font-size: 16px; background: #04293aa8; color: #fff; border: 0;
+    border-radius: 999px; width: 40px; height: 40px; cursor: pointer; }
+
+  #results .big { font-size: clamp(28px, 6vw, 48px); color: #b3125c; }
+  #results .newbest { color: #d9820b; font-weight: bold; animation: pulse 1s infinite alternate; }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+  .rowbtns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  /* ---------- rotate-your-phone overlay ---------- */
+  #rotate {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: linear-gradient(#d81b74, #7b1148);
+    color: #fff; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; text-align: center; font-size: 20px; padding: 20px;
+  }
+  #rotate .ph { font-size: 64px; animation: spin90 1.6s ease-in-out infinite; }
+  @keyframes spin90 { 0%, 20% { transform: rotate(0); } 55%, 100% { transform: rotate(90deg); } }
+  @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+
+  /* ---------- short landscape phones ---------- */
+  @media (max-height: 480px) {
+    .screen { gap: 7px; padding-top: 6px; padding-bottom: 6px; }
+    h1.logo { font-size: 26px; }
+    .tagline { font-size: 12px; }
+    .btn { font-size: 15px; padding: 6px 16px; min-height: 40px; }
+    .card { width: 128px; padding: 6px; }
+    .card canvas { width: 88px; height: 48px; }
+    .card .blurb { display: none; }
+    .panel { padding: 8px 14px; }
+    .uprow { padding: 4px 0; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <span class="chip" id="hudDist">0 m</span>
+  <span class="chip" id="hudSpeed">0 <small>km/h</small></span>
+  <span class="chip" id="hudFood">🟡 0</span>
+</div>
+<div id="energy" class="hidden"><span>🌶️</span><div class="ebar"><i id="efill"></i></div></div>
+<div id="hint" class="hidden"></div>
+<div class="cornerBtns">
+  <button id="fsBtn" title="Fullscreen">⛶</button>
+  <button id="muteBtn" title="Sound">🔊</button>
+</div>
+
+<!-- ---------- MENU ---------- -->
+<div id="menu" class="screen">
+  <h1 class="logo">Ocean<span class="o2">Skips</span></h1>
+  <div class="tagline">¡Fiesta en la playa! Batea tu pez por todo el océano 🌊🎉</div>
+  <div class="cards" id="fishCards"></div>
+  <div class="rowbtns">
+    <button class="btn" id="playBtn">¡Vámonos! 🐟</button>
+    <button class="btn pink" id="shopBtn">Mercado 🛠️</button>
+  </div>
+  <div class="tagline" id="menuStats"></div>
+</div>
+
+<!-- ---------- SHOP ---------- -->
+<div id="shop" class="screen hidden">
+  <div class="panel">
+    <h2>Mercado 🛠️</h2>
+    <div class="foodbal" id="shopFood">🟡 0</div>
+    <div id="upRows"></div>
+    <br>
+    <button class="btn pink" id="shopBack">Volver</button>
+  </div>
+</div>
+
+<!-- ---------- RESULTS ---------- -->
+<div id="results" class="screen hidden">
+  <div class="panel">
+    <h2 id="resTitle">¡Chapuzón!</h2>
+    <div class="big" id="resDist">0 m</div>
+    <div id="resBestNote"></div>
+    <p id="resLine" style="margin:6px 0 12px; font-size:13px; color:#245;"></p>
+    <div class="rowbtns">
+      <button class="btn" id="againBtn">¡Otra vez! 🔁</button>
+      <button class="btn pink" id="menuBtn">Menú</button>
+    </div>
+  </div>
+</div>
+
+<div id="rotate"><div class="ph">📱</div>¡Gira tu teléfono!<br><small>OceanSkips se juega en horizontal 🌴</small></div>
+
+<script>
+'use strict';
+(() => {
+
+/* =====================================================================
+   OceanSkips — single-file, offline, no-build fish-batting game.
+   World coords: x → right (px), y → UP (px), calm water level at y = 0.
+   Flow: menu → ready (tap = toss) → toss (tap = swing!) → fly
+         (hold = chili boost) → sink → results.
+   ===================================================================== */
+
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ---------- tuning ---------- */
+const G = 1500;                 // gravity px/s²
+const PX_PER_M = 40;            // world px per displayed metre
+const LAUNCH_BASE = 1180;       // px/s at perfect contact, before fish/upgrades
+const BAT_X = 150;              // where the luchador tosses/hits the fish
+const TOSS_Y = 112;             // hand height above calm water
+const TOSS_VY = 500;            // toss speed → apex ≈ TOSS_Y + 83 (fits short screens)
+const SWEET_Y = TOSS_Y + 55;    // centre of the sweet-spot ring, on the way down
+const SWEET_WIN = 80;           // contact quality window (px)
+const ROUGH_DIST = 6500;        // px per notch of extra sea roughness
+const ROUGH_MAX = 3.4;          // wave amplitude multiplier far out
+const OPEN_OCEAN = 22000;       // px where it's fully "deep dark ocean"
+const ENERGY_FOOD = 25;         // energy per golden sphere
+const BOOST_ACC = 660;          // px/s² while holding
+const BOOST_DRAIN = 30;         // energy per second
+
+/* ---------- the fish ---------- */
+const FISH = [
+  { id: 'chispa', name: 'Chispa', species: 'la Sardina', shape: 'slim',
+    blurb: 'La reina del rebote. Skips like she was born for it. (She was.)',
+    power: 1.0, bounce: 0.58, drag: 0.10, lift: 0, minSkim: 250, seaLegs: 0.30, waveGrip: 1.0, size: 40,
+    colors: { body: '#43c6e0', belly: '#eef9fc', fin: '#f0567e' } },
+  { id: 'volador', name: 'Volador', species: 'el Pez Volador', shape: 'wing',
+    blurb: 'Barely touches the water at all. Big waves ruin the hairdo.',
+    power: 0.95, bounce: 0.50, drag: 0.045, lift: 0.55, minSkim: 240, seaLegs: 0.10, waveGrip: 1.2, size: 42,
+    colors: { body: '#7f9bd8', belly: '#eef2ff', fin: '#ffd93b' } },
+  { id: 'globo', name: 'Globo', species: 'el Pez Globo', shape: 'puff',
+    blurb: 'Round. Bouncy. Extremely round. Boings off every wave.',
+    power: 0.80, bounce: 0.80, drag: 0.16, lift: 0, minSkim: 200, seaLegs: 0.45, waveGrip: 0.9, size: 44,
+    colors: { body: '#f2b04e', belly: '#ffedc9', fin: '#e0642f' } },
+  { id: 'rayo', name: 'Rayo', species: 'la Sierra', shape: 'dart',
+    blurb: 'Launches like a cohete. Lands like a coin flip.',
+    power: 1.25, bounce: 0.48, drag: 0.075, lift: 0, minSkim: 300, seaLegs: 0.25, waveGrip: 0.8, size: 44,
+    colors: { body: '#59c9a5', belly: '#e2f8f0', fin: '#8e44ad' } },
+  { id: 'donatun', name: 'Don Atún', species: 'el Jefe', shape: 'tank',
+    blurb: 'Heavy. Slow to impress. The rough sea respects him.',
+    power: 1.15, bounce: 0.50, drag: 0.12, lift: 0, minSkim: 280, seaLegs: 0.90, waveGrip: 0.5, size: 54,
+    colors: { body: '#5b6ea8', belly: '#e2e8f6', fin: '#2c8c74' } },
+];
+
+/* ---------- upgrades ---------- */
+const UPGRADES = [
+  { id: 'power',  icon: '💪', name: 'Súper Batazo',    desc: '+8% launch power per level' },
+  { id: 'slick',  icon: '✨', name: 'Escamas Chidas',  desc: '−9% air drag per level' },
+  { id: 'rubber', icon: '🏀', name: 'Panza de Goma',   desc: '+6% bounce per level' },
+  { id: 'magnet', icon: '🧲', name: 'Imán de Botanas', desc: 'Pulls in fish food from further away' },
+  { id: 'chili',  icon: '🌶️', name: 'Energía Picante', desc: '+20 max boost energy per level' },
+];
+const UP_MAX = 5;
+const upCost = (lvl) => Math.round(20 * Math.pow(2.15, lvl) / 5) * 5;
+
+/* ---------- save data ---------- */
+const SAVE_KEY = 'oceanskips-save-v2';
+let save = { food: 0, best: 0, runs: 0, fish: 'chispa', muted: false,
+             up: { power: 0, slick: 0, rubber: 0, magnet: 0, chili: 0 } };
+try {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (raw) { const s = JSON.parse(raw); save = { ...save, ...s, up: { ...save.up, ...(s.up || {}) } }; }
+} catch (e) { /* file:// or private mode — play without persistence */ }
+function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
+
+/* ---------- audio: tiny synth, zero assets ---------- */
+let actx = null;
+function audio() {
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (actx && actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function tone(freq, dur, { type = 'sine', vol = 0.2, slide = 0, delay = 0 } = {}) {
+  const ac = audio(); if (!ac || save.muted) return;
+  const t0 = ac.currentTime + delay;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t0);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t0 + dur);
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  o.connect(g).connect(ac.destination);
+  o.start(t0); o.stop(t0 + dur + 0.02);
+}
+const sfx = {
+  toss:    () => tone(300, 0.18, { type: 'triangle', vol: 0.16, slide: 260 }),
+  crack: (q) => { tone(150, 0.1, { type: 'square', vol: 0.25, slide: -60 });
+                  tone(500 + q * 500, 0.16, { type: 'triangle', vol: 0.2, slide: 300 }); },
+  perfect: () => [660, 880, 1320].forEach((f, i) => tone(f, 0.12, { type: 'square', vol: 0.1, delay: i * 0.07 })),
+  whiff:   () => tone(240, 0.3, { type: 'sawtooth', vol: 0.1, slide: -140 }),
+  skip: (sp) => { const f = 280 + clamp(sp, 0, 2200) * 0.25; tone(f, 0.12, { type: 'triangle', vol: 0.22, slide: -f * 0.4 }); },
+  boost:   () => tone(120, 0.09, { type: 'sawtooth', vol: 0.06, slide: 60 }),
+  collect: () => { tone(880, 0.09, { type: 'square', vol: 0.10 }); tone(1320, 0.14, { type: 'square', vol: 0.10, delay: 0.07 }); },
+  sink:    () => tone(320, 0.7, { type: 'triangle', vol: 0.2, slide: -240 }),
+  // little mariachi-ish fanfare
+  best:    () => [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, 0.14, { type: 'square', vol: 0.11, delay: i * 0.09 })),
+  click:   () => tone(600, 0.06, { type: 'square', vol: 0.08 }),
+  buy:     () => { tone(700, 0.08, { type: 'square', vol: 0.1 }); tone(1050, 0.12, { type: 'square', vol: 0.1, delay: 0.06 }); },
+  nope:    () => tone(160, 0.18, { type: 'square', vol: 0.1, slide: -60 }),
+};
+
+/* ---------- canvas ---------- */
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d');
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    this.moveTo(x + r, y);
+    this.arcTo(x + w, y, x + w, y + h, r);
+    this.arcTo(x + w, y + h, x, y + h, r);
+    this.arcTo(x, y + h, x, y, r);
+    this.arcTo(x, y, x + w, y, r);
+    this.closePath();
+    return this;
+  };
+}
+let W = 0, H = 0, DPR = 1;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cvs.width = Math.round(W * DPR); cvs.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ---------- water: stacked sines, rougher with distance ---------- */
+let waveComps = [];
+function rollWaves() {
+  waveComps = [
+    { a: 9,  l: 330,  s: 62,  p: rand(0, TAU) },
+    { a: 6,  l: 170,  s: -44, p: rand(0, TAU) },
+    { a: 3,  l: 88,   s: 96,  p: rand(0, TAU) },
+    { a: 16, l: 1500, s: 34,  p: rand(0, TAU) },  // slow ocean swell
+  ].map(c => ({ ...c, k: TAU / c.l }));
+}
+rollWaves();
+function roughAt(x) {
+  // saturating ramp: calm 1.0 at the beach → approaches ROUGH_MAX far out
+  const u = Math.max(0, x) / ROUGH_DIST;
+  return 1 + (ROUGH_MAX - 1) * (u / (u + 2));
+}
+function surfaceAt(x, t) {
+  const r = roughAt(x);
+  let y = 0, slope = 0, vy = 0;
+  for (const c of waveComps) {
+    const ph = c.k * x + (c.s * c.k) * t + c.p;
+    const A = c.a * r;
+    y += A * Math.sin(ph);
+    slope += A * c.k * Math.cos(ph);
+    vy += A * (c.s * c.k) * Math.cos(ph);
+  }
+  return { y, slope, vy, rough: r };
+}
+
+/* ---------- environment palettes by distance ---------- */
+const ZONES = [
+  { x: 0,     skyT: '#8fd8ff', skyB: '#ffe9c9', seaT: '#37c8da', seaD: '#0b6e8a', light: 1.0 },
+  { x: 9000,  skyT: '#6db4e8', skyB: '#e8d9c4', seaT: '#2596b9', seaD: '#0a4a6e', light: 0.85 },
+  { x: 16000, skyT: '#4a7aae', skyB: '#9db8d0', seaT: '#1b6a92', seaD: '#082f4e', light: 0.62 },
+  { x: OPEN_OCEAN, skyT: '#2b3a55', skyB: '#5a6b85', seaT: '#12405f', seaD: '#04101e', light: 0.4 },
+  { x: 34000, skyT: '#151d2e', skyB: '#3a4358', seaT: '#0a2438', seaD: '#020810', light: 0.28 },
+];
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function mixHex(h1, h2, t) {
+  const a = hexToRgb(h1), b = hexToRgb(h2);
+  return `rgb(${Math.round(lerp(a[0], b[0], t))},${Math.round(lerp(a[1], b[1], t))},${Math.round(lerp(a[2], b[2], t))})`;
+}
+function paletteAt(x) {
+  let i = 0;
+  while (i < ZONES.length - 2 && x > ZONES[i + 1].x) i++;
+  const a = ZONES[i], b = ZONES[i + 1];
+  const t = clamp((x - a.x) / (b.x - a.x), 0, 1);
+  return { skyT: mixHex(a.skyT, b.skyT, t), skyB: mixHex(a.skyB, b.skyB, t),
+           seaT: mixHex(a.seaT, b.seaT, t), seaD: mixHex(a.seaD, b.seaD, t),
+           light: lerp(a.light, b.light, t) };
+}
+const PICADO = ['#f0567e', '#ff9800', '#43c6e0', '#9ccc2e', '#ffd93b', '#a05fc4'];
+
+/* ---------- game state ---------- */
+let state = 'menu';   // menu | ready | toss | fly | sink | done | shop
+let time = 0;
+let cam = { x: 0, y: 0 };
+let fishDef = FISH.find(f => f.id === save.fish) || FISH[0];
+let held = false;     // pointer/space currently down (boost)
+
+const run = {
+  x: 0, y: 0, vx: 0, vy: 0, wiggle: 0,
+  skips: 0, food: 0, dist: 0, sinkT: 0, spinning: 0,
+  tossVy: 0, swingT: -1,          // swingT ≥ 0 → bat swing anim clock
+  energy: 0, maxEnergy: 100,
+  lastBounceT: 0, boostSfxT: 0, zoneShown: 0,
+};
+
+let foods = [];        // {x, baseY, taken, phase}
+let nextFoodX = 0;
+let particles = [];    // {x,y,vx,vy,life,maxLife,size,color,grav}
+let popups = [];       // {str,x,y,t,life,size,color} — floating canvas text
+let clouds = [];
+function initClouds() {
+  clouds = [];
+  for (let i = 0; i < 12; i++) clouds.push({ x: rand(0, 4000), y: rand(140, 420), scale: rand(0.6, 1.6), speed: rand(4, 12) });
+}
+initClouds();
+
+/* ---------- derived stats (fish + upgrades) ---------- */
+function stats() {
+  const u = save.up;
+  return {
+    launch: LAUNCH_BASE * fishDef.power * (1 + u.power * 0.08),
+    drag: fishDef.drag * (1 - u.slick * 0.09),
+    bounce: Math.min(0.92, fishDef.bounce * (1 + u.rubber * 0.06)),
+    magnetR: 46 + fishDef.size * 0.4 + u.magnet * 22,
+    maxEnergy: 100 + u.chili * 20,
+    lift: fishDef.lift,
+    minSkim: fishDef.minSkim,
+    seaLegs: fishDef.seaLegs,
+    waveGrip: fishDef.waveGrip,
+  };
+}
+
+/* ---------- food spawning ---------- */
+function spawnFoodAhead() {
+  const horizon = cam.x + W * 2.2;
+  while (nextFoodX < horizon) {
+    const n = 3 + Math.floor(rand(0, 3));
+    const cx = nextFoodX, arc = Math.random() < 0.5;
+    const baseH = rand(46, 250), spread = rand(46, 70);
+    for (let i = 0; i < n; i++) {
+      const h = arc ? baseH + Math.sin((i / (n - 1)) * Math.PI) * rand(40, 110) : baseH;
+      foods.push({ x: cx + i * spread, baseY: h, taken: false, phase: rand(0, TAU) });
+    }
+    nextFoodX = cx + n * spread + rand(420, 950);
+  }
+  if (foods.length > 400) foods = foods.filter(f => f.x > cam.x - 600 && !f.taken);
+}
+
+/* ---------- particles & popups ---------- */
+function puff(x, y, n, color, spd, grav = 900, size = 4, life = 0.6) {
+  for (let i = 0; i < n; i++) {
+    const a = rand(0, TAU), s = rand(spd * 0.3, spd);
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.abs(Math.sin(a)) * s,
+      life, maxLife: life * rand(0.6, 1), size: rand(size * 0.5, size * 1.4), color, grav });
+  }
+}
+function splash(x, y, power) {
+  const n = clamp(Math.round(power / 55), 6, 30);
+  puff(x, y, n, '#ffffff', clamp(power * 0.45, 120, 620), 1500, 5, 0.7);
+  puff(x, y, Math.round(n / 2), '#bfeaf5', clamp(power * 0.3, 90, 420), 1200, 7, 0.55);
+}
+function sparkle(x, y, color = '#ffd93b') {
+  for (let i = 0; i < 10; i++) {
+    const a = rand(0, TAU), s = rand(60, 240);
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+      life: 0.5, maxLife: 0.5, size: rand(2, 5), color, grav: 0 });
+  }
+}
+function popup(str, x, y, { size = 22, color = '#fff', life = 1.2 } = {}) {
+  popups.push({ str, x, y, t: 0, life, size, color });
+}
+function stepParticles(dt) {
+  for (const p of particles) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy -= p.grav * dt; }
+  particles = particles.filter(p => p.life > 0);
+  for (const p of popups) { p.t += dt; p.y += 42 * dt; }
+  popups = popups.filter(p => p.t < p.life);
+}
+
+/* ---------- run lifecycle ---------- */
+function startRun() {
+  const st = stats();
+  state = 'ready';
+  rollWaves();
+  run.x = BAT_X + 40; run.y = TOSS_Y; run.vx = 0; run.vy = 0;
+  run.skips = 0; run.food = 0; run.dist = 0; run.sinkT = 0; run.spinning = 0;
+  run.tossVy = 0; run.swingT = -1; run.lastBounceT = -1; run.zoneShown = 0;
+  run.maxEnergy = st.maxEnergy;
+  run.energy = Math.min(run.maxEnergy, 55 + save.up.chili * 8);
+  cam.x = 0; cam.y = 0;
+  held = false;
+  foods = []; nextFoodX = 800; particles = []; popups = [];
+  showScreen(null);
+  hud(true);
+  setHint('¡Toca para lanzar el pez! (tap to toss)');
+}
+function toss() {
+  state = 'toss';
+  run.vy = TOSS_VY;
+  sfx.toss();
+  setHint('Tap to SWING when the fish drops through the ring! 🎯');
+}
+function swing() {
+  const st = stats();
+  run.swingT = 0;
+  const q = clamp(1 - Math.abs(run.y - SWEET_Y) / SWEET_WIN, 0, 1);
+  if (q <= 0.02) { flop('¡Abanicaste! 💨'); sfx.whiff(); return; }
+  // contact height → angle: hit high (early) = steep, hit low (late) = flat;
+  // sweet spot gives a skip-friendly 30°
+  const angleDeg = clamp(30 + (run.y - SWEET_Y) * 0.38, 12, 62);
+  const a = angleDeg * Math.PI / 180;
+  let p = st.launch * (0.5 + 0.55 * q);
+  const perfect = q > 0.92;
+  if (perfect) {
+    p *= 1.08;
+    popup('¡PERFECTO! 🔥', run.x, run.y + 60, { size: 30, color: '#ffd93b' });
+    sparkle(run.x, run.y, '#ffd93b'); sparkle(run.x, run.y, '#f0567e');
+    sfx.perfect();
+  }
+  run.vx = Math.cos(a) * p;
+  run.vy = Math.sin(a) * p;
+  state = 'fly';
+  held = false;                       // require a fresh press for boosting
+  sfx.crack(q);
+  puff(run.x, run.y, 12, '#ffe9b0', 300, 800, 4, 0.4);
+  setHint('Hold anywhere to BOOST 🌶️ — golden snacks refill energy!');
+}
+function flop(msg) {
+  popup(msg, run.x, run.y + 50, { size: 24, color: '#ffb0c8' });
+  run.vx = 330; run.vy = 210;   // enough to clear the beach and plop in the sea
+  state = 'fly';
+  held = false;
+  setHint('');
+}
+function beginSink() {
+  state = 'sink';
+  run.sinkT = 0;
+  sfx.sink();
+  splash(run.x, surfaceAt(run.x, time).y, 260);
+}
+function endRun() {
+  state = 'done';
+  hud(false);
+  save.runs++;
+  const m = Math.round(run.dist / PX_PER_M);
+  const isBest = m > save.best;
+  if (isBest) save.best = m;
+  persist();
+  document.getElementById('resTitle').textContent = pickTitle(m, isBest);
+  document.getElementById('resDist').textContent = m + ' m';
+  document.getElementById('resBestNote').innerHTML = isBest
+    ? '<span class="newbest">🏆 ¡NUEVO RÉCORD!</span>' : `Récord: ${save.best} m`;
+  document.getElementById('resLine').textContent =
+    `${run.skips} skip${run.skips === 1 ? '' : 's'} · 🟡 ${run.food} fish food` +
+    (run.dist > OPEN_OCEAN ? ' · ¡llegaste al mar abierto! 🌑🌊' : '');
+  showScreen('results');
+  if (isBest && m > 0) sfx.best();
+}
+function pickTitle(m, best) {
+  if (best && m > 0) return '¡LEYENDA DEL MAR!';
+  if (m < 40) return '¡Chapuzón!';
+  if (m < 150) return '¡Nada mal!';
+  if (m < 350) return '¡Órale!';
+  if (m < 550) return '¡Las gaviotas aplauden!';
+  return '¡Increíble!';
+}
+
+/* ---------- physics ---------- */
+const FIXED = 1 / 240;
+let acc = 0;
+function stepPhysics(dt) {
+  const st = stats();
+
+  if (state === 'toss') {
+    run.vy -= G * dt;
+    run.y += run.vy * dt;
+    if (run.y < TOSS_Y - 26 && run.vy < 0) { flop('¡Uy! Se cayó 😅'); sfx.whiff(); run.swingT = -1; }
+  }
+
+  if (state === 'fly') {
+    // chili boost while held
+    if (held && run.energy > 0) {
+      const sp = Math.hypot(run.vx, run.vy) || 1;
+      run.vx += (run.vx / sp) * BOOST_ACC * dt;
+      run.vy += ((run.vy / sp) * BOOST_ACC + 170) * dt;
+      run.energy = Math.max(0, run.energy - BOOST_DRAIN * dt);
+      if (time - run.boostSfxT > 0.1) { sfx.boost(); run.boostSfxT = time; }
+      if (Math.random() < dt * 40) particles.push({
+        x: run.x - rand(10, 26), y: run.y + rand(-8, 8),
+        vx: -run.vx * 0.15, vy: rand(-30, 30),
+        life: 0.35, maxLife: 0.35, size: rand(2, 5), color: '#ff9800', grav: 0 });
+    }
+
+    // air drag + gravity (+ glide lift for the flying fish)
+    const sp = Math.hypot(run.vx, run.vy);
+    const dragF = st.drag * sp * 0.0016 * dt;
+    run.vx -= run.vx * dragF;
+    run.vy -= run.vy * dragF;
+    let g = G;
+    if (st.lift > 0 && run.vy < 0) g *= 1 - st.lift * clamp(run.vx / 1100, 0, 1) * 0.62;
+    run.vy -= g * dt;
+    run.x += run.vx * dt;
+    run.y += run.vy * dt;
+    run.dist = Math.max(run.dist, run.x - BAT_X);
+    run.wiggle += dt * (6 + sp * 0.004);
+
+    // zone announcements
+    if (run.zoneShown === 0 && run.x > 9000)  { run.zoneShown = 1; popup('~ Mar Adentro ~', run.x, run.y + 90, { size: 26, color: '#dff6ff' }); }
+    if (run.zoneShown === 1 && run.x > OPEN_OCEAN) { run.zoneShown = 2; popup('~ ¡MAR ABIERTO! ~', run.x, run.y + 90, { size: 28, color: '#ffd93b' }); }
+
+    // food pickups (with magnet pull)
+    for (const f of foods) {
+      if (f.taken || Math.abs(f.x - run.x) > 620) continue;
+      const s0 = surfaceAt(f.x, time);
+      const fy = s0.y + f.baseY + Math.sin(time * 2 + f.phase) * 6;
+      const dx = f.x - run.x, dy = fy - run.y;
+      const d = Math.hypot(dx, dy);
+      if (d < st.magnetR * 3 && d > 1) {
+        f.baseY -= (dy / d) * 340 * dt * clamp(1 - d / (st.magnetR * 3), 0, 1);
+        f.x -= (dx / d) * 340 * dt * clamp(1 - d / (st.magnetR * 3), 0, 1);
+      }
+      if (d < st.magnetR) {
+        f.taken = true;
+        run.food++; save.food++;
+        run.energy = Math.min(run.maxEnergy, run.energy + ENERGY_FOOD);
+        const spd = Math.hypot(run.vx, run.vy) || 1;
+        run.vx += (run.vx / spd) * 90;      // small free kick
+        run.vy += (run.vy / spd) * 90 + 40;
+        sparkle(f.x, fy);
+        popup('+⚡', f.x, fy + 16, { size: 16, color: '#ffd93b', life: 0.7 });
+        sfx.collect();
+      }
+    }
+
+    // water contact
+    const s = surfaceAt(run.x, time);
+    if (run.y <= s.y) {
+      // surface normal tilted by the wave slope; grip < 1 = fish cuts through chop
+      let nx = -s.slope * st.waveGrip, ny = 1;
+      const nl = Math.hypot(nx, ny); nx /= nl; ny /= nl;
+      const vn = run.vx * nx + run.vy * ny;
+      if (vn < 0) {
+        const speed = Math.hypot(run.vx, run.vy);
+        const steep = -vn / (speed || 1);            // 1 = dead-on plunge
+        let e = st.bounce;
+        if (steep > 0.8) e *= clamp(1.55 - steep, 0.3, 1); // belly-flop penalty
+        // decompose, reflect, add kick from the moving wave surface
+        const tx = run.vx - vn * nx, ty = run.vy - vn * ny;
+        run.vx = tx * 0.955 - vn * e * nx;
+        run.vy = ty * 0.955 - vn * e * ny + Math.max(0, s.vy) * 0.6 * st.waveGrip;
+        run.y = s.y + 0.5;
+
+        const newSp = Math.hypot(run.vx, run.vy);
+        const roughPenalty = 1 + (s.rough - 1) * 0.38 * (1 - st.seaLegs);
+        const need = st.minSkim * roughPenalty;
+        if (newSp < need || run.vx < 30) {
+          splash(run.x, s.y, speed * (0.4 + steep));
+          beginSink();
+        } else {
+          run.vy = Math.max(run.vy, 55 + (newSp - need) * 0.05); // keep shallow grazes lively
+          if (time - run.lastBounceT > 0.09) {
+            run.lastBounceT = time;
+            run.skips++;
+            splash(run.x, s.y, speed * (0.4 + steep));
+            sfx.skip(newSp);
+            if (run.skips === 10) popup('¡Órale! 🎉', run.x, run.y + 70, { size: 24, color: '#ffd93b' });
+          }
+        }
+      } else {
+        run.y = s.y + 0.5; // riding up the back of a wave
+      }
+    }
+  }
+
+  if (state === 'sink') {
+    run.sinkT += dt;
+    run.vx *= (1 - 2.2 * dt);
+    run.vy = lerp(run.vy, -60, 3 * dt);
+    run.x += run.vx * dt;
+    run.y += run.vy * dt;
+    run.spinning += dt * 3;
+    if (Math.random() < dt * 14) particles.push({
+      x: run.x + rand(-8, 8), y: run.y + rand(0, 10), vx: rand(-12, 12), vy: rand(40, 90),
+      life: 1.1, maxLife: 1.1, size: rand(2, 5), color: '#cfeef7', grav: -60 });
+    if (run.sinkT > 1.5) endRun();
+  }
+
+  if (run.swingT >= 0) run.swingT += dt;
+}
+
+/* ---------- camera ---------- */
+function stepCamera(dt) {
+  let tx = cam.x, ty = cam.y;
+  if (state === 'fly' || state === 'sink') {
+    tx = Math.max(0, run.x - W * 0.34);
+    ty = Math.max(0, run.y - H * 0.45);
+  } else if (state === 'ready' || state === 'toss') {
+    tx = 0; ty = 0;
+  } else { // menu drift
+    cam.x += 24 * dt;
+    if (cam.x > 4200) cam.x = 0;
+    return;
+  }
+  const k = 1 - Math.pow(0.0018, dt);
+  cam.x = lerp(cam.x, tx, k);
+  cam.y = lerp(cam.y, ty, k);
+}
+const seaLine = () => H * 0.66;
+const w2sx = (x) => x - cam.x;
+const w2sy = (y) => seaLine() - (y - cam.y);
+
+/* ---------- drawing ---------- */
+function drawSky(pal) {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, pal.skyT); g.addColorStop(1, pal.skyB);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  const sunX = W * 0.78 - cam.x * 0.02, sunY = H * 0.2 + cam.x * 0.004;
+  ctx.globalAlpha = clamp(pal.light, 0.15, 1);
+  ctx.fillStyle = pal.light > 0.55 ? '#ffd93b' : '#e8ecf5';
+  ctx.beginPath(); ctx.arc(sunX, sunY, 44, 0, TAU); ctx.fill();
+  ctx.globalAlpha = 0.25 * pal.light;
+  ctx.beginPath(); ctx.arc(sunX, sunY, 74, 0, TAU); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = pal.light > 0.5 ? '#ffffff' : '#7c8aa3';
+  for (const c of clouds) {
+    const px = ((c.x - cam.x * 0.25 - time * c.speed) % (W + 500) + W + 500) % (W + 500) - 250;
+    const py = H * 0.06 + (c.y * 0.5) - cam.y * 0.15;
+    ctx.globalAlpha = 0.85;
+    cloudBlob(px, py, c.scale);
+  }
+  ctx.globalAlpha = 1;
+
+  if (cam.x > OPEN_OCEAN + 4000 && Math.random() < 0.006) {
+    ctx.fillStyle = '#cfd8ff'; ctx.globalAlpha = 0.18;
+    ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+  }
+}
+function cloudBlob(x, y, s) {
+  ctx.beginPath();
+  ctx.arc(x, y, 22 * s, 0, TAU);
+  ctx.arc(x + 24 * s, y - 8 * s, 17 * s, 0, TAU);
+  ctx.arc(x + 46 * s, y, 20 * s, 0, TAU);
+  ctx.arc(x + 22 * s, y + 8 * s, 16 * s, 0, TAU);
+  ctx.fill();
+}
+
+function drawPicado() {
+  // papel picado bunting — fiesta HQ decoration, fades as you fly out to sea;
+  // semi-transparent during play so it never hides the ball game
+  const inMenu = state === 'menu' || state === 'shop' || state === 'done';
+  const alpha = (inMenu ? 1 : 0.55) * clamp(1 - cam.x / 2600, 0, 1);
+  if (alpha <= 0) return;
+  ctx.globalAlpha = alpha;
+  for (let row = 0; row < 2; row++) {
+    const y0 = 26 + row * 34, sag = 26 + row * 8;
+    const n = Math.ceil(W / 46) + 1;
+    ctx.strokeStyle = '#5d3a15'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-10, y0);
+    ctx.quadraticCurveTo(W / 2, y0 + sag * 2, W + 10, y0);
+    ctx.stroke();
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const fx = -10 + t * (W + 20);
+      const fy = y0 + sag * 2 * t * (1 - t) * 2 + Math.sin(time * 1.6 + i + row * 3) * 2.5;
+      ctx.fillStyle = PICADO[(i + row * 3) % PICADO.length];
+      ctx.beginPath();
+      ctx.moveTo(fx - 15, fy);
+      ctx.lineTo(fx + 15, fy);
+      ctx.lineTo(fx + 15, fy + 18);
+      ctx.lineTo(fx + 9, fy + 24);
+      ctx.lineTo(fx + 3, fy + 18);
+      ctx.lineTo(fx - 3, fy + 24);
+      ctx.lineTo(fx - 9, fy + 18);
+      ctx.lineTo(fx - 15, fy + 24);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffffff66';
+      ctx.beginPath(); ctx.arc(fx, fy + 10, 3, 0, TAU); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawBeach() {
+  if (cam.x > 1100) return;
+  // sand — ends just past the luchador so flops still reach open water
+  ctx.fillStyle = '#f6d789';
+  ctx.beginPath();
+  ctx.moveTo(w2sx(-80), H);
+  ctx.lineTo(w2sx(-80), w2sy(68));
+  ctx.quadraticCurveTo(w2sx(100), w2sy(56), w2sx(240), w2sy(-14));
+  ctx.lineTo(w2sx(240), H);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#e0b95e'; ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(w2sx(-80), w2sy(64));
+  ctx.quadraticCurveTo(w2sx(100), w2sy(52), w2sx(236), w2sy(-16));
+  ctx.stroke();
+
+  // palm tree
+  const px = w2sx(16), py = w2sy(64);
+  ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 11; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.quadraticCurveTo(px - 14, py - 90, px - 40, py - 150);
+  ctx.stroke();
+  ctx.strokeStyle = '#2e9c4f'; ctx.lineWidth = 8;
+  for (let i = 0; i < 5; i++) {
+    const a = -0.5 - i * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(px - 40, py - 150);
+    ctx.quadraticCurveTo(px - 40 + Math.cos(a) * 46, py - 150 + Math.sin(a) * 46,
+                         px - 40 + Math.cos(a) * 84, py - 150 + Math.sin(a) * 60);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#8a5a2b';
+  ctx.beginPath(); ctx.arc(px - 34, py - 144, 6, 0, TAU); ctx.arc(px - 46, py - 140, 6, 0, TAU); ctx.fill();
+
+  // beach umbrella, tucked behind the luchador
+  const ux = w2sx(64), uy = w2sy(52);
+  ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(ux, uy); ctx.lineTo(ux + 6, uy - 62); ctx.stroke();
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = i % 2 ? '#f0567e' : '#ffd93b';
+    ctx.beginPath();
+    ctx.moveTo(ux + 6, uy - 62);
+    const a1 = Math.PI + (i / 5) * Math.PI, a2 = Math.PI + ((i + 1) / 5) * Math.PI;
+    ctx.arc(ux + 6, uy - 56, 44, a1, a2);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.lineCap = 'butt';
+}
+
+function drawLuchador() {
+  if (cam.x > 1100) return;
+  const x = w2sx(BAT_X - 34), y = w2sy(44); // feet on the sand
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.lineWidth = 2.5; ctx.strokeStyle = '#1e2a3a';
+
+  // legs
+  ctx.fillStyle = '#3b3b57';
+  ctx.fillRect(-12, -26, 10, 26);
+  ctx.fillRect(4, -26, 10, 26);
+  // poncho body
+  ctx.fillStyle = '#43c6e0';
+  ctx.beginPath();
+  ctx.moveTo(0, -70); ctx.lineTo(-26, -22); ctx.lineTo(26, -22);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#f0567e'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(-18, -36); ctx.lineTo(18, -36); ctx.stroke();
+  ctx.strokeStyle = '#1e2a3a'; ctx.lineWidth = 2.5;
+  // head with luchador mask
+  ctx.fillStyle = '#d81b74';
+  ctx.beginPath(); ctx.arc(0, -84, 16, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ffd93b';
+  ctx.beginPath(); ctx.ellipse(-6, -86, 4.5, 6, 0, 0, TAU); ctx.ellipse(6, -86, 4.5, 6, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#1e2a3a';
+  ctx.beginPath(); ctx.arc(-6, -86, 2, 0, TAU); ctx.arc(6, -86, 2, 0, TAU); ctx.fill();
+  // sombrero
+  ctx.fillStyle = '#e0a838';
+  ctx.beginPath(); ctx.ellipse(0, -96, 30, 8, -0.08, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0, -103, 13, 9, -0.08, 0, TAU); ctx.fill(); ctx.stroke();
+
+  // arms + bat: wind-up while waiting, fast forward swing on hit
+  let batA = -2.2;                                 // resting over the shoulder
+  if (state === 'toss') batA = -2.5 + Math.sin(time * 10) * 0.06;
+  if (run.swingT >= 0 && run.swingT < 0.22) batA = lerp(-2.5, 0.6, run.swingT / 0.22);
+  else if (run.swingT >= 0.22) batA = 0.6;
+  ctx.strokeStyle = '#b3125c'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+  const hx = 20, hy = -58;
+  ctx.beginPath(); ctx.moveTo(4, -54); ctx.lineTo(hx, hy); ctx.stroke();
+  // bat
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.rotate(batA);
+  ctx.fillStyle = '#c98d4a'; ctx.strokeStyle = '#1e2a3a'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.roundRect(-4, -60, 9, 62, 4); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.lineCap = 'butt';
+  ctx.restore();
+}
+
+function drawFishShape(c, f, t, opts = {}) {
+  // draws centred at (0,0) facing +x — caller sets the transform on ctx `c`
+  const L = f.size, Hh = f.shape === 'puff' ? f.size * 0.86 : f.size * 0.5;
+  const wig = Math.sin(t * 9) * 0.12;
+  c.lineWidth = 2.5;
+  c.strokeStyle = '#1e2a3a';
+
+  // tail
+  c.fillStyle = f.colors.fin;
+  c.beginPath();
+  c.moveTo(-L * 0.42, 0);
+  c.lineTo(-L * 0.72, Hh * (0.55 + wig));
+  c.lineTo(-L * 0.72, -Hh * (0.55 - wig));
+  c.closePath();
+  c.fill(); c.stroke();
+
+  // body
+  const grad = c.createLinearGradient(0, -Hh, 0, Hh);
+  grad.addColorStop(0, f.colors.body);
+  grad.addColorStop(0.62, f.colors.body);
+  grad.addColorStop(0.66, f.colors.belly);
+  grad.addColorStop(1, f.colors.belly);
+  c.fillStyle = grad;
+  c.beginPath();
+  c.ellipse(0, 0, L * 0.5, Hh * 0.62, 0, 0, TAU);
+  c.fill(); c.stroke();
+
+  if (f.shape === 'puff') { // spikes
+    c.lineWidth = 2;
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * TAU + 0.3;
+      c.beginPath();
+      c.moveTo(Math.cos(a) * L * 0.48, Math.sin(a) * Hh * 0.6);
+      c.lineTo(Math.cos(a) * L * 0.56, Math.sin(a) * Hh * 0.72);
+      c.stroke();
+    }
+    c.lineWidth = 2.5;
+  }
+  if (f.shape === 'dart') { // racing stripes
+    c.strokeStyle = '#1f7a5f'; c.lineWidth = 2;
+    for (let i = -1; i <= 1; i++) {
+      c.beginPath();
+      c.moveTo(-L * 0.1 + i * 8, -Hh * 0.5);
+      c.quadraticCurveTo(-L * 0.02 + i * 8, 0, -L * 0.1 + i * 8, Hh * 0.5);
+      c.stroke();
+    }
+    c.strokeStyle = '#1e2a3a'; c.lineWidth = 2.5;
+  }
+
+  // pectoral fin (big wing for the flying fish)
+  c.fillStyle = f.colors.fin;
+  if (f.shape === 'wing') {
+    c.beginPath();
+    c.moveTo(-L * 0.05, -Hh * 0.2);
+    c.quadraticCurveTo(-L * 0.5, -Hh * (1.7 + wig * 2), -L * 0.85, -Hh * (1.1 + wig * 2));
+    c.quadraticCurveTo(-L * 0.4, -Hh * 0.45, -L * 0.05, -Hh * 0.2);
+    c.fill(); c.stroke();
+  } else {
+    c.beginPath();
+    c.moveTo(L * 0.05, Hh * 0.15);
+    c.quadraticCurveTo(-L * 0.15, Hh * (0.55 + wig), -L * 0.2, Hh * 0.3);
+    c.quadraticCurveTo(-L * 0.05, Hh * 0.1, L * 0.05, Hh * 0.15);
+    c.fill(); c.stroke();
+  }
+
+  // top fin
+  c.beginPath();
+  c.moveTo(-L * 0.05, -Hh * 0.55);
+  c.quadraticCurveTo(-L * 0.22, -Hh * (0.95 + wig), -L * 0.3, -Hh * 0.5);
+  c.fill(); c.stroke();
+
+  // face
+  c.fillStyle = '#fff';
+  c.beginPath(); c.arc(L * 0.26, -Hh * 0.16, L * 0.1, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = '#1e2a3a';
+  c.beginPath(); c.arc(L * 0.29, -Hh * 0.16, L * 0.045, 0, TAU); c.fill();
+  c.beginPath(); c.arc(L * 0.3, Hh * 0.12, L * 0.12, 0.2, Math.PI * 0.7); c.stroke();
+  if (opts.worried) { // X eyes when sinking
+    c.fillStyle = '#fff';
+    c.fillRect(L * 0.16, -Hh * 0.3, L * 0.2, Hh * 0.28);
+    c.strokeStyle = '#1e2a3a'; c.lineWidth = 2;
+    const ex = L * 0.26, ey = -Hh * 0.16, r = L * 0.06;
+    c.beginPath();
+    c.moveTo(ex - r, ey - r); c.lineTo(ex + r, ey + r);
+    c.moveTo(ex + r, ey - r); c.lineTo(ex - r, ey + r);
+    c.stroke();
+  }
+}
+
+function drawFish() {
+  if (state === 'menu' || state === 'shop' || state === 'done') return;
+  ctx.save();
+  ctx.translate(w2sx(run.x), w2sy(run.y));
+  let ang = 0;
+  if (state === 'toss') ang = time * 6;                     // tumbling in the toss
+  else if (state === 'sink') ang = Math.sin(run.spinning) * 0.6 + 0.5;
+  else if (state === 'fly') ang = -Math.atan2(run.vy, Math.max(80, run.vx));
+  ctx.rotate(ang);
+  if (state === 'sink') ctx.globalAlpha = clamp(1.2 - run.sinkT * 0.55, 0.25, 1);
+  drawFishShape(ctx, fishDef, run.wiggle, { worried: state === 'sink' });
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function drawSweetRing() {
+  if (state !== 'toss' && state !== 'ready') return;
+  const sx = w2sx(BAT_X + 40), sy = w2sy(SWEET_Y);
+  const pulse = 1 + Math.sin(time * 6) * 0.08;
+  ctx.strokeStyle = state === 'toss' ? '#ffd93b' : '#ffffff88';
+  ctx.lineWidth = 5;
+  ctx.setLineDash([10, 8]);
+  ctx.beginPath(); ctx.arc(sx, sy, 34 * pulse, 0, TAU); ctx.stroke();
+  ctx.setLineDash([]);
+  if (state === 'toss') {
+    ctx.fillStyle = '#ffd93b';
+    ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('🎯', sx, sy + 5);
+    ctx.textAlign = 'left';
+  }
+}
+
+function drawSea(pal) {
+  const step = 8;
+  // back swell layer for depth
+  ctx.fillStyle = pal.seaD;
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let sx = 0; sx <= W + step; sx += step) {
+    const s = surfaceAt(sx + cam.x + 60, time + 0.7);
+    ctx.lineTo(sx, w2sy(s.y * 0.9) - 12);
+  }
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // main water
+  const top = [];
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let sx = 0; sx <= W + step; sx += step) {
+    const s = surfaceAt(sx + cam.x, time);
+    const sy = w2sy(s.y);
+    top.push([sx, sy]);
+    ctx.lineTo(sx, sy);
+  }
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, clamp(w2sy(30), -200, H), 0, H);
+  g.addColorStop(0, pal.seaT);
+  g.addColorStop(1, pal.seaD);
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  // foam line + crest highlights
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (let i = 0; i < top.length; i++) {
+    if (i === 0) ctx.moveTo(top[i][0], top[i][1]); else ctx.lineTo(top[i][0], top[i][1]);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  for (let i = 0; i < top.length; i += 4) {
+    const s = surfaceAt(top[i][0] + cam.x, time);
+    if (s.slope > 0.06) { ctx.moveTo(top[i][0], top[i][1] + 5); ctx.lineTo(top[i][0] + 14, top[i][1] + 7); }
+  }
+  ctx.stroke();
+}
+
+function drawFoods() {
+  for (const f of foods) {
+    if (f.taken) continue;
+    const sx = w2sx(f.x);
+    if (sx < -40 || sx > W + 40) continue;
+    const s = surfaceAt(f.x, time);
+    const sy = w2sy(s.y + f.baseY + Math.sin(time * 2 + f.phase) * 6);
+    const r = 10;
+    ctx.fillStyle = 'rgba(255,217,59,0.25)';
+    ctx.beginPath(); ctx.arc(sx, sy, r + 7 + Math.sin(time * 4 + f.phase) * 2, 0, TAU); ctx.fill();
+    const g = ctx.createRadialGradient(sx - 3, sy - 3, 1, sx, sy, r);
+    g.addColorStop(0, '#fff6cf'); g.addColorStop(0.4, '#ffd93b'); g.addColorStop(1, '#e09b12');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(sx, sy, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#a56d00'; ctx.lineWidth = 2; ctx.stroke();
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.globalAlpha = clamp(p.life / p.maxLife, 0, 1);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(w2sx(p.x), w2sy(p.y), p.size, 0, TAU); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  for (const p of popups) {
+    const a = clamp(1 - p.t / p.life, 0, 1);
+    ctx.globalAlpha = a;
+    ctx.font = `bold ${p.size}px 'Comic Sans MS', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 4; ctx.strokeStyle = '#1e2a3aa8';
+    ctx.strokeText(p.str, w2sx(p.x), w2sy(p.y));
+    ctx.fillStyle = p.color;
+    ctx.fillText(p.str, w2sx(p.x), w2sy(p.y));
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'left';
+}
+
+function render() {
+  const lookX = (state === 'fly' || state === 'sink') ? run.x : cam.x + W * 0.4;
+  const pal = paletteAt(lookX);
+  drawSky(pal);
+  drawSea(pal);
+  drawBeach();
+  drawLuchador();
+  drawPicado();      // behind the action so the ring and fish stay readable
+  drawSweetRing();
+  drawFoods();
+  drawFish();
+  drawParticles();
+}
+
+/* ---------- HUD / screens ---------- */
+const $ = (id) => document.getElementById(id);
+function showScreen(name) {
+  for (const id of ['menu', 'shop', 'results']) $(id).classList.toggle('hidden', id !== name);
+}
+function hud(on) {
+  $('hud').classList.toggle('hidden', !on);
+  $('hint').classList.toggle('hidden', !on);
+  $('energy').classList.toggle('hidden', !on);
+}
+function setHint(t) { $('hint').textContent = t; }
+let hudTick = 0;
+function updateHud() {
+  if ((hudTick++ & 3) !== 0) return;
+  $('hudDist').textContent = Math.round(run.dist / PX_PER_M) + ' m';
+  const kmh = Math.round(Math.hypot(run.vx, run.vy) * 3.6 / PX_PER_M);
+  $('hudSpeed').innerHTML = (state === 'fly' ? kmh : 0) + ' <small>km/h</small>';
+  $('hudFood').textContent = '🟡 ' + run.food;
+  $('efill').style.width = (run.energy / run.maxEnergy * 100) + '%';
+  // chili meter only matters once the fish is airborne
+  $('energy').classList.toggle('hidden', state !== 'fly' && state !== 'sink');
+}
+
+/* ---------- menu / shop ---------- */
+function buildMenu() {
+  const wrap = $('fishCards');
+  wrap.innerHTML = '';
+  for (const f of FISH) {
+    const card = document.createElement('div');
+    card.className = 'card' + (f.id === fishDef.id ? ' sel' : '');
+    card.innerHTML = `
+      <h3>${f.name}</h3><div class="species">${f.species}</div>
+      <canvas width="104" height="58"></canvas>
+      <div class="stat"><b>power</b><div class="bar"><i style="width:${Math.round(f.power / 1.3 * 100)}%"></i></div></div>
+      <div class="stat"><b>bounce</b><div class="bar"><i style="width:${Math.round(f.bounce / 0.85 * 100)}%"></i></div></div>
+      <div class="stat"><b>aero</b><div class="bar"><i style="width:${Math.round((1 - f.drag / 0.18) * 100)}%"></i></div></div>
+      <div class="stat"><b>sea legs</b><div class="bar"><i style="width:${Math.round(f.seaLegs * 100)}%"></i></div></div>
+      <div class="blurb">${f.blurb}</div>`;
+    card.addEventListener('click', () => {
+      fishDef = f; save.fish = f.id; persist(); sfx.click();
+      for (const c of wrap.children) c.classList.remove('sel');
+      card.classList.add('sel');
+    });
+    wrap.appendChild(card);
+    const mc = card.querySelector('canvas').getContext('2d');
+    mc.translate(52, 30);
+    mc.scale(0.9, 0.9);
+    drawFishShape(mc, f, 0.4, {});
+  }
+  refreshMenuStats();
+}
+function refreshMenuStats() {
+  $('menuStats').textContent = `🏆 récord: ${save.best} m · 🟡 ${save.food} · runs: ${save.runs}`;
+}
+function buildShop() {
+  $('shopFood').textContent = `🟡 ${save.food} fish food`;
+  const rows = $('upRows');
+  rows.innerHTML = '';
+  for (const u of UPGRADES) {
+    const lvl = save.up[u.id];
+    const row = document.createElement('div');
+    row.className = 'uprow';
+    const pips = Array.from({ length: UP_MAX }, (_, i) => `<span class="pip${i < lvl ? ' on' : ''}"></span>`).join('');
+    const maxed = lvl >= UP_MAX;
+    const cost = upCost(lvl);
+    row.innerHTML = `
+      <span style="font-size:20px">${u.icon}</span>
+      <div class="nm"><b>${u.name}</b><small>${u.desc}</small></div>
+      <div class="pips">${pips}</div>
+      <button class="buy" ${maxed || save.food < cost ? 'disabled' : ''}>${maxed ? 'MAX' : '🟡 ' + cost}</button>`;
+    if (!maxed) {
+      row.querySelector('.buy').addEventListener('click', () => {
+        if (save.food < cost) { sfx.nope(); return; }
+        save.food -= cost; save.up[u.id]++;
+        persist(); sfx.buy(); buildShop();
+      });
+    }
+    rows.appendChild(row);
+  }
+}
+
+/* ---------- input: one finger does everything ---------- */
+function press() {
+  audio();
+  if (state === 'ready') toss();
+  else if (state === 'toss') swing();
+  else if (state === 'fly') held = true;
+}
+function release() { held = false; }
+cvs.addEventListener('pointerdown', (e) => { e.preventDefault(); press(); });
+window.addEventListener('pointerup', release);
+window.addEventListener('pointercancel', release);
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'Enter') {
+    e.preventDefault();
+    if (e.repeat) return;
+    if (state === 'done') { startRun(); sfx.click(); return; }
+    if (state === 'menu' && !$('menu').classList.contains('hidden')) { startRun(); sfx.click(); return; }
+    press();
+  }
+  if (e.code === 'Escape' && (state === 'ready' || state === 'toss' || state === 'done')) {
+    state = 'menu'; hud(false); buildMenu(); showScreen('menu');
+  }
+});
+window.addEventListener('keyup', (e) => { if (e.code === 'Space' || e.code === 'Enter') release(); });
+
+$('playBtn').addEventListener('click', () => { audio(); sfx.click(); startRun(); });
+$('shopBtn').addEventListener('click', () => { audio(); sfx.click(); state = 'shop'; buildShop(); showScreen('shop'); });
+$('shopBack').addEventListener('click', () => { sfx.click(); state = 'menu'; refreshMenuStats(); showScreen('menu'); });
+$('againBtn').addEventListener('click', () => { sfx.click(); startRun(); });
+$('menuBtn').addEventListener('click', () => { sfx.click(); state = 'menu'; buildMenu(); showScreen('menu'); });
+$('muteBtn').addEventListener('click', () => {
+  save.muted = !save.muted; persist();
+  $('muteBtn').textContent = save.muted ? '🔇' : '🔊';
+});
+$('muteBtn').textContent = save.muted ? '🔇' : '🔊';
+$('fsBtn').addEventListener('click', () => {
+  const el = document.documentElement;
+  if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); }
+  else if (el.requestFullscreen) { el.requestFullscreen().catch(() => {}); }
+});
+
+/* ---------- main loop ---------- */
+const FIXED_STEPS_MAX = 40;
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.1);
+  last = now;
+  time += dt;
+
+  acc += dt;
+  let guard = 0;
+  while (acc >= FIXED && guard++ < FIXED_STEPS_MAX) {
+    stepPhysics(FIXED);
+    acc -= FIXED;
+  }
+  stepCamera(dt);
+  spawnFoodAhead();
+  stepParticles(dt);
+  render();
+  updateHud();
+  requestAnimationFrame(frame);
+}
+
+buildMenu();
+showScreen('menu');
+requestAnimationFrame(frame);
+
+// read-only peek for smoke tests / tuning from the console
+window.OceanSkips = {
+  get state() { return state; },
+  get snapshot() {
+    return { state, x: run.x, y: run.y, vx: run.vx, vy: run.vy,
+             dist: run.dist, skips: run.skips, energy: run.energy };
+  },
+};
+
+})();
+</script>
+</body>
+</html>
