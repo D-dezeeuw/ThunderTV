@@ -27,6 +27,24 @@ export const deCatalog = {
         noEpisodes: 'Für diese Serie sind noch keine Folgen gelistet.',
     },
 
+    downloads: {
+        action: 'Herunterladen',
+        queueTitle: 'Downloads',
+        queueAria: 'Download-Warteschlange',
+        progressAria: 'Download-Fortschritt',
+        cancel: 'Abbrechen',
+        remove: 'Entfernen',
+        clearFinished: 'Abgeschlossene entfernen',
+        queued: 'Wartet…',
+        starting: 'Startet…',
+        done: 'Gespeichert',
+        cancelled: 'Abgebrochen',
+        handoff: 'An die Downloads deines Browsers übergeben.',
+        errorNetwork:
+            'Die Übertragung wurde gestoppt. Anbieter begrenzen meist, wie viele Verbindungen ein Konto gleichzeitig öffnen darf — erst die Wiedergabe zu stoppen hilft oft.',
+        errorDisk: 'Die Datei konnte nicht geschrieben werden. Prüfe, ob das Ziel noch existiert und genug Platz hat.',
+    },
+
     search: {
         placeholder: 'Titel suchen…',
         clear: 'Suche löschen',

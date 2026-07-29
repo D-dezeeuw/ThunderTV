@@ -15,7 +15,7 @@ import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetPlatformForTests, setPlatform } from '../core/platform';
-import { FakeFileAdapter, FakeHttpAdapter } from '../core/platform/fake-platform';
+import { FakeDownloadAdapter, FakeFileAdapter, FakeHttpAdapter } from '../core/platform/fake-platform';
 import { makeFavoriteRows } from '../core/storage/fixtures';
 import { IdbStorage } from '../core/storage/idb-storage';
 import { LocalStorageStorage } from '../core/storage/local-storage-storage';
@@ -47,8 +47,9 @@ function setIdbPlatform(): IdbStorage {
         name: 'web',
         http: new FakeHttpAdapter(),
         files: new FakeFileAdapter(),
+        downloads: new FakeDownloadAdapter(),
         storage,
-        capabilities: { corsUnrestricted: false, externalPlayers: false, durableStorage: 'full' },
+        capabilities: { corsUnrestricted: false, externalPlayers: false, durableStorage: 'full' , downloads: 'none'},
     });
     return storage;
 }
@@ -122,8 +123,9 @@ describe('import pipeline — full run across all three storage tiers (Feature 0
                 name: 'web',
                 http: new FakeHttpAdapter(),
                 files: new FakeFileAdapter(),
+        downloads: new FakeDownloadAdapter(),
                 storage,
-                capabilities: { corsUnrestricted: false, externalPlayers: false, durableStorage: storage.tier },
+                capabilities: { corsUnrestricted: false, externalPlayers: false, durableStorage: storage.tier , downloads: 'none'},
             });
 
             const outcome = await runImport({ type: 'm3u-text', text: SAMPLE, name: 'Pasted playlist' });
@@ -189,8 +191,9 @@ describe('import pipeline — mid-import storage demotion (Feature 07.9.10)', ()
             name: 'web',
             http: new FakeHttpAdapter(),
             files: new FakeFileAdapter(),
+        downloads: new FakeDownloadAdapter(),
             storage: controller,
-            capabilities: { corsUnrestricted: false, externalPlayers: false, durableStorage: 'partial' },
+            capabilities: { corsUnrestricted: false, externalPlayers: false, durableStorage: 'partial' , downloads: 'none'},
         });
 
         const outcome = await runImport({ type: 'm3u-text', text: SAMPLE, name: 'Pasted playlist' });

@@ -9,8 +9,12 @@
 // fallback for the player's fullscreen button (see main.mjs's
 // `publishFullscreenState`); `getDefaultConfig` surfaces `desktop/.env`'s
 // dev-only first-run defaults — Xtream account, locale, Live-filter country
-// (see main.mjs's `loadDefaultConfig`). Context isolation stays on; nothing
-// else crosses the bridge — no raw `ipcRenderer`, no filesystem, no `require`.
+// (see main.mjs's `loadDefaultConfig`); `downloads` saves a movie to disk
+// from the main process, which is the one member that is more than a value
+// read — it exists so a multi-gigabyte file never has to pass through the
+// renderer at all (see main.mjs's `registerDownloadHandlers`). Context
+// isolation stays on; nothing else crosses the bridge — no raw
+// `ipcRenderer`, no filesystem, no `require`.
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Electron preload scripts must be CommonJS; require() is the contract here.
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -19,6 +23,10 @@ const APP_VERSION_PREFIX = '--thundertv-app-version=';
 const IPC_SET_WINDOW_FULLSCREEN = 'thundertv:set-window-fullscreen';
 const IPC_WINDOW_FULLSCREEN_STATE = 'thundertv:window-fullscreen';
 const IPC_GET_DEFAULT_CONFIG = 'thundertv:get-default-config';
+const IPC_DOWNLOAD_PREPARE = 'thundertv:download-prepare';
+const IPC_DOWNLOAD_START = 'thundertv:download-start';
+const IPC_DOWNLOAD_CANCEL = 'thundertv:download-cancel';
+const IPC_DOWNLOAD_EVENT = 'thundertv:download-event';
 
 const proxyOriginArg = process.argv.find((a) => a.startsWith(PROXY_ORIGIN_PREFIX));
 const appVersionArg = process.argv.find((a) => a.startsWith(APP_VERSION_PREFIX));
@@ -46,5 +54,27 @@ if (proxyOriginArg) {
             ipcRenderer.send(IPC_SET_WINDOW_FULLSCREEN, value);
         },
         getDefaultConfig: () => ipcRenderer.invoke(IPC_GET_DEFAULT_CONFIG),
+        downloads: {
+            prepare: (filename) => ipcRenderer.invoke(IPC_DOWNLOAD_PREPARE, String(filename)),
+            start: (id, url, filePath) => {
+                ipcRenderer.send(IPC_DOWNLOAD_START, String(id), String(url), String(filePath));
+            },
+            cancel: (id) => {
+                ipcRenderer.send(IPC_DOWNLOAD_CANCEL, String(id));
+            },
+            // The listener is wrapped rather than handed to `ipcRenderer`
+            // directly: the renderer must never see the `IpcRendererEvent`
+            // (it carries `sender`, a live handle back into the IPC surface
+            // this bridge exists to keep out of the page).
+            onEvent: (listener) => {
+                const handler = (_event, payload) => {
+                    listener(payload);
+                };
+                ipcRenderer.on(IPC_DOWNLOAD_EVENT, handler);
+                return () => {
+                    ipcRenderer.off(IPC_DOWNLOAD_EVENT, handler);
+                };
+            },
+        },
     });
 }

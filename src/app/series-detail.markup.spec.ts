@@ -9,7 +9,7 @@ import { get } from '../state/typed';
 /**
  * Series detail panel (Issue 2 follow-up, Phase 21): the fragment below is a
  * hand-authored mirror of index.html's real series-detail markup — a single
- * flat `data-each="series.detail.rows"` with `data-if` per row kind, plus
+ * flat `data-each="download.episodeRows"` with `data-if` per row kind, plus
  * the loading/no-source/fetch-failed states `series.detailStatus`/
  * `series.detailErrorReason` now drive. Proves the flattening actually
  * renders through the real `bindDOM()`/`data-each` path (the bug this
@@ -97,7 +97,7 @@ describe('Series detail panel markup (Issue 2, DOM-bound)', () => {
         seedSeriesDetail({
             rows: [
                 { kind: 'season', season: 1 },
-                { kind: 'episode', episodeId: 100, episode: 1, title: 'Pilot', durationMins: 24 },
+                { kind: 'episode', episodeId: 100, season: 1, containerExtension: 'mkv', episode: 1, title: 'Pilot', durationMins: 24 },
             ],
         });
 
@@ -127,8 +127,8 @@ describe('Series detail panel markup (Issue 2, DOM-bound)', () => {
         seedSeriesDetail({
             rows: [
                 { kind: 'season', season: 1 },
-                { kind: 'episode', episodeId: 100, episode: 1, title: 'Pilot', durationMins: 24 },
-                { kind: 'episode', episodeId: 101, episode: 2, title: 'Episode 2', durationMins: null },
+                { kind: 'episode', episodeId: 100, season: 1, containerExtension: 'mkv', episode: 1, title: 'Pilot', durationMins: 24 },
+                { kind: 'episode', episodeId: 101, season: 1, containerExtension: 'mkv', episode: 2, title: 'Episode 2', durationMins: null },
             ],
         });
 

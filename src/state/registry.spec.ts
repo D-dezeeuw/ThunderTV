@@ -4,10 +4,10 @@ import { PLAYLIST_SOURCES } from './playlist';
 import { isPersistedKey, isRegisteredKey, keyVersion, KEY_REGISTRY, NON_REGISTRY_KEYS, persistedKeys } from './registry';
 
 describe('KEY_REGISTRY', () => {
-    it('registers every key with an owner from the eleven state modules', () => {
+    it('registers every key with an owner from the twelve state modules', () => {
         const owners = new Set([
             'playlist', 'import', 'player', 'epg', 'settings', 'ui', 'list', 'favorites',
-            'vod', 'series', 'search',
+            'vod', 'series', 'search', 'downloads',
         ]);
         for (const meta of Object.values(KEY_REGISTRY)) {
             expect(owners.has(meta.owner)).toBe(true);
