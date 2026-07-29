@@ -165,6 +165,16 @@ Rough arc: **01–05** foundations → **06–09** M3U browsing → **10–12** 
 → **13–15** daily driver → **16–18** EPG → **19–21** Xtream → **22–27**
 product hardening → **28–30** desktop and TV.
 
+### Beyond 1.0 — Vision 3.0 stepping-stone phases
+
+Phases past 30 are not part of the 1.0 road; they execute
+[`VISION-3.0.md`](./VISION-3.0.md)'s stepping stones with the same phase
+template and way of working.
+
+| #   | Phase                                                                        | Stones served                                        |
+| --- | ---------------------------------------------------------------------------- | ---------------------------------------------------- |
+| 31  | [EPG Country Catalog](./phases/phase-31-epg-country-catalog.md)              | 1 (entity seam), 2 (knowledge store), 5 (resolver v0); groundwork for 4 and 7 |
+
 ---
 
 ## 5. Common pitfalls (with code)

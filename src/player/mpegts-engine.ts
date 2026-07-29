@@ -47,20 +47,28 @@ const SMOOTH_STASH_KB = 1024;
  * rebuffered constantly: no stash to absorb jitter, plus latency chasing
  * that sprints to the live edge and immediately starves again.
  */
-function configFor(lowLatency: boolean, stashKb: number): Mpegts.Config {
+function configFor(lowLatency: boolean, stashKb: number, isLive: boolean): Mpegts.Config {
     const shared: Mpegts.Config = {
-        autoCleanupSourceBuffer: true,
+        // A finite file gets rewound and seeked; discarding what is behind
+        // the playhead would make every scrub back a re-download. A live
+        // feed is never rewound and would otherwise grow without bound over
+        // an evening.
+        autoCleanupSourceBuffer: isLive,
         autoCleanupMaxBackwardDuration: 60,
         autoCleanupMinBackwardDuration: 30,
         // Live: never let the loader idle — `lazyLoad` pausing the fetch is
-        // for VOD seeking, and on a live feed it just invites stalls.
-        lazyLoad: false,
+        // for VOD seeking, and on a live feed it just invites stalls. On a
+        // VOD `.ts` it is the opposite: without it the loader races ahead
+        // and pulls the whole film whether or not anyone watches that far.
+        lazyLoad: !isLive,
     };
     if (lowLatency) {
         return {
             ...shared,
             enableStashBuffer: false,
-            liveBufferLatencyChasing: true,
+            // Chasing the live edge is meaningless on a file — there is no
+            // edge, and the setting would only fight the viewer's seeking.
+            liveBufferLatencyChasing: isLive,
             liveBufferLatencyMaxLatency: 3,
             liveBufferLatencyMinRemain: 0.5,
         };
@@ -77,6 +85,14 @@ function configFor(lowLatency: boolean, stashKb: number): Mpegts.Config {
 
 export interface AttachMpegtsOptions {
     buffering: BufferingMode;
+    /**
+     * An endless transport stream rather than a finite file. Defaults to
+     * `true`. A VOD title whose `container_extension` is `ts` reaches this
+     * engine like any live channel, and telling mpegts.js it is live is
+     * what makes the transfer un-seekable, un-rewindable, and — with the
+     * recovery loop below — restartable from byte 0 on any hiccup.
+     */
+    isLive?: boolean;
     /** Called only for failures the engine cannot recover from — the caller then advances its engine chain. */
     onFatalError: (detail: string) => void;
     /**
@@ -107,6 +123,7 @@ export async function attachMpegts(
     const myGeneration = ++generation;
     recoveries = 0;
 
+    const isLive = options.isLive ?? true;
     const lowLatency = options.buffering === 'lowLatency';
     const adaptive = options.buffering === 'auto';
     let stashKb = adaptive ? estimateStashKb() : SMOOTH_STASH_KB;
@@ -128,7 +145,10 @@ export async function attachMpegts(
      * try — more stash would only add latency to a bandwidth problem.
      */
     const onStall = (): void => {
-        if (!adaptive || myGeneration !== generation) return;
+        // Rebuilding restarts the transfer from byte 0, which on a live
+        // feed costs a few seconds and on a film throws away everything the
+        // viewer has watched. Files get the fixed rung they started with.
+        if (!adaptive || !isLive || myGeneration !== generation) return;
         if (!stalls.shouldEscalate(Date.now()) || isTopRung(stashKb)) return;
         stashKb = escalateStashKb(stashKb);
         console.info(`[ThunderTV] adaptive buffering: stalls detected — growing buffer to ${String(stashKb)}KB`);
@@ -138,8 +158,8 @@ export async function attachMpegts(
 
     const create = (): void => {
         const instance = mpegts.createPlayer(
-            { type: 'mpegts', isLive: true, url: streamUrl },
-            configFor(lowLatency, stashKb),
+            { type: 'mpegts', isLive, url: streamUrl },
+            configFor(lowLatency, stashKb, isLive),
         );
         player = instance;
 

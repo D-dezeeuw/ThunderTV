@@ -5,6 +5,7 @@
  * a real localized app would leave them.
  */
 import { nlCatalog } from './strings.nl.catalog';
+import { nlEpg } from './strings.nl.epg';
 import { nlPlayerTracks } from './strings.nl.player';
 
 export const nl = {
@@ -54,6 +55,7 @@ export const nl = {
             alt: 'alt',
         },
         strictFellBack: 'De samengestelde lijst kwam hier nergens mee overeen, alle zenders worden getoond. Geziene namen:',
+        ...nlEpg.live,
     },
 
     debug: {
@@ -213,6 +215,7 @@ export const nl = {
             exportEpgButton: 'EPG exporteren (XML)',
             exportEpgHelp:
                 'Elke opgeslagen gidszender en elk programma. Een lege gids naast een volledige zenderlijst betekent meestal dat de tvg-id van de zender niet overeenkomt met de EPG-zender-id.',
+            ...nlEpg.diagnostics,
         },
         liveFilter: {
             countryLabel: 'Land',
@@ -225,6 +228,7 @@ export const nl = {
             dropJunk: 'Vulzenders verbergen',
             dropJunkHelp:
                 'Verwijdert genummerde eventslots (VIAPLAY 07, PPV 12…), scheidingsrijen en volwassen content. Alleen beoordeeld op de zendernaam — er wordt hier niet gecontroleerd of een stream daadwerkelijk werkt.',
+            ...nlEpg.liveFilter,
         },
         navigation: {
             help: 'Kies welke knoppen in de zijbalk verschijnen. Live wordt altijd getoond.',

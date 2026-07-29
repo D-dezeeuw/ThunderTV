@@ -3,7 +3,7 @@
  * later, the Phase 06/16 worker tests — one place that knows what a
  * plausible channel/program/favorite row looks like.
  */
-import type { ChannelRecord, EpgProgramRecord, FavoriteRecord, PlaylistRecord } from './records';
+import type { ChannelRecord, EpgCatalogRecord, EpgProgramRecord, FavoriteRecord, PlaylistRecord } from './records';
 
 /** A plausible `m3u-url` playlist record (Feature 07.10.1) — every field overridable for the one test that cares about it. */
 export function makePlaylistRecord(overrides: Partial<PlaylistRecord> = {}): PlaylistRecord {
@@ -72,6 +72,21 @@ export function makeFavoriteRows(count: number): FavoriteRecord[] {
         sourceId: 'p1',
         addedAt: index,
     }));
+}
+
+/** Plausible `epgCatalog` rows for one country (Phase 31) — ids follow the real feed convention (`"<name>.<suffix>"`). */
+export function makeEpgCatalogRows(country: string, suffix: string, count: number): EpgCatalogRecord[] {
+    return Array.from({ length: count }, (_, index) => {
+        const displayName = `Channel ${String(index).padStart(4, '0')}`;
+        return {
+            country,
+            id: `${displayName}.${suffix}`,
+            displayName,
+            normKey: displayName.toUpperCase(),
+            icon: null,
+            sourceFile: `${country.toLowerCase()}1.xml`,
+        };
+    });
 }
 
 export const ONE_DAY_MS = DAY_MS;

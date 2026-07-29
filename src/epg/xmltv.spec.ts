@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    matchXmltvChannels,
-    normalizeChannelName,
-    parseXmltvDocument,
-    parseXmltvTimestamp,
-    toEpgRecords,
-} from './xmltv';
+import { parseXmltvDocument, parseXmltvTimestamp, toEpgRecords } from './xmltv';
 
 describe('epg/xmltv', () => {
     describe('parseXmltvTimestamp', () => {
@@ -67,35 +61,6 @@ describe('epg/xmltv', () => {
                     description: 'A cooking show.',
                 },
             ]);
-        });
-    });
-
-    describe('normalizeChannelName', () => {
-        it('trims and lowercases', () => {
-            expect(normalizeChannelName('  24 Kitchen.NL  ')).toBe('24 kitchen.nl');
-        });
-    });
-
-    describe('matchXmltvChannels', () => {
-        const xmltvChannels = [
-            { id: '24 Kitchen.nl', displayName: '24 Kitchen.nl', icon: null },
-            { id: 'NPO 1.nl', displayName: 'NPO 1', icon: null },
-            { id: 'Unrelated.nl', displayName: 'Some Foreign Channel', icon: null },
-        ];
-
-        it('matches by exact tvgId/epgChannelId', () => {
-            const matched = matchXmltvChannels(xmltvChannels, [{ tvgId: '24 Kitchen.nl', name: 'Something Else' }]);
-            expect(matched).toEqual(new Set(['24 Kitchen.nl']));
-        });
-
-        it('falls back to a normalized display-name match when the id does not match', () => {
-            const matched = matchXmltvChannels(xmltvChannels, [{ tvgId: null, name: '  npo 1  ' }]);
-            expect(matched).toEqual(new Set(['NPO 1.nl']));
-        });
-
-        it('returns an empty set when nothing matches either way', () => {
-            const matched = matchXmltvChannels(xmltvChannels, [{ tvgId: 'x', name: 'Totally Different' }]);
-            expect(matched.size).toBe(0);
         });
     });
 

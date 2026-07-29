@@ -22,9 +22,16 @@ export class IdbStorage implements StorageAdapter {
 
     private open(): Promise<IDBPDatabase<ThunderTvDb>> {
         return openDB<ThunderTvDb>(DB_NAME, DB_VERSION, {
+            // Guarded so a version bump (e.g. v1 → v2 adding `epgCatalog`,
+            // Phase 31) never re-creates a store that already exists —
+            // `createObjectStore` throws on a duplicate name, and `upgrade`
+            // runs against the *whole* jump from the stored version to
+            // `DB_VERSION`, not just the newly added stores.
             upgrade(db) {
-                for (const name of BULK_STORE_NAMES) db.createObjectStore(name);
-                db.createObjectStore(SETTINGS_STORE);
+                for (const name of BULK_STORE_NAMES) {
+                    if (!db.objectStoreNames.contains(name)) db.createObjectStore(name);
+                }
+                if (!db.objectStoreNames.contains(SETTINGS_STORE)) db.createObjectStore(SETTINGS_STORE);
             },
             blocked: () => logDiagnostic('open blocked by another tab holding an old version'),
             blocking: () => logDiagnostic('blocking another tab\'s upgrade; this connection should close'),

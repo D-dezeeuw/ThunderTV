@@ -11,6 +11,7 @@ import type { ActiveChannelSnapshot } from './records';
 import {
     SETTINGS_LIVE_COUNTRY,
     SETTINGS_LIVE_DROP_JUNK,
+    SETTINGS_LIVE_EPG_VERIFIED_ONLY,
     SETTINGS_LIVE_KNOWN_ONLY,
 } from './settings';
 import { get, replace, set } from './typed';
@@ -68,7 +69,7 @@ export function registerViewRowsWatch(): () => void {
         publishRowsForCurrentView();
     });
     const stopSettings = watch(
-        [SETTINGS_LIVE_COUNTRY, SETTINGS_LIVE_KNOWN_ONLY, SETTINGS_LIVE_DROP_JUNK],
+        [SETTINGS_LIVE_COUNTRY, SETTINGS_LIVE_KNOWN_ONLY, SETTINGS_LIVE_DROP_JUNK, SETTINGS_LIVE_EPG_VERIFIED_ONLY],
         () => {
             refreshLiveRows();
         },

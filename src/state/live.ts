@@ -25,8 +25,12 @@ export interface LiveStats {
     hiddenByCountry: number;
     hiddenAsJunk: number;
     hiddenAsUnknown: number;
+    /** Dropped by "EPG-verified channels only" — the country catalog had no match (Feature 31.6.4). */
+    hiddenByEpg: number;
     /** Duplicate rows folded into an existing channel as variants. */
     collapsed: number;
+    /** How many kept channels carry an EPG match, independent of whether the verified-only filter is even on — the Settings readout's "matched" count (Feature 31.7.5). */
+    epgMatched: number;
     /**
      * True when "curated channel list only" matched nothing and the view
      * fell back to the unfiltered set. Almost always a naming mismatch
@@ -34,6 +38,8 @@ export interface LiveStats {
      * showing an empty list.
      */
     strictFellBack: boolean;
+    /** Same fallback, for "EPG-verified channels only" (Feature 31.6.3) — the catalog hasn't matched anything yet (not fetched, wrong country) rather than the channel genuinely lacking guide data. */
+    epgFellBack: boolean;
     /** A few provider spellings the filter removed — the only way to tell a naming mismatch from a genuinely missing channel. */
     droppedSamples: string[];
 }
@@ -44,8 +50,11 @@ export const LIVE_STATS_DEFAULT: LiveStats = {
     hiddenByCountry: 0,
     hiddenAsJunk: 0,
     hiddenAsUnknown: 0,
+    hiddenByEpg: 0,
     collapsed: 0,
+    epgMatched: 0,
     strictFellBack: false,
+    epgFellBack: false,
     droppedSamples: [],
 };
 

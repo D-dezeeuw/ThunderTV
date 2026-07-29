@@ -6,6 +6,51 @@ lazy-loaded hls.js/mpegts.js/native engines.
 Owners: Phase 10 — Playback Foundation; Phase 11 — HLS & MPEG-TS Engines;
 Phase 12 — Player UI: Dock & Theater.
 
+`engine.ts` sits on ESLint's 400-line ceiling, so two halves of it live
+next door: `engine-select.ts` (which engine gets this URL, in which form)
+and `engine-report.ts` (turning a failure into a sentence). Both are free
+of module state and are where a change to either question belongs.
+
+## Picking an engine (and why a movie must never reach a demuxer)
+
+`attemptChain()` in `engine-select.ts` orders the three engines:
+`settings.playbackEngine` first (default `mpegts`), the rest behind it as
+fallbacks — **except** when `isProgressiveFile()` matches the URL, where
+the chain is `['native']` and nothing else.
+
+That exception is the whole of Feature 21.4.4, and it is not an
+optimization. Xtream VOD is `movie/user/pass/1234.mkv` — a file with a
+`Content-Length`, not a feed. Neither demuxer can read one, and letting
+them try costs real bandwidth before they find that out: mpegts.js buffers
+a whole stash (`stashInitialSize`, up to 4 MB) before its format probe can
+fail, and hls.js's playlist loader reads the *entire* response body as text
+hunting for `#EXTM3U`. Pointed at a feature-length film that is a
+multi-hundred-megabyte download that ends in a timeout, with the browser's
+buffering spinner up the whole time — which is exactly what "movies load
+forever and seem to download in the background" was.
+
+Native is also the only engine that streams these *incrementally*: a plain
+`video.src` fetches ahead of the playhead and seeks with `Range` requests,
+which the proxy forwards (`scripts/cloudflare-cors-proxy.mjs`) and Xtream
+panels honour. Container support is the browser's, not ours — MP4/H.264
+plays everywhere, Matroska is not something Chromium advertises at all, and
+`describeMediaError()` says so by name rather than leaving a bare
+`MEDIA_ERR_SRC_NOT_SUPPORTED`.
+
+Live vs. VOD is stated, never inferred: `bindings.ts` reads
+`player.active.kind` and passes `attachAndPlay(…, { live })`, which reaches
+`attachMpegts()` as `isLive`. A movie whose `container_extension` is `ts`
+still goes through mpegts.js, and telling it the truth is what keeps the
+transfer seekable, rewindable, and un-restarted by the adaptive-buffer
+escalation.
+
+The last attempt in a chain — and only the last, since every earlier one
+has a fallback behind it — gets a 20-second deadline. A `<video>` pointed
+at a URL that yields nothing decodable emits neither `error` nor frames, so
+without it the spinner is the only feedback that ever exists. Expiry
+reports through the normal path (probe included) and tears nothing down, so
+a stream that is merely slow clears the message itself once it starts.
+
 ## Switching streams (one attach at a time)
 
 `engine.ts` keeps an `attachToken`, bumped by every `attachAndPlay()` and

@@ -35,6 +35,13 @@ export interface ChannelRow {
      * channels. Absent on raw (ungrouped) rows.
      */
     variants?: ChannelVariant[];
+    /**
+     * The EPG country catalog's own channel id (Phase 31's
+     * `src/epg/match.ts`), when `src/channels/grouping.ts` resolved one for
+     * this channel — `null`/absent otherwise. Lets Phase 17's now/next span
+     * and stone 7's timeline key straight off the row without re-matching.
+     */
+    epgId?: string | null;
 }
 
 /** One playable alternative of a grouped channel — see `src/channels/grouping.ts`. */

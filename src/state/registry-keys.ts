@@ -333,6 +333,8 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         persisted: true,
         description: 'Drop event-slot placeholders (VIAPLAY 07 and friends), separator rows and adult entries from the Live view. On by default.',
     },
+    // SETTINGS_LIVE_EPG_VERIFIED_ONLY is registered in registry-overflow.ts
+    // (this file is at the 400-line hard cap — see that file's header).
 
     // --- live ---
     [LIVE_STATS]: {

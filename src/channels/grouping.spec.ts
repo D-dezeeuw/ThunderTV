@@ -179,6 +179,58 @@ describe('groupChannels', () => {
     });
 });
 
+describe('groupChannels — epgMatches / epgVerifiedOnly (Feature 31.6)', () => {
+    const rows = [row('| NL | NPO 1', '| NL | TV', 'a'), row('| NL | Obscure Local TV', '| NL | TV', 'b')];
+
+    it('carries epgId onto a matched channel, and leaves it null on an unmatched one — with the flag off, nothing is dropped', () => {
+        const epgMatches = new Map([['NPO 1', 'NPO 1.nl']]); // 'NPO 1' is curated-known, so identity.key === normalizeKey('NPO 1') === 'NPO 1'
+        const { channels, stats } = groupChannels(rows, { country: 'NL', epgMatches });
+
+        expect(channels).toHaveLength(2);
+        expect(channels.find((c) => c.name === 'NPO 1')?.epgId).toBe('NPO 1.nl');
+        expect(channels.find((c) => c.name === 'Obscure Local TV')?.epgId).toBeNull();
+        expect(stats.epgMatched).toBe(1);
+        expect(stats.droppedByEpg).toBe(0);
+    });
+
+    it('epgVerifiedOnly drops channels the catalog has no match for', () => {
+        const epgMatches = new Map([['NPO 1', 'NPO 1.nl']]);
+        const strict = groupChannels(rows, { country: 'NL', epgMatches, epgVerifiedOnly: true });
+
+        expect(strict.channels.map((c) => c.name)).toEqual(['NPO 1']);
+        expect(strict.stats.droppedByEpg).toBe(1);
+    });
+
+    it('epgVerifiedOnly with no epgMatches at all drops everything from the non-radio list (never an empty *screen* — that fallback lives in live-rows.ts)', () => {
+        const strict = groupChannels(rows, { country: 'NL', epgVerifiedOnly: true });
+        expect(strict.channels).toEqual([]);
+    });
+
+    it('never applies epgVerifiedOnly to Radio — the catalog says nothing about radio stations', () => {
+        const radioRows = [{ ...row('NPO Radio 1', '| NL | RADIO', 'r1'), radio: true }];
+        const result = groupChannels(radioRows, { country: 'NL', radio: 'only', epgVerifiedOnly: true });
+        expect(result.channels).toHaveLength(1);
+        expect(result.stats.droppedByEpg).toBe(0);
+    });
+
+    it('epgMatches never affects ordering — curated rank and name still decide it', () => {
+        const withMatch = groupChannels(rows, {
+            country: 'NL',
+            epgMatches: new Map([['OBSCURE LOCAL TV', 'x.nl']]), // normalizeKey('Obscure Local TV') === 'OBSCURE LOCAL TV' — not curated, so its raw parsed key is used as-is
+        });
+        const without = groupChannels(rows, { country: 'NL' });
+        expect(withMatch.channels.map((c) => c.name)).toEqual(without.channels.map((c) => c.name));
+    });
+
+    it('toDisplayRows carries epgId through onto the ChannelRow', () => {
+        const epgMatches = new Map([['NPO 1', 'NPO 1.nl']]);
+        const { channels } = groupChannels(rows, { country: 'NL', epgMatches });
+        const displayRows = toDisplayRows(channels);
+        expect(displayRows.find((r) => r.name === 'NPO 1')?.epgId).toBe('NPO 1.nl');
+        expect(displayRows.find((r) => r.name === 'Obscure Local TV')?.epgId).toBeNull();
+    });
+});
+
 describe('radio partitioning', () => {
     function radioRow(name: string, id: string): ChannelRow {
         return { ...row(name, '| NL | RADIO', id), radio: true };
