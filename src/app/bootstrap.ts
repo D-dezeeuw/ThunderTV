@@ -17,7 +17,7 @@ import {
     initAppearance,
     initState,
     loadDefaultEpg,
-    loadFavoriteIds,
+    loadFavorites,
     loadGuideChannels,
     loadPlaylistSources,
     openWizardIfNoSources,
@@ -94,7 +94,7 @@ export async function bootstrap(): Promise<void> {
 
     void sweepAndLoadPlaylistSources();
     void loadXtreamAccountPrefill();
-    void loadFavoriteIds();
+    void loadFavorites();
     // Paint whatever EPG data already survived from a previous session
     // immediately, then kick off the (TTL-guarded) bulk XMLTV fetch —
     // loadDefaultEpg() itself republishes guide.channels once it writes

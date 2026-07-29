@@ -5,7 +5,8 @@ import { withFakePlatform } from '../core/platform/fake-platform';
 import type { ChannelRow } from '../m3u/types';
 import { resetVirtualListForTests, setRows } from '../ui/virtual-list';
 import { toggleFavoriteById } from './favorites.actions';
-import { FAVORITES_IDS, initFavoritesState, type FavoriteIdsMap } from './favorites';
+import { FAVORITES_IDS, FAVORITES_ROWS, initFavoritesState, type FavoriteIdsMap } from './favorites';
+import type { FavoriteRecord } from '../core/storage';
 import { initPlaylistState } from './playlist';
 import { get } from './typed';
 
@@ -76,6 +77,50 @@ describe('toggleFavoriteById() (Feature 08.8.3/08.8.6/08.8.9)', () => {
             expect(await storage.count('channels')).toBe(0);
             const ids = get<FavoriteIdsMap>(FAVORITES_IDS);
             expect(ids?.['p1:0']).toBeUndefined();
+        });
+    });
+
+    // The Starred view renders `favorites.rows`, not the ids map, so the two
+    // projections drifting is exactly how a starred channel would show its
+    // badge on the list row and still be missing from the Starred tab.
+    it('publishes the starred snapshot into favorites.rows, and drops it again on unstar', async () => {
+        await withFakePlatform({}, async () => {
+            initFavoritesState();
+            initPlaylistState();
+            tick();
+            setRows([ROW]);
+            const { setActiveSourceId } = await import('./playlist.actions');
+            setActiveSourceId('p1');
+            tick();
+
+            await toggleFavoriteById('p1:0');
+            tick();
+            expect(get<FavoriteRecord[]>(FAVORITES_ROWS)?.map((row) => row.id)).toEqual(['p1:0']);
+
+            await toggleFavoriteById('p1:0');
+            tick();
+            // `replace()`, not `set()`: a merged write would leave the removed
+            // row sitting at index 0 forever.
+            expect(get<FavoriteRecord[]>(FAVORITES_ROWS)).toEqual([]);
+        });
+    });
+
+    it('orders favorites.rows newest-starred first', async () => {
+        await withFakePlatform({}, async () => {
+            initFavoritesState();
+            initPlaylistState();
+            tick();
+            setRows([ROW, { ...ROW, id: 'p1:1', name: 'Sports' }]);
+            const { setActiveSourceId } = await import('./playlist.actions');
+            setActiveSourceId('p1');
+            tick();
+
+            await toggleFavoriteById('p1:0');
+            tick();
+            await toggleFavoriteById('p1:1');
+            tick();
+
+            expect(get<FavoriteRecord[]>(FAVORITES_ROWS)?.map((row) => row.id)).toEqual(['p1:1', 'p1:0']);
         });
     });
 

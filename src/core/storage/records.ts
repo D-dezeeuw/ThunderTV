@@ -174,6 +174,14 @@ export interface FavoriteRecord {
     group: string | null;
     sourceId: string;
     addedAt: number;
+    /**
+     * Audio-only station. Optional and additive over rows already stored
+     * without it — an entry from before this existed simply reads as
+     * television, the same contract as `ActiveChannelSnapshot.radio`
+     * (`src/state/records.ts`). Carried so the Starred view can send a
+     * station back to Radio, the only view with a layout for one.
+     */
+    radio?: boolean;
 }
 
 /** Same denormalized shape as favorites, capped to the most recent 100 by the state layer (Phase 05). */
