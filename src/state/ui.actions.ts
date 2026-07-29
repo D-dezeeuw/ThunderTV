@@ -2,7 +2,16 @@ import { defineFn, refs, setValue, type State } from 'spektrum';
 import { getPlatform } from '../core/platform';
 import type { Density } from '../ui/density';
 import { persist } from './persist';
-import { UI_DENSITY, UI_SETTINGS_OPEN, UI_STORAGE_NOTICE_DISMISSED } from './ui';
+import { applyFontSize, applyTheme } from './theme';
+import {
+    UI_DENSITY,
+    UI_FONT_SIZE,
+    UI_SETTINGS_OPEN,
+    UI_STORAGE_NOTICE_DISMISSED,
+    UI_THEME,
+    type FontSize,
+    type ThemePreference,
+} from './ui';
 
 /**
  * Every UI mutation the shell wires to `data-action`/`data-fn`, migrated
@@ -16,6 +25,8 @@ import { UI_DENSITY, UI_SETTINGS_OPEN, UI_STORAGE_NOTICE_DISMISSED } from './ui'
 export function registerUiActions(): void {
     registerNavigateAction();
     registerDensityAction();
+    registerThemeAction();
+    registerFontSizeAction();
     registerSettingsPanelActions();
     registerStorageNoticeAction();
 }
@@ -41,6 +52,37 @@ function registerDensityAction(): void {
         // ui/density.ts's rowHeight() for the Phase 08 windowing mapping.
         setValue(UI_DENSITY, value);
         persist(UI_DENSITY);
+    });
+}
+
+function isThemePreference(value: string): value is ThemePreference {
+    return value === 'auto' || value === 'dark' || value === 'light';
+}
+
+/** Same `data-*` button-group shape as ui/setDensity above; the root
+    attribute is written by applyTheme() rather than an `<html>` binding —
+    src/state/theme.ts explains why. */
+function registerThemeAction(): void {
+    defineFn('ui/setTheme', (el) => {
+        const value = el.dataset['theme'];
+        if (!value || !isThemePreference(value)) return;
+        setValue(UI_THEME, value);
+        persist(UI_THEME);
+        applyTheme(value);
+    });
+}
+
+function isFontSize(value: string): value is FontSize {
+    return value === 'small' || value === 'default' || value === 'large' || value === 'xlarge';
+}
+
+function registerFontSizeAction(): void {
+    defineFn('ui/setFontSize', (el) => {
+        const value = el.dataset['fontSize'];
+        if (!value || !isFontSize(value)) return;
+        setValue(UI_FONT_SIZE, value);
+        persist(UI_FONT_SIZE);
+        applyFontSize(value);
     });
 }
 

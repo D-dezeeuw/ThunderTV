@@ -19,7 +19,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `codex.ts`           | `settings.codexState`, `settings.codexMessage`, `settings.codexAuthorId`                                              | No — export/import feedback (Phase 34). The document is built on demand and handed to a download; `codexAuthorId` is derived at boot from the durable `codex.identity.*` kv keys |
 | `codex-library.ts`   | `settings.codexLibraryRows`, `settings.codexLibraryState`, `settings.codexLibraryMessage`, `settings.codexBlockedRows` | No — a view model over storage (Phase 37). Subscriptions live under `codex.library.*` and the blocklist under `codex.blocked`; retained Codexes are bulk data and never enter Spektrum state. The follow field is an uncontrolled `data-ref` input, deliberately not a key |
 | `handoff.ts`         | `player.handoffLink`, `player.handoffState`, `player.handoffMessage`                                                  | No — the link outlives its usefulness within hours (Phase 38), and is published rather than hidden only so it can be read off screen where no clipboard exists |
-| `ui.ts`               | `ui.activeView`, `ui.density`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.storageNoticeDismissed` yes; the rest no |
+| `ui.ts`               | `ui.activeView`, `ui.density`, `ui.theme`, `ui.fontSize`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.theme`/`ui.fontSize`/`ui.storageNoticeDismissed` yes; the rest no |
 | `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`, `ui.setupComplete`                                                                 | `ui.setupComplete` yes — it is what stops a configured install from being asked again; `wizardOpen`/`wizardStep` no (transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen`) |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
 | `list-state.ts`       | `ui.listState`, `ui.activeGroup`, `ui.viewMode`                                                                      | `ui.listState` yes (Feature 08.6, LRU-capped at 20 sources); the two live mirrors restore from it on source entry but aren't separately persisted |
@@ -101,6 +101,9 @@ Recorded here once instead of re-litigated at every call site:
   Phase 03/04 bindings and specs for no behavioral gain.
 - **Density stays under `ui.density`**, not moved into `settings.ts`, for
   continuity with Phase 02 — `settings.ts`'s own module comment notes this.
+  `ui.theme` and `ui.fontSize` (Phase 22 theme refresh) follow it as its
+  Appearance-section siblings, applied to `<html>` imperatively by
+  `theme.ts` rather than bound — that file's comment explains why.
 - **`strings`** (the static `src/app/strings.ts` copy mirror) is outside
   `KEY_REGISTRY` entirely (`NON_REGISTRY_KEYS`) — it's reference data, never
   a mutation or persistence candidate, seeded once by `seedStrings()`.

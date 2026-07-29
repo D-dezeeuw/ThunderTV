@@ -11,14 +11,16 @@
     gap: var(--space-2);
     padding: var(--space-3);
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
     background: var(--color-surface);
+    background-image: var(--gradient-panel);
+    box-shadow: var(--shadow-1);
 }
 
 .player-shell__video {
     width: 100%;
     max-height: 60vh;
-    border-radius: 8px;
+    border-radius: var(--radius-l);
 }
 
 /* Audio-only presentation — Radio, which has no picture at all, and any TV
@@ -53,7 +55,7 @@
     width: 100%;
     min-height: 40vh;
     max-height: 70vh;
-    border-radius: 8px;
+    border-radius: var(--radius-l);
     overflow: hidden;
     background: var(--color-bg);
 }
@@ -71,7 +73,7 @@
     max-width: calc(100% - var(--space-6));
     margin-bottom: var(--space-3);
     padding: var(--space-1) var(--space-3);
-    border-radius: 999px;
+    border-radius: var(--radius-full);
     background: var(--color-surface);
     font-size: var(--text-md);
     color: var(--color-text);
@@ -244,7 +246,7 @@
     padding-inline: var(--space-2);
     padding-block: var(--space-1);
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-l);
     background: var(--color-bg);
     color: var(--color-text-dim);
     font: inherit;
@@ -256,6 +258,7 @@
 .variants__chip--active {
     border-color: var(--color-accent);
     background: var(--color-accent);
+    background-image: var(--gradient-accent);
     color: var(--color-bg);
 }
 
@@ -334,8 +337,10 @@
     margin-bottom: var(--space-2);
     padding: var(--space-1) 0;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-l);
     background: var(--color-surface-raised);
+    background-image: var(--gradient-panel);
+    box-shadow: var(--shadow-2);
 }
 
 .track-menu__list {
@@ -389,7 +394,7 @@
     flex: none;
     padding: 0 var(--space-2);
     border: 1px dashed var(--color-border);
-    border-radius: 4px;
+    border-radius: var(--radius-s);
     font-size: var(--text-sm);
 }
 
@@ -413,7 +418,7 @@
     margin-bottom: var(--space-1);
     padding: var(--space-1) var(--space-2);
     border: 1px solid var(--color-border);
-    border-radius: 6px;
+    border-radius: var(--radius-m);
     background: var(--color-surface-raised);
     color: var(--color-text);
     font-size: var(--text-xs);
@@ -448,7 +453,7 @@
     display: block;
     margin-bottom: var(--space-2);
     padding: var(--space-2);
-    border-radius: 6px;
+    border-radius: var(--radius-m);
     background: var(--color-bg);
     color: var(--color-text);
     font-size: var(--text-xs);

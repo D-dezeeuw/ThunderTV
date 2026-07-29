@@ -2,6 +2,7 @@
  * Dutch copy. Mirrors `strings.en.ts`'s exact key shape (`strings.spec.ts` asserts it).
  * Proper nouns and technical acronyms (M3U, EPG, Xtream Codes, CORS, HLS, DRM) stay untranslated.
  */
+import { nlAppearance } from './strings.nl.appearance';
 import { nlCatalog } from './strings.nl.catalog';
 import { nlCodex } from './strings.nl.codex';
 import { nlHandoff } from './strings.nl.handoff';
@@ -289,11 +290,7 @@ export const nl = {
             subtitleAuto: 'Automatisch (mijn land)',
             subtitleOff: 'Uit',
         },
-        appearance: {
-            density: 'Dichtheid',
-            densityCompact: 'Compact',
-            densityComfortable: 'Comfortabel',
-        },
+        appearance: nlAppearance,
     },
 
     wizard: {

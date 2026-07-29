@@ -111,3 +111,88 @@ describe('setDensity action', () => {
         btn.remove();
     });
 });
+
+/** Phase 22 theme refresh — same `data-*` button-group contract as setDensity. */
+describe('setTheme action', () => {
+    beforeAll(() => {
+        registerUiActions();
+    });
+
+    afterEach(() => {
+        resetState();
+        delete document.documentElement.dataset['theme'];
+    });
+
+    function fixtureButton(theme: string): HTMLButtonElement {
+        const btn = document.createElement('button');
+        btn.dataset['theme'] = theme;
+        btn.setAttribute('data-action', 'click');
+        btn.setAttribute('data-fn', 'ui/setTheme');
+        document.body.appendChild(btn);
+        return btn;
+    }
+
+    it("sets ui.theme and the root data-theme to the clicked button's theme", () => {
+        const btn = fixtureButton('light');
+        const destroy = bindDOM(document.body);
+        btn.click();
+        tick();
+        expect((appState['ui'] as { theme?: string } | undefined)?.theme).toBe('light');
+        expect(document.documentElement.dataset['theme']).toBe('light');
+        destroy();
+        btn.remove();
+    });
+
+    it('ignores an invalid theme value', () => {
+        const btn = fixtureButton('pink');
+        const destroy = bindDOM(document.body);
+        btn.click();
+        tick();
+        expect((appState['ui'] as { theme?: string } | undefined)?.theme).toBeUndefined();
+        expect(document.documentElement.dataset['theme']).toBeUndefined();
+        destroy();
+        btn.remove();
+    });
+});
+
+describe('setFontSize action', () => {
+    beforeAll(() => {
+        registerUiActions();
+    });
+
+    afterEach(() => {
+        resetState();
+        delete document.documentElement.dataset['fontSize'];
+    });
+
+    function fixtureButton(size: string): HTMLButtonElement {
+        const btn = document.createElement('button');
+        btn.dataset['fontSize'] = size;
+        btn.setAttribute('data-action', 'click');
+        btn.setAttribute('data-fn', 'ui/setFontSize');
+        document.body.appendChild(btn);
+        return btn;
+    }
+
+    it("sets ui.fontSize and the root data-font-size to the clicked button's size", () => {
+        const btn = fixtureButton('xlarge');
+        const destroy = bindDOM(document.body);
+        btn.click();
+        tick();
+        expect((appState['ui'] as { fontSize?: string } | undefined)?.fontSize).toBe('xlarge');
+        expect(document.documentElement.dataset['fontSize']).toBe('xlarge');
+        destroy();
+        btn.remove();
+    });
+
+    it('ignores an invalid size value', () => {
+        const btn = fixtureButton('gigantic');
+        const destroy = bindDOM(document.body);
+        btn.click();
+        tick();
+        expect((appState['ui'] as { fontSize?: string } | undefined)?.fontSize).toBeUndefined();
+        expect(document.documentElement.dataset['fontSize']).toBeUndefined();
+        destroy();
+        btn.remove();
+    });
+});

@@ -2,6 +2,7 @@
  * German copy. Mirrors `strings.en.ts`'s exact key shape (`strings.spec.ts` asserts it).
  * Proper nouns and technical acronyms (M3U, EPG, Xtream Codes, CORS, HLS, DRM) stay untranslated.
  */
+import { deAppearance } from './strings.de.appearance';
 import { deCatalog } from './strings.de.catalog';
 import { deCodex } from './strings.de.codex';
 import { deHandoff } from './strings.de.handoff';
@@ -289,11 +290,7 @@ export const de = {
             subtitleAuto: 'Automatisch (mein Land)',
             subtitleOff: 'Aus',
         },
-        appearance: {
-            density: 'Dichte',
-            densityCompact: 'Kompakt',
-            densityComfortable: 'Komfortabel',
-        },
+        appearance: deAppearance,
     },
 
     wizard: {

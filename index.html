@@ -1,4 +1,6 @@
 <!doctype html>
+<!-- data-theme / data-font-size are applied imperatively by
+     src/state/theme.ts (boot pre-paint + auto re-resolve), not bound here. -->
 <html lang="en" :data-density="ui.density">
     <head>
         <meta charset="UTF-8" />
@@ -9,7 +11,9 @@
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/favicon-192.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
-        <meta name="theme-color" content="#14171c" />
+        <!-- Static dark fallback; src/state/theme.ts re-syncs it to the
+             resolved theme's surface color at boot and on every switch. -->
+        <meta name="theme-color" content="#141824" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>ThunderTV</title>
         <link rel="stylesheet" href="/src/styles/tokens.css" />
@@ -2738,7 +2742,90 @@
                                 {{ strings.settings.appearance.densityCompact }}
                             </button>
                         </div>
-                        <!-- TODO(phase-22): remaining Appearance controls -->
+                        <div
+                            class="density-toggle"
+                            role="group"
+                            :aria-label="strings.settings.appearance.theme"
+                        >
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.theme === 'auto' }"
+                                data-theme="auto"
+                                data-action="click"
+                                data-fn="ui/setTheme"
+                            >
+                                {{ strings.settings.appearance.themeAuto }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.theme === 'light' }"
+                                data-theme="light"
+                                data-action="click"
+                                data-fn="ui/setTheme"
+                            >
+                                {{ strings.settings.appearance.themeLight }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.theme === 'dark' }"
+                                data-theme="dark"
+                                data-action="click"
+                                data-fn="ui/setTheme"
+                            >
+                                {{ strings.settings.appearance.themeDark }}
+                            </button>
+                        </div>
+                        <p class="settings-section__hint">{{ strings.settings.appearance.themeHelp }}</p>
+                        <div
+                            class="density-toggle"
+                            role="group"
+                            :aria-label="strings.settings.appearance.fontSize"
+                        >
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.fontSize === 'small' }"
+                                data-font-size="small"
+                                data-action="click"
+                                data-fn="ui/setFontSize"
+                            >
+                                {{ strings.settings.appearance.fontSizeSmall }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.fontSize === 'default' }"
+                                data-font-size="default"
+                                data-action="click"
+                                data-fn="ui/setFontSize"
+                            >
+                                {{ strings.settings.appearance.fontSizeDefault }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.fontSize === 'large' }"
+                                data-font-size="large"
+                                data-action="click"
+                                data-fn="ui/setFontSize"
+                            >
+                                {{ strings.settings.appearance.fontSizeLarge }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.fontSize === 'xlarge' }"
+                                data-font-size="xlarge"
+                                data-action="click"
+                                data-fn="ui/setFontSize"
+                            >
+                                {{ strings.settings.appearance.fontSizeXlarge }}
+                            </button>
+                        </div>
+                        <p class="settings-section__hint">{{ strings.settings.appearance.fontSizeHelp }}</p>
                     </section>
                 </div>
             </aside>

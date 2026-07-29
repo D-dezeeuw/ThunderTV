@@ -1,20 +1,72 @@
 /*
- * Design tokens — the single vocabulary for color, spacing, type, and
- * density. Every later component styles itself from these variables, never
- * from literal colors/sizes (Feature 02.1.10's grep guard enforces this for
- * src/ui/ and src/app/ CSS).
+ * Design tokens — the single vocabulary for color, spacing, type, radius,
+ * elevation, and density. Every later component styles itself from these
+ * variables, never from literal colors/sizes (Feature 02.1.10's grep guard
+ * enforces this for src/ui/ and src/app/ CSS).
  */
+
+/*
+ * Typography policy (revised by the theme refresh): Inter is self-hosted
+ * and committed to the repo (src/styles/fonts/) — a deliberate change from
+ * the original "system stack only, no webfont downloads" rule. No network
+ * fetch is ever involved: the file ships inside the bundle on web,
+ * Electron, and webOS alike. The relative url() keeps it on Vite's asset
+ * pipeline, which hashes the file and rebases the reference correctly
+ * under base: './'.
+ */
+@font-face {
+    font-family: 'InterVariable';
+    src: url('./fonts/InterVariable.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
-    /* Color scale (dark-first; see the light-theme hook below) */
-    --color-bg: #0b0d10;
-    --color-surface: #14171c;
-    --color-surface-raised: #1c2027;
-    --color-border: #2a2f38;
-    --color-text: #e6e8eb;
-    --color-text-dim: #9aa1a9;
-    --color-accent: #4f8cff;
-    --color-danger: #ff5c5c;
-    --color-scrim: rgb(0 0 0 / 55%);
+    /*
+     * Color scale — dark (the default theme; Settings -> Appearance flips
+     * `data-theme` on <html> to "light", overridden below). Measured WCAG
+     * ratios against bg / surface / surface-raised:
+     *   text   16.2 / 14.8 / 13.4   text-dim 8.1 / 7.4 / 6.7
+     *   accent  6.5 /  6.0 /  5.4   danger   7.0 / 6.4 / —
+     * All AA (4.5:1) or better. Re-verify after any retune.
+     */
+    --color-bg: #0b0d14;
+    --color-surface: #141824;
+    --color-surface-raised: #1c2130;
+    /* Alpha borders sit naturally on gradient surfaces. Hairline borders
+       are decorative; the 3:1 non-text contrast for interactive state is
+       carried by --focus-ring, never by borders. */
+    --color-border: rgb(151 163 211 / 18%);
+    --color-border-strong: rgb(151 163 211 / 32%);
+    --color-text: #e8eaf6;
+    --color-text-dim: #a0a7bd;
+    --color-accent: #7c8cff;
+    --color-accent-weak: rgb(124 140 255 / 14%);
+    --color-danger: #ff6b6b;
+    --color-scrim: rgb(4 6 14 / 60%);
+
+    /* Gradients — consumed via background-image only, so the plain
+       background color underneath stays the fallback layer. Text over both
+       --gradient-accent stops stays AA: --color-bg on #8895ff 7.2:1, on
+       #6f7ef2 5.5:1. */
+    --gradient-app:
+        radial-gradient(120rem 60rem at 85% -20%, rgb(124 140 255 / 7%), transparent 55%),
+        linear-gradient(180deg, #0d101a 0%, #0b0d14 45%);
+    --gradient-panel: linear-gradient(180deg, rgb(255 255 255 / 4%), rgb(255 255 255 / 0%) 55%);
+    --gradient-accent: linear-gradient(180deg, #8895ff 0%, #6f7ef2 100%);
+
+    /* Elevation */
+    --shadow-1: 0 1px 2px rgb(3 5 12 / 50%);
+    --shadow-2: 0 4px 12px rgb(3 5 12 / 45%);
+    --shadow-3: 0 16px 40px rgb(3 5 12 / 55%);
+
+    /* Radius scale */
+    --radius-s: 6px;
+    --radius-m: 8px;
+    --radius-l: 10px;
+    --radius-xl: 14px;
+    --radius-full: 999px;
 
     /* Spacing scale, 4px base */
     --space-1: 0.25rem;
@@ -24,8 +76,9 @@
     --space-5: 1.5rem;
     --space-6: 2rem;
 
-    /* Typography — system stack only, no webfont downloads */
-    --font-ui: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    /* Typography — self-hosted InterVariable (see @font-face above), with
+       the system stack as fallback. */
+    --font-ui: 'InterVariable', system-ui, -apple-system, 'Segoe UI', sans-serif;
     --text-xs: 0.75rem;
     --text-sm: 0.875rem;
     --text-md: 1rem;
@@ -59,30 +112,49 @@
     --panel-narrow-threshold: 480px;
 
     /* Focus and interaction-state tokens — one consistent treatment for
-       keyboard nav now and webOS remote focus later. */
+       keyboard nav now and webOS remote focus later. Ring vs bg: 6.5:1
+       dark / 5.7:1 light — non-text 3:1 met in both themes. */
     --focus-ring: 0 0 0 2px var(--color-accent);
-    --surface-hover: #1a1e25;
-    --surface-active: #20252d;
+    --surface-hover: #1a1f2e;
+    --surface-active: #232941;
 }
 
 /*
- * Light theme hook (reserved). Theme switching lands with Settings ->
- * Appearance (Phase 22): flipping `data-theme` on <html> to "light" will
- * override this block. Tokens stay the only file any theme touches — no
- * component ever branches on theme itself.
+ * Light theme (Settings -> Appearance, Phase 22): `data-theme` on <html>
+ * set to "light" overrides this block. Tokens stay the only file any theme
+ * touches — no component ever branches on theme itself. Measured ratios
+ * against bg / surface / surface-raised:
+ *   text   15.8 / 14.7 / 16.8   text-dim 5.8 / 5.4 / 6.2
+ *   accent  5.7 /  5.3 /  6.0   danger   6.3 /  — /  6.7
+ * All AA. --color-bg over the accent-gradient stops: 5.1:1 / 6.4:1.
  */
-/*
 [data-theme='light'] {
-    --color-bg: #ffffff;
-    --color-surface: #f5f6f8;
+    --color-bg: #f7f8fb;
+    --color-surface: #eef0f5;
     --color-surface-raised: #ffffff;
-    --color-border: #dde1e6;
-    --color-text: #14171c;
-    --color-text-dim: #5b6470;
-    --surface-hover: #eef0f3;
-    --surface-active: #e4e7ec;
+    --color-border: rgb(23 26 41 / 12%);
+    --color-border-strong: rgb(23 26 41 / 24%);
+    --color-text: #1a1d29;
+    --color-text-dim: #5a6172;
+    --color-accent: #4550e0;
+    --color-accent-weak: rgb(69 80 224 / 10%);
+    --color-danger: #b3202c;
+    --color-scrim: rgb(23 26 41 / 45%);
+
+    --gradient-app:
+        radial-gradient(120rem 60rem at 85% -20%, rgb(69 80 224 / 6%), transparent 55%),
+        linear-gradient(180deg, #fdfdff 0%, #f7f8fb 45%);
+    /* White raised panels need no sheen. */
+    --gradient-panel: none;
+    --gradient-accent: linear-gradient(180deg, #4d58e8 0%, #3f49d2 100%);
+
+    --shadow-1: 0 1px 2px rgb(23 26 41 / 8%);
+    --shadow-2: 0 4px 14px rgb(23 26 41 / 10%);
+    --shadow-3: 0 16px 44px rgb(23 26 41 / 16%);
+
+    --surface-hover: #e7eaf1;
+    --surface-active: #dde1ec;
 }
-*/
 
 /* Density modes (Feature 02.8) — data-density on <html> retargets the row
    geometry tokens; nothing else changes. */
@@ -90,4 +162,33 @@
     --row-h: 32px;
     --row-pad-x: var(--space-2);
     --logo-box: 24px;
+}
+
+/*
+ * Text size (Settings -> Appearance) — `data-font-size` on <html> retargets
+ * ONLY the --text-* tokens, mirroring the [data-density] idiom. Row/logo
+ * geometry is px-based and never moves: the virtual list stays governed by
+ * density alone. 'default' has no block by design. base.css anchors <html>
+ * at font-size: 100%, so these rem values never compound.
+ */
+[data-font-size='small'] {
+    /* ~87.5% — 11/12/14/18px */
+    --text-xs: 0.6875rem;
+    --text-sm: 0.75rem;
+    --text-md: 0.875rem;
+    --text-lg: 1.125rem;
+}
+[data-font-size='large'] {
+    /* ~112.5% — 13/16/18/22px */
+    --text-xs: 0.8125rem;
+    --text-sm: 1rem;
+    --text-md: 1.125rem;
+    --text-lg: 1.375rem;
+}
+[data-font-size='xlarge'] {
+    /* ~125% — 15/17/20/24px */
+    --text-xs: 0.9375rem;
+    --text-sm: 1.0625rem;
+    --text-md: 1.25rem;
+    --text-lg: 1.5rem;
 }
