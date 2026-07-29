@@ -68,8 +68,8 @@ export { loadGuideChannels } from './guide-load';
 export { loadDefaultEpg } from './epg-load';
 export { openWizard, openWizardIfNoSources } from './wizard.actions';
 export { shouldOpenWizard } from './wizard';
-export { openVodCatalog } from './vod.actions';
-export { openSeriesCatalog } from './series.actions';
+export { openVodCatalog, republishVodRows } from './vod.actions';
+export { openSeriesCatalog, republishSeriesRows } from './series.actions';
 export { warmVodCatalog } from './vod-warm';
 export { warmSeriesCatalog } from './series-warm';
 

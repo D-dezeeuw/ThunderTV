@@ -412,3 +412,13 @@
     grid-column: 1 / -1;
     margin-top: 0;
 }
+
+/* The stale-cache notice. Deliberately not styled as an error — the catalog
+   under it works, it is just not live. */
+.catalog-offline {
+    margin: 0;
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+    border-bottom: 1px solid var(--color-border);
+}

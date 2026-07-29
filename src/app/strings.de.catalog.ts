@@ -11,6 +11,7 @@ export const deCatalog = {
         close: 'Schließen',
         play: 'Abspielen',
         retry: 'Erneut versuchen',
+        offline: 'Gespeicherte Daten — der Anbieter war nicht erreichbar. Heruntergeladene Titel laufen weiterhin.',
     },
 
     movies: {

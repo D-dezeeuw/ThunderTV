@@ -19,6 +19,13 @@ export const VOD_DETAIL_ID = 'vod.detailId';
 export const VOD_DETAIL = 'vod.detail';
 /** Background full-catalog warm status (`vod-warm.ts`) — `'idle'` until a warm is ever attempted; `'skipped'` covers every reason a warm didn't (fully) run: a non-`'full'` storage tier, no active Xtream account, a failed fetch, or the `WARM_ROW_CAP` sanity cap — a UI surfacing this later can treat all of those as "still browsing lazily", the distinction between them isn't worth a second flag. */
 export const VOD_WARM_STATUS = 'vod.warmStatus';
+/**
+ * True while the catalog on screen came from a cache the TTL had already
+ * expired, because the refresh failed — offline, or the panel is down. The
+ * list is still fully browsable; this only lets the UI say where it came
+ * from instead of passing yesterday's data off as live.
+ */
+export const VOD_STALE = 'vod.stale';
 
 /** A provider's VOD category list is a few hundred entries at most — well under the 1000 global bulk-data ceiling, but capped explicitly (`registry-overflow.ts`'s `maxItems`) so a pathological provider can't flood the picker. */
 export const VOD_CATEGORIES_CAP = 500;
@@ -64,6 +71,7 @@ export interface VodState {
     detailId: number | null;
     detail: VodDetail | null;
     warmStatus: WarmStatus;
+    stale: boolean;
 }
 
 export const VOD_DEFAULTS: VodState = {
@@ -75,6 +83,7 @@ export const VOD_DEFAULTS: VodState = {
     detailId: null,
     detail: null,
     warmStatus: 'idle',
+    stale: false,
 };
 
 export function initVodState(): void {
@@ -86,4 +95,5 @@ export function initVodState(): void {
     setValue(VOD_DETAIL_ID, VOD_DEFAULTS.detailId);
     setValue(VOD_DETAIL, VOD_DEFAULTS.detail);
     setValue(VOD_WARM_STATUS, VOD_DEFAULTS.warmStatus);
+    setValue(VOD_STALE, VOD_DEFAULTS.stale);
 }

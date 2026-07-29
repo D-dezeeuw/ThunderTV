@@ -713,6 +713,14 @@
                         <div class="list-shell__empty" data-if="view.movies.active && vod.status === 'error' && vod.errorReason === 'fetch-failed'" data-testid="movies-fetch-failed">
                             <p>{{ strings.catalog.fetchFailed }}</p>
                         </div>
+                        <!-- Shown whenever the catalog on screen came from a cache
+                             whose refresh failed. It is a notice, not an error: the
+                             list below it is fully browsable, and saying so beats
+                             either an error screen or silently passing yesterday's
+                             catalog off as live. -->
+                        <p class="catalog-offline" data-if="view.movies.active && vod.stale" data-testid="movies-offline-notice">
+                            {{ strings.catalog.offline }}
+                        </p>
                         <p class="list-shell__empty" data-if="view.movies.active && vod.status === 'ready' && vod.categories.length === 0" data-testid="movies-no-categories">
                             {{ strings.catalog.noCategories }}
                         </p>
@@ -766,6 +774,14 @@
                         <div class="list-shell__empty" data-if="view.series.active && series.status === 'error' && series.errorReason === 'fetch-failed'" data-testid="series-fetch-failed">
                             <p>{{ strings.catalog.fetchFailed }}</p>
                         </div>
+                        <!-- Shown whenever the catalog on screen came from a cache
+                             whose refresh failed. It is a notice, not an error: the
+                             list below it is fully browsable, and saying so beats
+                             either an error screen or silently passing yesterday's
+                             catalog off as live. -->
+                        <p class="catalog-offline" data-if="view.series.active && series.stale" data-testid="series-offline-notice">
+                            {{ strings.catalog.offline }}
+                        </p>
                         <p class="list-shell__empty" data-if="view.series.active && series.status === 'ready' && series.categories.length === 0" data-testid="series-no-categories">
                             {{ strings.catalog.noCategories }}
                         </p>

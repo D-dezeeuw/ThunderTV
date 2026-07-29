@@ -11,6 +11,7 @@ import {
     SERIES_DETAIL_ID,
     SERIES_DETAIL_STATUS,
     SERIES_ERROR_REASON,
+    SERIES_STALE,
     SERIES_STATUS,
     SERIES_WARM_STATUS,
 } from './series';
@@ -22,6 +23,7 @@ import {
     VOD_DETAIL,
     VOD_DETAIL_ID,
     VOD_ERROR_REASON,
+    VOD_STALE,
     VOD_STATUS,
     VOD_WARM_STATUS,
 } from './vod';
@@ -214,6 +216,19 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'player',
         persisted: true,
         description: 'Play TV channels audio-only, with the Radio visualizer standing in for the picture. A viewing preference (a TV used as a stereo stays that way), so persisted; the player bar always carries the switch back.',
+    },
+
+    // --- catalog offline fallback ---
+    [VOD_STALE]: {
+        owner: 'vod',
+        persisted: false,
+        description:
+            'True while the Movies catalog on screen came from a cache whose TTL had expired, because the refresh failed (offline, or the panel is down). Never persisted: it describes this session\'s last fetch attempt, and a restored `true` would accuse a perfectly healthy boot of being offline before it had tried anything.',
+    },
+    [SERIES_STALE]: {
+        owner: 'series',
+        persisted: false,
+        description: 'Same role as vod.stale, for the TV Shows catalog.',
     },
 
     // --- downloads (save a movie to disk) ---

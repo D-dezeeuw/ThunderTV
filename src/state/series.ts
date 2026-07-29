@@ -37,6 +37,8 @@ export const SERIES_DETAIL_STATUS = 'series.detailStatus';
 export const SERIES_DETAIL_ERROR_REASON = 'series.detailErrorReason';
 /** Same role/contract as `vod.ts`'s `VOD_WARM_STATUS` — see its doc. */
 export const SERIES_WARM_STATUS = 'series.warmStatus';
+/** Same role as `vod.stale` — the TV Shows catalog on screen is a cache whose refresh failed. */
+export const SERIES_STALE = 'series.stale';
 
 /** Same reasoning as `VOD_CATEGORIES_CAP` — a few hundred provider categories at most, capped defensively. */
 export const SERIES_CATEGORIES_CAP = 500;
@@ -113,6 +115,7 @@ export interface SeriesState {
     detailStatus: SeriesStatus;
     detailErrorReason: SeriesErrorReason;
     warmStatus: WarmStatus;
+    stale: boolean;
 }
 
 export const SERIES_DEFAULTS: SeriesState = {
@@ -126,6 +129,7 @@ export const SERIES_DEFAULTS: SeriesState = {
     detailStatus: 'idle',
     detailErrorReason: null,
     warmStatus: 'idle',
+    stale: false,
 };
 
 export function initSeriesState(): void {
@@ -139,4 +143,5 @@ export function initSeriesState(): void {
     setValue(SERIES_DETAIL_STATUS, SERIES_DEFAULTS.detailStatus);
     setValue(SERIES_DETAIL_ERROR_REASON, SERIES_DEFAULTS.detailErrorReason);
     setValue(SERIES_WARM_STATUS, SERIES_DEFAULTS.warmStatus);
+    setValue(SERIES_STALE, SERIES_DEFAULTS.stale);
 }

@@ -20,6 +20,7 @@ export const enCatalog = {
         close: 'Close',
         play: 'Play',
         retry: 'Retry',
+        offline: 'Showing saved data — could not reach the provider. Downloaded titles still play.',
     },
 
     movies: {
