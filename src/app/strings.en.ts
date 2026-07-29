@@ -3,6 +3,7 @@ import { enAppearance } from './strings.en.appearance';
 import { enCatalog } from './strings.en.catalog';
 import { enCodex } from './strings.en.codex';
 import { enHandoff } from './strings.en.handoff';
+import { enStarred } from './strings.en.starred';
 import { enEpg } from './strings.en.epg';
 import { enPlayerTracks } from './strings.en.player';
 
@@ -138,6 +139,7 @@ export const en = {
     ...enEpg.topLevel,
     ...enCodex,
     ...enHandoff,
+    ...enStarred,
 
     recent: {
         nowPlaying: 'Now playing:',

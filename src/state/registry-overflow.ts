@@ -5,6 +5,7 @@ import {
     SETTINGS_NAV_SERIES,
     SETTINGS_SUBTITLE_LANGUAGE,
 } from './settings';
+import { FAVORITES_ROWS } from './favorites';
 import { PLAYER_AUDIO_TRACKS, PLAYER_SUBTITLE_TRACKS, PLAYER_TRACK_MENU, TRACK_LIST_CAP } from './player-tracks';
 import { SEARCH_ACTIVE, SEARCH_LOADED_ONLY, SEARCH_QUERY, SEARCH_RESULT_COUNTS, SEARCH_SCOPE } from './search';
 import {
@@ -385,5 +386,12 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'ui',
         persisted: true,
         description: "Text size step (small/default/large/xlarge) — Settings → Appearance. Retargets only tokens.css's --text-* via <html data-font-size>; row geometry never moves (that stays ui.density's alone, src/ui/density.ts).",
+    },
+
+    // --- favorites: the Starred view's row source (Phase 13) ---
+    [FAVORITES_ROWS]: {
+        owner: 'favorites',
+        persisted: false,
+        description: 'The `favorites` table\'s denormalized snapshots, newest-starred first — what the Starred view renders and replays from. Written only alongside `favorites.ids` (`favorites.ts`\'s `publishFavorites()`), never persisted: the table is the source of truth.',
     },
 };

@@ -346,6 +346,33 @@
     visibility: visible;
 }
 
+/* ---- Starred view (Phase 13) ---- */
+
+/* The starred list reuses the recents row wholesale — same snapshot, same
+   "the row is the play control" affordance — and adds only the one thing
+   recents has no equivalent of: unstarring from the list itself. */
+.starred-list__row {
+    display: flex;
+    align-items: center;
+}
+
+.starred-list__unstar {
+    flex: none;
+    align-self: stretch;
+    padding: 0 var(--row-pad-x);
+    border: none;
+    background: none;
+    color: var(--color-accent);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.starred-list__unstar:hover,
+.starred-list__unstar:focus-visible {
+    background: var(--color-surface-raised);
+}
+
 /* ---- Settings panel overlay (Feature 02.7) ---- */
 
 .settings-panel {

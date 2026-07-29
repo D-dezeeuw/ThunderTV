@@ -1634,7 +1634,7 @@
                     data-testid="view-favorites"
                 >
                     <h1 class="view__heading">{{ strings.views.favorites.heading }}</h1>
-                    <div class="empty-state">
+                    <div class="empty-state" data-if="hasNoFavorites">
                         <svg class="icon icon--empty" aria-hidden="true">
                             <use href="#icon-favorites"></use>
                         </svg>
@@ -1645,6 +1645,62 @@
                             {{ strings.emptyStates.favorites.message }}
                         </p>
                     </div>
+                    <!-- Same denormalized-snapshot contract as Recents: a
+                         starred row carries its own stream URL, so it plays
+                         on a cold boot before any source has parsed. One
+                         delegated binding for the whole list — the click
+                         target decides play vs. unstar. -->
+                    <ul
+                        class="recent-zap-history starred-list cv-auto"
+                        data-if="!hasNoFavorites"
+                        data-each="favorites.rows"
+                        data-testid="starred-list"
+                        data-action="click"
+                        data-fn="favorites/row"
+                    >
+                        <li class="recent-zap-history__row starred-list__row" :data-id="item.id">
+                            <button
+                                type="button"
+                                class="recent-zap-history__play"
+                                :class="{ 'recent-zap-history__play--active': player.active && player.active.id === item.id }"
+                                :title="strings.starred.playTitle + ' ' + item.name"
+                                data-testid="starred-play"
+                            >
+                                <span class="recent-zap-history__logo">
+                                    <img
+                                        data-if="item.logo"
+                                        class="recent-zap-history__logo-img"
+                                        :src="item.logo || blankImage"
+                                        loading="lazy"
+                                        decoding="async"
+                                        referrerpolicy="no-referrer"
+                                        alt=""
+                                    />
+                                    <svg class="icon icon--s recent-zap-history__logo-icon" data-if="!item.logo" aria-hidden="true">
+                                        <use href="#icon-play"></use>
+                                    </svg>
+                                </span>
+                                <span class="recent-zap-history__text">
+                                    <span class="recent-zap-history__name truncate">{{ item.name }}</span>
+                                    <span class="recent-zap-history__group truncate" data-if="item.group">{{ item.group }}</span>
+                                </span>
+                                <span class="recent-zap-history__badge" data-if="item.radio">{{ strings.starred.radioBadge }}</span>
+                                <svg class="icon icon--s recent-zap-history__cue" aria-hidden="true">
+                                    <use href="#icon-play"></use>
+                                </svg>
+                            </button>
+                            <button
+                                type="button"
+                                class="starred-list__unstar"
+                                data-favorite-unstar
+                                :title="strings.starred.unstar"
+                                :aria-label="strings.starred.unstar"
+                                data-testid="starred-unstar"
+                            >
+                                ★
+                            </button>
+                        </li>
+                    </ul>
                 </section>
 
                 <section

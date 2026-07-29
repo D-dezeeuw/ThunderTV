@@ -6,6 +6,7 @@ import { deAppearance } from './strings.de.appearance';
 import { deCatalog } from './strings.de.catalog';
 import { deCodex } from './strings.de.codex';
 import { deHandoff } from './strings.de.handoff';
+import { deStarred } from './strings.de.starred';
 import { deEpg } from './strings.de.epg';
 import { dePlayerTracks } from './strings.de.player';
 
@@ -139,6 +140,7 @@ export const de = {
     ...deEpg.topLevel,
     ...deCodex,
     ...deHandoff,
+    ...deStarred,
 
     recent: {
         nowPlaying: 'Läuft gerade:',

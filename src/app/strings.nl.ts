@@ -6,6 +6,7 @@ import { nlAppearance } from './strings.nl.appearance';
 import { nlCatalog } from './strings.nl.catalog';
 import { nlCodex } from './strings.nl.codex';
 import { nlHandoff } from './strings.nl.handoff';
+import { nlStarred } from './strings.nl.starred';
 import { nlEpg } from './strings.nl.epg';
 import { nlPlayerTracks } from './strings.nl.player';
 
@@ -139,6 +140,7 @@ export const nl = {
     ...nlEpg.topLevel,
     ...nlCodex,
     ...nlHandoff,
+    ...nlStarred,
 
     recent: {
         nowPlaying: 'Nu aan het afspelen:',

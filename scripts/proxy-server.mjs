@@ -53,8 +53,19 @@ export function createProxyServer({ host = '0.0.0.0', port = 8899, publicOrigin,
                         // and awaiting that alone leaves this request's reader
                         // and buffers pinned for the life of the process.
                         await new Promise((resolve) => {
-                            res.once('drain', resolve);
-                            res.once('close', resolve);
+                            // Both listeners come off as soon as either fires.
+                            // `once` only self-removes the one that ran, so
+                            // registering a bare `close` handler per backpressure
+                            // pause leaks one listener per drain — a long stream
+                            // stalls a dozen times a minute and trips Node's
+                            // MaxListenersExceededWarning on the ServerResponse.
+                            const settle = () => {
+                                res.off('drain', settle);
+                                res.off('close', settle);
+                                resolve(undefined);
+                            };
+                            res.once('drain', settle);
+                            res.once('close', settle);
                         });
                         if (clientGone) break;
                     }
