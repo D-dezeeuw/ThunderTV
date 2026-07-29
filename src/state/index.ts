@@ -65,6 +65,7 @@ export { flushNow, pendingKeys, persist, registerPersistOnHide } from './persist
 export { setActiveChannel } from './player.actions';
 export { setActiveSourceId } from './playlist.actions';
 export { handleStorageDemotion } from './ui.actions';
+export { initAppearance } from './theme';
 export { startEpgTick, stopEpgTick } from './epg';
 export { isPersistedKey, KEY_REGISTRY, persistedKeys } from './registry';
 export type { KeyMeta } from './registry';

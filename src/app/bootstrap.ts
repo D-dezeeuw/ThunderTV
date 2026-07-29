@@ -14,6 +14,7 @@ import { registerDebugShortcut } from '../state/debug.actions';
 import { installDevtools } from '../state/devtools';
 import { registerTrackSync } from '../state/player-tracks.actions';
 import {
+    initAppearance,
     initState,
     loadDefaultEpg,
     loadFavoriteIds,
@@ -66,6 +67,10 @@ export async function bootstrap(): Promise<void> {
 
     initState();
     await rehydrateState();
+    // Pre-paint (Feature 22.5.2): the restored theme/text-size land on
+    // <html> before bindDOM() renders anything, so an explicit light-theme
+    // user never sees dark content — see src/state/theme.ts.
+    initAppearance();
     await seedStrings();
 
     registerActions();

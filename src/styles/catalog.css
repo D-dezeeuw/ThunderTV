@@ -43,7 +43,7 @@
     min-width: 0;
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--color-border);
-    border-radius: 6px;
+    border-radius: var(--radius-m);
     background: var(--color-bg);
     color: var(--color-text);
     font: inherit;
@@ -81,7 +81,7 @@
     white-space: nowrap;
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border-radius: var(--radius-full);
     background: var(--color-surface);
     color: var(--color-text);
     font-size: var(--text-sm);
@@ -90,6 +90,7 @@
 
 .catalog-chip--active {
     background: var(--color-accent);
+    background-image: var(--gradient-accent);
     border-color: var(--color-accent);
     color: var(--color-bg);
 }
@@ -109,8 +110,10 @@
     z-index: 2;
     overflow-y: auto;
     background: var(--color-surface);
+    background-image: var(--gradient-panel);
+    box-shadow: var(--shadow-2);
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-l);
     padding: var(--space-4);
 }
 
@@ -130,7 +133,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: var(--radius-m);
     background: var(--color-surface-raised);
     overflow: hidden;
 }
@@ -145,7 +148,7 @@
     display: block;
     width: 40%;
     height: 40%;
-    border-radius: 4px;
+    border-radius: var(--radius-s);
     background: var(--color-border);
 }
 
@@ -332,9 +335,10 @@
     width: min(26rem, calc(100vw - var(--space-6)));
     padding: var(--space-3);
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-l);
     background: var(--color-surface-raised);
-    box-shadow: 0 8px 24px var(--color-scrim);
+    background-image: var(--gradient-panel);
+    box-shadow: var(--shadow-2);
 }
 
 .download-queue__head {

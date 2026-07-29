@@ -40,6 +40,7 @@ import { CODEX_AUTHOR_ID, CODEX_MESSAGE, CODEX_STATE } from './codex';
 import { CODEX_BLOCKED_ROWS, CODEX_LIBRARY_MESSAGE, CODEX_LIBRARY_ROWS, CODEX_LIBRARY_STATE } from './codex-library';
 import { HANDOFF_LINK, HANDOFF_MESSAGE, HANDOFF_STATE } from './handoff';
 import { HEALTH_CLEARED, HEALTH_DEAD_COUNT, HEALTH_TRACKED_COUNT } from './health';
+import { UI_FONT_SIZE, UI_THEME } from './ui';
 import type { KeyMeta } from './registry';
 
 /**
@@ -372,5 +373,17 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: true,
         description: 'Live view strict mode — show only channels the Phase 31 EPG country catalog matched. Off by default; a not-yet-matched channel is far more often a catalog gap than an absent channel.',
+    },
+
+    // --- ui: appearance (Phase 22 theme refresh) ---
+    [UI_THEME]: {
+        owner: 'ui',
+        persisted: true,
+        description: "auto/dark/light — Settings → Appearance theme preference; 'auto' resolves via prefers-color-scheme at apply time (src/state/theme.ts) and an explicit choice always wins. Applied imperatively to <html data-theme>, never via a binding, so the boot pre-paint and the matchMedia re-resolve share one mechanism.",
+    },
+    [UI_FONT_SIZE]: {
+        owner: 'ui',
+        persisted: true,
+        description: "Text size step (small/default/large/xlarge) — Settings → Appearance. Retargets only tokens.css's --text-* via <html data-font-size>; row geometry never moves (that stays ui.density's alone, src/ui/density.ts).",
     },
 };

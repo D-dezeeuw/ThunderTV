@@ -4,6 +4,8 @@ import { DEFAULT_ROUTE, type Route } from '../app/router';
 
 export const UI_ACTIVE_VIEW = 'ui.activeView';
 export const UI_DENSITY = 'ui.density';
+export const UI_THEME = 'ui.theme';
+export const UI_FONT_SIZE = 'ui.fontSize';
 export const UI_SETTINGS_OPEN = 'ui.settingsOpen';
 export const UI_STORAGE_NOTICE_DISMISSED = 'ui.storageNoticeDismissed';
 
@@ -21,9 +23,24 @@ export const STORAGE_TIER = 'storage.tier';
 
 export type Density = 'compact' | 'comfortable';
 
+/**
+ * The *stored* theme preference — 'auto' resolves against
+ * prefers-color-scheme at apply time (src/state/theme.ts); CSS only ever
+ * sees the resolved 'dark' | 'light' on <html data-theme>. Default 'dark':
+ * every existing user is on dark, and dark is tokens.css's :root default,
+ * so the pre-rehydrate paint is already correct for anyone who never
+ * touched the setting (masterplan 22.5.1/22.5.6 — Auto stays one tap away).
+ */
+export type ThemePreference = 'auto' | 'dark' | 'light';
+
+/** Text-only size steps — retargets tokens.css's --text-*; never row geometry (that stays density's, src/ui/density.ts). */
+export type FontSize = 'small' | 'default' | 'large' | 'xlarge';
+
 export interface UiState {
     activeView: Route;
     density: Density;
+    theme: ThemePreference;
+    fontSize: FontSize;
     settingsOpen: boolean;
     storageNoticeDismissed: boolean;
 }
@@ -31,6 +48,8 @@ export interface UiState {
 export const UI_DEFAULTS: UiState = {
     activeView: DEFAULT_ROUTE,
     density: 'comfortable',
+    theme: 'dark',
+    fontSize: 'default',
     settingsOpen: false,
     storageNoticeDismissed: false,
 };
@@ -44,6 +63,8 @@ export const UI_DEFAULTS: UiState = {
  */
 export function initUiState(): void {
     setValue(UI_DENSITY, UI_DEFAULTS.density);
+    setValue(UI_THEME, UI_DEFAULTS.theme);
+    setValue(UI_FONT_SIZE, UI_DEFAULTS.fontSize);
     setValue(UI_SETTINGS_OPEN, UI_DEFAULTS.settingsOpen);
     setValue(UI_STORAGE_NOTICE_DISMISSED, UI_DEFAULTS.storageNoticeDismissed);
 }

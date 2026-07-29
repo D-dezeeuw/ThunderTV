@@ -174,7 +174,7 @@
     height: 100%;
     justify-content: center;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
 }
 
 @media (max-width: 700px) {
@@ -198,7 +198,7 @@
     min-height: 0;
     overflow-y: auto;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-l);
     background: var(--color-surface);
 }
 
@@ -258,7 +258,7 @@
     min-width: 0;
     overflow-y: auto;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-l);
 }
 
 .pad {
@@ -315,7 +315,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
+    border-radius: var(--radius-s);
     background: var(--color-surface-raised);
     overflow: hidden;
 }

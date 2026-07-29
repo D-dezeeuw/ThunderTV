@@ -1,4 +1,5 @@
 /** English copy — the baseline locale (Feature 02.6.7/i18n). `nl`/`de` mirror this exact key shape — `strings.spec.ts` asserts they never drift. */
+import { enAppearance } from './strings.en.appearance';
 import { enCatalog } from './strings.en.catalog';
 import { enCodex } from './strings.en.codex';
 import { enHandoff } from './strings.en.handoff';
@@ -289,11 +290,7 @@ export const en = {
             subtitleAuto: 'Auto (my country)',
             subtitleOff: 'Off',
         },
-        appearance: {
-            density: 'Density',
-            densityCompact: 'Compact',
-            densityComfortable: 'Comfortable',
-        },
+        appearance: enAppearance,
     },
 
     wizard: {

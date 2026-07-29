@@ -34,14 +34,27 @@ body {
     margin: 0;
     padding: 0;
     background: var(--color-bg);
+    /* Subtle app-wide tint, layered over the solid fallback color above. */
+    background-image: var(--gradient-app);
     color: var(--color-text);
     font-family: var(--font-ui);
-    font-size: var(--text-md);
+    font-optical-sizing: auto;
     line-height: var(--leading-normal);
     /* Fixed, full-viewport app shell — not a scrolling document. Scrollable
        regions (the view container, future channel list, etc.) own their
        own overflow via .scroll-y. */
     overflow: hidden;
+}
+
+/* The root stays at the browser's 100% so [data-font-size]'s rem retargets
+   scale text exactly once — html carrying var(--text-md) itself would
+   compound every var(--text-*) use below it. Rem-based widths/spacing stay
+   fixed as a result; only text scales. */
+html {
+    font-size: 100%;
+}
+body {
+    font-size: var(--text-md);
 }
 
 #app {
