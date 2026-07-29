@@ -3,6 +3,8 @@ import { applyLocale, isLocale, strings } from '../app/strings';
 import { SETTINGS_LOCALE } from './settings';
 import { getPlatform } from '../core/platform';
 import { initEpgState } from './epg';
+import { initEpgSettingsState } from './epg-settings';
+import { registerEpgSettingsActions } from './epg-settings.actions';
 import { initFavoritesState } from './favorites';
 import { registerGroupActions } from './groups.actions';
 import { applyHistoryPolicy } from './history-policy';
@@ -89,6 +91,7 @@ export function initState(): void {
     initPlayerState();
     initPlayerTracksState();
     initEpgState();
+    initEpgSettingsState();
     initSettingsState();
     initUiState();
     initListState();
@@ -125,6 +128,7 @@ export function registerActions(): void {
     registerSeriesActions();
     registerSearchActions();
     registerDownloadActions();
+    registerEpgSettingsActions();
 }
 
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */

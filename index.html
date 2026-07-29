@@ -589,6 +589,17 @@
                             >
                                 {{ strings.live.strictFellBack }} {{ liveDroppedSamples }}
                             </p>
+                            <!-- Same never-empty-screen rule for "EPG-verified
+                                 channels only": a catalog that hasn't matched
+                                 anything yet is far more likely than every
+                                 channel genuinely lacking guide data. -->
+                            <p
+                                class="list-shell__stats list-shell__stats--warn"
+                                data-if="view.live.active && live.stats.epgFellBack"
+                                data-testid="live-epg-fallback"
+                            >
+                                {{ strings.live.epgFellBack }}
+                            </p>
                             <p class="list-shell__stats" data-if="view.categories.active" data-testid="categories-note">
                                 {{ strings.categories.note }}
                             </p>
@@ -1914,6 +1925,41 @@
                         </button>
                         <p class="settings-section__hint">{{ strings.settings.diagnostics.exportEpgHelp }}</p>
 
+                        <p class="settings-section__hint" data-testid="epg-catalog-readout">
+                            {{ strings.settings.diagnostics.epgCatalogReadout }}
+                            {{ settings.epgCatalogCount }} · {{ strings.settings.diagnostics.epgMatchedReadout }}
+                            {{ live.stats.epgMatched }}
+                        </p>
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="settings/refreshEpg"
+                            data-testid="refresh-epg-btn"
+                            :disabled="settings.epgCacheState === 'busy'"
+                        >
+                            {{ strings.settings.diagnostics.refreshEpgButton }}
+                        </button>
+                        <p class="settings-section__hint">{{ strings.settings.diagnostics.refreshEpgHelp }}</p>
+
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="settings/clearEpgCache"
+                            data-testid="clear-epg-cache-btn"
+                            :disabled="settings.epgCacheState === 'busy'"
+                        >
+                            {{ strings.settings.diagnostics.clearEpgCacheButton }}
+                        </button>
+                        <p class="settings-section__hint">{{ strings.settings.diagnostics.clearEpgCacheHelp }}</p>
+                        <p class="settings-section__hint" data-if="settings.epgCacheState === 'done'" data-testid="epg-cache-done">
+                            {{ strings.settings.diagnostics.epgCacheDone }}
+                        </p>
+                        <p class="settings-section__error" data-if="settings.epgCacheState === 'failed'" data-testid="epg-cache-failed">
+                            {{ strings.settings.diagnostics.epgCacheFailed }}
+                        </p>
+
                         <button
                             type="button"
                             class="btn"
@@ -1983,6 +2029,19 @@
                             <span>{{ strings.settings.liveFilter.knownOnly }}</span>
                         </label>
                         <p class="settings-section__hint">{{ strings.settings.liveFilter.knownOnlyHelp }}</p>
+
+                        <label class="settings-toggle">
+                            <input
+                                type="checkbox"
+                                data-setting="liveEpgVerifiedOnly"
+                                :checked="settings.liveEpgVerifiedOnly"
+                                data-action="change"
+                                data-fn="settings/toggle"
+                                data-testid="live-epg-verified-toggle"
+                            />
+                            <span>{{ strings.settings.liveFilter.epgVerifiedOnly }}</span>
+                        </label>
+                        <p class="settings-section__hint">{{ strings.settings.liveFilter.epgVerifiedOnlyHelp }}</p>
                     </section>
 
                     <section class="settings-section">

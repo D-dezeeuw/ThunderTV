@@ -9,10 +9,11 @@ import { matchChannels, matchedCatalogIds, primeMappingCache, saveMapping } from
 import { PROGRAM_MAX_AGE_MS, pruneStalePrograms } from '../epg/prune';
 import { parseXmltvDocument, toEpgRecords } from '../epg/xmltv';
 import { makeChannelRowId, type ChannelRow } from '../m3u/types';
+import { EPG_CATALOG_COUNT } from './epg-settings';
 import { loadGuideChannels } from './guide-load';
 import { refreshLiveRows } from './live.actions';
 import { SETTINGS_LIVE_COUNTRY } from './settings';
-import { get } from './typed';
+import { get, set } from './typed';
 
 /**
  * Boot-time EPG pipeline (Feature 31.8) — one fetch/parse/match/store cycle
@@ -34,11 +35,17 @@ export async function loadDefaultEpg(force = false): Promise<void> {
 
     const liveCountryToken = get<string>(SETTINGS_LIVE_COUNTRY) ?? '';
     const country = countryForLiveToken(liveCountryToken);
-    if (!country) return; // no country selected, or the token isn't in the registry
+    if (!country) {
+        set(EPG_CATALOG_COUNT, 0); // no country selected, or the token isn't in the registry
+        return;
+    }
 
     const storage = getPlatform().storage;
     const channelRecords = await storage.getAll('channels');
-    if (channelRecords.length === 0) return; // nothing local to match against yet
+    if (channelRecords.length === 0) {
+        await publishEpgCatalogCount(liveCountryToken); // nothing local to match against yet, but a prior country's catalog may still be stored
+        return;
+    }
 
     const fetchResult = await fetchCountryFeeds(country, { force });
     const parsedFiles: ParsedFeedFile[] = [];
@@ -90,6 +97,13 @@ export async function loadDefaultEpg(force = false): Promise<void> {
     }
 
     if (wroteGuideData) await loadGuideChannels();
+    await publishEpgCatalogCount(liveCountryToken);
+}
+
+/** Settings → Diagnostics' catalog-size readout (Feature 31.7.5) — kept current on every run, not just the ones that fetched something. */
+export async function publishEpgCatalogCount(liveCountryToken: string): Promise<void> {
+    const rows = await getCountryCatalog(liveCountryToken);
+    set(EPG_CATALOG_COUNT, rows.length);
 }
 
 /**

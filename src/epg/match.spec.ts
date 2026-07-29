@@ -4,6 +4,7 @@ import { withFakePlatform } from '../core/platform/fake-platform';
 import type { EpgCatalogRecord } from '../core/storage';
 import type { ChannelRow } from '../m3u/types';
 import {
+    clearMapping,
     getMappingSync,
     loadMapping,
     matchChannels,
@@ -272,6 +273,31 @@ describe('getMappingSync / primeMappingCache (Feature 31.6 — live-rows.ts sync
 
             expect(getMappingSync('NL').map((m) => m.catalogId)).toEqual(['a.nl']);
             expect(getMappingSync('DE').map((m) => m.catalogId)).toEqual(['b.de']);
+        });
+    });
+});
+
+describe('clearMapping', () => {
+    afterEach(() => {
+        resetMappingCacheForTests();
+    });
+
+    it('drops both the sync cache and storage for one country, leaving others untouched', async () => {
+        await withFakePlatform({}, async () => {
+            await saveMapping('NL', { matches: [{ channelKey: 'a', catalogId: 'a.nl', method: 'name' }], unmatchedChannels: [], unmatchedCatalog: [] });
+            await saveMapping('DE', { matches: [{ channelKey: 'b', catalogId: 'b.de', method: 'name' }], unmatchedChannels: [], unmatchedCatalog: [] });
+
+            await clearMapping('NL');
+
+            expect(getMappingSync('NL')).toEqual([]);
+            expect(await loadMapping('NL')).toEqual([]);
+            expect(getMappingSync('DE').map((m) => m.catalogId)).toEqual(['b.de']);
+        });
+    });
+
+    it('is a no-op (never throws) for a country that was never saved', async () => {
+        await withFakePlatform({}, async () => {
+            await expect(clearMapping('NL')).resolves.toBeUndefined();
         });
     });
 });

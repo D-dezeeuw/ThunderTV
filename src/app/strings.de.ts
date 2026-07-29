@@ -5,6 +5,7 @@
  * a real localized app would leave them.
  */
 import { deCatalog } from './strings.de.catalog';
+import { deEpg } from './strings.de.epg';
 import { dePlayerTracks } from './strings.de.player';
 
 export const de = {
@@ -54,6 +55,7 @@ export const de = {
             alt: 'Alt',
         },
         strictFellBack: 'Die kuratierte Liste hat hier nichts gefunden, alle Sender werden angezeigt. Gefundene Namen:',
+        ...deEpg.live,
     },
 
     debug: {
@@ -213,6 +215,7 @@ export const de = {
             exportEpgButton: 'EPG exportieren (XML)',
             exportEpgHelp:
                 'Jeder gespeicherte Guide-Sender und jede Sendung. Ein leerer Guide neben einer vollständigen Senderliste bedeutet meist, dass die tvg-id des Senders nicht mit der EPG-Sender-ID übereinstimmt.',
+            ...deEpg.diagnostics,
         },
         liveFilter: {
             countryLabel: 'Land',
@@ -225,6 +228,7 @@ export const de = {
             dropJunk: 'Füllsender ausblenden',
             dropJunkHelp:
                 'Entfernt nummerierte Event-Slots (VIAPLAY 07, PPV 12…), Trennzeilen und Erwachseneninhalte. Beurteilt nur anhand des Sendernamens — hier wird nicht geprüft, ob ein Stream tatsächlich funktioniert.',
+            ...deEpg.liveFilter,
         },
         navigation: {
             help: 'Wählen Sie, welche Schaltflächen in der Seitenleiste erscheinen. Live wird immer angezeigt.',

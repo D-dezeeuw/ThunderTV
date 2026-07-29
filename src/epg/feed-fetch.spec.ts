@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { withFakePlatform } from '../core/platform/fake-platform';
 import type { EpgCountry } from './countries';
-import { fetchCountryFeeds } from './feed-fetch';
+import { clearFeedBookkeeping, fetchCountryFeeds } from './feed-fetch';
 
 const NL: EpgCountry = {
     folder: 'Netherlands',
@@ -183,3 +183,39 @@ async function gzipText(text: string): Promise<ArrayBuffer> {
     const stream = new Response(text).body!.pipeThrough(new CompressionStream('gzip'));
     return new Response(stream).arrayBuffer();
 }
+
+describe('clearFeedBookkeeping', () => {
+    it('drops both the gz and plain-fallback bookkeeping keys for every file', async () => {
+        await withFakePlatform({}, async ({ storage }) => {
+            await storage.set(`epg.feed.meta.${GZ_URL_1}`, { etag: '"a"', lastFetchedAt: 1 });
+            await storage.set(`epg.feed.meta.${GZ_URL_2}`, { etag: '"b"', lastFetchedAt: 2 });
+            await storage.set(`epg.feed.meta.${PLAIN_URL_1}`, { etag: '"c"', lastFetchedAt: 3 });
+
+            await clearFeedBookkeeping(NL);
+
+            expect(await storage.get(`epg.feed.meta.${GZ_URL_1}`)).toBeUndefined();
+            expect(await storage.get(`epg.feed.meta.${GZ_URL_2}`)).toBeUndefined();
+            expect(await storage.get(`epg.feed.meta.${PLAIN_URL_1}`)).toBeUndefined();
+        });
+    });
+
+    it('is a no-op (never throws) when nothing was ever bookkept', async () => {
+        await withFakePlatform({}, async () => {
+            await expect(clearFeedBookkeeping(NL)).resolves.toBeUndefined();
+        });
+    });
+
+    it('an unconditional refetch afterward cannot 304 against the cleared ETag', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            vi.stubGlobal('DecompressionStream', undefined);
+            await clearFeedBookkeeping(NL);
+
+            http.onGet(PLAIN_URL_1).reply({ kind: 'ok', body: 'fresh' });
+            http.onGet(PLAIN_URL_2).reply({ kind: 'ok', body: 'fresh' });
+            await fetchCountryFeeds(NL, { force: true });
+
+            expect(http.calls[0]?.options?.headers).not.toHaveProperty('If-None-Match');
+            vi.unstubAllGlobals();
+        });
+    });
+});
