@@ -2,6 +2,7 @@ import { refs, watch } from 'spektrum';
 import { EPG_TICK } from '../state/epg';
 import { toggleFavoriteById } from '../state/favorites.actions';
 import { handleRowContextMenu } from '../state/list.actions';
+import { consumeHandoff } from '../state/handoff.actions';
 import { loadActiveSource, registerActiveSourceWatch } from '../state/list-load';
 import { UI_VIEW_MODE } from '../state/list-state';
 import { registerViewRowsWatch } from '../state/live.actions';
@@ -70,7 +71,10 @@ export function registerListBindings(): () => void {
         cleanups.push(attachLogoFallback(rowsContainer));
     }
 
-    void loadActiveSource();
+    // An arriving handoff (stone 9) resolves against loaded rows, so it has
+    // to wait for the boot load rather than race it — this is the one place
+    // that knows when those rows exist.
+    void loadActiveSource().then(() => consumeHandoff());
     cleanups.push(registerActiveSourceWatch());
     // Live and Categories share this one virtual list, so moving between
     // them — or changing a Live filter setting — republishes a different

@@ -184,6 +184,7 @@ starts, so a separate phase file would be a second copy to keep honest.
 | 35  | Spatial Navigation                                                           | 8 (D-pad as a first-class input model)               | `src/ui/README.md` |
 | 36  | Codex Merge (CRDT)                                                           | 6 (convergence with no sync server)                  | `src/codex/README.md` |
 | 37  | Community Codex                                                              | 10 (follow, refresh, prune; the trust model)         | `src/codex/README.md` |
+| 38  | Handoff                                                                      | 9 (session continuity; LAN transport *not* built — see the README) | `src/handoff/README.md` |
 
 ---
 

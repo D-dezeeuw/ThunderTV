@@ -25,7 +25,8 @@ if you need historical "why," not for a routine change.
 | EPG (XMLTV ingest, country catalog, matching, now/next, guide) | `src/epg/README.md` |
 | Stream health — which feeds actually play, decaying score, dead markers | `src/health/README.md` |
 | Codex — the signed, portable knowledge file (export/import/merge)          | `src/codex/README.md` |
-| Player engine (hls.js/mpegts.js/native), dock, theater mode  | `src/player/README.md` |
+| Player engine (hls.js/mpegts.js/native), dock, theater mode, resume position | `src/player/README.md` |
+| Handing a session to another screen, the `#/handoff` link      | `src/handoff/README.md` |
 | Virtual list scrolling, group filtering, logo fallback, gestures | `src/ui/README.md` |
 | D-pad / arrow-key spatial focus, TV remote keycodes, Back button | `src/ui/spatial/README.md` |
 | Any Spektrum state key, action, or selector                 | `src/state/README.md` (has the module-ownership table — check it before adding a key anywhere) |
