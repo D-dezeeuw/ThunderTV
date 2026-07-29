@@ -91,6 +91,13 @@ export function fetchCountryFeeds(
     return promise;
 }
 
+/** Drops the ETag/TTL bookkeeping for every one of `country`'s feed files (both gz and plain-fallback URLs, since which one was in use last session isn't known) — Settings' "Clear EPG cache" action, so a forced re-fetch afterward is unconditional rather than one where a stale ETag could still 304 against a cache the user just asked to clear. */
+export async function clearFeedBookkeeping(country: EpgCountry): Promise<void> {
+    const storage = getPlatform().storage;
+    const urls = [...feedUrls(country), ...plainFeedUrls(country)];
+    await Promise.all(urls.map((url) => storage.delete(bookkeepingKey(url))));
+}
+
 async function runFetch(country: EpgCountry, force: boolean): Promise<FetchCountryFeedsResult> {
     const storage = getPlatform().storage;
     const useGzip = supportsGzipDecompression();

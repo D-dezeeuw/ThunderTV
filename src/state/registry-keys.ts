@@ -31,7 +31,6 @@ import {
     SETTINGS_EXPORT_STATE,
     SETTINGS_LIVE_COUNTRY,
     SETTINGS_LIVE_DROP_JUNK,
-    SETTINGS_LIVE_EPG_VERIFIED_ONLY,
     SETTINGS_LIVE_KNOWN_ONLY,
     SETTINGS_LOCALE,
     SETTINGS_NAV_CATEGORIES,
@@ -334,11 +333,8 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         persisted: true,
         description: 'Drop event-slot placeholders (VIAPLAY 07 and friends), separator rows and adult entries from the Live view. On by default.',
     },
-    [SETTINGS_LIVE_EPG_VERIFIED_ONLY]: {
-        owner: 'settings',
-        persisted: true,
-        description: 'Live view strict mode — show only channels the Phase 31 EPG country catalog matched. Off by default; a not-yet-matched channel is far more often a catalog gap than an absent channel.',
-    },
+    // SETTINGS_LIVE_EPG_VERIFIED_ONLY is registered in registry-overflow.ts
+    // (this file is at the 400-line hard cap — see that file's header).
 
     // --- live ---
     [LIVE_STATS]: {

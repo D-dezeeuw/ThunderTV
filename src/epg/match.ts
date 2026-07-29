@@ -172,3 +172,9 @@ export async function loadMapping(country: string): Promise<EpgChannelMatch[]> {
 export async function primeMappingCache(country: string): Promise<void> {
     mappingCache.set(country, await loadMapping(country));
 }
+
+/** Drops one country's mapping from both storage and the sync cache — Settings' "Clear EPG cache" action. */
+export async function clearMapping(country: string): Promise<void> {
+    mappingCache.delete(country);
+    await getPlatform().storage.delete(mappingKey(country));
+}
