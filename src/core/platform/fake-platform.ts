@@ -10,6 +10,13 @@ import type { HttpAdapter, HttpRequestOptions } from '../http/http-adapter';
 import { MemoryStorage } from '../storage/memory-storage';
 import { getPlatform, resetPlatformForTests, setPlatform } from './index';
 import type { Capabilities } from './capabilities';
+import type {
+    DownloadAdapter,
+    DownloadCallbacks,
+    DownloadFailure,
+    DownloadHandle,
+    DownloadTarget,
+} from './download-adapter';
 import type { ElectronBridge } from './electron-bridge.types';
 import type { FileAdapter, PickedFile, ReadTextResult } from './file-adapter';
 import type { PlatformAdapter, WindowFullscreenControl } from './platform-adapter';
@@ -177,13 +184,93 @@ export function fakeElectronBridge(proxyOrigin = 'http://127.0.0.1:52301'): Elec
             fullscreen = next;
         },
         getDefaultConfig: () => Promise.resolve({ xtream: null, locale: null, liveCountry: null }),
+        // Declines every save dialog, so a spec that merely installs the
+        // bridge never accidentally starts a transfer. A spec exercising the
+        // desktop download path overrides this member on the returned object.
+        downloads: {
+            prepare: () => Promise.resolve(null),
+            start: () => undefined,
+            cancel: () => undefined,
+            onEvent: () => () => undefined,
+        },
     };
+}
+
+/**
+ * Test-only `DownloadAdapter`. Nothing is transferred and nothing is
+ * written: a spec drives the outcome by hand through `emitProgress()`/
+ * `finish()`/`fail()`, which is what makes an inherently asynchronous,
+ * multi-second operation testable in one synchronous pass.
+ *
+ * `prepare()` answers a target by default so the common case needs no
+ * setup; `declineNextPrepare()` makes it answer `null` once, standing in
+ * for a viewer who dismisses the save picker.
+ */
+export class FakeDownloadAdapter implements DownloadAdapter {
+    /** Every `start()` in order — a spec asserts what was actually requested, not just that something was. */
+    readonly started: { url: string; filename: string }[] = [];
+    readonly prepared: string[] = [];
+    readonly cancelled: string[] = [];
+    /** What `prepare()` answers with. Flip to `'handoff'` to exercise the browser-download-manager path, which is terminal on arrival. */
+    prepareKind: DownloadTarget['kind'] = 'managed';
+    private declineOnce = false;
+    private live: { filename: string; callbacks: DownloadCallbacks } | null = null;
+
+    declineNextPrepare(): void {
+        this.declineOnce = true;
+    }
+
+    prepare(filename: string): Promise<DownloadTarget | null> {
+        this.prepared.push(filename);
+        if (this.declineOnce) {
+            this.declineOnce = false;
+            return Promise.resolve(null);
+        }
+        return Promise.resolve({ kind: this.prepareKind, filename });
+    }
+
+    start(url: string, target: DownloadTarget, callbacks: DownloadCallbacks): DownloadHandle {
+        this.started.push({ url, filename: target.filename });
+        this.live = { filename: target.filename, callbacks };
+        return {
+            cancel: () => {
+                this.cancelled.push(target.filename);
+                this.fail('cancelled');
+            },
+        };
+    }
+
+    emitProgress(receivedBytes: number, totalBytes: number | null): void {
+        this.live?.callbacks.onProgress({ receivedBytes, totalBytes });
+    }
+
+    finish(): void {
+        const live = this.live;
+        this.live = null;
+        live?.callbacks.onDone();
+    }
+
+    fail(reason: DownloadFailure): void {
+        const live = this.live;
+        this.live = null;
+        live?.callbacks.onError(reason);
+    }
+
+    reset(): void {
+        this.started.length = 0;
+        this.prepared.length = 0;
+        this.cancelled.length = 0;
+        this.declineOnce = false;
+        this.prepareKind = 'managed';
+        this.live = null;
+    }
 }
 
 export interface FakePlatformHandle {
     platform: PlatformAdapter;
     http: FakeHttpAdapter;
     files: FakeFileAdapter;
+    downloads: FakeDownloadAdapter;
     storage: MemoryStorage;
 }
 
@@ -191,11 +278,16 @@ const DEFAULT_CAPABILITIES: Capabilities = Object.freeze({
     corsUnrestricted: false,
     externalPlayers: false,
     durableStorage: 'none',
+    // `'managed'` by default so the common spec exercises the real queue
+    // (progress + cancel). A spec covering the browser-handoff path
+    // overrides it, same as any other capability.
+    downloads: 'managed',
 });
 
 export function createFakePlatform(capabilityOverrides: Partial<Capabilities> = {}): FakePlatformHandle {
     const http = new FakeHttpAdapter();
     const files = new FakeFileAdapter();
+    const downloads = new FakeDownloadAdapter();
     const storage = new MemoryStorage();
     const capabilities = Object.freeze({ ...DEFAULT_CAPABILITIES, ...capabilityOverrides });
     // MemoryStorage always reports tier 'none' — override it to match the
@@ -204,8 +296,8 @@ export function createFakePlatform(capabilityOverrides: Partial<Capabilities> = 
     // sees a consistent fake, without needing a second storage
     // implementation just for tests.
     Object.defineProperty(storage, 'tier', { value: capabilities.durableStorage });
-    const platform: PlatformAdapter = { name: 'web', http, files, storage, capabilities };
-    return { platform, http, files, storage };
+    const platform: PlatformAdapter = { name: 'web', http, files, downloads, storage, capabilities };
+    return { platform, http, files, downloads, storage };
 }
 
 /**

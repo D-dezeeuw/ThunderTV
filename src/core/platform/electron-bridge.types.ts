@@ -52,7 +52,37 @@ export interface ElectronBridge {
      * would otherwise open.
      */
     getDefaultConfig(): Promise<DefaultElectronConfig>;
+    /**
+     * Saving a movie to disk from the main process. This is the one part of
+     * the bridge that is more than a value read, and it earns that: the
+     * alternative is pulling a multi-gigabyte file through the renderer's
+     * fetch stack to write it back out again. See
+     * `src/core/platform/electron-downloads.ts` for the adapter on this side
+     * and `desktop/main.mjs` for the implementation on the other.
+     */
+    readonly downloads: ElectronDownloadBridge;
 }
+
+export interface ElectronDownloadBridge {
+    /** Native save dialog. Resolves the chosen absolute path, or `null` when the viewer dismisses it. */
+    prepare(filename: string): Promise<string | null>;
+    /** Fire-and-forget: every outcome, progress included, comes back on `onEvent` keyed by `id`. */
+    start(id: string, url: string, filePath: string): void;
+    /** Idempotent — cancelling an id that already finished is a no-op in the main process, not an error. */
+    cancel(id: string): void;
+    /** Returns its own unsubscribe, matching every other listener contract in the app. */
+    onEvent(listener: (event: ElectronDownloadEvent) => void): () => void;
+}
+
+/**
+ * One channel for every download, discriminated by `id` — a queue with
+ * several prepared entries must never cross-talk, and a single channel with
+ * an id is simpler to reason about than a channel per transfer.
+ */
+export type ElectronDownloadEvent =
+    | { id: string; kind: 'progress'; receivedBytes: number; totalBytes: number | null }
+    | { id: string; kind: 'done' }
+    | { id: string; kind: 'error'; reason: 'network' | 'disk' | 'cancelled' };
 
 export interface DefaultElectronConfig {
     xtream: { url: string; username: string; password: string } | null;

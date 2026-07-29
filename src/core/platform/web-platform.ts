@@ -3,6 +3,7 @@ import { createStorage } from '../storage';
 import type { TierControllerOptions } from '../storage/tier-controller';
 import { createWebCapabilities } from './capabilities';
 import type { PlatformAdapter } from './platform-adapter';
+import { WebDownloadAdapter } from './web-downloads';
 import { WebFileAdapter } from './web-file-adapter';
 
 export interface CreateWebPlatformOptions {
@@ -52,6 +53,7 @@ export async function createWebPlatform(options: CreateWebPlatformOptions = {}):
         storage,
         http: new WebHttpAdapter(options.getProxyTemplate ? { getProxyTemplate: options.getProxyTemplate } : {}),
         files: new WebFileAdapter(),
+        downloads: new WebDownloadAdapter(),
         get capabilities() {
             return createWebCapabilities(storage.tier);
         },

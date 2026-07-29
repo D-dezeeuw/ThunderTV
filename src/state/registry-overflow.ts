@@ -26,6 +26,7 @@ import {
     VOD_WARM_STATUS,
 } from './vod';
 import { PLAYER_AUDIO_MODE } from './player';
+import { DOWNLOAD_QUEUE_CAP, DOWNLOADS_ACTIVE_ID, DOWNLOADS_ITEMS } from './downloads';
 import type { KeyMeta } from './registry';
 
 /**
@@ -213,5 +214,20 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'player',
         persisted: true,
         description: 'Play TV channels audio-only, with the Radio visualizer standing in for the picture. A viewing preference (a TV used as a stereo stays that way), so persisted; the player bar always carries the switch back.',
+    },
+
+    // --- downloads (save a movie to disk) ---
+    [DOWNLOADS_ITEMS]: {
+        owner: 'downloads',
+        persisted: false,
+        maxItems: DOWNLOAD_QUEUE_CAP,
+        description:
+            'The download queue, one compact entry per movie (id/name/filename/status/percent/sizeLabel). Never persisted: the destination handle and the transfer itself belong to the session that started them, so a restored queue would show rows nothing could resume — a browser reload genuinely does abandon an in-flight download.',
+    },
+    [DOWNLOADS_ACTIVE_ID]: {
+        owner: 'downloads',
+        persisted: false,
+        description:
+            'Id of the one transfer currently running, or null. The queue is serial (most Xtream panels cap concurrent connections per account), so this is a single id rather than a set, and it is what downloads.actions.ts guards late progress/completion callbacks against.',
     },
 };

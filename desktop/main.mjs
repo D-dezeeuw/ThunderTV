@@ -31,6 +31,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createProxyServer } from '../scripts/proxy-server.mjs';
+import { registerDownloadHandlers } from './downloads.mjs';
 
 const desktopDir = path.dirname(fileURLToPath(import.meta.url));
 const APP_BACKGROUND_COLOR = '#0b0d10';
@@ -154,6 +155,8 @@ if (!gotLock) {
     // any local process listing (`ps`), and a password shouldn't sit there
     // for the process lifetime when a simple round-trip avoids it entirely.
     ipcMain.handle(IPC_GET_DEFAULT_CONFIG, () => defaultConfig);
+
+    registerDownloadHandlers();
 
     async function start() {
         const splash = createSplashWindow();

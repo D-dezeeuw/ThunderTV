@@ -63,7 +63,19 @@ import { OVERFLOW_REGISTRY_ENTRIES } from './registry-overflow';
  * "what actually persists" and "what the docs claim persists".
  */
 export interface KeyMeta {
-    owner: 'playlist' | 'import' | 'player' | 'epg' | 'settings' | 'ui' | 'list' | 'favorites' | 'vod' | 'series' | 'search';
+    owner:
+        | 'playlist'
+        | 'import'
+        | 'player'
+        | 'epg'
+        | 'settings'
+        | 'ui'
+        | 'list'
+        | 'favorites'
+        | 'vod'
+        | 'series'
+        | 'search'
+        | 'downloads';
     persisted: boolean;
     /** Feature 05.8.5: the bulk-data guard's per-key ceiling, for keys holding an array. */
     maxItems?: number;

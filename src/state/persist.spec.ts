@@ -1,7 +1,7 @@
 import { resetState, setValue, tick } from 'spektrum';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetPlatformForTests, setPlatform } from '../core/platform';
-import { withFakePlatform } from '../core/platform/fake-platform';
+import { FakeDownloadAdapter, withFakePlatform } from '../core/platform/fake-platform';
 import { MemoryStorage } from '../core/storage/memory-storage';
 import type { StorageAdapter, WriteResult } from '../core/storage/storage-adapter';
 import type { PlatformAdapter } from '../core/platform/platform-adapter';
@@ -36,7 +36,7 @@ class FlakyStorage implements StorageAdapter {
 }
 
 function platformWith(storage: StorageAdapter): PlatformAdapter {
-    return { name: 'web', http: {} as PlatformAdapter['http'], files: {} as PlatformAdapter['files'], storage, capabilities: { corsUnrestricted: true, externalPlayers: false, durableStorage: storage.tier } };
+    return { name: 'web', http: {} as PlatformAdapter['http'], files: {} as PlatformAdapter['files'], downloads: new FakeDownloadAdapter(), storage, capabilities: { corsUnrestricted: true, externalPlayers: false, durableStorage: storage.tier , downloads: 'none'} };
 }
 
 describe('persist() debounce (Feature 05.3.1/05.3.9)', () => {

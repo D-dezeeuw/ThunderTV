@@ -1,3 +1,5 @@
+import { webDownloadSupport } from './web-downloads';
+
 /**
  * Declared data, not scattered `if (isElectron)` checks — UX decisions
  * (CORS warnings, player options, storage notices) read from this object
@@ -10,6 +12,23 @@ export interface Capabilities {
     readonly corsUnrestricted: boolean;
     readonly externalPlayers: boolean;
     readonly durableStorage: 'full' | 'partial' | 'none';
+    /**
+     * How well this host can save a VOD title to disk — and therefore
+     * whether the download queue's progress bar and Cancel button mean
+     * anything:
+     *
+     * - `'managed'`: the transfer runs under our control (Electron's main
+     *   process, or the web's File System Access streaming path), so bytes
+     *   are counted and a cancel really stops it.
+     * - `'handoff'`: the file is passed to the browser's own download
+     *   manager, which the page cannot observe or stop. The queue shows the
+     *   entry as handed over rather than faking a percentage.
+     * - `'none'`: no download path at all. Not produced by either shipping
+     *   platform today; it exists so the safe-default rule above has a
+     *   value to name, and so the UI's gate is a capability check rather
+     *   than an environment check.
+     */
+    readonly downloads: 'managed' | 'handoff' | 'none';
 }
 
 /**
@@ -25,6 +44,11 @@ export function createWebCapabilities(durableStorage: Capabilities['durableStora
         corsUnrestricted: false,
         externalPlayers: false,
         durableStorage,
+        // Feature-detected, not assumed: `webDownloadSupport()` reports
+        // `'managed'` only where `showSaveFilePicker` actually exists
+        // (Chromium/Edge), and `'handoff'` on the browsers where the only
+        // option is handing the URL to the download manager.
+        downloads: webDownloadSupport(),
     });
 }
 
@@ -45,5 +69,9 @@ export function createElectronCapabilities(durableStorage: Capabilities['durable
         corsUnrestricted: true,
         externalPlayers: false,
         durableStorage,
+        // Always the real thing here — the main process streams the file to
+        // disk itself (`electron-downloads.ts`), so there is no
+        // browser-support axis to feature-detect.
+        downloads: 'managed',
     });
 }

@@ -53,6 +53,45 @@ behavior change. Native file dialogs, main-process error logging, and
 window-state persistence remain main-process-only concerns (`desktop/`)
 and are out of this adapter's scope.
 
+## `downloads` — saving a movie to disk
+
+`PlatformAdapter.downloads` (`download-adapter.ts`) is the second member
+added under the "new adapter method when a real consumer needs it" rule,
+and unlike `windowFullscreen` it is non-optional: both hosts can save a
+file, they just differ in how well. `capabilities.downloads` reports which:
+
+| Value       | Host                                        | Progress + cancel? |
+| ----------- | ------------------------------------------- | ------------------ |
+| `managed`   | Electron; web with File System Access       | Yes — real         |
+| `handoff`   | web without it (Firefox, Safari)            | No — the browser owns it |
+| `none`      | nothing ships this; the safe default        | n/a                |
+
+Only movies, never live channels: an Xtream VOD URL
+(`/movie/{user}/{pass}/{id}.{ext}`) is a static file with a real
+`Content-Length` and a real end, while a live channel is an endless
+transport stream with neither — there is no "done" to download to. The
+proxy already forwards `Range` and passes `content-range`/`accept-ranges`
+back (`scripts/proxy-server.mjs`), so ranged transfers needed nothing new.
+
+**Why `prepare()` and `start()` are two calls.** The web save picker
+(`showSaveFilePicker`) requires transient user activation, so it must run
+inside the click that asked for the download — but a *queue* starts most
+transfers long after that click. So the destination is chosen up front and
+the transfer happens whenever the runner reaches it. Callers must therefore
+call `prepare()` as the first statement of a click handler, before any
+`await`; `src/state/downloads.actions.ts` does, and anything added later
+must too.
+
+`web-downloads.ts` streams `response.body` into a
+`FileSystemWritableFileStream` — deliberately *not* `fetch` → `Blob` →
+`createObjectURL`, which buffers the whole file in memory and is exactly the
+failure mode this exists to avoid. `electron-downloads.ts` is a thin client
+over `desktop/main.mjs`, which streams to disk in the main process, so a
+feature-length film never passes through the renderer at all.
+
+The queue itself, its serial-by-design runner, and the UI live in
+`src/state/downloads.ts`/`downloads.actions.ts` — see `src/state/README.md`.
+
 ## Capabilities, not environment checks
 
 `capabilities` is declared data (`corsUnrestricted`, `externalPlayers`,

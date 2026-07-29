@@ -1,6 +1,7 @@
 import type { HttpAdapter } from '../http/http-adapter';
 import type { StorageAdapter } from '../storage/storage-adapter';
 import type { Capabilities } from './capabilities';
+import type { DownloadAdapter } from './download-adapter';
 import type { FileAdapter } from './file-adapter';
 
 /**
@@ -22,6 +23,14 @@ export interface PlatformAdapter {
     storage: StorageAdapter;
     http: HttpAdapter;
     files: FileAdapter;
+    /**
+     * Saving a VOD title to disk. Unlike `windowFullscreen` below this is
+     * non-optional, because both hosts can do *something* — the difference
+     * is how well, which `capabilities.downloads` reports and the UI gates
+     * on. See `download-adapter.ts` for why `prepare()` and `start()` are
+     * two calls rather than one.
+     */
+    downloads: DownloadAdapter;
     capabilities: Capabilities;
     /**
      * Present only on a host that owns a window of its own to fullscreen —

@@ -23,6 +23,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `vod.ts`              | `vod.categories`, `vod.activeCategoryId`, `vod.status`, `vod.errorReason`, `vod.count`, `vod.detailId`, `vod.detail`, `vod.warmStatus` | No (Phase 21) — the Movies catalog itself (categories/items/detail cache) lives in `vod-rows.ts`'s module memory and, on the `'full'` storage tier only, in ad hoc `catalog-storage.ts` keys outside the Phase 05 bridge; see "Existing-key decisions" below |
 | `series.ts`           | `series.categories`, `series.activeCategoryId`, `series.status`, `series.errorReason`, `series.count`, `series.detailId`, `series.detail`, `series.warmStatus` | No (Phase 21) — same reasoning as `vod.ts`, via `series-rows.ts`/`catalog-storage.ts` |
 | `search.ts`           | `search.query`, `search.scope`, `search.active`, `search.resultCounts`, `search.loadedOnly`                           | No (Phase 21) — a live, disposable session activity, reset every boot like `ui.settingsOpen` |
+| `downloads.ts`        | `downloads.items`, `downloads.activeId`                                                                              | No — the save-file handle and the transfer belong to the session that started them, so a restored queue would show rows nothing could resume; a reload genuinely does abandon an in-flight download |
 
 **The rule:** adding a Spektrum key means adding it to `registry-keys.ts`'s
 `KEY_REGISTRY` (owner, `persisted`, optional `maxItems`/`version`,
@@ -318,6 +319,58 @@ automatically, once the other agent's `src/app/router.ts` change adds
 `'movies'`/`'series'` to the `Route` union — nothing here depends on that
 union directly (the comparison is a plain string match), so no coordination
 was required to land this half first.
+
+## Downloading a movie (`downloads.ts`/`downloads.actions.ts`)
+
+Movies only. An Xtream VOD URL is a static file with a real
+`Content-Length` and a real end; a live channel is an endless transport
+stream with neither, so there is nothing to download *to*. Series episodes
+are the same shape as movies and would slot in behind the same queue —
+they are simply not wired up yet. The platform half (the `DownloadAdapter`,
+the `managed`/`handoff` capability, and why `prepare()` is separate from
+`start()`) is in `src/core/platform/README.md`.
+
+Three decisions worth recording once:
+
+- **The queue lives in module memory, and state is a projection of it.**
+  This looks like it contradicts "state is the single source of truth", and
+  it is the same finding `sequence-token.ts` already records: `set()` only
+  *queues* a write, and nothing is visible to `get()` until the next
+  `tick()` — which nothing guarantees lands between an enqueue and the
+  `pumpQueue()` call right after it. A runner re-reading its own just-written
+  state sees an empty queue and never starts. So `queue`/`activeId` are
+  plain module variables and `publish()` mirrors them into
+  `downloads.items`/`downloads.activeId` for rendering. That also keeps the
+  live `DownloadHandle` — a function-bearing object — out of a store that
+  should only ever hold serializable snapshots. `publish()` rebuilds the
+  array and every entry object each time, since Spektrum diffs by reference
+  and an in-place mutation would never look changed.
+- **One transfer at a time.** Not a simplification: Xtream panels cap
+  concurrent connections per account, which is the same limit that makes
+  "downloading while watching" fail. Parallel transfers would trade a queue
+  that finishes for a set that all die at once. It is also why the movie
+  detail panel disables *Play* while its own download runs — starting
+  playback opens a second connection to the same account.
+- **Progress is coalesced to 250 ms** in `downloads.actions.ts` (and again in
+  `desktop/main.mjs`). The web adapter reports once per network chunk, which
+  on a fast link is far more often than a bar can redraw, and every one of
+  them would republish the whole queue array.
+
+### Two Spektrum gotchas this feature hit
+
+Both cost a debugging round, and both will bite the next feature that
+touches markup:
+
+- **`data-if` does not stop an element's other bindings from evaluating** —
+  it only toggles `display`. A hidden `<progress :value="download.detail.percent">`
+  still ran while no movie was open, assigned `undefined` to
+  `HTMLProgressElement.value`, and threw. Anything bound to a *numeric DOM
+  property* needs a selector that is always finite (`download.detailPercent`),
+  never an optional-chained path.
+- **`data-each` wants a plain path, not an expression.**
+  `data-each="download.rows || []"` silently rendered zero rows;
+  `data-each="download.rows"` works. Keep the fallback in the selector (it
+  already returns `[]`), not in the template.
 
 ## The persistence bridge, in one paragraph
 
