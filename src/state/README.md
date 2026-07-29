@@ -320,15 +320,26 @@ automatically, once the other agent's `src/app/router.ts` change adds
 union directly (the comparison is a plain string match), so no coordination
 was required to land this half first.
 
-## Downloading a movie (`downloads.ts`/`downloads.actions.ts`)
+## Downloading a movie or an episode (`downloads.ts`/`downloads.actions.ts`)
 
-Movies only. An Xtream VOD URL is a static file with a real
-`Content-Length` and a real end; a live channel is an endless transport
-stream with neither, so there is nothing to download *to*. Series episodes
-are the same shape as movies and would slot in behind the same queue —
-they are simply not wired up yet. The platform half (the `DownloadAdapter`,
-the `managed`/`handoff` capability, and why `prepare()` is separate from
-`start()`) is in `src/core/platform/README.md`.
+Movies and TV episodes, never live channels. Both VOD shapes
+(`/movie/{user}/{pass}/{id}.{ext}` and `/series/{user}/{pass}/{id}.{ext}`)
+are static files with a real `Content-Length` and a real end; a live channel
+is an endless transport stream with neither, so there is nothing to download
+*to*. Both ride one queue through the shared `enqueue()`; the callers differ
+only in where the title and extension come from. The platform half (the
+`DownloadAdapter`, the `managed`/`handoff` capability, and why `prepare()`
+is separate from `start()`) is in `src/core/platform/README.md`.
+
+An episode's extension comes off `series.detail.rows`, which is why
+`SeriesDetailRow` carries `containerExtension` and `season` at all: the save
+picker needs the filename synchronously, inside the click, and awaiting a
+`get_series_info` round trip would spend the click's user activation first.
+`download.episodeRows` (`downloads.selectors.ts`) is the download-joined copy
+of those rows the episode list actually binds — a flat `data-each` row cannot
+look itself up in `downloads.items`, so the join happens in a selector, and
+the dependency points the right way (downloads knows about series, not the
+reverse).
 
 Three decisions worth recording once:
 
@@ -370,7 +381,13 @@ touches markup:
 - **`data-each` wants a plain path, not an expression.**
   `data-each="download.rows || []"` silently rendered zero rows;
   `data-each="download.rows"` works. Keep the fallback in the selector (it
-  already returns `[]`), not in the template.
+  already returns `[]`), not in the template. This was not hypothetical: the
+  series episode list shipped as
+  `data-each="series.detail?.rows || []"` and rendered **nothing** — the
+  panel looked like every series had zero episodes. `series-detail.markup.spec.ts`
+  did not catch it because that spec mirrors the markup by hand and happened
+  to use the plain-path form. When mirroring markup in a spec, copy the
+  binding verbatim.
 
 ## The persistence bridge, in one paragraph
 

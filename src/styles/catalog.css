@@ -390,3 +390,25 @@
     font-size: var(--text-sm);
     color: var(--color-text-dim);
 }
+
+/* An episode row is now three things side by side — the play button, the
+   download control, and (while transferring) the progress row — so the row
+   itself has to lay them out rather than being a single full-width button. */
+.catalog-detail-row:has(.catalog-episode) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.catalog-episode__saved {
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+}
+
+/* Spans both columns so a long title never squeezes the bar to nothing —
+   same reasoning as the queue panel's own rows. */
+.catalog-detail-row .download-progress {
+    grid-column: 1 / -1;
+    margin-top: 0;
+}

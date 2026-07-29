@@ -1,12 +1,13 @@
 import { computed, type State } from 'spektrum';
-import { DOWNLOADS_ITEMS, isDownloadBusy, type DownloadEntry } from './downloads';
-import { vodDownloadId } from './downloads';
+import { DOWNLOADS_ITEMS, isDownloadBusy, seriesDownloadId, vodDownloadId, type DownloadEntry } from './downloads';
+import { SERIES_DETAIL, SERIES_DETAIL_ID, type SeriesDetail } from './series';
 import { VOD_DETAIL_ID } from './vod';
 import { PLATFORM_CAPABILITIES } from './ui';
 
 interface DownloadsSlice {
     downloads?: { items?: DownloadEntry[] };
     vod?: { detailId?: number | null };
+    series?: { detailId?: number | null; detail?: SeriesDetail | null };
     platform?: { capabilities?: { downloads?: string } };
 }
 
@@ -20,6 +21,7 @@ interface DownloadsSlice {
  */
 export function registerDownloadSelectors(): void {
     registerDetailComputeds();
+    registerEpisodeComputeds();
     registerQueueComputeds();
 }
 
@@ -82,6 +84,43 @@ function registerDetailComputeds(): void {
      */
     computed('download.supported', [PLATFORM_CAPABILITIES], (state: State) => {
         return ((state as DownloadsSlice).platform?.capabilities?.downloads ?? 'none') !== 'none';
+    });
+}
+
+/**
+ * The open series' episode list, each row carrying its own download state.
+ *
+ * The panel binds `data-each` to *this* rather than to `series.detail.rows`
+ * directly, because a flat `data-each` row cannot look itself up in another
+ * array — the join has to happen before the template sees it. Doing it here
+ * also keeps the dependency pointing the right way: downloads knows about
+ * series, series knows nothing about downloads.
+ */
+function registerEpisodeComputeds(): void {
+    computed('download.episodeRows', [DOWNLOADS_ITEMS, SERIES_DETAIL, SERIES_DETAIL_ID], (state: State) => {
+        const typed = state as DownloadsSlice;
+        const seriesId = typed.series?.detailId;
+        const rows = typed.series?.detail?.rows ?? [];
+        const entries = itemsOf(state);
+        return rows.map((row) => {
+            if (row.kind !== 'episode' || seriesId === null || seriesId === undefined) {
+                return { ...row, downloadId: '', downloadBusy: false, downloadPercent: 0, downloadMeasured: false, downloadSizeLabel: '', downloadDone: false };
+            }
+            const downloadId = seriesDownloadId(seriesId, row.episodeId);
+            const entry = entries.find((candidate) => candidate.id === downloadId);
+            return {
+                ...row,
+                downloadId,
+                downloadBusy: entry !== undefined && isDownloadBusy(entry.status),
+                // Always finite: `data-if` does not stop a `<progress :value>`
+                // binding from evaluating, so `undefined`/`-1` here would
+                // throw or render nonsense (see `download.detailPercent`).
+                downloadPercent: entry && entry.percent > 0 ? entry.percent : 0,
+                downloadMeasured: entry !== undefined && entry.percent >= 0,
+                downloadSizeLabel: entry?.sizeLabel ?? '',
+                downloadDone: entry?.status === 'done',
+            };
+        });
     });
 }
 

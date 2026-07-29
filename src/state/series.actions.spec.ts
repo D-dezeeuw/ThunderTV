@@ -151,7 +151,7 @@ describe('series.actions', () => {
             expect(detail?.name).toBe('Show B');
             expect(detail?.rows).toEqual([
                 { kind: 'season', season: 1 },
-                { kind: 'episode', episodeId: 100, episode: 1, title: 'Pilot', durationMins: null },
+                { kind: 'episode', episodeId: 100, season: 1, episode: 1, title: 'Pilot', durationMins: null, containerExtension: 'mp4' },
             ]);
             expect(get<string>(SERIES_DETAIL_STATUS)).toBe('ready');
             expect(get<string | null>(SERIES_DETAIL_ERROR_REASON)).toBeNull();

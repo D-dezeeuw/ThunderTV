@@ -22,6 +22,7 @@ import { get } from './typed';
 import { initVodState } from './vod';
 import { resetVodMemoryForTests } from './vod-rows';
 import { openVodCatalog } from './vod.actions';
+import { resetSeriesMemoryForTests } from './series-rows';
 
 /**
  * The queue's contract, in the terms the UI depends on: one transfer at a
@@ -68,6 +69,7 @@ function entry(id: string): DownloadEntry | undefined {
 afterEach(() => {
     resetDownloadsForTests();
     resetVodMemoryForTests();
+    resetSeriesMemoryForTests();
     resetPersistForTests();
     resetState();
 });

@@ -70,7 +70,24 @@ export interface SeriesCategoryRow {
  */
 export type SeriesDetailRow =
     | { kind: 'season'; season: number }
-    | { kind: 'episode'; episodeId: number | string; episode: number; title: string; durationMins: number | null };
+    | {
+          kind: 'episode';
+          episodeId: number | string;
+          /** The season this episode belongs to. Carried on the row itself — a flat row list has no parent to ask, and the download filename ("Show - S01E03 - Title") needs it. */
+          season: number;
+          episode: number;
+          title: string;
+          durationMins: number | null;
+          /**
+           * The file extension the provider serves this episode under. Here
+           * rather than only in `XtreamSeriesInfo` because the download
+           * action needs the filename *synchronously*, inside the click: the
+           * web save picker requires transient user activation, so it cannot
+           * wait on a `get_series_info` round trip
+           * (`src/core/platform/download-adapter.ts`).
+           */
+          containerExtension: string;
+      };
 
 /** Denormalized snapshot for the one currently-open series — `rows` bounded to `SERIES_DETAIL_EPISODES_CAP` total episode rows. */
 export interface SeriesDetail {

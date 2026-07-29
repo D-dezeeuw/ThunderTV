@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { withFakePlatform } from '../core/platform/fake-platform';
 import { mountTemplate } from '../shared/testing/bind-dom';
 import { DOWNLOADS_ITEMS, type DownloadEntry } from './downloads';
+import { SERIES_DETAIL, SERIES_DETAIL_ID } from './series';
 import { seedPlatformDiagnostics } from './ui';
 import { VOD_DETAIL_ID } from './vod';
 
@@ -209,6 +210,110 @@ describe('download queue panel', () => {
             setValue(DOWNLOADS_ITEMS, [entry({ status: 'done' })]);
             tick();
             expect(mounted.query('[data-testid="clear"]')?.style.display).not.toBe('none');
+            mounted.cleanup();
+        });
+    });
+});
+
+/**
+ * The episode list binds `download.episodeRows`, the download-joined copy of
+ * `series.detail.rows`. Two things worth pinning: the join really does reach
+ * the template (each row carries its own download id, not the panel's), and
+ * the binding is a plain path — the `series.detail?.rows || []` expression it
+ * replaced rendered zero rows, which is why the episode list was empty.
+ */
+describe('series episode download controls', () => {
+    const EPISODES = `
+        <div data-each="download.episodeRows" data-as="row">
+            <div>
+                <h3 data-if="row.kind === 'season'" data-testid="season">S{{ row.season }}</h3>
+                <button
+                    data-if="row.kind === 'episode'"
+                    data-action="click"
+                    data-fn="series/playEpisode"
+                    :disabled="row.downloadBusy"
+                    data-testid="play"
+                >{{ row.title }}</button>
+                <button
+                    data-if="row.kind === 'episode' && download.supported && !row.downloadBusy && !row.downloadDone"
+                    data-action="click"
+                    data-fn="downloads/startSeriesEpisode"
+                    :data-episode-id="row.episodeId"
+                    data-testid="dl"
+                ></button>
+                <div data-if="row.kind === 'episode' && row.downloadBusy" data-testid="progress">
+                    <progress data-if="row.downloadMeasured" max="100" :value="row.downloadPercent" data-testid="bar"></progress>
+                    <button data-action="click" data-fn="downloads/cancel" :data-download-id="row.downloadId" data-testid="cancel"></button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    function seedEpisodes(): void {
+        setValue(SERIES_DETAIL_ID, 7);
+        setValue(SERIES_DETAIL, {
+            seriesId: 7,
+            name: 'Show B',
+            categoryId: '1',
+            categoryName: null,
+            cover: null,
+            plot: null,
+            year: null,
+            rating: null,
+            rows: [
+                { kind: 'season', season: 1 },
+                { kind: 'episode', episodeId: 100, season: 1, episode: 1, title: 'Pilot', durationMins: 42, containerExtension: 'mkv' },
+                { kind: 'episode', episodeId: 101, season: 1, episode: 2, title: 'Second', durationMins: 41, containerExtension: 'mkv' },
+            ],
+        });
+    }
+
+    it('renders every episode row — the regression the plain-path data-each fixes', () => {
+        return withFakePlatform({}, () => {
+            const mounted = mountTemplate(EPISODES);
+            seedCapabilities();
+            seedEpisodes();
+            setValue(DOWNLOADS_ITEMS, []);
+            tick();
+
+            const visible = mounted.queryAll('[data-testid="play"]').filter((el) => el.style.display !== 'none');
+            expect(visible.map((el) => el.textContent?.trim())).toEqual(['Pilot', 'Second']);
+            expect(mounted.queryAll('[data-testid="season"]').filter((el) => el.style.display !== 'none')).toHaveLength(1);
+            mounted.cleanup();
+        });
+    });
+
+    it('disables only the downloading episode and gives its cancel that episode\'s own id', () => {
+        return withFakePlatform({}, () => {
+            const mounted = mountTemplate(EPISODES);
+            seedCapabilities();
+            seedEpisodes();
+            setValue(DOWNLOADS_ITEMS, [entry({ id: 'series:7:100', name: 'Show B - S01E01 - Pilot' })]);
+            tick();
+
+            const plays = mounted.queryAll('[data-testid="play"]').filter((el) => el.style.display !== 'none');
+            expect(plays.map((el) => (el as HTMLButtonElement).disabled)).toEqual([true, false]);
+
+            const cancels = mounted.queryAll('[data-testid="cancel"]').filter((el) => el.parentElement?.style.display !== 'none');
+            expect(cancels.map((el) => el.getAttribute('data-download-id'))).toEqual(['series:7:100']);
+
+            // The other episode still offers its own Download button.
+            const dls = mounted.queryAll('[data-testid="dl"]').filter((el) => el.style.display !== 'none');
+            expect(dls.map((el) => el.getAttribute('data-episode-id'))).toEqual(['101']);
+            mounted.cleanup();
+        });
+    });
+
+    it('replaces a finished episode\'s Download button rather than offering it again', () => {
+        return withFakePlatform({}, () => {
+            const mounted = mountTemplate(EPISODES);
+            seedCapabilities();
+            seedEpisodes();
+            setValue(DOWNLOADS_ITEMS, [entry({ id: 'series:7:100', status: 'done', percent: 100 })]);
+            tick();
+
+            const dls = mounted.queryAll('[data-testid="dl"]').filter((el) => el.style.display !== 'none');
+            expect(dls.map((el) => el.getAttribute('data-episode-id'))).toEqual(['101']);
             mounted.cleanup();
         });
     });

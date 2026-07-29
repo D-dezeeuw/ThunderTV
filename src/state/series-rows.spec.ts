@@ -32,10 +32,10 @@ describe('buildSeriesDetailRows()', () => {
 
         expect(buildSeriesDetailRows(info, 500)).toEqual([
             { kind: 'season', season: 1 },
-            { kind: 'episode', episodeId: 100, episode: 1, title: 'Pilot', durationMins: 2 },
-            { kind: 'episode', episodeId: 101, episode: 2, title: 'Episode 2', durationMins: null },
+            { kind: 'episode', episodeId: 100, season: 1, episode: 1, title: 'Pilot', durationMins: 2, containerExtension: 'mp4' },
+            { kind: 'episode', episodeId: 101, season: 1, episode: 2, title: 'Episode 2', durationMins: null, containerExtension: 'mp4' },
             { kind: 'season', season: 2 },
-            { kind: 'episode', episodeId: 200, episode: 1, title: 'S2E1', durationMins: 2 },
+            { kind: 'episode', episodeId: 200, season: 2, episode: 1, title: 'S2E1', durationMins: 2, containerExtension: 'mp4' },
         ]);
     });
 
@@ -52,8 +52,8 @@ describe('buildSeriesDetailRows()', () => {
 
         expect(buildSeriesDetailRows(info, 500)).toEqual([
             { kind: 'season', season: 1 },
-            { kind: 'episode', episodeId: 1, episode: 1, title: 'A', durationMins: 1 },
-            { kind: 'episode', episodeId: 2, episode: 2, title: 'B', durationMins: 2 },
+            { kind: 'episode', episodeId: 1, season: 1, episode: 1, title: 'A', durationMins: 1, containerExtension: 'mp4' },
+            { kind: 'episode', episodeId: 2, season: 1, episode: 2, title: 'B', durationMins: 2, containerExtension: 'mp4' },
         ]);
     });
 
@@ -85,7 +85,7 @@ describe('buildSeriesDetailRows()', () => {
 
         expect(buildSeriesDetailRows(info, 1)).toEqual([
             { kind: 'season', season: 1 },
-            { kind: 'episode', episodeId: 1, episode: 1, title: 'A', durationMins: null },
+            { kind: 'episode', episodeId: 1, season: 1, episode: 1, title: 'A', durationMins: null, containerExtension: 'mp4' },
         ]);
     });
 

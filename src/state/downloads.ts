@@ -88,6 +88,29 @@ export function vodDownloadId(streamId: number): string {
     return `vod:${String(streamId)}`;
 }
 
+/**
+ * `series:<seriesId>:<episodeId>` — keyed on both, not the episode id alone.
+ * Episode ids are unique per provider in practice, but the series id is what
+ * makes an entry legible in the queue and what a future "cancel every
+ * episode of this show" would group on.
+ */
+export function seriesDownloadId(seriesId: number, episodeId: number | string): string {
+    return `series:${String(seriesId)}:${String(episodeId)}`;
+}
+
+/**
+ * `Show - S01E03 - Title`. Zero-padded so a season's episodes sort in order
+ * in a file manager, which is the whole reason to impose a scheme rather
+ * than saving under the provider's raw episode title. The title is dropped
+ * when the provider only repeats the episode number in it, which many do.
+ */
+export function episodeBaseName(showName: string, season: number, episode: number, title: string): string {
+    const code = `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+    const trimmed = title.trim();
+    const suffix = trimmed && trimmed !== String(episode) ? ` - ${trimmed}` : '';
+    return `${showName} - ${code}${suffix}`;
+}
+
 /** True while an entry still owes the viewer something — what the detail panel disables its buttons on. */
 export function isDownloadBusy(status: DownloadStatus): boolean {
     return status === 'queued' || status === 'downloading';

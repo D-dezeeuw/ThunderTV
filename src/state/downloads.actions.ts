@@ -10,7 +10,9 @@ import {
     DOWNLOADS_ITEMS,
     formatSizeLabel,
     isDownloadBusy,
+    episodeBaseName,
     percentOf,
+    seriesDownloadId,
     vodDownloadId,
     type DownloadEntry,
     type DownloadErrorReason,
@@ -19,6 +21,9 @@ import { get, set } from './typed';
 import { cachedVodSource, vodCategoryName, vodItemToRow, vodMemory } from './vod-rows';
 import { resolveActiveXtreamSource } from './xtream-refresh';
 import { VOD_DETAIL, type VodDetail } from './vod';
+import { SERIES_DETAIL, type SeriesDetail } from './series';
+import { cachedSeriesSource } from './series-rows';
+import { seriesEpisodeUrl } from '../xtream/urls';
 
 /**
  * The download queue: one transfer at a time, in the order the viewer asked.
@@ -58,6 +63,11 @@ export function registerDownloadActions(): void {
         const id = Number(el.dataset['streamId']);
         if (Number.isFinite(id)) void startVodDownload(id);
     });
+    defineFn('downloads/startSeriesEpisode', (el) => {
+        const seriesId = Number(el.dataset['seriesId']);
+        const episodeId = el.dataset['episodeId'];
+        if (Number.isFinite(seriesId) && episodeId) void startSeriesEpisodeDownload(seriesId, episodeId);
+    });
     defineFn('downloads/cancel', (el) => {
         const id = el.dataset['downloadId'];
         if (id) cancelDownload(id);
@@ -96,41 +106,34 @@ function patch(id: string, changes: Partial<DownloadEntry>): void {
 }
 
 /**
- * Queues a movie. The save destination is chosen here, inside the click,
- * because the web save picker needs transient user activation and the
- * runner may not reach this entry for minutes (`download-adapter.ts`).
+ * The shared half of queueing anything. Split from the two callers because
+ * the *order* here is load-bearing and must not be re-derived per caller:
+ * the save destination is chosen inside the click, since the web save
+ * picker needs transient user activation and the runner may not reach this
+ * entry for minutes (`download-adapter.ts`).
  *
- * Everything before that call is deliberately synchronous — title,
- * extension and stream URL all come from state and module memory the open
- * detail panel already populated — so no `await` can spend the activation
- * before the picker opens.
+ * `resolveUrl` therefore runs *after* the picker, and each caller must have
+ * computed its own `name`/`filename` synchronously before calling in — from
+ * state and module memory the open detail panel already populated, so no
+ * `await` can spend the activation before the picker opens.
  */
-export async function startVodDownload(streamId: number): Promise<void> {
-    const id = vodDownloadId(streamId);
+async function enqueue(
+    id: string,
+    name: string,
+    filename: string,
+    resolveUrl: () => Promise<string | null>,
+): Promise<void> {
     // Asking twice is a double-click, not a request for a second copy.
-    if (find(id) && isDownloadBusy(find(id)?.status ?? 'done')) return;
+    if (isDownloadBusy(find(id)?.status ?? 'done')) return;
     if (queue.filter((entry) => isDownloadBusy(entry.status)).length >= DOWNLOAD_QUEUE_CAP) return;
 
-    const item = vodMemory.findItem(streamId);
-    if (!item) return;
-    const detail = get<VodDetail | null>(VOD_DETAIL);
-    const name = detail?.streamId === streamId ? detail.name : item.name;
-    const filename = safeFilename(name, item.containerExtension || 'mp4');
-
-    const cached = cachedVodSource();
-    const platform = getPlatform();
     // First await, on purpose. See this function's doc.
-    const target = await platform.downloads.prepare(filename);
+    const target = await getPlatform().downloads.prepare(filename);
     // `null` is the viewer dismissing the picker — an ordinary "never mind",
     // so nothing is queued and nothing is reported.
     if (!target) return;
 
-    // Only now, after the picker, is it safe to spend time resolving the
-    // account: `cachedVodSource()` is empty until a catalog has been opened
-    // in this session, and this path has to work from a deep link too.
-    const account = cached ? null : await resolveActiveXtreamSource();
-    const url = vodItemToRow(item, cached ?? account?.source ?? null, vodCategoryName(item.categoryId)).url;
-
+    const url = await resolveUrl();
     const entry: DownloadEntry = {
         id,
         name,
@@ -140,8 +143,8 @@ export async function startVodDownload(streamId: number): Promise<void> {
         sizeLabel: '',
         errorReason: url ? null : 'network',
     };
-    // Replaces any finished entry for the same movie, so re-downloading a
-    // title reuses its row instead of stacking a second one below it.
+    // Replaces any finished entry for the same title, so re-downloading one
+    // reuses its row instead of stacking a second below it.
     const existing = queue.findIndex((candidate) => candidate.id === id);
     if (existing >= 0) queue.splice(existing, 1, entry);
     else queue.push(entry);
@@ -156,6 +159,56 @@ export async function startVodDownload(streamId: number): Promise<void> {
     }
     publish();
     pumpQueue();
+}
+
+/** Queues a movie. Title and extension come from the catalog item the open detail panel already loaded, so nothing is awaited before the picker. */
+export async function startVodDownload(streamId: number): Promise<void> {
+    const item = vodMemory.findItem(streamId);
+    if (!item) return;
+    const detail = get<VodDetail | null>(VOD_DETAIL);
+    const name = detail?.streamId === streamId ? detail.name : item.name;
+
+    const cached = cachedVodSource();
+    await enqueue(vodDownloadId(streamId), name, safeFilename(name, item.containerExtension || 'mp4'), async () => {
+        // `cachedVodSource()` is empty until a catalog has been opened this
+        // session, so the account may still need resolving — after the
+        // picker, never before it.
+        const account = cached ? null : await resolveActiveXtreamSource();
+        return vodItemToRow(item, cached ?? account?.source ?? null, vodCategoryName(item.categoryId)).url || null;
+    });
+}
+
+/**
+ * Queues one episode. Same static-file shape as a movie
+ * (`/series/{user}/{pass}/{id}.{ext}`), so it rides the same queue — the
+ * only real difference is where the extension comes from.
+ *
+ * It comes off `series.detail.rows`, not from a `get_series_info` call:
+ * that fetch is asynchronous, and awaiting it would spend the click's user
+ * activation before the save picker ever opened. The open detail panel has
+ * already loaded exactly this data, which is why `SeriesDetailRow` carries
+ * `containerExtension` and `season` at all.
+ */
+export async function startSeriesEpisodeDownload(seriesId: number, episodeId: number | string): Promise<void> {
+    const detail = get<SeriesDetail | null>(SERIES_DETAIL);
+    if (!detail || detail.seriesId !== seriesId) return;
+    const row = detail.rows.find(
+        (candidate) => candidate.kind === 'episode' && String(candidate.episodeId) === String(episodeId),
+    );
+    if (!row || row.kind !== 'episode') return;
+
+    const name = episodeBaseName(detail.name, row.season, row.episode, row.title);
+    const cached = cachedSeriesSource();
+    await enqueue(
+        seriesDownloadId(seriesId, episodeId),
+        name,
+        safeFilename(name, row.containerExtension || 'mp4'),
+        async () => {
+            const account = cached ? null : await resolveActiveXtreamSource();
+            const source = cached ?? account?.source ?? null;
+            return source ? seriesEpisodeUrl(source, row.episodeId, row.containerExtension || 'mp4') : null;
+        },
+    );
 }
 
 export function cancelDownload(id: string): void {

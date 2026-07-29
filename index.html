@@ -967,10 +967,23 @@
                                     <p class="catalog-detail__empty" data-if="series.detailStatus === 'ready' && series.detail.rows.length === 0" data-testid="series-no-episodes">
                                         {{ strings.series.noEpisodes }}
                                     </p>
+                                    <!-- data-each binds `download.episodeRows`, not
+                                         `series.detail.rows`: a flat row cannot look itself
+                                         up in `downloads.items`, so the join has to happen
+                                         in a selector before the template sees it
+                                         (downloads.selectors.ts). The rows are otherwise
+                                         `series.detail.rows` verbatim.
+
+                                         It is also a PLAIN PATH on purpose. This was
+                                         `series.detail?.rows || []`, and Spektrum's
+                                         data-each does not evaluate an expression there —
+                                         it silently rendered zero rows, which is why the
+                                         episode list came up empty. Keep any fallback in
+                                         the selector (it already returns []), never here. -->
                                     <div
                                         class="catalog-seasons"
                                         data-if="series.detailStatus === 'ready' && series.detail.rows.length > 0"
-                                        data-each="series.detail?.rows || []"
+                                        data-each="download.episodeRows"
                                         data-as="row"
                                         data-testid="series-rows"
                                     >
@@ -986,12 +999,61 @@
                                                 data-fn="series/playEpisode"
                                                 :data-series-id="series.detailId"
                                                 :data-episode-id="row.episodeId"
+                                                :disabled="row.downloadBusy"
                                                 data-testid="series-episode"
                                             >
                                                 <span class="catalog-episode__num">{{ strings.series.episodePrefix }}{{ row.episode }}</span>
                                                 <span class="catalog-episode__title truncate">{{ row.title }}</span>
                                                 <span class="catalog-episode__duration" data-if="row.durationMins !== null">{{ row.durationMins }} {{ strings.series.minutesSuffix }}</span>
                                             </button>
+
+                                            <!-- Per episode, not per panel: several episodes
+                                                 can be queued at once, so only the one that
+                                                 is transferring goes inert. -->
+                                            <button
+                                                type="button"
+                                                class="btn btn--quiet catalog-episode__download"
+                                                data-if="row.kind === 'episode' && download.supported && !row.downloadBusy && !row.downloadDone"
+                                                data-action="click"
+                                                data-fn="downloads/startSeriesEpisode"
+                                                :data-series-id="series.detailId"
+                                                :data-episode-id="row.episodeId"
+                                                data-testid="series-episode-download"
+                                            >
+                                                {{ strings.downloads.action }}
+                                            </button>
+                                            <span
+                                                class="catalog-episode__saved"
+                                                data-if="row.kind === 'episode' && row.downloadDone"
+                                                data-testid="series-episode-saved"
+                                            >
+                                                {{ strings.downloads.done }}
+                                            </span>
+
+                                            <div class="download-progress" data-if="row.kind === 'episode' && row.downloadBusy" data-testid="series-episode-progress">
+                                                <progress
+                                                    class="download-progress__bar"
+                                                    data-if="row.downloadMeasured"
+                                                    max="100"
+                                                    :value="row.downloadPercent"
+                                                    :aria-label="strings.downloads.progressAria"
+                                                ></progress>
+                                                <progress class="download-progress__bar" data-if="!row.downloadMeasured" :aria-label="strings.downloads.progressAria"></progress>
+                                                <span class="download-progress__label">
+                                                    <span data-if="!row.downloadSizeLabel">{{ strings.downloads.queued }}</span>
+                                                    <span data-if="row.downloadSizeLabel">{{ row.downloadSizeLabel }}</span>
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn--quiet"
+                                                    data-action="click"
+                                                    data-fn="downloads/cancel"
+                                                    :data-download-id="row.downloadId"
+                                                    data-testid="series-episode-cancel"
+                                                >
+                                                    {{ strings.downloads.cancel }}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
