@@ -1,9 +1,8 @@
 import { defineFn, watch } from 'spektrum';
 import type { Route } from '../app/router';
 import { getRows } from '../m3u/channel-memory';
-import type { ChannelRow, ChannelVariant } from '../m3u/types';
+import type { ChannelVariant } from '../m3u/types';
 import { findRowById } from '../ui/virtual-list';
-import { FAVORITES_IDS, type FavoriteIdsMap } from './favorites';
 import { setDisplayedRows } from './list-rows';
 import { ensureLiveRows, ensureRadioRows, invalidateLiveRows, liveDisplayRows, radioDisplayRows } from './live-rows';
 import { PLAYER_ACTIVE, PLAYER_ACTIVE_VARIANT_ID, PLAYER_VARIANTS, VARIANTS_CAP } from './player';
@@ -56,26 +55,7 @@ export function publishRowsForCurrentView(): void {
         setDisplayedRows(radioDisplayRows());
         return;
     }
-    if (view === 'categories') {
-        setDisplayedRows(getRows());
-        return;
-    }
-    if (view === 'favorites') {
-        ensureLiveRows();
-        setDisplayedRows(favoriteDisplayRows());
-    }
-}
-
-/**
- * Favorites are keyed on the channel's primary id (see `playVariantById`'s
- * doc comment), so this filters the same grouped rows Live shows rather
- * than the provider's raw dump — a favorite always resolves to its one
- * canonical row regardless of which variant was playing when it was
- * starred.
- */
-function favoriteDisplayRows(): ChannelRow[] {
-    const ids = get<FavoriteIdsMap>(FAVORITES_IDS) ?? {};
-    return liveDisplayRows().filter((row) => ids[row.id]);
+    if (view === 'categories') setDisplayedRows(getRows());
 }
 
 /**
@@ -93,13 +73,9 @@ export function registerViewRowsWatch(): () => void {
             refreshLiveRows();
         },
     );
-    const stopFavorites = watch([FAVORITES_IDS], () => {
-        if (get<Route>(UI_ACTIVE_VIEW) === 'favorites') publishRowsForCurrentView();
-    });
     return () => {
         stopView();
         stopSettings();
-        stopFavorites();
     };
 }
 
