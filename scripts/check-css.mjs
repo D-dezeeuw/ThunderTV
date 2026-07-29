@@ -1,15 +1,13 @@
 #!/usr/bin/env node
-// Two source-level CSS guards (Features 02.1.10 and 02.2.9). Kept as its
-// own script rather than folded into check-dist.mjs (which validates built
-// dist/ output) since these check authored src/ CSS instead:
+// Source-level CSS guard (Feature 02.1.10): no literal hex colors outside
+// src/styles/tokens.css — every other stylesheet must reference a color
+// via var(--token), never a literal, so tokens.css stays the single
+// vocabulary and the light/dark themes stay a one-file concern.
 //
-//   1. No literal hex colors outside src/styles/tokens.css — every other
-//      stylesheet must reference a color via var(--token), never a literal,
-//      so tokens.css stays the single vocabulary.
-//   2. No transition/animation/@keyframes anywhere under src/ — the
-//      standing no-animation policy, enforced here as a second line of
-//      defense alongside eslint's no-restricted-syntax (which only catches
-//      TS string literals, not authored CSS).
+// The former companion guard (no transition/animation/@keyframes — the
+// original no-animation policy) was retired with the theme refresh:
+// motion is part of the design language now, gated by
+// prefers-reduced-motion in base.css rather than banned.
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -28,7 +26,6 @@ function listCssFiles(dir) {
 
 const cssFiles = listCssFiles(srcDir);
 const hexPattern = /#[0-9a-fA-F]{3,8}\b/g;
-const animationPattern = /\b(transition|animation)\s*:|@keyframes\b/;
 
 let failed = false;
 
@@ -46,23 +43,8 @@ for (const file of cssFiles) {
             failed = true;
         }
     }
-
-    // The global kill-switch in base.css ("transition: none !important")
-    // legitimately contains the word "transition" — allow exactly that
-    // pattern, reject every other occurrence.
-    const withoutKillSwitch = content
-        .replace(/transition:\s*none\s*!important;?/g, '')
-        .replace(/animation:\s*none\s*!important;?/g, '');
-    if (animationPattern.test(withoutKillSwitch)) {
-        console.error(
-            `check-css: ${relPath} contains transition/animation/@keyframes — no-animation policy violation.`,
-        );
-        failed = true;
-    }
 }
 
 if (failed) process.exit(1);
 
-console.log(
-    `check-css: OK — ${cssFiles.length} CSS file(s) clean (no literal hex colors outside tokens.css, no transitions/animations)`,
-);
+console.log(`check-css: OK — ${cssFiles.length} CSS file(s) clean (no literal hex colors outside tokens.css)`);

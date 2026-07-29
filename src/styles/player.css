@@ -12,9 +12,12 @@
     padding: var(--space-3);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-xl);
-    background: var(--color-surface);
+    background: var(--glass-surface);
     background-image: var(--gradient-panel);
-    box-shadow: var(--shadow-1);
+    backdrop-filter: blur(18px) saturate(1.3);
+    box-shadow:
+        var(--shadow-2),
+        var(--glass-highlight);
 }
 
 .player-shell__video {
@@ -253,13 +256,26 @@
     cursor: pointer;
     /* Anchor for the `[data-tip]` tooltip pseudo-element (see below). */
     position: relative;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        border-color var(--dur-1) var(--ease-swift),
+        color var(--dur-1) var(--ease-swift),
+        box-shadow var(--dur-2) var(--ease-swift);
 }
 
-.variants__chip--active {
+.variants__chip:hover {
+    border-color: var(--color-border-strong);
+    background: var(--surface-hover);
+    color: var(--color-text);
+}
+
+.variants__chip--active,
+.variants__chip--active:hover {
     border-color: var(--color-accent);
     background: var(--color-accent);
     background-image: var(--gradient-accent);
     color: var(--color-bg);
+    box-shadow: var(--glow-accent);
 }
 
 /* Picture tier as lit bars — same idiom as the stream-health signal above,
@@ -336,11 +352,22 @@
     overflow-y: auto;
     margin-bottom: var(--space-2);
     padding: var(--space-1) 0;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-l);
-    background: var(--color-surface-raised);
+    background: var(--glass-strong);
     background-image: var(--gradient-panel);
-    box-shadow: var(--shadow-2);
+    backdrop-filter: blur(24px) saturate(1.4);
+    box-shadow:
+        var(--shadow-2),
+        var(--glass-highlight);
+    animation: menu-pop var(--dur-2) var(--ease-swift) both;
+}
+
+@keyframes menu-pop {
+    from {
+        transform: translateY(6px) scale(0.98);
+        opacity: 0;
+    }
 }
 
 .track-menu__list {
