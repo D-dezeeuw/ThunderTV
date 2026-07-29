@@ -923,37 +923,39 @@
                                 data-testid="guide-now-line"
                             ></div>
 
-                            <div class="guide__row" data-each="guide.view.channels" data-testid="guide-row">
-                                <div class="guide__channel">
-                                    <img
-                                        data-if="item.icon"
-                                        class="guide__channel-logo"
-                                        :src="item.icon"
-                                        loading="lazy"
-                                        decoding="async"
-                                        referrerpolicy="no-referrer"
-                                        alt=""
-                                    />
-                                    <span class="guide__channel-name truncate">{{ item.displayName }}</span>
-                                </div>
-                                <div
-                                    class="guide__timeline"
-                                    data-each="item.programs"
-                                    data-as="program"
-                                    data-action="click"
-                                    data-fn="guide/selectProgram"
-                                >
-                                    <button
-                                        type="button"
-                                        class="guide__program"
-                                        :class="{ 'guide__program--now': program.isNow, 'guide__program--selected': program.isSelected }"
-                                        :style="'left:' + program.leftPercent + '%; width:' + program.widthPercent + '%'"
-                                        :data-program-key="program.key"
-                                        :title="program.title"
-                                        data-testid="guide-program"
+                            <div class="guide__row-list" data-each="guide.view.channels" data-testid="guide-row-list">
+                                <div class="guide__row" data-testid="guide-row">
+                                    <div class="guide__channel">
+                                        <img
+                                            data-if="item.icon"
+                                            class="guide__channel-logo"
+                                            :src="item.icon"
+                                            loading="lazy"
+                                            decoding="async"
+                                            referrerpolicy="no-referrer"
+                                            alt=""
+                                        />
+                                        <span class="guide__channel-name truncate">{{ item.displayName }}</span>
+                                    </div>
+                                    <div
+                                        class="guide__timeline"
+                                        data-each="item.programs"
+                                        data-as="program"
+                                        data-action="click"
+                                        data-fn="guide/selectProgram"
                                     >
-                                        <span class="guide__program-title truncate">{{ program.title }}</span>
-                                    </button>
+                                        <button
+                                            type="button"
+                                            class="guide__program"
+                                            :class="{ 'guide__program--now': program.isNow, 'guide__program--selected': program.isSelected }"
+                                            :style="'left:' + program.leftPercent + '%; width:' + program.widthPercent + '%'"
+                                            :data-program-key="program.key"
+                                            :title="program.title"
+                                            data-testid="guide-program"
+                                        >
+                                            <span class="guide__program-title truncate">{{ program.title }}</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

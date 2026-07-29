@@ -39,7 +39,7 @@ export async function loadActiveSource(): Promise<void> {
 
     const restored = restoreListState(sourceId);
     await loadGroupsFor(sourceId);
-    await streamChannelsFor(sourceId);
+    await streamChannelsFor(sourceId, restored.viewMode === 'groups' ? restored.activeGroup : null);
 
     if (get<string | null>(PLAYLIST_ACTIVE_SOURCE_ID) !== sourceId) return; // superseded mid-stream
 
@@ -88,7 +88,15 @@ async function loadGroupsFor(sourceId: string): Promise<void> {
  * Completion Notes) — acceptable because even a 90k-row source is at most 18
  * `CHUNK_ROWS` pages, each a fast indexed range read.
  */
-async function streamChannelsFor(sourceId: string): Promise<void> {
+/**
+ * `restoredGroup` keeps every incremental publish consistent with the group
+ * the caller is about to settle on: streaming the raw, unfiltered
+ * `accumulated` array while a group view is being restored used to flash the
+ * whole catalog on screen before the final `rowsForGroup()` filter (in
+ * `loadActiveSource()`) narrowed it back down — a visible flicker on every
+ * source load/switch that returned to a group.
+ */
+async function streamChannelsFor(sourceId: string, restoredGroup: string | null): Promise<void> {
     const storage = getPlatform().storage;
     let offset = 0;
     let accumulated: ChannelRow[] = [];
@@ -100,7 +108,7 @@ async function streamChannelsFor(sourceId: string): Promise<void> {
 
         accumulated = accumulated.concat(page.map((record) => toChannelRow(record, sourceId)));
         setMemoryRows(accumulated);
-        setDisplayedRows(accumulated);
+        setDisplayedRows(restoredGroup ? rowsForGroup(accumulated, restoredGroup) : accumulated);
 
         offset += CHUNK_ROWS;
         if (page.length < CHUNK_ROWS) break;

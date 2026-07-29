@@ -1,5 +1,5 @@
 import { appState, defineFn, getPathObj, refs, setValue } from 'spektrum';
-import { requestVideoFullscreen } from '../player/fullscreen';
+import { exitFullscreenIfActive, requestVideoFullscreen } from '../player/fullscreen';
 import { pushCapped } from './collections';
 import { persist } from './persist';
 import {
@@ -50,6 +50,8 @@ export function registerPlayerActions(): void {
 
 /** MVP playback slice: clears `player.active`, which `src/player/bindings.ts`'s `watch()` reacts to by tearing the `<video>` element down — the `setValue()` fence (Feature 05.2.5) keeps that write here, not in `src/player/`. */
 export function stopPlayback(): void {
+    // Must run before the teardown writes below — see exitFullscreenIfActive()'s doc comment.
+    exitFullscreenIfActive();
     setValue(PLAYER_ACTIVE, null);
     setValue(PLAYER_PLAYBACK_ERROR, null);
     setValue(PLAYER_STREAM_HEALTH, null);
