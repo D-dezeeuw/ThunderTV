@@ -23,4 +23,9 @@ export const enPlayerTracks = {
     /** Switches a TV channel to Radio's audio + visualizer presentation, and back. */
     playerAudioOnly: 'Audio only',
     playerShowPicture: 'Show picture',
+    /** Appended to the MediaError label when a movie/episode file uses a container this device has no decoder for — MKV most often, which Chromium does not support at all. */
+    playerUnsupportedContainer:
+        "this file's container is not one this device can play; downloading it and opening it in another player will work",
+    /** The last engine in the chain went quiet: no metadata, no frames, and no error either. Reported so the player says something instead of spinning indefinitely. */
+    playerNoDataYet: 'no playable data after 20 seconds',
 } as const;

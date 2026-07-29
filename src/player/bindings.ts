@@ -37,8 +37,11 @@ import {
  */
 export function registerPlayerBindings(): () => void {
     const unwatchPlayback = watch([PLAYER_ACTIVE], (state: unknown) => {
-        const active = (state as { player?: { active?: { streamUrl: string } | null } }).player
-            ?.active;
+        const active = (
+            state as {
+                player?: { active?: { streamUrl: string; kind?: string } | null };
+            }
+        ).player?.active;
         const video = refs['playerVideo'];
         if (!(video instanceof HTMLVideoElement)) return;
 
@@ -46,7 +49,13 @@ export function registerPlayerBindings(): () => void {
             detach(video);
             return;
         }
-        void attachAndPlay(video, applyProxy(effectiveProxyTemplate(), active.streamUrl));
+        void attachAndPlay(video, applyProxy(effectiveProxyTemplate(), active.streamUrl), {
+            // `ActiveChannelSnapshot.kind` is absent on every live channel
+            // and on every snapshot persisted before the field existed, so
+            // "not stated" means live — the same additive-field reading
+            // `radio` already gets (`src/state/records.ts`).
+            live: active.kind !== 'vod' && active.kind !== 'series',
+        });
         revealPlayer(video);
     });
 

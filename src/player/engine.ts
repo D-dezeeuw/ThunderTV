@@ -1,33 +1,22 @@
 import type Hls from 'hls.js';
+import { strings } from '../app/strings';
 import { reportPlaybackError } from '../state/player.actions';
-import { SETTINGS_BUFFERING, SETTINGS_PLAYBACK_ENGINE, type BufferingMode, type PlaybackEngine } from '../state/settings';
+import { SETTINGS_BUFFERING, type BufferingMode, type PlaybackEngine } from '../state/settings';
 import { get } from '../state/typed';
-import { refreshActiveXtreamSource } from '../state/xtream-refresh';
+import { appendStreamProbe, describeMediaError } from './engine-report';
+import { attemptChain, hlsFormOf, preferredEngine, tsFormOf } from './engine-select';
 import { createHlsTrackEngine } from './hls-tracks';
 import { attachMpegts, detachMpegts } from './mpegts-engine';
 import { createNativeTrackEngine } from './native-tracks';
 import type { PlayerEngine } from './player-engine';
-import { alternateFormatUrl, describeStream } from './stream-probe';
 import { monitorStreamHealth, stopStreamHealthMonitor } from './stream-health';
 import type { TrackSnapshot } from './tracks';
 
 /**
- * Playback engine selection, as an ordered attempt chain. Three real
- * formats show up in IPTV:
- *
- *  - raw MPEG-TS    → mpegts.js (`mpegts-engine.ts`). The DEFAULT: most
- *    Xtream panels serve an endless transport stream whose `.m3u8` is only
- *    a wrapper, which hls.js rejects outright (`levelParsingError`) and no
- *    browser decodes natively. mpegts.js demuxes it to MSE.
- *  - segmented HLS  → hls.js, or the browser's own native HLS on
- *    Safari/iOS, which refuses a second decoder for a format it ships.
- *  - anything else  → hand the URL to the browser and let its pipeline try.
- *
- * `settings.playbackEngine` picks which is tried FIRST; the others follow
- * as fallbacks, so a wrong preference costs one retry rather than
- * playback. Each attempt uses the URL form its engine expects — the
- * `.ts`/`.m3u8` sibling of what the catalog baked (`alternateFormatUrl`),
- * since Xtream serves the same channel under both.
+ * Driving the shared `<video>`: run whichever engine `engine-select.ts`
+ * chose, and fall through to the next when it fails. That file holds the
+ * decision (which engine, which URL form, and why a movie must never reach
+ * a demuxer); this one holds the element, the teardown, and the reporting.
  *
  * Fatal failures report through `reportPlaybackError()` (rendered in the
  * player bar) with a probe of what the provider actually sent — on a phone
@@ -49,6 +38,7 @@ let attachToken = 0;
 let hls: Hls | null = null;
 let nativeErrorHandler: (() => void) | null = null;
 let nativePlayingHandler: (() => void) | null = null;
+let nativeMetadataHandler: (() => void) | null = null;
 let nativeErrorVideo: HTMLVideoElement | null = null;
 let lastStreamUrl: string | null = null;
 /** True once the current attach has produced actual playback — see `advanceChain()`. */
@@ -58,6 +48,19 @@ let baseStreamUrl: string | null = null;
 let chain: PlaybackEngine[] = [];
 let chainIndex = 0;
 let failures: string[] = [];
+/** False for a movie/episode: mpegts.js needs it to treat the URL as a finite file rather than an endless feed. */
+let liveStream = true;
+/**
+ * Deadline for the *last* attempt in the chain, which is the only one with
+ * nothing behind it: a `<video>` handed a URL that never yields decodable
+ * data emits neither `error` nor frames, so the browser's own spinner sits
+ * there forever with nothing in the app able to say why. Earlier attempts
+ * are left alone on purpose — a live channel on weak Wi-Fi can take a while
+ * to fill a 4 MB stash, and a scary message over a merely slow stream is
+ * worse than none.
+ */
+const LAST_ATTEMPT_TIMEOUT_MS = 20_000;
+let attemptTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** The track-control surface of whichever attempt is currently attached, if it exposes one — see `player-engine.ts`. */
 let activeTrackEngine: PlayerEngine | null = null;
@@ -87,14 +90,6 @@ function supportsNativeHls(video: HTMLVideoElement): boolean {
     return video.canPlayType('application/vnd.apple.mpegurl') !== '';
 }
 
-/** MediaError codes → readable labels (`video.error.message` is empty on most browsers). */
-const MEDIA_ERROR_LABELS: Record<number, string> = {
-    1: 'aborted',
-    2: 'network error',
-    3: 'decode error',
-    4: 'source not supported',
-};
-
 /**
  * A `<video>` element error covers both the native attempts and the
  * MSE-fed ones (mpegts.js/hls.js push into the same element), so it routes
@@ -103,9 +98,7 @@ const MEDIA_ERROR_LABELS: Record<number, string> = {
  */
 function attachNativeErrorReporting(video: HTMLVideoElement, token: number): void {
     const handler = (): void => {
-        const err = video.error;
-        const label = err ? (MEDIA_ERROR_LABELS[err.code] ?? `code ${String(err.code)}`) : 'unknown';
-        const detail = err?.message ? `${label} — ${err.message}` : label;
+        const detail = describeMediaError(video.error, lastStreamUrl);
         console.error('[ThunderTV] native playback error:', detail);
         void advanceChain(video, detail, token);
     };
@@ -116,68 +109,43 @@ function attachNativeErrorReporting(video: HTMLVideoElement, token: number): voi
     // "Playback failed:" over a perfectly good picture.
     const onPlaying = (): void => {
         playing = true;
+        clearAttemptTimer();
         reportPlaybackError(null);
+    };
+    // Metadata means the container parsed, so the deadline has done its job
+    // — anything after that is the `error` handler's and the health
+    // monitor's. Deliberately NOT `progress`, which fires happily while the
+    // browser downloads something it will never decode.
+    const onLoadedMetadata = (): void => {
+        clearAttemptTimer();
     };
     video.addEventListener('error', handler);
     video.addEventListener('playing', onPlaying);
+    video.addEventListener('loadedmetadata', onLoadedMetadata);
     nativeErrorHandler = handler;
     nativePlayingHandler = onPlaying;
+    nativeMetadataHandler = onLoadedMetadata;
     nativeErrorVideo = video;
 }
 
-function appendStreamProbe(baseDetail: string, token: number): void {
-    const url = lastStreamUrl;
-    if (!url) return;
-    void describeStream(url).then(async (summary) => {
-        // The probe is a network round trip, so a later attempt in the chain
-        // — or an entirely different channel the viewer has since picked —
-        // routinely gets a picture up before it answers. Reporting then would
-        // put a failure notice over a stream the user is watching.
-        if (playing || isStale(token)) return;
-        reportPlaybackError(`${baseDetail} — ${summary}`);
-        // A 404 from the provider is either a stale catalog (panels
-        // renumber stream ids routinely) or the panel refusing streams to
-        // cloud/proxy IPs while allowing the API — refresh distinguishes
-        // them: fresh ids that still 404 point at IP blocking.
-        if (summary.includes('HTTP 404')) {
-            const outcome = await refreshActiveXtreamSource('error');
-            if (playing || isStale(token)) return;
-            if (outcome === 'refreshed') {
-                reportPlaybackError(`${baseDetail} — ${summary}; channel list refreshed — try the channel again`);
-            } else if (outcome === 'skipped') {
-                reportPlaybackError(
-                    `${baseDetail} — ${summary}; list was refreshed recently, so these 404s suggest the provider blocks cloud-proxy IPs for streams — a home-hosted proxy (same script on a NAS/Pi) or the desktop app would be needed`,
-                );
-            } else if (outcome === 'failed') {
-                reportPlaybackError(`${baseDetail} — ${summary}; automatic channel-list refresh failed`);
-            }
-        }
-    });
+function clearAttemptTimer(): void {
+    if (attemptTimer === null) return;
+    clearTimeout(attemptTimer);
+    attemptTimer = null;
 }
 
-/** The `.ts` form of a stream URL — Xtream serves the same channel under both extensions. */
-function tsFormOf(url: string): string {
-    if (url.endsWith('.ts')) return url;
-    const alt = alternateFormatUrl(url);
-    return alt?.label === '.ts' ? alt.url : url;
-}
-
-/** The `.m3u8` form of a stream URL. */
-function hlsFormOf(url: string): string {
-    if (url.endsWith('.m3u8')) return url;
-    const alt = alternateFormatUrl(url);
-    return alt?.label === '.m3u8' ? alt.url : url;
-}
-
-function preferredEngine(): PlaybackEngine {
-    const configured = get<PlaybackEngine | null>(SETTINGS_PLAYBACK_ENGINE);
-    return configured ?? 'mpegts';
-}
-
-/** Preference first, then the remaining engines as fallbacks — every stream gets all three before giving up. */
-function attemptChain(preference: PlaybackEngine): PlaybackEngine[] {
-    const rest = (['mpegts', 'hls', 'native'] as PlaybackEngine[]).filter((e) => e !== preference);
-    return [preference, ...rest];
+/** Arms `LAST_ATTEMPT_TIMEOUT_MS` only when there is nothing left to fall back to — see the constant. */
+function armLastAttemptTimer(video: HTMLVideoElement, token: number): void {
+    clearAttemptTimer();
+    if (chainIndex < chain.length - 1) return;
+    attemptTimer = setTimeout(() => {
+        attemptTimer = null;
+        if (isStale(token) || playing) return;
+        // Nothing is torn down here: the element is left loading, so a
+        // stream that is merely very slow still clears this message itself
+        // via `onPlaying` when it finally starts.
+        void advanceChain(video, strings.list.playerNoDataYet, token);
+    }, LAST_ATTEMPT_TIMEOUT_MS);
 }
 
 /**
@@ -185,12 +153,17 @@ function attemptChain(preference: PlaybackEngine): PlaybackEngine[] {
  * tears the engines down *and* the `<video>` element itself, and bumps
  * `attachToken` so an attach still in flight can no longer touch either.
  */
-export async function attachAndPlay(video: HTMLVideoElement, streamUrl: string): Promise<void> {
+export async function attachAndPlay(
+    video: HTMLVideoElement,
+    streamUrl: string,
+    options: AttachOptions = {},
+): Promise<void> {
     detach(video);
     const token = attachToken;
     reportPlaybackError(null);
     baseStreamUrl = streamUrl;
-    chain = attemptChain(preferredEngine());
+    liveStream = options.live ?? true;
+    chain = attemptChain(preferredEngine(), streamUrl);
     chainIndex = 0;
     failures = [];
     playing = false;
@@ -199,17 +172,29 @@ export async function attachAndPlay(video: HTMLVideoElement, streamUrl: string):
     await runCurrentAttempt(video, token);
 }
 
+export interface AttachOptions {
+    /**
+     * An endless feed rather than a finite file. Defaults to `true`: every
+     * caller predating Movies/Series plays a live channel, and a snapshot
+     * stored before `ActiveChannelSnapshot.kind` existed omits it. The
+     * caller's to state, not the player's to re-derive from a URL.
+     */
+    live?: boolean;
+}
+
 /** Runs `chain[chainIndex]`; engine failures call `advanceChain()`, which re-enters here until the chain is exhausted. */
 async function runCurrentAttempt(video: HTMLVideoElement, token: number): Promise<void> {
     const engine = chain[chainIndex];
     const base = baseStreamUrl;
     if (!engine || !base || isStale(token)) return;
+    armLastAttemptTimer(video, token);
 
     if (engine === 'mpegts') {
         const url = tsFormOf(base);
         lastStreamUrl = url;
         const result = await attachMpegts(video, url, {
             buffering: get<BufferingMode | null>(SETTINGS_BUFFERING) ?? 'auto',
+            isLive: liveStream,
             // Re-checked inside `attachMpegts()` after its own dynamic
             // import, so a superseded attempt never destroys the player that
             // replaced it.
@@ -288,6 +273,10 @@ async function advanceChain(video: HTMLVideoElement, detail: string, token: numb
     // carries a MediaError in that case.
     if (playing && !video.error) return;
 
+    // Whatever this failure is, it arrived before the deadline could fire —
+    // leaving the timer armed would report a second, contradictory reason
+    // once the chain has already given its real one.
+    clearAttemptTimer();
     failures.push(detail);
     detachEngines();
     chainIndex += 1;
@@ -297,7 +286,7 @@ async function advanceChain(video: HTMLVideoElement, detail: string, token: numb
     }
     const summary = failures.join('; ');
     reportPlaybackError(summary);
-    appendStreamProbe(summary, token);
+    appendStreamProbe(lastStreamUrl, summary, () => playing || isStale(token));
 }
 
 function detachEngines(): void {
@@ -361,8 +350,10 @@ function stopVideoElement(video: HTMLVideoElement): void {
 export function detach(video: HTMLVideoElement): void {
     attachToken += 1;
     stopStreamHealthMonitor();
+    clearAttemptTimer();
     detachEngines();
     playing = false;
+    liveStream = true;
     baseStreamUrl = null;
     lastStreamUrl = null;
     chain = [];
@@ -371,8 +362,10 @@ export function detach(video: HTMLVideoElement): void {
     if (nativeErrorVideo) {
         if (nativeErrorHandler) nativeErrorVideo.removeEventListener('error', nativeErrorHandler);
         if (nativePlayingHandler) nativeErrorVideo.removeEventListener('playing', nativePlayingHandler);
+        if (nativeMetadataHandler) nativeErrorVideo.removeEventListener('loadedmetadata', nativeMetadataHandler);
         nativeErrorHandler = null;
         nativePlayingHandler = null;
+        nativeMetadataHandler = null;
         nativeErrorVideo = null;
     }
     stopVideoElement(video);
@@ -382,10 +375,13 @@ export function detach(video: HTMLVideoElement): void {
 export function resetPlayerEngineForTests(): void {
     attachToken = 0;
     hls = null;
+    clearAttemptTimer();
     nativeErrorHandler = null;
     nativePlayingHandler = null;
+    nativeMetadataHandler = null;
     nativeErrorVideo = null;
     playing = false;
+    liveStream = true;
     lastStreamUrl = null;
     baseStreamUrl = null;
     chain = [];
