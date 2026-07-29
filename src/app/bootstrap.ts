@@ -2,6 +2,7 @@ import { bindDOM, run } from 'spektrum';
 import { createPlatform, setPlatform } from '../core/platform';
 import { primeHealthCache } from '../health/store';
 import { publishCodexAuthorId } from '../state/codex.actions';
+import { refreshCodexLibraryOnBoot } from '../state/codex-library.actions';
 import { effectiveProxyTemplate } from '../core/platform/electron-platform';
 import { sweepOrphanedPlaylistRows } from '../m3u/import-sweep';
 import { registerListBindings } from '../ui/list-bindings';
@@ -105,6 +106,11 @@ export async function bootstrap(): Promise<void> {
     // Codex (stone 4): surfaces this device's author fingerprint in Settings,
     // creating a keypair on first run. Background — nothing blocks on it.
     void publishCodexAuthorId();
+    // Shared Codexes (stone 10): publishes the subscription list, and
+    // re-fetches anything past its TTL. Polite by construction — a reload
+    // inside the window makes zero upstream requests — and non-blocking,
+    // because a followed Codex whose host is down must not delay boot.
+    void refreshCodexLibraryOnBoot();
     void loadDefaultEpg();
     registerImportDropzoneDragover();
     registerDebugShortcut();

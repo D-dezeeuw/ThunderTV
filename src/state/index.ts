@@ -8,6 +8,8 @@ import { registerEpgSettingsActions } from './epg-settings.actions';
 import { initFavoritesState } from './favorites';
 import { initCodexState } from './codex';
 import { registerCodexActions } from './codex.actions';
+import { initCodexLibraryState } from './codex-library';
+import { registerCodexLibraryActions } from './codex-library.actions';
 import { initHealthState } from './health';
 import { registerHealthActions } from './health.actions';
 import { registerGroupActions } from './groups.actions';
@@ -112,6 +114,7 @@ export function initState(): void {
     initDownloadsState();
     initHealthState();
     initCodexState();
+    initCodexLibraryState();
     applyHistoryPolicy();
 }
 
@@ -137,6 +140,7 @@ export function registerActions(): void {
     registerEpgSettingsActions();
     registerHealthActions();
     registerCodexActions();
+    registerCodexLibraryActions();
 }
 
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */

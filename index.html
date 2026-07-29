@@ -2079,6 +2079,93 @@
                             {{ settings.codexMessage }}
                         </p>
 
+                        <h3 class="settings-section__title">{{ strings.codex.library.title }}</h3>
+                        <p class="settings-section__hint">{{ strings.codex.library.about }}</p>
+                        <label class="settings-section__label" for="codex-library-url-input">
+                            {{ strings.codex.library.urlLabel }}
+                        </label>
+                        <input
+                            type="url"
+                            id="codex-library-url-input"
+                            data-ref="codexLibraryUrlInput"
+                            class="settings-section__input"
+                            :placeholder="strings.codex.library.urlPlaceholder"
+                            data-testid="codex-library-url"
+                        />
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="codexLibrary/add"
+                            data-testid="codex-library-add-btn"
+                            :disabled="settings.codexLibraryState === 'busy'"
+                        >
+                            {{ strings.codex.library.addButton }}
+                        </button>
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="codexLibrary/refresh"
+                            data-testid="codex-library-refresh-btn"
+                            :disabled="settings.codexLibraryState === 'busy'"
+                        >
+                            {{ strings.codex.library.refreshButton }}
+                        </button>
+                        <ul class="codex-library" data-each="settings.codexLibraryRows" data-testid="codex-library-list">
+                            <li class="codex-library__row">
+                                <span class="codex-library__url truncate">{{ item.url }}</span>
+                                <span class="codex-library__meta">
+                                    {{ strings.codex.library.signedBy }} {{ item.authorId }} —
+                                    {{ item.counts }} {{ strings.codex.library.claimCounts }}
+                                </span>
+                                <span class="codex-library__problem" data-if="item.problem">{{ item.problem }}</span>
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    data-action="click"
+                                    data-fn="codexLibrary/block"
+                                    data-if="!item.blocked"
+                                    :data-id="item.authorId"
+                                    data-testid="codex-library-block-btn"
+                                >
+                                    {{ strings.codex.library.blockButton }}
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    data-action="click"
+                                    data-fn="codexLibrary/unblock"
+                                    data-if="item.blocked"
+                                    :data-id="item.authorId"
+                                    data-testid="codex-library-unblock-btn"
+                                >
+                                    {{ strings.codex.library.unblockButton }}
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    data-action="click"
+                                    data-fn="codexLibrary/remove"
+                                    :data-id="item.url"
+                                    data-testid="codex-library-remove-btn"
+                                >
+                                    {{ strings.codex.library.removeButton }}
+                                </button>
+                            </li>
+                        </ul>
+                        <p class="settings-section__hint" data-if="settings.codexLibraryRows.length === 0">
+                            {{ strings.codex.library.empty }}
+                        </p>
+                        <p class="settings-section__hint">{{ strings.codex.library.trustNote }}</p>
+                        <p class="settings-section__hint">{{ strings.codex.library.blockNote }}</p>
+                        <p class="settings-section__hint" data-if="settings.codexLibraryState === 'done'" data-testid="codex-library-done">
+                            {{ settings.codexLibraryMessage }}
+                        </p>
+                        <p class="settings-section__error" data-if="settings.codexLibraryState === 'failed'" data-testid="codex-library-failed">
+                            {{ settings.codexLibraryMessage }}
+                        </p>
+
                         <p class="settings-section__hint" data-testid="health-readout">
                             {{ strings.health.readout }} {{ settings.healthTrackedCount }}
                             {{ strings.health.deadReadout }} {{ settings.healthDeadCount }}

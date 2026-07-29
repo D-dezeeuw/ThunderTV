@@ -183,6 +183,7 @@ starts, so a separate phase file would be a second copy to keep honest.
 | 34  | Codex v0 — Export & Import                                                   | 4 (the signed file the user owns)                    | `src/codex/README.md` |
 | 35  | Spatial Navigation                                                           | 8 (D-pad as a first-class input model)               | `src/ui/README.md` |
 | 36  | Codex Merge (CRDT)                                                           | 6 (convergence with no sync server)                  | `src/codex/README.md` |
+| 37  | Community Codex                                                              | 10 (follow, refresh, prune; the trust model)         | `src/codex/README.md` |
 
 ---
 
