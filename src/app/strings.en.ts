@@ -1,6 +1,7 @@
 /** English copy — the baseline locale (Feature 02.6.7/i18n). `nl`/`de` mirror this exact key shape — `strings.spec.ts` asserts they never drift. */
 import { enCatalog } from './strings.en.catalog';
 import { enCodex } from './strings.en.codex';
+import { enHandoff } from './strings.en.handoff';
 import { enEpg } from './strings.en.epg';
 import { enPlayerTracks } from './strings.en.player';
 
@@ -31,6 +32,7 @@ export const en = {
         recent: { title: 'Recents', heading: 'Recents' },
         guide: { title: 'Guide', heading: 'Guide' },
         connect: { title: 'Connect', heading: 'Connect' },
+        handoff: { title: 'Handoff', heading: 'Handoff' },
     },
 
     ...enCatalog,
@@ -134,6 +136,7 @@ export const en = {
 
     ...enEpg.topLevel,
     ...enCodex,
+    ...enHandoff,
 
     recent: {
         nowPlaying: 'Now playing:',

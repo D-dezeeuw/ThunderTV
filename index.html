@@ -1516,6 +1516,22 @@
                                         <button type="button" class="btn" data-action="click" data-fn="player/stop" data-testid="player-stop-btn">
                                             {{ strings.list.playerStop }}
                                         </button>
+                                        <!-- Handoff (Phase 38, stone 9). The link is shown
+                                             as well as copied: most TV webviews have no
+                                             clipboard at all, and a button that silently
+                                             does nothing there is worse than one that just
+                                             puts the address on screen to be typed. -->
+                                        <button type="button" class="btn" data-action="click" data-fn="handoff/offer" data-testid="handoff-offer-btn">
+                                            {{ strings.handoff.button }}
+                                        </button>
+                                    </div>
+                                    <div class="handoff" data-if="player.handoffState !== 'idle'" data-testid="handoff-panel">
+                                        <p class="handoff__message">{{ player.handoffMessage }}</p>
+                                        <code class="handoff__link" data-if="player.handoffLink" data-testid="handoff-link">{{ player.handoffLink }}</code>
+                                        <p class="handoff__note" data-if="player.handoffLink">{{ strings.handoff.note }}</p>
+                                        <button type="button" class="btn" data-action="click" data-fn="handoff/dismiss" data-testid="handoff-dismiss-btn">
+                                            {{ strings.handoff.dismiss }}
+                                        </button>
                                     </div>
                                     <!-- Variant switcher for the channel being watched.
                                          Lives here rather than under each list row on

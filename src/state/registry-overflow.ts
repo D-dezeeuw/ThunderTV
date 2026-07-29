@@ -36,6 +36,7 @@ import { DOWNLOAD_QUEUE_CAP, DOWNLOADS_ACTIVE_ID, DOWNLOADS_ITEMS } from './down
 import { GUIDE_CHANNELS, GUIDE_LOADING, GUIDE_OFFSET_MS, GUIDE_SELECTED_KEY } from './guide';
 import { CODEX_AUTHOR_ID, CODEX_MESSAGE, CODEX_STATE } from './codex';
 import { CODEX_BLOCKED_ROWS, CODEX_LIBRARY_MESSAGE, CODEX_LIBRARY_ROWS, CODEX_LIBRARY_STATE } from './codex-library';
+import { HANDOFF_LINK, HANDOFF_MESSAGE, HANDOFF_STATE } from './handoff';
 import { HEALTH_CLEARED, HEALTH_DEAD_COUNT, HEALTH_TRACKED_COUNT } from './health';
 import type { KeyMeta } from './registry';
 
@@ -332,6 +333,23 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: false,
         description: 'Authors this device has stopped trusting, for the Settings list. The durable copy is the codex.blocked kv key.',
+    },
+
+    // --- handoff (Phase 38, stone 9) ---
+    [HANDOFF_LINK]: {
+        owner: 'player',
+        persisted: false,
+        description: 'The generated handoff address, shown so it can be read off screen where no clipboard exists. Session-only — a link outlives its usefulness within hours.',
+    },
+    [HANDOFF_STATE]: {
+        owner: 'player',
+        persisted: false,
+        description: 'idle/offered/arrived/failed for the handoff panel.',
+    },
+    [HANDOFF_MESSAGE]: {
+        owner: 'player',
+        persisted: false,
+        description: 'Human-readable handoff outcome — what is continuing, or exactly why it could not.',
     },
 
     // --- live: EPG country catalog filter (Phase 31) ---

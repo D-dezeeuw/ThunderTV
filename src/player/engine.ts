@@ -9,6 +9,7 @@ import { createHlsTrackEngine } from './hls-tracks';
 import { attachMpegts, detachMpegts } from './mpegts-engine';
 import { createNativeTrackEngine } from './native-tracks';
 import type { PlayerEngine } from './player-engine';
+import { stopPositionMonitor, trackPlaybackPosition } from './position';
 import { monitorStreamHealth, reportAttachFailed, stopStreamHealthMonitor } from './stream-health';
 import type { TrackSnapshot } from './tracks';
 
@@ -169,6 +170,7 @@ export async function attachAndPlay(
     playing = false;
     attachNativeErrorReporting(video, token);
     monitorStreamHealth(video, streamUrl);
+    trackPlaybackPosition(video, streamUrl, liveStream);
     await runCurrentAttempt(video, token);
 }
 
@@ -354,6 +356,7 @@ function stopVideoElement(video: HTMLVideoElement): void {
 export function detach(video: HTMLVideoElement): void {
     attachToken += 1;
     stopStreamHealthMonitor();
+    stopPositionMonitor();
     clearAttemptTimer();
     detachEngines();
     playing = false;

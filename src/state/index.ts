@@ -9,6 +9,8 @@ import { initFavoritesState } from './favorites';
 import { initCodexState } from './codex';
 import { registerCodexActions } from './codex.actions';
 import { initCodexLibraryState } from './codex-library';
+import { initHandoffState } from './handoff';
+import { registerHandoffActions } from './handoff.actions';
 import { registerCodexLibraryActions } from './codex-library.actions';
 import { initHealthState } from './health';
 import { registerHealthActions } from './health.actions';
@@ -115,6 +117,7 @@ export function initState(): void {
     initHealthState();
     initCodexState();
     initCodexLibraryState();
+    initHandoffState();
     applyHistoryPolicy();
 }
 
@@ -141,6 +144,7 @@ export function registerActions(): void {
     registerHealthActions();
     registerCodexActions();
     registerCodexLibraryActions();
+    registerHandoffActions();
 }
 
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */

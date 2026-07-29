@@ -246,3 +246,30 @@ consolation prize, and the same button toggles back out of it. Everything up
 to the `requestFullscreen()` call stays synchronous on purpose: it runs
 inside the click handler, and an `await` above it would spend the click's
 transient user activation, which is the one thing browsers require here.
+
+## Resume position (`position.ts`, Phase 38)
+
+Sits on the `<video>` element alongside `stream-health.ts`, and for the same
+reason: it is the one place hls.js, mpegts.js and native all converge, so no
+engine has to know about it. `attachAndPlay()` calls
+`trackPlaybackPosition()` once and everything else follows from that —
+sampling `timeupdate` (throttled to a write every five seconds, flushed on
+stop), and seeking to whatever is stored once the element knows its
+duration.
+
+Three deliberate refusals, each of which is the honest answer rather than the
+convenient one:
+
+- **Live is never tracked.** A live `currentTime` is an offset into whatever
+  the buffer holds, not a place in a programme, so the same stored number
+  would mean something different every time it was read.
+- **A finished programme is forgotten**, on `ended` and within twenty
+  seconds of the end. Resuming someone into the closing credits is worse
+  than starting them over.
+- **The first fifteen seconds are not stored.** Below that, resuming is
+  only a surprise.
+
+The store is keyed on `src/health/stream-key.ts`'s masked fingerprint, so a
+position survives a password rotation — and so an arriving handoff
+(`src/handoff/README.md`) can write into the very same store rather than
+needing a second resume path through the engine.

@@ -15,7 +15,8 @@ export type Route =
     | 'favorites'
     | 'recent'
     | 'guide'
-    | 'connect';
+    | 'connect'
+    | 'handoff';
 
 export const ROUTE_VALUES: readonly Route[] = [
     'live',
@@ -28,6 +29,7 @@ export const ROUTE_VALUES: readonly Route[] = [
     'recent',
     'guide',
     'connect',
+    'handoff',
 ];
 
 /**
@@ -77,6 +79,10 @@ function applyRoute(): void {
     // reads or logs its params here — Phase 14 consumes-and-scrubs the
     // fragment via history.replaceState before any request. This router
     // only exposes parseHash()'s params to callers; it never persists them.
+    // "handoff" (Phase 38, stone 9) follows the identical discipline in
+    // `src/state/handoff.actions.ts`: read once, scrub, then act. Neither
+    // route has a view of its own — both hand off to a real one — so
+    // resolving them here just parks `ui.activeView` until that happens.
     setValue('ui.activeView', resolveRoute(path));
 }
 

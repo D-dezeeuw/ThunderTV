@@ -4,6 +4,7 @@
  */
 import { nlCatalog } from './strings.nl.catalog';
 import { nlCodex } from './strings.nl.codex';
+import { nlHandoff } from './strings.nl.handoff';
 import { nlEpg } from './strings.nl.epg';
 import { nlPlayerTracks } from './strings.nl.player';
 
@@ -34,6 +35,7 @@ export const nl = {
         recent: { title: 'Recent', heading: 'Recent' },
         guide: { title: 'Gids', heading: 'Gids' },
         connect: { title: 'Verbinden', heading: 'Verbinden' },
+        handoff: { title: 'Overdracht', heading: 'Overdracht' },
     },
 
     ...nlCatalog,
@@ -135,6 +137,7 @@ export const nl = {
 
     ...nlEpg.topLevel,
     ...nlCodex,
+    ...nlHandoff,
 
     recent: {
         nowPlaying: 'Nu aan het afspelen:',

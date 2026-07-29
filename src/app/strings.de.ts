@@ -4,6 +4,7 @@
  */
 import { deCatalog } from './strings.de.catalog';
 import { deCodex } from './strings.de.codex';
+import { deHandoff } from './strings.de.handoff';
 import { deEpg } from './strings.de.epg';
 import { dePlayerTracks } from './strings.de.player';
 
@@ -34,6 +35,7 @@ export const de = {
         recent: { title: 'Zuletzt', heading: 'Zuletzt' },
         guide: { title: 'Guide', heading: 'Guide' },
         connect: { title: 'Verbinden', heading: 'Verbinden' },
+        handoff: { title: 'Übergabe', heading: 'Übergabe' },
     },
 
     ...deCatalog,
@@ -135,6 +137,7 @@ export const de = {
 
     ...deEpg.topLevel,
     ...deCodex,
+    ...deHandoff,
 
     recent: {
         nowPlaying: 'Läuft gerade:',
