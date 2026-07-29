@@ -27,6 +27,7 @@ if you need historical "why," not for a routine change.
 | Codex — the signed, portable knowledge file (export/import/merge)          | `src/codex/README.md` |
 | Player engine (hls.js/mpegts.js/native), dock, theater mode  | `src/player/README.md` |
 | Virtual list scrolling, group filtering, logo fallback, gestures | `src/ui/README.md` |
+| D-pad / arrow-key spatial focus, TV remote keycodes, Back button | `src/ui/spatial/README.md` |
 | Any Spektrum state key, action, or selector                 | `src/state/README.md` (has the module-ownership table — check it before adding a key anywhere) |
 | Storage (IndexedDB/localStorage/memory tiers, versioning)    | `src/core/storage/README.md` |
 | Platform adapter (web vs. Electron, capabilities, testing)   | `src/core/platform/README.md` |

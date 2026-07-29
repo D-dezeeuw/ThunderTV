@@ -1,0 +1,69 @@
+# Spatial navigation (`src/ui/spatial/`)
+
+Arrow keys and TV-remote D-pads as a real input model — Vision 3.0's
+stone 8, landed in Phase 35.
+
+| File           | Responsibility | Pure? |
+| -------------- | -------------- | ----- |
+| `geometry.ts`  | Given a source rect, a direction and candidate rects: which one is actually that way. | Yes |
+| `keys.ts`      | Turning a `KeyboardEvent` into a direction / activate / back, across desktop and TV webviews. | Yes |
+| `navigator.ts` | Collecting focusable elements, deciding whether a press is ours, moving focus. | No — DOM |
+
+## Why geometry rather than Tab order
+
+Tab order is one ordered ring authored into the markup. On a 10-foot layout
+it routinely sends the cursor somewhere unrelated to where the user pointed
+the remote, and keeping it sensible means hand-maintaining a focus map per
+screen. Spatial navigation asks *which element is actually to the right of
+this one* — so the answer stays correct however the layout reflows, across
+every view, with no per-screen authoring at all.
+
+Two details in `geometry.ts` carry most of the quality:
+
+- **Leading edges, not centres.** A full-height sidebar next to a short
+  button has a centre far below it but is plainly "to the left". Centre-only
+  tests refuse to move into large elements, which is the most common way
+  naive spatial navigation feels broken.
+- **Off-axis penalty.** A candidate directly ahead usually beats a nearer
+  one off to the side, or pressing "down" beside a dense grid drifts into
+  the grid. The weight is tuned so an off-axis candidate must be roughly
+  three times nearer to win.
+
+## Two rules that keep it from fighting the app
+
+1. **Never take a press a control already handles.** `<select>`, text
+   inputs, `contenteditable`, and the channel list's own up/down row cursor
+   (`src/state/list.actions.ts`) all use arrow keys meaningfully. The
+   handler defers on those, so desktop behaviour is completely unchanged —
+   which is why this ships enabled on every platform rather than behind a
+   TV-only flag. Horizontal presses inside the list are still handled,
+   because that is the only way *out* of it.
+2. **Never wrap around.** A press with nothing in that direction does
+   nothing. Focus silently teleporting from the top of a TV screen to the
+   bottom is far more disorienting than a press that no-ops.
+
+The handler binds on `document` in the **capture** phase, so it sees a press
+before per-container handlers and can decide to defer — rather than having
+to undo something already done.
+
+## Remotes lie about being keyboards
+
+`KeyboardEvent.key` is well-behaved on desktop and inconsistent on TV
+webviews, so `keys.ts` consults `key` first and falls back to `keyCode`.
+The Back button is the sharp edge: webOS sends `461`, Tizen `10009`,
+neither with a useful `key`. `src/state/back-navigation.ts` unwinds one
+overlay at a time (debug → settings → wizard → catalog detail) and reports
+`false` when nothing was open, so the platform can do its own thing.
+Swallowing Back unconditionally would trap the user in the app with no way
+out — a webOS certification failure as well as bad manners.
+
+## Not built here
+
+- **A focus memory per view** (returning to a view restoring the element
+  you left from). The list already restores its own row cursor via
+  `ui.listState`; generalising that to every view is a larger change than
+  stone 8 needs.
+- **Explicit focus overrides** (`data-spatial-up="…"`-style escape hatches
+  for a layout the geometry gets wrong). Deliberately deferred until a real
+  screen actually needs one — adding the mechanism first invites
+  hand-authored focus maps, which is exactly what this replaces.
