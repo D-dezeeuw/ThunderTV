@@ -29,13 +29,6 @@ export const enEpg = {
         epgVerifiedOnlyHelp:
             'Off by default: a channel the EPG catalog has not matched yet is far more often a guide-data gap than a channel that does not exist. Switch this on once your catalog is populated to hide channels with no programme data. Never applies to Radio.',
     },
-    /** Phase 32 — the timetable's own navigation and the per-row now/next line. */
-    guide: {
-        earlier: 'Earlier',
-        later: 'Later',
-        backToNow: 'Back to now',
-        playChannel: 'Play this channel',
-    },
     list: {
         /** Prefixes the upcoming programme on a channel row: "Then · The Nine O'Clock News". */
         epgNextPrefix: 'Then ·',
@@ -43,6 +36,14 @@ export const enEpg = {
     },
     /** Complete top-level blocks, spread as one line into `strings.<locale>.ts` — that file has no room left for a nested block of its own. */
     topLevel: {
+        guide: {
+            nowLabel: 'Now',
+            detailEmpty: 'Select a programme to see its details here.',
+            earlier: 'Earlier',
+            later: 'Later',
+            backToNow: 'Back to now',
+            playChannel: 'Play this channel',
+        },
         health: {
             sectionTitle: 'Stream health',
             readout: 'Feeds with playback history:',

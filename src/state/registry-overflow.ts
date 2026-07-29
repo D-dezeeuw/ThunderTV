@@ -34,6 +34,7 @@ import {
 import { PLAYER_AUDIO_MODE } from './player';
 import { DOWNLOAD_QUEUE_CAP, DOWNLOADS_ACTIVE_ID, DOWNLOADS_ITEMS } from './downloads';
 import { GUIDE_CHANNELS, GUIDE_LOADING, GUIDE_OFFSET_MS, GUIDE_SELECTED_KEY } from './guide';
+import { CODEX_AUTHOR_ID, CODEX_MESSAGE, CODEX_STATE } from './codex';
 import { HEALTH_CLEARED, HEALTH_DEAD_COUNT, HEALTH_TRACKED_COUNT } from './health';
 import type { KeyMeta } from './registry';
 
@@ -287,6 +288,25 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: false,
         description: 'One-shot confirmation that the forget-stream-health button ran.',
+    },
+
+    // --- codex (Phase 34, stone 4) ---
+    // Feedback only. The document itself is built on demand and handed
+    // straight to a download — it is never parked in Spektrum state.
+    [CODEX_STATE]: {
+        owner: 'settings',
+        persisted: false,
+        description: "idle/busy/done/failed for the Codex export and import buttons.",
+    },
+    [CODEX_MESSAGE]: {
+        owner: 'settings',
+        persisted: false,
+        description: 'Human-readable outcome of the last Codex action — claim counts on success, the specific reason on failure.',
+    },
+    [CODEX_AUTHOR_ID]: {
+        owner: 'settings',
+        persisted: false,
+        description: "This device's Codex author fingerprint. Not persisted here: the keypair itself is the durable thing (codex.identity.* kv keys), and this is derived from it at boot.",
     },
 
     // --- live: EPG country catalog filter (Phase 31) ---

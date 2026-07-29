@@ -3,6 +3,7 @@
  * Proper nouns and technical acronyms (M3U, EPG, Xtream Codes, CORS, HLS, DRM) stay untranslated.
  */
 import { nlCatalog } from './strings.nl.catalog';
+import { nlCodex } from './strings.nl.codex';
 import { nlEpg } from './strings.nl.epg';
 import { nlPlayerTracks } from './strings.nl.player';
 
@@ -133,11 +134,7 @@ export const nl = {
     },
 
     ...nlEpg.topLevel,
-    guide: {
-        nowLabel: 'Nu',
-        detailEmpty: 'Selecteer een programma om de details hier te bekijken.',
-        ...nlEpg.guide,
-    },
+    ...nlCodex,
 
     recent: {
         nowPlaying: 'Nu aan het afspelen:',

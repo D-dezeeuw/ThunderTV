@@ -21,18 +21,20 @@ export const nlEpg = {
         epgVerifiedOnlyHelp:
             'Standaard uit: een zender die de EPG-catalogus nog niet heeft gekoppeld, is vaker een ontbrekend stukje programmagegevens dan een niet-bestaande zender. Zet dit aan zodra uw catalogus gevuld is om zenders zonder programmagegevens te verbergen. Geldt nooit voor Radio.',
     },
-    guide: {
-        earlier: 'Eerder',
-        later: 'Later',
-        backToNow: 'Terug naar nu',
-        playChannel: 'Deze zender afspelen',
-    },
     list: {
         epgNextPrefix: 'Straks ·',
         streamLikelyDead: 'Deze feed is de laatste tijd meestal mislukt. Hij kan nog steeds werken — dit is een inschatting op basis van uw eigen kijkgeschiedenis.',
     },
     /** Complete top-level blocks, spread as one line into `strings.<locale>.ts` — that file has no room left for a nested block of its own. */
     topLevel: {
+        guide: {
+            nowLabel: 'Nu',
+            detailEmpty: 'Selecteer een programma om de details hier te bekijken.',
+            earlier: 'Eerder',
+            later: 'Later',
+            backToNow: 'Terug naar nu',
+            playChannel: 'Deze zender afspelen',
+        },
         health: {
             sectionTitle: 'Streamkwaliteit',
             readout: 'Feeds met afspeelgeschiedenis:',

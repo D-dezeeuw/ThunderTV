@@ -3,6 +3,7 @@
  * Proper nouns and technical acronyms (M3U, EPG, Xtream Codes, CORS, HLS, DRM) stay untranslated.
  */
 import { deCatalog } from './strings.de.catalog';
+import { deCodex } from './strings.de.codex';
 import { deEpg } from './strings.de.epg';
 import { dePlayerTracks } from './strings.de.player';
 
@@ -133,11 +134,7 @@ export const de = {
     },
 
     ...deEpg.topLevel,
-    guide: {
-        nowLabel: 'Jetzt',
-        detailEmpty: 'Wählen Sie eine Sendung, um hier deren Details zu sehen.',
-        ...deEpg.guide,
-    },
+    ...deCodex,
 
     recent: {
         nowPlaying: 'Läuft gerade:',

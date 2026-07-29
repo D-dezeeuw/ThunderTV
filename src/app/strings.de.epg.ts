@@ -21,18 +21,20 @@ export const deEpg = {
         epgVerifiedOnlyHelp:
             'Standardmäßig aus: Ein Sender, den der EPG-Katalog noch nicht zugeordnet hat, ist weit häufiger eine Lücke in den Programmdaten als ein nicht existierender Sender. Aktivieren, sobald Ihr Katalog gefüllt ist, um Sender ohne Programmdaten auszublenden. Gilt nie für Radio.',
     },
-    guide: {
-        earlier: 'Früher',
-        later: 'Später',
-        backToNow: 'Zurück zu jetzt',
-        playChannel: 'Diesen Sender abspielen',
-    },
     list: {
         epgNextPrefix: 'Danach ·',
         streamLikelyDead: 'Dieser Feed ist zuletzt meistens fehlgeschlagen. Er kann trotzdem funktionieren — dies ist eine Schätzung aus Ihrem eigenen Wiedergabeverlauf.',
     },
     /** Complete top-level blocks, spread as one line into `strings.<locale>.ts` — that file has no room left for a nested block of its own. */
     topLevel: {
+        guide: {
+            nowLabel: 'Jetzt',
+            detailEmpty: 'Wählen Sie eine Sendung, um hier deren Details zu sehen.',
+            earlier: 'Früher',
+            later: 'Später',
+            backToNow: 'Zurück zu jetzt',
+            playChannel: 'Diesen Sender abspielen',
+        },
         health: {
             sectionTitle: 'Streamqualität',
             readout: 'Feeds mit Wiedergabeverlauf:',

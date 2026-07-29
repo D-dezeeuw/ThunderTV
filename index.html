@@ -2046,6 +2046,39 @@
                             {{ strings.settings.diagnostics.epgCacheFailed }}
                         </p>
 
+                        <h3 class="settings-section__title">{{ strings.codex.sectionTitle }}</h3>
+                        <p class="settings-section__hint">{{ strings.codex.about }}</p>
+                        <p class="settings-section__hint" data-if="settings.codexAuthorId" data-testid="codex-author">
+                            {{ strings.codex.yourId }} {{ settings.codexAuthorId }}
+                        </p>
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="codex/export"
+                            data-testid="codex-export-btn"
+                            :disabled="settings.codexState === 'busy'"
+                        >
+                            {{ strings.codex.exportButton }}
+                        </button>
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="codex/import"
+                            data-testid="codex-import-btn"
+                            :disabled="settings.codexState === 'busy'"
+                        >
+                            {{ strings.codex.importButton }}
+                        </button>
+                        <p class="settings-section__hint">{{ strings.codex.signatureNote }}</p>
+                        <p class="settings-section__hint" data-if="settings.codexState === 'done'" data-testid="codex-done">
+                            {{ settings.codexMessage }}
+                        </p>
+                        <p class="settings-section__error" data-if="settings.codexState === 'failed'" data-testid="codex-failed">
+                            {{ settings.codexMessage }}
+                        </p>
+
                         <p class="settings-section__hint" data-testid="health-readout">
                             {{ strings.health.readout }} {{ settings.healthTrackedCount }}
                             {{ strings.health.deadReadout }} {{ settings.healthDeadCount }}
