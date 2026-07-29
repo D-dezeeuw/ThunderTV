@@ -62,7 +62,7 @@ export { loadFavoriteIds } from './favorites-load';
 export { loadActiveSource } from './list-load';
 export { registerViewRowsWatch } from './live.actions';
 export { loadGuideChannels } from './guide-load';
-export { loadDefaultEpg } from './epg-load';
+export { loadDefaultEpg, primeEpgMapping } from './epg-load';
 export { openWizard, openWizardIfNoSources } from './wizard.actions';
 export { shouldOpenWizard } from './wizard';
 export { openVodCatalog } from './vod.actions';

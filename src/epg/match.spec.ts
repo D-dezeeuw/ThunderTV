@@ -1,9 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { groupChannels, type GroupedChannel } from '../channels/grouping';
 import { withFakePlatform } from '../core/platform/fake-platform';
 import type { EpgCatalogRecord } from '../core/storage';
 import type { ChannelRow } from '../m3u/types';
-import { loadMapping, matchChannels, matchedCatalogIds, saveMapping, type MatchResult } from './match';
+import {
+    getMappingSync,
+    loadMapping,
+    matchChannels,
+    matchedCatalogIds,
+    primeMappingCache,
+    resetMappingCacheForTests,
+    saveMapping,
+    type MatchResult,
+} from './match';
 
 function channel(overrides: Partial<GroupedChannel> = {}): GroupedChannel {
     return {
@@ -16,6 +25,7 @@ function channel(overrides: Partial<GroupedChannel> = {}): GroupedChannel {
         isKnown: true,
         rank: 100,
         radio: false,
+        epgId: null,
         ...overrides,
     };
 }
@@ -194,6 +204,10 @@ describe('matchedCatalogIds', () => {
 });
 
 describe('saveMapping / loadMapping', () => {
+    afterEach(() => {
+        resetMappingCacheForTests();
+    });
+
     it('round-trips the matches through storage, keyed per country', async () => {
         await withFakePlatform({}, async () => {
             const result: MatchResult = {
@@ -210,6 +224,54 @@ describe('saveMapping / loadMapping', () => {
     it('loadMapping resolves an empty array when nothing was ever saved', async () => {
         await withFakePlatform({}, async () => {
             expect(await loadMapping('NL')).toEqual([]);
+        });
+    });
+});
+
+describe('getMappingSync / primeMappingCache (Feature 31.6 — live-rows.ts synchronous read path)', () => {
+    afterEach(() => {
+        resetMappingCacheForTests();
+    });
+
+    it('is empty before anything has been saved or primed', () => {
+        expect(getMappingSync('NL')).toEqual([]);
+    });
+
+    it('saveMapping() updates the sync cache immediately, not only storage', async () => {
+        await withFakePlatform({}, async () => {
+            const result: MatchResult = {
+                matches: [{ channelKey: 'NPO 1', catalogId: 'NPO 1.nl', method: 'name' }],
+                unmatchedChannels: [],
+                unmatchedCatalog: [],
+            };
+            await saveMapping('NL', result);
+            expect(getMappingSync('NL')).toEqual(result.matches);
+        });
+    });
+
+    it('primeMappingCache() restores the sync cache from storage', async () => {
+        await withFakePlatform({}, async () => {
+            const result: MatchResult = {
+                matches: [{ channelKey: 'RTL 4', catalogId: 'RTL 4.nl', method: 'tvg-id' }],
+                unmatchedChannels: [],
+                unmatchedCatalog: [],
+            };
+            await saveMapping('NL', result);
+            resetMappingCacheForTests();
+            expect(getMappingSync('NL')).toEqual([]);
+
+            await primeMappingCache('NL');
+            expect(getMappingSync('NL')).toEqual(result.matches);
+        });
+    });
+
+    it('keeps each country and its cache independent', async () => {
+        await withFakePlatform({}, async () => {
+            await saveMapping('NL', { matches: [{ channelKey: 'a', catalogId: 'a.nl', method: 'name' }], unmatchedChannels: [], unmatchedCatalog: [] });
+            await saveMapping('DE', { matches: [{ channelKey: 'b', catalogId: 'b.de', method: 'name' }], unmatchedChannels: [], unmatchedCatalog: [] });
+
+            expect(getMappingSync('NL').map((m) => m.catalogId)).toEqual(['a.nl']);
+            expect(getMappingSync('DE').map((m) => m.catalogId)).toEqual(['b.de']);
         });
     });
 });

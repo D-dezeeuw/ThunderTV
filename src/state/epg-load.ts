@@ -5,11 +5,12 @@ import { deriveCatalog, type ParsedFeedFile } from '../epg/catalog';
 import { getCountryCatalog, replaceFileCatalog } from '../epg/catalog-storage';
 import { countryForLiveToken } from '../epg/countries';
 import { fetchCountryFeeds } from '../epg/feed-fetch';
-import { matchChannels, matchedCatalogIds, saveMapping } from '../epg/match';
+import { matchChannels, matchedCatalogIds, primeMappingCache, saveMapping } from '../epg/match';
 import { PROGRAM_MAX_AGE_MS, pruneStalePrograms } from '../epg/prune';
 import { parseXmltvDocument, toEpgRecords } from '../epg/xmltv';
 import { makeChannelRowId, type ChannelRow } from '../m3u/types';
 import { loadGuideChannels } from './guide-load';
+import { refreshLiveRows } from './live.actions';
 import { SETTINGS_LIVE_COUNTRY } from './settings';
 import { get } from './typed';
 
@@ -70,6 +71,10 @@ export async function loadDefaultEpg(force = false): Promise<void> {
     const { channels: groupedChannels } = groupChannels(toChannelRows(channelRecords));
     const matchResult = matchChannels(groupedChannels, catalog);
     await saveMapping(liveCountryToken, matchResult);
+    // saveMapping() already updated the sync cache getMappingSync() reads;
+    // rebuild Live now so a completed match shows up without a reload
+    // (Feature 31.6.9 — the mapping recompute invalidates the cache).
+    refreshLiveRows();
 
     const matchedIds = matchedCatalogIds(matchResult);
     let wroteGuideData = false;
@@ -85,6 +90,18 @@ export async function loadDefaultEpg(force = false): Promise<void> {
     }
 
     if (wroteGuideData) await loadGuideChannels();
+}
+
+/**
+ * Restores `src/epg/match.ts`'s synchronous mapping cache from storage at
+ * boot (Feature 31.8.8) — before `live-rows.ts`'s `ensureLiveRows()` (a
+ * synchronous hot path) ever reads it, and without delaying first paint:
+ * called alongside `loadGuideChannels()`, not awaited by `bootstrap.ts`.
+ */
+export async function primeEpgMapping(): Promise<void> {
+    const liveCountryToken = get<string>(SETTINGS_LIVE_COUNTRY) ?? '';
+    if (!liveCountryToken) return;
+    await primeMappingCache(liveCountryToken);
 }
 
 function toChannelRows(records: readonly ChannelRecord[]): ChannelRow[] {

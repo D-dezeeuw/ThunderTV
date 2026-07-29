@@ -2,22 +2,22 @@ import { defineFn, refs } from 'spektrum';
 import { isValidProxyTemplate } from '../core/http';
 import { applyLocale, isLocale, strings } from '../app/strings';
 import { getPlatform } from '../core/platform';
-import { downloadTextFile } from '../ui/download-file';
 import { importXtreamSource } from '../xtream/import';
 import { normalizeXtreamUrl } from '../xtream/urls';
 import { loadPlaylistSources } from './playlist-load';
 import { PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_SOURCES, type PlaylistSourceSummary } from './playlist';
 import { setActiveSourceId } from './playlist.actions';
 import { persist } from './persist';
+import { exportConfiguration, exportEpg, exportRawResponses } from './settings-export.actions';
 import { shouldOpenWizard, UI_SETUP_COMPLETE } from './wizard';
 import {
     isBufferingMode,
     isPlaybackEngine,
     SETTINGS_AUDIO_LANGUAGE,
     SETTINGS_BUFFERING,
-    SETTINGS_EXPORT_STATE,
     SETTINGS_LIVE_COUNTRY,
     SETTINGS_LIVE_DROP_JUNK,
+    SETTINGS_LIVE_EPG_VERIFIED_ONLY,
     SETTINGS_LIVE_KNOWN_ONLY,
     SETTINGS_LOCALE,
     SETTINGS_NAV_CATEGORIES,
@@ -122,69 +122,6 @@ export function registerSettingsActions(): void {
     });
 }
 
-/** Filename stamp shared by every export, so a set of three files sorts together. */
-function stamp(iso: string): string {
-    return iso.slice(0, 19).replace(/[:T]/g, '-');
-}
-
-/**
- * The provider's replies verbatim — the untransformed counterpart to
- * `exportConfiguration()`.
- *
- * The three XML builders (`config-export.ts`/`raw-export.ts`, ~5 kB) are
- * dynamically imported rather than pulled into the entry chunk: they are
- * reachable only from Settings → Diagnostics, on a click, and most sessions
- * never open that panel at all. Async as a result, which is why the
- * `defineFn`s below `void` these calls.
- */
-export async function exportRawResponses(): Promise<void> {
-    try {
-        const { buildRawResponsesXml } = await import('./raw-export');
-        const iso = new Date().toISOString();
-        downloadTextFile(
-            `thundertv-raw-${stamp(iso)}.xml`,
-            'application/xml',
-            buildRawResponsesXml({ generatedAt: iso, appVersion: APP_VERSION }),
-        );
-        set(SETTINGS_EXPORT_STATE, 'done');
-    } catch {
-        set(SETTINGS_EXPORT_STATE, 'failed');
-    }
-}
-
-/** Async because the guide lives in storage rather than memory; failures surface in the panel like the other two. */
-export async function exportEpg(): Promise<void> {
-    try {
-        const { buildEpgXml } = await import('./raw-export');
-        const iso = new Date().toISOString();
-        const xml = await buildEpgXml({ generatedAt: iso, appVersion: APP_VERSION });
-        downloadTextFile(`thundertv-epg-${stamp(iso)}.xml`, 'application/xml', xml);
-        set(SETTINGS_EXPORT_STATE, 'done');
-    } catch {
-        set(SETTINGS_EXPORT_STATE, 'failed');
-    }
-}
-
-/**
- * Writes the full configuration to a downloaded XML file. Wrapped in a
- * try/catch because this runs on a click: a storage quirk or an oversized
- * source must surface as "export failed" in the panel, never as an
- * unhandled rejection that leaves the button looking inert.
- */
-export async function exportConfiguration(): Promise<void> {
-    try {
-        const { buildConfigXml } = await import('./config-export');
-        const iso = new Date().toISOString();
-        const xml = buildConfigXml({ generatedAt: iso, appVersion: APP_VERSION });
-        downloadTextFile(`thundertv-config-${stamp(iso)}.xml`, 'application/xml', xml);
-        set(SETTINGS_EXPORT_STATE, 'done');
-    } catch {
-        set(SETTINGS_EXPORT_STATE, 'failed');
-    }
-}
-
-const APP_VERSION = '0.0.0';
-
 /** `data-setting` token → the state key it may write. An allowlist, not a prefix rule: markup must never be able to name an arbitrary path. */
 const TOGGLEABLE: Record<string, string> = {
     'nav.sources': SETTINGS_NAV_SOURCES,
@@ -197,6 +134,7 @@ const TOGGLEABLE: Record<string, string> = {
     'nav.series': SETTINGS_NAV_SERIES,
     liveKnownOnly: SETTINGS_LIVE_KNOWN_ONLY,
     liveDropJunk: SETTINGS_LIVE_DROP_JUNK,
+    liveEpgVerifiedOnly: SETTINGS_LIVE_EPG_VERIFIED_ONLY,
 };
 
 /** Exported for direct testing without a DOM element. */

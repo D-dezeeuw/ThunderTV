@@ -113,6 +113,15 @@ export const SETTINGS_LIVE_COUNTRY = 'settings.liveCountry';
 export const SETTINGS_LIVE_KNOWN_ONLY = 'settings.liveKnownOnly';
 /** Drop event-slot placeholders, separators and adult rows. On by default. */
 export const SETTINGS_LIVE_DROP_JUNK = 'settings.liveDropJunk';
+/**
+ * Strict mode — keep only channels the EPG country catalog matched
+ * (Phase 31, `src/epg/match.ts`). **Off** by default: a channel not yet
+ * matched is far more often "the catalog hasn't caught up" (feed not
+ * fetched yet, alias the matcher doesn't know) than "this channel doesn't
+ * exist," and hiding it on that guess is the wrong default. Never applies
+ * to Radio, which the catalog says nothing about.
+ */
+export const SETTINGS_LIVE_EPG_VERIFIED_ONLY = 'settings.liveEpgVerifiedOnly';
 
 /** Countries offered in Settings. Anything else can still be typed into the field — this is a shortlist, not a validation gate. */
 export const LIVE_COUNTRIES: readonly string[] = ['NL', 'BE', 'DE', 'UK', 'FR', 'ES', 'US'];
@@ -156,6 +165,7 @@ export interface SettingsState {
     liveCountry: string;
     liveKnownOnly: boolean;
     liveDropJunk: boolean;
+    liveEpgVerifiedOnly: boolean;
     audioLanguage: string;
     subtitleLanguage: string;
 }
@@ -189,6 +199,7 @@ export const SETTINGS_DEFAULTS: SettingsState = {
     liveCountry: 'NL',
     liveKnownOnly: true,
     liveDropJunk: true,
+    liveEpgVerifiedOnly: false,
     audioLanguage: 'en',
     subtitleLanguage: 'auto',
 };
@@ -218,6 +229,7 @@ export function initSettingsState(): void {
     setValue(SETTINGS_LIVE_COUNTRY, SETTINGS_DEFAULTS.liveCountry);
     setValue(SETTINGS_LIVE_KNOWN_ONLY, SETTINGS_DEFAULTS.liveKnownOnly);
     setValue(SETTINGS_LIVE_DROP_JUNK, SETTINGS_DEFAULTS.liveDropJunk);
+    setValue(SETTINGS_LIVE_EPG_VERIFIED_ONLY, SETTINGS_DEFAULTS.liveEpgVerifiedOnly);
     setValue(SETTINGS_AUDIO_LANGUAGE, SETTINGS_DEFAULTS.audioLanguage);
     setValue(SETTINGS_SUBTITLE_LANGUAGE, SETTINGS_DEFAULTS.subtitleLanguage);
 }

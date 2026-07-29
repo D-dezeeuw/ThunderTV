@@ -15,6 +15,7 @@ import {
     loadGuideChannels,
     loadPlaylistSources,
     openWizardIfNoSources,
+    primeEpgMapping,
     registerActions,
     registerPersistOnHide,
     registerSelectors,
@@ -87,8 +88,11 @@ export async function bootstrap(): Promise<void> {
     // Paint whatever EPG data already survived from a previous session
     // immediately, then kick off the (TTL-guarded) bulk XMLTV fetch —
     // loadDefaultEpg() itself republishes guide.channels once it writes
-    // anything new (src/state/epg-load.ts).
+    // anything new (src/state/epg-load.ts). primeEpgMapping() restores the
+    // Phase 31 match cache live-rows.ts reads synchronously, so a channel
+    // matched in a previous session shows as verified before any fetch.
     void loadGuideChannels();
+    void primeEpgMapping();
     void loadDefaultEpg();
     registerImportDropzoneDragover();
     registerDebugShortcut();

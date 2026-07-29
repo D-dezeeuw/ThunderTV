@@ -133,16 +133,42 @@ function mappingKey(country: string): string {
 }
 
 /**
+ * Synchronous module-memory mirror of the persisted mapping (Feature
+ * 31.6): `src/state/live-rows.ts`'s `ensureLiveRows()` is a synchronous,
+ * hot-path rebuild — same "bulk data bypasses Spektrum state" rule as
+ * `m3u/channel-memory.ts`'s row array — so it cannot `await` a storage
+ * read on every call. `saveMapping()` keeps this cache current; boot
+ * primes it once from storage via `primeMappingCache()` before it's ever
+ * read for real (`src/state/epg-load.ts`).
+ */
+const mappingCache = new Map<string, EpgChannelMatch[]>();
+
+export function getMappingSync(country: string): readonly EpgChannelMatch[] {
+    return mappingCache.get(country) ?? [];
+}
+
+/** Test-only: the cache is process-lifetime module state, so specs that call `saveMapping()`/`primeMappingCache()` must clear it between cases to stay isolated from each other. */
+export function resetMappingCacheForTests(): void {
+    mappingCache.clear();
+}
+
+/**
  * Persists the mapping as a small kv snapshot (Feature 31.5.5) — restores
  * on boot before the playlist re-matches, and is the Codex v0 (stone 4)
  * export candidate: evidence about channel identity, storage-owned, never
  * a Spektrum key (Feature 31.5.6).
  */
 export async function saveMapping(country: string, result: MatchResult): Promise<void> {
+    mappingCache.set(country, result.matches);
     await getPlatform().storage.set(mappingKey(country), { savedAt: Date.now(), matches: result.matches });
 }
 
 export async function loadMapping(country: string): Promise<EpgChannelMatch[]> {
     const stored = await getPlatform().storage.get<StoredMapping>(mappingKey(country));
     return stored?.matches ?? [];
+}
+
+/** Restores the sync cache from storage — call once per country at boot, before any synchronous reader needs it. */
+export async function primeMappingCache(country: string): Promise<void> {
+    mappingCache.set(country, await loadMapping(country));
 }
