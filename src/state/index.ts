@@ -41,6 +41,9 @@ import { registerSettingsActions } from './settings.actions';
 import { initUiState } from './ui';
 import { registerUiActions } from './ui.actions';
 import { registerUiSelectors } from './ui.selectors';
+import { registerDownloadActions } from './downloads.actions';
+import { registerDownloadSelectors } from './downloads.selectors';
+import { initDownloadsState } from './downloads';
 import { registerVodActions } from './vod.actions';
 import { initVodState } from './vod';
 import { registerXtreamActions } from './xtream.actions';
@@ -99,6 +102,7 @@ export function initState(): void {
     initVodState();
     initSeriesState();
     initSearchState();
+    initDownloadsState();
     applyHistoryPolicy();
 }
 
@@ -120,6 +124,7 @@ export function registerActions(): void {
     registerVodActions();
     registerSeriesActions();
     registerSearchActions();
+    registerDownloadActions();
 }
 
 /** Registers every `computed()` selector across all modules (Feature 05.6.1). */
@@ -131,6 +136,7 @@ export function registerSelectors(): void {
     registerListSelectors();
     registerLiveSelectors();
     registerGuideSelectors();
+    registerDownloadSelectors();
 }
 
 /**

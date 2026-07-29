@@ -4,6 +4,7 @@ import type { TierControllerOptions } from '../storage/tier-controller';
 import { SETTINGS_PROXY_TEMPLATE } from '../../state/settings';
 import { get } from '../../state/typed';
 import { createElectronCapabilities } from './capabilities';
+import { ElectronDownloadAdapter } from './electron-downloads';
 import type { DefaultConfig, PlatformAdapter, WindowFullscreenControl } from './platform-adapter';
 import { WebFileAdapter } from './web-file-adapter';
 
@@ -89,6 +90,10 @@ export async function createElectronPlatform(options: CreateElectronPlatformOpti
             options.getProxyTemplate ? { getProxyTemplate: options.getProxyTemplate } : { getProxyTemplate: effectiveProxyTemplate },
         ),
         files: new WebFileAdapter(),
+        // The one collaborator that is genuinely not the web one: the main
+        // process streams the file to disk itself, so a movie never passes
+        // through the renderer at all (`electron-downloads.ts`).
+        downloads: new ElectronDownloadAdapter(),
         windowFullscreen,
         getDefaultConfig,
         get capabilities() {

@@ -27,6 +27,24 @@ export const nlCatalog = {
         noEpisodes: 'Nog geen afleveringen voor deze serie.',
     },
 
+    downloads: {
+        action: 'Downloaden',
+        queueTitle: 'Downloads',
+        queueAria: 'Downloadwachtrij',
+        progressAria: 'Downloadvoortgang',
+        cancel: 'Annuleren',
+        remove: 'Verwijderen',
+        clearFinished: 'Voltooide wissen',
+        queued: 'In wachtrij…',
+        starting: 'Starten…',
+        done: 'Opgeslagen',
+        cancelled: 'Geannuleerd',
+        handoff: 'Doorgegeven aan de downloads van je browser.',
+        errorNetwork:
+            'De overdracht is gestopt. Providers beperken meestal hoeveel verbindingen één account tegelijk mag openen, dus eerst het afspelen stoppen helpt vaak.',
+        errorDisk: 'Het bestand kon niet worden weggeschreven. Controleer of de bestemming nog bestaat en genoeg ruimte heeft.',
+    },
+
     search: {
         placeholder: 'Zoek titels…',
         clear: 'Zoekopdracht wissen',

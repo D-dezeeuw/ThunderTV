@@ -36,6 +36,28 @@ export const enCatalog = {
         noEpisodes: 'No episodes listed for this series yet.',
     },
 
+    /**
+     * Download queue copy. Movies only — a live channel is an endless
+     * stream with no end to download to (`src/state/downloads.ts`).
+     */
+    downloads: {
+        action: 'Download',
+        queueTitle: 'Downloads',
+        queueAria: 'Download queue',
+        progressAria: 'Download progress',
+        cancel: 'Cancel',
+        remove: 'Remove',
+        clearFinished: 'Clear finished',
+        queued: 'Waiting…',
+        starting: 'Starting…',
+        done: 'Saved',
+        cancelled: 'Cancelled',
+        handoff: 'Handed to your browser’s downloads.',
+        errorNetwork:
+            'The transfer stopped. Providers usually cap how many connections one account can open at once, so stopping playback first often helps.',
+        errorDisk: 'Could not write the file. Check the destination still exists and has room.',
+    },
+
     search: {
         placeholder: 'Search titles…',
         clear: 'Clear search',

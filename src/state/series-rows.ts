@@ -103,9 +103,14 @@ export function buildSeriesDetailRows(info: XtreamSeriesInfo, cap: number): Seri
             rows.push({
                 kind: 'episode',
                 episodeId: ep.episodeId,
+                // `season.season`, not `ep.season`: the season block is the
+                // authority on which season these episodes are under, and a
+                // provider that omits it per-episode still groups correctly.
+                season: season.season,
                 episode: ep.episode,
                 title: ep.title,
                 durationMins: ep.durationSecs != null ? Math.round(ep.durationSecs / 60) : null,
+                containerExtension: ep.containerExtension,
             });
         }
     }

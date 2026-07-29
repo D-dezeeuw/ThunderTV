@@ -12,7 +12,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { resetState, tick } from 'spektrum';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPlatform, resetPlatformForTests, setPlatform } from '../core/platform';
-import { FakeFileAdapter, FakeHttpAdapter } from '../core/platform/fake-platform';
+import { FakeDownloadAdapter, FakeFileAdapter, FakeHttpAdapter } from '../core/platform/fake-platform';
 import { makePlaylistRecord } from '../core/storage/fixtures';
 import { IdbStorage } from '../core/storage/idb-storage';
 import { LocalStorageStorage } from '../core/storage/local-storage-storage';
@@ -47,8 +47,9 @@ function useStorage(storage: StorageAdapter): void {
         name: 'web',
         http: new FakeHttpAdapter(),
         files: new FakeFileAdapter(),
+        downloads: new FakeDownloadAdapter(),
         storage,
-        capabilities: { corsUnrestricted: false, externalPlayers: false, durableStorage: storage.tier },
+        capabilities: { corsUnrestricted: false, externalPlayers: false, durableStorage: storage.tier , downloads: 'none'},
     });
 }
 

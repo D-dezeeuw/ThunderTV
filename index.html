@@ -813,12 +813,75 @@
                                         <span data-if="vod.detail.rating"> · ★ {{ vod.detail.rating }}</span>
                                     </p>
                                     <p class="catalog-detail__plot" data-if="vod.detail.plot">{{ vod.detail.plot }}</p>
+                                    <!-- While this movie is downloading, the panel's own
+                                         buttons go inert (:disabled binds the property, not
+                                         the attribute — Spektrum assigns el[name] for
+                                         dash-free names) and the Download button is replaced
+                                         by the progress row below. Play stays disabled too:
+                                         playing opens a second connection to the same
+                                         account, which is exactly what most panels'
+                                         concurrent-connection cap refuses — and refusing it
+                                         kills the download, not the playback. -->
                                     <div class="catalog-detail__actions">
-                                        <button type="button" class="btn" data-action="click" data-fn="vod/play" :data-stream-id="vod.detail.streamId" data-testid="movies-detail-play">
+                                        <button
+                                            type="button"
+                                            class="btn"
+                                            data-action="click"
+                                            data-fn="vod/play"
+                                            :data-stream-id="vod.detail.streamId"
+                                            :disabled="download.detailBusy"
+                                            data-testid="movies-detail-play"
+                                        >
                                             {{ strings.catalog.play }}
                                         </button>
-                                        <button type="button" class="btn" data-action="click" data-fn="vod/closeDetail" data-testid="movies-detail-close">
+                                        <button
+                                            type="button"
+                                            class="btn"
+                                            data-if="download.supported && !download.detailBusy"
+                                            data-action="click"
+                                            data-fn="downloads/startVod"
+                                            :data-stream-id="vod.detail.streamId"
+                                            data-testid="movies-detail-download"
+                                        >
+                                            {{ strings.downloads.action }}
+                                        </button>
+                                        <button type="button" class="btn" data-action="click" data-fn="vod/closeDetail" :disabled="download.detailBusy" data-testid="movies-detail-close">
                                             {{ strings.catalog.close }}
+                                        </button>
+                                    </div>
+
+                                    <!-- The in-place progress row. An indeterminate <progress>
+                                         (no value attribute) is the honest rendering when the
+                                         provider sent no Content-Length: download.detailMeasured
+                                         is false then, and a made-up percentage would be worse
+                                         than no number at all. -->
+                                    <div class="download-progress" data-if="download.detailBusy" data-testid="movies-detail-progress">
+                                        <progress
+                                            class="download-progress__bar"
+                                            data-if="download.detailMeasured"
+                                            max="100"
+                                            :value="download.detailPercent"
+                                            :aria-label="strings.downloads.progressAria"
+                                        ></progress>
+                                        <progress
+                                            class="download-progress__bar"
+                                            data-if="!download.detailMeasured"
+                                            :aria-label="strings.downloads.progressAria"
+                                        ></progress>
+                                        <span class="download-progress__label">
+                                            <span data-if="download.detail.status === 'queued'">{{ strings.downloads.queued }}</span>
+                                            <span data-if="download.detail.status === 'downloading' && !download.detail.sizeLabel">{{ strings.downloads.starting }}</span>
+                                            <span data-if="download.detail.status === 'downloading' && download.detail.sizeLabel">{{ download.detail.sizeLabel }}</span>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            class="btn btn--quiet"
+                                            data-action="click"
+                                            data-fn="downloads/cancel"
+                                            :data-download-id="download.detail.id"
+                                            data-testid="movies-detail-download-cancel"
+                                        >
+                                            {{ strings.downloads.cancel }}
                                         </button>
                                     </div>
                                 </div>
@@ -904,10 +967,23 @@
                                     <p class="catalog-detail__empty" data-if="series.detailStatus === 'ready' && series.detail.rows.length === 0" data-testid="series-no-episodes">
                                         {{ strings.series.noEpisodes }}
                                     </p>
+                                    <!-- data-each binds `download.episodeRows`, not
+                                         `series.detail.rows`: a flat row cannot look itself
+                                         up in `downloads.items`, so the join has to happen
+                                         in a selector before the template sees it
+                                         (downloads.selectors.ts). The rows are otherwise
+                                         `series.detail.rows` verbatim.
+
+                                         It is also a PLAIN PATH on purpose. This was
+                                         `series.detail?.rows || []`, and Spektrum's
+                                         data-each does not evaluate an expression there —
+                                         it silently rendered zero rows, which is why the
+                                         episode list came up empty. Keep any fallback in
+                                         the selector (it already returns []), never here. -->
                                     <div
                                         class="catalog-seasons"
                                         data-if="series.detailStatus === 'ready' && series.detail.rows.length > 0"
-                                        data-each="series.detail?.rows || []"
+                                        data-each="download.episodeRows"
                                         data-as="row"
                                         data-testid="series-rows"
                                     >
@@ -923,12 +999,61 @@
                                                 data-fn="series/playEpisode"
                                                 :data-series-id="series.detailId"
                                                 :data-episode-id="row.episodeId"
+                                                :disabled="row.downloadBusy"
                                                 data-testid="series-episode"
                                             >
                                                 <span class="catalog-episode__num">{{ strings.series.episodePrefix }}{{ row.episode }}</span>
                                                 <span class="catalog-episode__title truncate">{{ row.title }}</span>
                                                 <span class="catalog-episode__duration" data-if="row.durationMins !== null">{{ row.durationMins }} {{ strings.series.minutesSuffix }}</span>
                                             </button>
+
+                                            <!-- Per episode, not per panel: several episodes
+                                                 can be queued at once, so only the one that
+                                                 is transferring goes inert. -->
+                                            <button
+                                                type="button"
+                                                class="btn btn--quiet catalog-episode__download"
+                                                data-if="row.kind === 'episode' && download.supported && !row.downloadBusy && !row.downloadDone"
+                                                data-action="click"
+                                                data-fn="downloads/startSeriesEpisode"
+                                                :data-series-id="series.detailId"
+                                                :data-episode-id="row.episodeId"
+                                                data-testid="series-episode-download"
+                                            >
+                                                {{ strings.downloads.action }}
+                                            </button>
+                                            <span
+                                                class="catalog-episode__saved"
+                                                data-if="row.kind === 'episode' && row.downloadDone"
+                                                data-testid="series-episode-saved"
+                                            >
+                                                {{ strings.downloads.done }}
+                                            </span>
+
+                                            <div class="download-progress" data-if="row.kind === 'episode' && row.downloadBusy" data-testid="series-episode-progress">
+                                                <progress
+                                                    class="download-progress__bar"
+                                                    data-if="row.downloadMeasured"
+                                                    max="100"
+                                                    :value="row.downloadPercent"
+                                                    :aria-label="strings.downloads.progressAria"
+                                                ></progress>
+                                                <progress class="download-progress__bar" data-if="!row.downloadMeasured" :aria-label="strings.downloads.progressAria"></progress>
+                                                <span class="download-progress__label">
+                                                    <span data-if="!row.downloadSizeLabel">{{ strings.downloads.queued }}</span>
+                                                    <span data-if="row.downloadSizeLabel">{{ row.downloadSizeLabel }}</span>
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn--quiet"
+                                                    data-action="click"
+                                                    data-fn="downloads/cancel"
+                                                    :data-download-id="row.downloadId"
+                                                    data-testid="series-episode-cancel"
+                                                >
+                                                    {{ strings.downloads.cancel }}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1596,6 +1721,85 @@
                     <p data-if="connect.detected">{{ strings.connect.detected }}</p>
                 </section>
             </main>
+
+            <!-- Download queue. Outside <main> and fixed-position, because a
+                 transfer outlives the view that started it: closing the movie
+                 detail, or navigating to Live, must not hide a download that
+                 is still running. Hidden entirely while empty — it is a
+                 status surface, not a permanent piece of chrome.
+
+                 One row per entry, driven by download.rows (the pre-shaped
+                 copy in downloads.selectors.ts) so each row's flags are plain
+                 `data-if="row.busy"` rather than expressions doing work in
+                 the template. -->
+            <aside
+                class="download-queue"
+                data-if="download.queueVisible"
+                role="region"
+                :aria-label="strings.downloads.queueAria"
+                data-testid="download-queue"
+            >
+                <div class="download-queue__head">
+                    <h2 class="download-queue__title">{{ strings.downloads.queueTitle }}</h2>
+                    <button
+                        type="button"
+                        class="btn btn--quiet"
+                        data-if="download.hasFinished"
+                        data-action="click"
+                        data-fn="downloads/clearFinished"
+                        data-testid="download-queue-clear"
+                    >
+                        {{ strings.downloads.clearFinished }}
+                    </button>
+                </div>
+
+                <ul class="download-queue__list" data-each="download.rows" data-as="row" data-testid="download-queue-rows">
+                    <li class="download-queue__row">
+                        <span class="download-queue__name truncate">{{ row.name }}</span>
+
+                        <progress class="download-progress__bar" data-if="row.busy && row.measured" max="100" :value="row.percent"></progress>
+                        <progress class="download-progress__bar" data-if="row.busy && !row.measured"></progress>
+
+                        <span class="download-queue__status">
+                            <span data-if="row.status === 'queued'">{{ strings.downloads.queued }}</span>
+                            <span data-if="row.status === 'downloading' && !row.sizeLabel">{{ strings.downloads.starting }}</span>
+                            <span data-if="row.status === 'downloading' && row.sizeLabel">{{ row.sizeLabel }}</span>
+                            <span data-if="row.finished">{{ strings.downloads.done }}</span>
+                            <span data-if="row.handedOff">{{ strings.downloads.handoff }}</span>
+                            <span data-if="row.failed && row.errorReason === 'cancelled'">{{ strings.downloads.cancelled }}</span>
+                            <span data-if="row.failed && row.errorReason === 'network'">{{ strings.downloads.errorNetwork }}</span>
+                            <span data-if="row.failed && row.errorReason === 'disk'">{{ strings.downloads.errorDisk }}</span>
+                        </span>
+
+                        <!-- Cancel while it is still ours to stop; Remove once
+                             it is finished. Two buttons rather than one that
+                             changes meaning, so a click can never do the
+                             opposite of what its label said a frame ago. -->
+                        <button
+                            type="button"
+                            class="btn btn--quiet"
+                            data-if="row.busy"
+                            data-action="click"
+                            data-fn="downloads/cancel"
+                            :data-download-id="row.id"
+                            data-testid="download-queue-cancel"
+                        >
+                            {{ strings.downloads.cancel }}
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn--quiet"
+                            data-if="!row.busy"
+                            data-action="click"
+                            data-fn="downloads/dismiss"
+                            :data-download-id="row.id"
+                            data-testid="download-queue-dismiss"
+                        >
+                            {{ strings.downloads.remove }}
+                        </button>
+                    </li>
+                </ul>
+            </aside>
 
             <aside
                 class="settings-panel"
