@@ -11,6 +11,7 @@ export const nlCatalog = {
         close: 'Sluiten',
         play: 'Afspelen',
         retry: 'Opnieuw proberen',
+        offline: 'Opgeslagen gegevens — de provider was niet bereikbaar. Gedownloade titels spelen gewoon af.',
     },
 
     movies: {

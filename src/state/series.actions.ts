@@ -18,6 +18,7 @@ import {
     SERIES_DETAIL_ID,
     SERIES_DETAIL_STATUS,
     SERIES_ERROR_REASON,
+    SERIES_STALE,
     SERIES_STATUS,
     type SeriesCategoryRow,
     type SeriesItem,
@@ -96,7 +97,10 @@ export async function openSeriesCatalog(): Promise<void> {
 
         if (!isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
             const stored = await loadStoredCategories('series');
-            if (stored && isFresh(stored.fetchedAt, now, CATALOG_TTL_MS)) {
+            // Adopted past its TTL — see `vod.actions.ts`'s identical branch
+            // for why: it is what turns "no connection" into "yesterday's
+            // catalog" instead of an error screen.
+            if (stored && (categories.length === 0 || stored.fetchedAt > (fetchedAt ?? 0))) {
                 seriesMemory.setCategories(stored.categories);
                 seriesMemory.setCategoriesFetchedAt(stored.fetchedAt);
                 categories = stored.categories;
@@ -106,16 +110,22 @@ export async function openSeriesCatalog(): Promise<void> {
 
         if (!isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
             const result = await getSeriesCategories(account.source);
-            if (!result.ok) {
+            if (result.ok) {
+                categories = result.data;
+                fetchedAt = now;
+                seriesMemory.setCategories(categories);
+                seriesMemory.setCategoriesFetchedAt(fetchedAt);
+                void saveStoredCategories('series', { fetchedAt, categories });
+                set(SERIES_STALE, false);
+            } else if (categories.length > 0) {
+                set(SERIES_STALE, true);
+            } else {
                 set(SERIES_STATUS, 'error');
                 set(SERIES_ERROR_REASON, 'fetch-failed');
                 return;
             }
-            categories = result.data;
-            fetchedAt = now;
-            seriesMemory.setCategories(categories);
-            seriesMemory.setCategoriesFetchedAt(fetchedAt);
-            void saveStoredCategories('series', { fetchedAt, categories });
+        } else {
+            set(SERIES_STALE, false);
         }
 
         const sorted = sortCategoriesCountryFirst(categories, get<string>(SETTINGS_LIVE_COUNTRY) ?? '');
@@ -154,7 +164,7 @@ export async function selectSeriesCategory(categoryId: string): Promise<void> {
 
     if (!items || !isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
         const stored = await loadStoredItems<SeriesItem>('series', categoryId);
-        if (stored && isFresh(stored.fetchedAt, now, CATALOG_TTL_MS)) {
+        if (stored && (!items || stored.fetchedAt > (fetchedAt ?? 0))) {
             seriesMemory.setItemsFor(categoryId, stored.items, stored.fetchedAt);
             items = stored.items;
             fetchedAt = stored.fetchedAt;
@@ -163,15 +173,19 @@ export async function selectSeriesCategory(categoryId: string): Promise<void> {
 
     if (!items || !isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
         const result = await getSeries(account.source, categoryId);
-        if (!result.ok) {
+        if (result.ok) {
+            items = result.data.map(toSeriesItem);
+            fetchedAt = now;
+            seriesMemory.setItemsFor(categoryId, items, fetchedAt);
+            void saveStoredItems('series', categoryId, { items, fetchedAt });
+            set(SERIES_STALE, false);
+        } else if (!items) {
             set(SERIES_STATUS, 'error');
             set(SERIES_ERROR_REASON, 'fetch-failed');
             return;
+        } else {
+            set(SERIES_STALE, true);
         }
-        items = result.data.map(toSeriesItem);
-        fetchedAt = now;
-        seriesMemory.setItemsFor(categoryId, items, fetchedAt);
-        void saveStoredItems('series', categoryId, { items, fetchedAt });
     }
 
     // Same defensive/unreachable guard as `vod.actions.ts`'s
@@ -189,6 +203,19 @@ export async function selectSeriesCategory(categoryId: string): Promise<void> {
     set(SERIES_STATUS, 'ready');
     const categoryName = seriesCategoryName(categoryId);
     setDisplayedRows(items.map((item) => seriesItemToRow(item, categoryName)));
+}
+
+/** Series' half of the shared-list republish — see `vod.actions.ts`'s `republishVodRows()` for why this is separate from `openSeriesCatalog()`. */
+export function republishSeriesRows(): boolean {
+    const categoryId = get<string | null>(SERIES_ACTIVE_CATEGORY_ID);
+    if (!categoryId) return false;
+    const items = seriesMemory.itemsFor(categoryId);
+    if (!items) return false;
+    const categoryName = seriesCategoryName(categoryId);
+    setDisplayedRows(items.map((item) => seriesItemToRow(item, categoryName)));
+    set(SERIES_COUNT, items.length);
+    set(SERIES_STATUS, 'ready');
+    return true;
 }
 
 /**
@@ -252,14 +279,21 @@ async function fetchSeriesInfo(seriesId: number, account: ResolvedXtreamAccount)
     let info = seriesMemory.detail(seriesId);
     if (!info || !isFresh(seriesMemory.detailFetchedAt(seriesId), now, CATALOG_TTL_MS)) {
         const stored = await loadStoredDetail<XtreamSeriesInfo>('series', seriesId);
-        if (stored && isFresh(stored.fetchedAt, now, CATALOG_TTL_MS)) {
+        // No freshness gate — a season/episode list is exactly what an
+        // offline viewer needs to still see, and a show that gained an
+        // episode yesterday is a much smaller problem than a panel that
+        // shows none at all.
+        if (stored) {
             seriesMemory.setDetail(seriesId, stored.data, stored.fetchedAt);
             info = stored.data;
         }
     }
-    if (!info || !isFresh(seriesMemory.detailFetchedAt(seriesId), now, CATALOG_TTL_MS)) {
+    if (!isFresh(seriesMemory.detailFetchedAt(seriesId), now, CATALOG_TTL_MS)) {
         const result = await getSeriesInfo(account.source, seriesId);
-        if (!result.ok) return { info, failed: true };
+        // `failed` only when there is nothing to fall back on: with a stale
+        // cache in hand the panel reports ready (stale beats alarming, which
+        // is this function's existing contract for a failed refresh).
+        if (!result.ok) return { info, failed: info === undefined };
         info = result.data;
         seriesMemory.setDetail(seriesId, info, now);
         void saveStoredDetail('series', seriesId, { fetchedAt: now, data: info });

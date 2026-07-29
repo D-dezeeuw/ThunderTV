@@ -9,6 +9,7 @@ import { SETTINGS_LIVE_COUNTRY } from './settings';
 import { CATALOG_TTL_MS, isFresh } from './ttl';
 import { get, replace, set } from './typed';
 import {
+    cachedVodSource,
     toVodDetail,
     toVodItem,
     vodCategoryName,
@@ -27,6 +28,7 @@ import {
     VOD_DETAIL,
     VOD_DETAIL_ID,
     VOD_ERROR_REASON,
+    VOD_STALE,
     VOD_STATUS,
     type VodCategoryRow,
     type VodItem,
@@ -107,7 +109,11 @@ export async function openVodCatalog(): Promise<void> {
 
         if (!isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
             const stored = await loadStoredCategories('vod');
-            if (stored && isFresh(stored.fetchedAt, now, CATALOG_TTL_MS)) {
+            // Adopted even past its TTL, which is the change that makes
+            // offline browsing work at all: the freshness check below still
+            // decides whether to go and refresh it, but if that fails there
+            // is now something real to fall back to instead of an error.
+            if (stored && (categories.length === 0 || stored.fetchedAt > (fetchedAt ?? 0))) {
                 vodMemory.setCategories(stored.categories);
                 vodMemory.setCategoriesFetchedAt(stored.fetchedAt);
                 categories = stored.categories;
@@ -117,16 +123,25 @@ export async function openVodCatalog(): Promise<void> {
 
         if (!isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
             const result = await getVodCategories(account.source);
-            if (!result.ok) {
+            if (result.ok) {
+                categories = result.data;
+                fetchedAt = now;
+                vodMemory.setCategories(categories);
+                vodMemory.setCategoriesFetchedAt(fetchedAt);
+                void saveStoredCategories('vod', { fetchedAt, categories });
+                set(VOD_STALE, false);
+            } else if (categories.length > 0) {
+                // Offline, or the panel is down, with a cache in hand:
+                // yesterday's catalog beats an error screen. Flagged rather
+                // than passed off as live — see `vod.stale`.
+                set(VOD_STALE, true);
+            } else {
                 set(VOD_STATUS, 'error');
                 set(VOD_ERROR_REASON, 'fetch-failed');
                 return;
             }
-            categories = result.data;
-            fetchedAt = now;
-            vodMemory.setCategories(categories);
-            vodMemory.setCategoriesFetchedAt(fetchedAt);
-            void saveStoredCategories('vod', { fetchedAt, categories });
+        } else {
+            set(VOD_STALE, false);
         }
 
         const sorted = sortCategoriesCountryFirst(categories, get<string>(SETTINGS_LIVE_COUNTRY) ?? '');
@@ -166,7 +181,10 @@ export async function selectVodCategory(categoryId: string): Promise<void> {
 
     if (!items || !isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
         const stored = await loadStoredItems<VodItem>('vod', categoryId);
-        if (stored && isFresh(stored.fetchedAt, now, CATALOG_TTL_MS)) {
+        // Stale-but-present beats absent — same reasoning as the category
+        // list above; this is what a category opened yesterday shows today
+        // with no connection.
+        if (stored && (!items || stored.fetchedAt > (fetchedAt ?? 0))) {
             vodMemory.setItemsFor(categoryId, stored.items, stored.fetchedAt);
             items = stored.items;
             fetchedAt = stored.fetchedAt;
@@ -175,15 +193,19 @@ export async function selectVodCategory(categoryId: string): Promise<void> {
 
     if (!items || !isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
         const result = await getVodStreams(account.source, categoryId);
-        if (!result.ok) {
+        if (result.ok) {
+            items = result.data.map(toVodItem);
+            fetchedAt = now;
+            vodMemory.setItemsFor(categoryId, items, fetchedAt);
+            void saveStoredItems('vod', categoryId, { items, fetchedAt });
+            set(VOD_STALE, false);
+        } else if (!items) {
             set(VOD_STATUS, 'error');
             set(VOD_ERROR_REASON, 'fetch-failed');
             return;
+        } else {
+            set(VOD_STALE, true);
         }
-        items = result.data.map(toVodItem);
-        fetchedAt = now;
-        vodMemory.setItemsFor(categoryId, items, fetchedAt);
-        void saveStoredItems('vod', categoryId, { items, fetchedAt });
     }
 
     // Unreachable in practice (the fetch branch above always either returns
@@ -207,6 +229,32 @@ export async function selectVodCategory(categoryId: string): Promise<void> {
     setDisplayedRows(items.map((item) => vodItemToRow(item, account.source, categoryName)));
 }
 
+/**
+ * Republishes the already-selected category's rows into the shared virtual
+ * list, from module memory, with no fetch and no auto-select.
+ *
+ * This exists because the list is *shared*: Live, Categories, Movies, Series
+ * and Search all publish into one row surface, so whichever view you switch
+ * INTO has to (re)publish, or the previous view's rows simply stay on screen.
+ * `openVodCatalog()` cannot be that call — it re-runs "auto-select the first
+ * category" every time, which would throw away a viewer's drill-down on
+ * every tab switch.
+ *
+ * @returns false when there is nothing cached to publish, so the caller can
+ * fall back to a real `openVodCatalog()`.
+ */
+export function republishVodRows(): boolean {
+    const categoryId = get<string | null>(VOD_ACTIVE_CATEGORY_ID);
+    if (!categoryId) return false;
+    const items = vodMemory.itemsFor(categoryId);
+    if (!items) return false;
+    const categoryName = vodCategoryName(categoryId);
+    setDisplayedRows(items.map((item) => vodItemToRow(item, cachedVodSource(), categoryName)));
+    set(VOD_COUNT, items.length);
+    set(VOD_STATUS, 'ready');
+    return true;
+}
+
 /** Publishes an immediate, partial snapshot from memory, then fills in `get_vod_info`'s fields once fetched (TTL-cached, module memory first, then the full-tier storage cache, then the network) — `replace()`, not `set()`, since two different movies' optional fields (`plot`/`genre`/`rating`/…) would otherwise bleed into each other via Spektrum's object merge (`state/README.md`'s merge-hazard finding). */
 export async function openVodDetail(streamId: number): Promise<void> {
     const item = vodMemory.findItem(streamId);
@@ -225,17 +273,24 @@ export async function openVodDetail(streamId: number): Promise<void> {
     let info = vodMemory.detail(streamId);
     if (!info || !isFresh(vodMemory.detailFetchedAt(streamId), now, CATALOG_TTL_MS)) {
         const stored = await loadStoredDetail<XtreamVodInfo>('vod', streamId);
-        if (stored && isFresh(stored.fetchedAt, now, CATALOG_TTL_MS)) {
+        // No freshness gate: a plot, a genre and a running time do not go out
+        // of date the way a category listing does, and offline this is the
+        // only version of them there is.
+        if (stored) {
             vodMemory.setDetail(streamId, stored.data, stored.fetchedAt);
             info = stored.data;
         }
     }
-    if (!info || !isFresh(vodMemory.detailFetchedAt(streamId), now, CATALOG_TTL_MS)) {
+    if (!isFresh(vodMemory.detailFetchedAt(streamId), now, CATALOG_TTL_MS)) {
         const result = await getVodInfo(account.source, streamId);
-        if (!result.ok) return;
-        info = result.data;
-        vodMemory.setDetail(streamId, info, now);
-        void saveStoredDetail('vod', streamId, { fetchedAt: now, data: info });
+        // A failure here is not fatal: whatever `info` already holds — the
+        // stale cache, or nothing but the row snapshot already published —
+        // is still the best answer available.
+        if (result.ok) {
+            info = result.data;
+            vodMemory.setDetail(streamId, info, now);
+            void saveStoredDetail('vod', streamId, { fetchedAt: now, data: info });
+        }
     }
 
     if (!detailOpen.isCurrent(token)) return; // superseded — the user moved on

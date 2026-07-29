@@ -27,6 +27,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `favorites.ts`        | `favorites.ids`                                                                                                       | No — a live projection of the real `favorites` storage table (Feature 08.8.4), exactly like `playlist.sources` |
 | `vod.ts`              | `vod.categories`, `vod.activeCategoryId`, `vod.status`, `vod.errorReason`, `vod.count`, `vod.detailId`, `vod.detail`, `vod.warmStatus` | No (Phase 21) — the Movies catalog itself (categories/items/detail cache) lives in `vod-rows.ts`'s module memory and, on the `'full'` storage tier only, in ad hoc `catalog-storage.ts` keys outside the Phase 05 bridge; see "Existing-key decisions" below |
 | `series.ts`           | `series.categories`, `series.activeCategoryId`, `series.status`, `series.errorReason`, `series.count`, `series.detailId`, `series.detail`, `series.warmStatus` | No (Phase 21) — same reasoning as `vod.ts`, via `series-rows.ts`/`catalog-storage.ts` |
+| `vod.ts`/`series.ts`  | (also `vod.stale`, `series.stale`)                                                                                   | No — each describes this session's last fetch attempt; a restored `true` would accuse a healthy boot of being offline before it had tried anything |
 | `search.ts`           | `search.query`, `search.scope`, `search.active`, `search.resultCounts`, `search.loadedOnly`                           | No (Phase 21) — a live, disposable session activity, reset every boot like `ui.settingsOpen` |
 | `downloads.ts`        | `downloads.items`, `downloads.activeId`                                                                              | No — the save-file handle and the transfer belong to the session that started them, so a restored queue would show rows nothing could resume; a reload genuinely does abandon an in-flight download |
 
@@ -393,6 +394,53 @@ touches markup:
   did not catch it because that spec mirrors the markup by hand and happened
   to use the plain-path form. When mirroring markup in a spec, copy the
   binding verbatim.
+
+## Browsing offline, and why a stale cache is now used
+
+`catalog-storage.ts` has always persisted categories, a category's items and
+a movie's detail (full storage tier only). What it did *not* do was **use**
+them once they aged out: every read was memory → storage-**if-fresh** →
+network, so a cache older than `CATALOG_TTL_MS` was skipped entirely and a
+failed refresh produced an error screen with a complete catalog sitting
+unused in IndexedDB.
+
+Now the stored copy is adopted regardless of age, and only the *refresh*
+decision still consults the TTL:
+
+- refresh succeeds → fresh data, `stale = false`
+- refresh fails **with** a cache in hand → keep the cache, `stale = true`
+- refresh fails **with nothing** cached → `status = 'error'` as before
+
+`vod.stale`/`series.stale` drive one line of copy (`strings.catalog.offline`)
+so the viewer is told where the data came from rather than being shown
+yesterday's catalog as if it were live. Detail payloads (`get_vod_info`,
+`get_series_info`) skip the freshness gate entirely on the read side — a
+plot, a running time and a season/episode list do not go stale the way a
+category listing does, and offline they are the only version there is.
+
+This is a **full-tier feature**, by design: `catalog-storage.ts` refuses to
+persist a multi-thousand-item catalog into `localStorage`, so a `'partial'`
+or `'none'` tier still fails honestly rather than half-working.
+
+## The shared list has to be republished on every view switch
+
+Live, Categories, Movies, Series and Search all publish into **one** virtual
+list (`setDisplayedRows()`), so whichever view you switch *into* must
+(re)publish or the previous view's rows just stay on screen.
+`live.actions.ts`'s `publishRowsForCurrentView()` does this for the
+channel-list views but knows nothing about the catalogs, and
+`catalog-activation.ts`'s one-shot-per-session guard meant Movies/Series
+never republished after their first open — so opening Movies, then TV Shows,
+then Movies again left the TV Shows list sitting under the Movies tab.
+
+The guard itself is still right (`openVodCatalog()` re-runs "auto-select the
+first category", which would throw away a drill-down on every tab switch), so
+re-entry calls `republishVodRows()`/`republishSeriesRows()` instead: module
+memory only, no fetch, no auto-select, returning `false` when there is
+nothing cached so the caller can fall back to a real open.
+
+**Any future view that publishes into the shared list owes the same
+republish-on-entry.**
 
 ## EPG country catalog (Phase 31) — decisions worth recording once
 
