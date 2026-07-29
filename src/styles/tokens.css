@@ -122,13 +122,16 @@
 /*
  * Light theme (Settings -> Appearance, Phase 22): `data-theme` on <html>
  * set to "light" overrides this block. Tokens stay the only file any theme
- * touches — no component ever branches on theme itself. Measured ratios
+ * touches — no component ever branches on theme itself. :root-scoped
+ * because the Settings buttons carry the same data-* attributes as their
+ * selection values — unscoped, this block would restyle the "Light"
+ * button's own subtree while the app is dark. Measured ratios
  * against bg / surface / surface-raised:
  *   text   15.8 / 14.7 / 16.8   text-dim 5.8 / 5.4 / 6.2
  *   accent  5.7 /  5.3 /  6.0   danger   6.3 /  — /  6.7
  * All AA. --color-bg over the accent-gradient stops: 5.1:1 / 6.4:1.
  */
-[data-theme='light'] {
+:root[data-theme='light'] {
     --color-bg: #f7f8fb;
     --color-surface: #eef0f5;
     --color-surface-raised: #ffffff;
@@ -158,7 +161,7 @@
 
 /* Density modes (Feature 02.8) — data-density on <html> retargets the row
    geometry tokens; nothing else changes. */
-[data-density='compact'] {
+:root[data-density='compact'] {
     --row-h: 32px;
     --row-pad-x: var(--space-2);
     --logo-box: 24px;
@@ -169,23 +172,25 @@
  * ONLY the --text-* tokens, mirroring the [data-density] idiom. Row/logo
  * geometry is px-based and never moves: the virtual list stays governed by
  * density alone. 'default' has no block by design. base.css anchors <html>
- * at font-size: 100%, so these rem values never compound.
+ * at font-size: 100%, so these rem values never compound. :root-scoped for
+ * the same reason as the theme blocks above — the Settings buttons carry
+ * these attributes as selection values.
  */
-[data-font-size='small'] {
+:root[data-font-size='small'] {
     /* ~87.5% — 11/12/14/18px */
     --text-xs: 0.6875rem;
     --text-sm: 0.75rem;
     --text-md: 0.875rem;
     --text-lg: 1.125rem;
 }
-[data-font-size='large'] {
+:root[data-font-size='large'] {
     /* ~112.5% — 13/16/18/22px */
     --text-xs: 0.8125rem;
     --text-sm: 1rem;
     --text-md: 1.125rem;
     --text-lg: 1.375rem;
 }
-[data-font-size='xlarge'] {
+:root[data-font-size='xlarge'] {
     /* ~125% — 15/17/20/24px */
     --text-xs: 0.9375rem;
     --text-sm: 1.0625rem;
