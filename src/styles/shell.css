@@ -32,8 +32,10 @@
     align-items: center;
     gap: var(--space-2);
     padding-block: var(--space-3);
-    background: var(--color-surface);
+    background: var(--glass-surface);
+    backdrop-filter: blur(22px) saturate(1.4);
     border-right: 1px solid var(--color-border);
+    box-shadow: var(--glass-highlight);
 }
 
 .rail__btn {
@@ -47,15 +49,23 @@
     background: transparent;
     color: var(--color-text-dim);
     cursor: pointer;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        color var(--dur-1) var(--ease-swift),
+        transform var(--dur-1) var(--ease-swift),
+        box-shadow var(--dur-2) var(--ease-swift);
 }
 
 .rail__btn:hover {
     background: var(--surface-hover);
+    color: var(--color-text);
+    transform: translateY(-1px);
 }
 
 .rail__btn--active {
     background: var(--color-accent-weak);
     color: var(--color-accent);
+    box-shadow: var(--glow-accent);
 }
 
 .rail__btn--settings {
@@ -184,6 +194,17 @@
     background: var(--color-surface);
     color: var(--color-text);
     font-size: var(--text-sm);
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        border-color var(--dur-1) var(--ease-swift),
+        transform var(--dur-1) var(--ease-swift),
+        box-shadow var(--dur-2) var(--ease-swift);
+}
+.btn:hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: var(--color-border-strong);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-1);
 }
 .btn:disabled {
     color: var(--color-text-dim);
@@ -201,9 +222,13 @@
     background: transparent;
     color: var(--color-text-dim);
     cursor: pointer;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        color var(--dur-1) var(--ease-swift);
 }
 .icon-btn:hover {
     background: var(--surface-hover);
+    color: var(--color-text);
 }
 
 /* ---- Density demo rows (Feature 02.8.5) ---- */
@@ -360,6 +385,8 @@
     position: absolute;
     inset: 0;
     background: var(--color-scrim);
+    backdrop-filter: blur(8px);
+    animation: overlay-fade var(--dur-2) var(--ease-swift) both;
 }
 
 .settings-panel__body {
@@ -367,12 +394,36 @@
     width: var(--panel-w);
     max-width: 100%;
     height: 100%;
-    background: var(--color-surface-raised);
+    background: var(--glass-strong);
     background-image: var(--gradient-panel);
-    border-left: 1px solid var(--color-border);
-    box-shadow: var(--shadow-3);
+    backdrop-filter: blur(28px) saturate(1.4);
+    border-left: 1px solid var(--color-border-strong);
+    box-shadow:
+        var(--shadow-3),
+        var(--glass-highlight);
     padding: var(--space-4);
     overflow-y: auto;
+    animation: drawer-in var(--dur-3) var(--ease-swift) both;
+}
+
+@keyframes overlay-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes drawer-in {
+    from {
+        transform: translateX(24px);
+        opacity: 0;
+    }
+}
+
+@keyframes modal-pop {
+    from {
+        transform: scale(0.96) translateY(8px);
+        opacity: 0;
+    }
 }
 
 .settings-panel__header {
@@ -420,13 +471,26 @@
     color: var(--color-text);
     font-size: var(--text-sm);
     cursor: pointer;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        border-color var(--dur-1) var(--ease-swift),
+        box-shadow var(--dur-2) var(--ease-swift),
+        transform var(--dur-1) var(--ease-swift);
 }
 
-.density-toggle__btn--active {
+.density-toggle__btn:hover {
+    border-color: var(--color-border-strong);
+    background: var(--surface-hover);
+    transform: translateY(-1px);
+}
+
+.density-toggle__btn--active,
+.density-toggle__btn--active:hover {
     background: var(--color-accent);
     background-image: var(--gradient-accent);
     border-color: var(--color-accent);
     color: var(--color-bg);
+    box-shadow: var(--glow-accent);
 }
 
 /* ---- First-run setup wizard modal ----
@@ -449,19 +513,26 @@
     position: absolute;
     inset: 0;
     background: var(--color-scrim);
+    backdrop-filter: blur(8px);
+    animation: overlay-fade var(--dur-2) var(--ease-swift) both;
 }
 
 .wizard-modal__body {
     position: relative;
     width: min(480px, calc(100% - var(--space-4) * 2));
     max-height: calc(100% - var(--space-4) * 2);
-    background: var(--color-surface-raised);
+    background: var(--glass-strong);
     background-image: var(--gradient-panel);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-l);
-    box-shadow: var(--shadow-3);
+    backdrop-filter: blur(28px) saturate(1.4);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-xl);
+    box-shadow:
+        var(--shadow-3),
+        var(--glow-accent),
+        var(--glass-highlight);
     padding: var(--space-4);
     overflow-y: auto;
+    animation: modal-pop var(--dur-3) var(--ease-swift) both;
 }
 
 .wizard-modal__title {
@@ -525,6 +596,8 @@
     position: absolute;
     inset: 0;
     background: var(--color-scrim);
+    backdrop-filter: blur(8px);
+    animation: overlay-fade var(--dur-2) var(--ease-swift) both;
 }
 
 .debug-panel__body {
@@ -536,12 +609,16 @@
     max-width: 100%;
     max-height: 100%;
     padding: var(--space-4);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-xl);
-    background: var(--color-surface-raised);
+    background: var(--glass-strong);
     background-image: var(--gradient-panel);
-    box-shadow: var(--shadow-3);
+    backdrop-filter: blur(28px) saturate(1.4);
+    box-shadow:
+        var(--shadow-3),
+        var(--glass-highlight);
     overflow: hidden;
+    animation: modal-pop var(--dur-3) var(--ease-swift) both;
 }
 
 .debug-panel__header {

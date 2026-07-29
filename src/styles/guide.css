@@ -123,6 +123,10 @@
     text-align: left;
     cursor: pointer;
     overflow: hidden;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        border-color var(--dur-1) var(--ease-swift),
+        box-shadow var(--dur-2) var(--ease-swift);
 }
 
 .guide__program:hover,
@@ -142,6 +146,7 @@
 .guide__program--selected {
     background: var(--surface-active);
     border-color: var(--color-accent);
+    box-shadow: var(--glow-accent);
 }
 
 .guide__program-title {
