@@ -1,28 +1,31 @@
 import { defineFn, refs } from 'spektrum';
 import { isValidProxyTemplate } from '../core/http';
-import { strings } from '../app/strings';
+import { applyLocale, isLocale, strings } from '../app/strings';
 import { getPlatform } from '../core/platform';
-import { downloadTextFile } from '../ui/download-file';
 import { importXtreamSource } from '../xtream/import';
 import { normalizeXtreamUrl } from '../xtream/urls';
-import { buildConfigXml } from './config-export';
-import { buildEpgXml, buildRawResponsesXml } from './raw-export';
 import { loadPlaylistSources } from './playlist-load';
-import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
+import { PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_SOURCES, type PlaylistSourceSummary } from './playlist';
 import { setActiveSourceId } from './playlist.actions';
 import { persist } from './persist';
+import { exportConfiguration, exportEpg, exportRawResponses } from './settings-export.actions';
+import { shouldOpenWizard, UI_SETUP_COMPLETE } from './wizard';
 import {
     isBufferingMode,
     isPlaybackEngine,
+    SETTINGS_AUDIO_LANGUAGE,
     SETTINGS_BUFFERING,
-    SETTINGS_EXPORT_STATE,
     SETTINGS_LIVE_COUNTRY,
     SETTINGS_LIVE_DROP_JUNK,
+    SETTINGS_LIVE_EPG_VERIFIED_ONLY,
     SETTINGS_LIVE_KNOWN_ONLY,
+    SETTINGS_LOCALE,
     SETTINGS_NAV_CATEGORIES,
     SETTINGS_NAV_GUIDE,
+    SETTINGS_NAV_MOVIES,
     SETTINGS_NAV_RADIO,
     SETTINGS_NAV_RECENTS,
+    SETTINGS_NAV_SERIES,
     SETTINGS_NAV_SOURCES,
     SETTINGS_NAV_STARRED,
     SETTINGS_PLAYBACK_ENGINE,
@@ -30,6 +33,7 @@ import {
     SETTINGS_PROXY_SAVED,
     SETTINGS_PROXY_TEMPLATE,
     SETTINGS_REFRESH_STATE,
+    SETTINGS_SUBTITLE_LANGUAGE,
     SETTINGS_XTREAM_BUSY,
     SETTINGS_XTREAM_ERROR,
     SETTINGS_XTREAM_SAVED,
@@ -39,9 +43,6 @@ import {
 import { refreshActiveXtreamSource } from './xtream-refresh';
 import { toImportErrorKind } from './xtream.actions';
 import { get, set } from './typed';
-
-/** Same cast `import.selectors.ts` uses for `strings.http.failure` — `XtreamError['kind']` values map onto its keys via `toImportErrorKind()`. */
-const HTTP_FAILURE_STRINGS: Record<string, string> = strings.http.failure;
 
 /**
  * Settings → Streaming's proxy template field (Feature 07.8.1/07.8.3) — an
@@ -101,67 +102,25 @@ export function registerSettingsActions(): void {
     defineFn('settings/setLiveCountry', (el) => {
         if (el instanceof HTMLSelectElement) setLiveCountry(el.value);
     });
+    defineFn('settings/setAudioLanguage', (el) => {
+        if (el instanceof HTMLSelectElement) setAudioLanguage(el.value);
+    });
+    defineFn('settings/setSubtitleLanguage', (el) => {
+        if (el instanceof HTMLSelectElement) setSubtitleLanguage(el.value);
+    });
+    defineFn('settings/setLocale', (el) => {
+        if (el instanceof HTMLSelectElement) void setLocale(el.value);
+    });
     defineFn('settings/exportConfig', () => {
-        exportConfiguration();
+        void exportConfiguration();
     });
     defineFn('settings/exportRaw', () => {
-        exportRawResponses();
+        void exportRawResponses();
     });
     defineFn('settings/exportEpg', () => {
         void exportEpg();
     });
 }
-
-/** Filename stamp shared by every export, so a set of three files sorts together. */
-function stamp(iso: string): string {
-    return iso.slice(0, 19).replace(/[:T]/g, '-');
-}
-
-/** The provider's replies verbatim — the untransformed counterpart to `exportConfiguration()`. */
-export function exportRawResponses(): void {
-    try {
-        const iso = new Date().toISOString();
-        downloadTextFile(
-            `thundertv-raw-${stamp(iso)}.xml`,
-            'application/xml',
-            buildRawResponsesXml({ generatedAt: iso, appVersion: APP_VERSION }),
-        );
-        set(SETTINGS_EXPORT_STATE, 'done');
-    } catch {
-        set(SETTINGS_EXPORT_STATE, 'failed');
-    }
-}
-
-/** Async because the guide lives in storage rather than memory; failures surface in the panel like the other two. */
-export async function exportEpg(): Promise<void> {
-    try {
-        const iso = new Date().toISOString();
-        const xml = await buildEpgXml({ generatedAt: iso, appVersion: APP_VERSION });
-        downloadTextFile(`thundertv-epg-${stamp(iso)}.xml`, 'application/xml', xml);
-        set(SETTINGS_EXPORT_STATE, 'done');
-    } catch {
-        set(SETTINGS_EXPORT_STATE, 'failed');
-    }
-}
-
-/**
- * Writes the full configuration to a downloaded XML file. Wrapped in a
- * try/catch because this runs on a click: a storage quirk or an oversized
- * source must surface as "export failed" in the panel, never as an
- * unhandled rejection that leaves the button looking inert.
- */
-export function exportConfiguration(): void {
-    try {
-        const iso = new Date().toISOString();
-        const xml = buildConfigXml({ generatedAt: iso, appVersion: APP_VERSION });
-        downloadTextFile(`thundertv-config-${stamp(iso)}.xml`, 'application/xml', xml);
-        set(SETTINGS_EXPORT_STATE, 'done');
-    } catch {
-        set(SETTINGS_EXPORT_STATE, 'failed');
-    }
-}
-
-const APP_VERSION = '0.0.0';
 
 /** `data-setting` token → the state key it may write. An allowlist, not a prefix rule: markup must never be able to name an arbitrary path. */
 const TOGGLEABLE: Record<string, string> = {
@@ -171,8 +130,11 @@ const TOGGLEABLE: Record<string, string> = {
     'nav.starred': SETTINGS_NAV_STARRED,
     'nav.recents': SETTINGS_NAV_RECENTS,
     'nav.guide': SETTINGS_NAV_GUIDE,
+    'nav.movies': SETTINGS_NAV_MOVIES,
+    'nav.series': SETTINGS_NAV_SERIES,
     liveKnownOnly: SETTINGS_LIVE_KNOWN_ONLY,
     liveDropJunk: SETTINGS_LIVE_DROP_JUNK,
+    liveEpgVerifiedOnly: SETTINGS_LIVE_EPG_VERIFIED_ONLY,
 };
 
 /** Exported for direct testing without a DOM element. */
@@ -192,6 +154,43 @@ export function toggleSetting(token: string | undefined): void {
 export function setLiveCountry(raw: string): void {
     set(SETTINGS_LIVE_COUNTRY, raw.trim().toUpperCase());
     persist(SETTINGS_LIVE_COUNTRY);
+}
+
+/** Settings → Playback's audio-track language preference — an ISO 639-1 code, lower-cased for consistency with `subtitle-language.ts`'s table. A blank value is a no-op, same "the `<select>`'s own options are the only way to reach here" reasoning as `setLocale()`. */
+export function setAudioLanguage(raw: string): void {
+    const value = raw.trim().toLowerCase();
+    if (!value) return;
+    set(SETTINGS_AUDIO_LANGUAGE, value);
+    persist(SETTINGS_AUDIO_LANGUAGE);
+}
+
+/** Settings → Playback's subtitle language preference — `'auto'`, `'off'`, or an explicit ISO 639-1 code; resolving `'auto'` to a concrete language happens at use time via `subtitle-language.ts`'s `resolveSubtitleLanguage()`, never here. */
+export function setSubtitleLanguage(raw: string): void {
+    const value = raw.trim().toLowerCase();
+    if (!value) return;
+    set(SETTINGS_SUBTITLE_LANGUAGE, value);
+    persist(SETTINGS_SUBTITLE_LANGUAGE);
+}
+
+/**
+ * Settings → User's language switcher — updates immediately, no Save step
+ * (a `<select>` has no "bad input" the way free text does). Writes both
+ * halves of the locale mirror: the persisted `settings.locale` key, the
+ * plain-TS `strings` singleton (`applyLocale()`, read live by every
+ * selector/action that imports `strings`), and the Spektrum `strings`
+ * state key (`{{ }}`/`:attr` template bindings) — the same pair
+ * `seedStrings()` keeps in sync at boot. An unrecognised value is a no-op,
+ * since the `<select>`'s own options are the only way to reach here.
+ */
+export async function setLocale(raw: string): Promise<void> {
+    if (!isLocale(raw)) return;
+    set(SETTINGS_LOCALE, raw);
+    persist(SETTINGS_LOCALE);
+    // The chosen locale's dictionary is a lazily-imported chunk, so both
+    // halves of the mirror are written only once it has actually resolved —
+    // otherwise `strings` would still hold the previous language here.
+    await applyLocale(raw);
+    set('strings', strings);
 }
 
 async function runManualRefresh(): Promise<void> {
@@ -259,8 +258,14 @@ async function findXtreamAccountRecord() {
  * storage logic. A blank password keeps the previously stored one (masked
  * as "•••• (unchanged)" in the field's placeholder); a new source with no
  * prior password requires one. Exported for direct testing without a DOM ref.
+ * Returns whether the save actually succeeded — the wizard's step 2
+ * (`wizard.actions.ts`'s `wizard/saveXtreamAccount`) uses this return value
+ * to decide whether to dismiss itself, rather than re-reading
+ * `SETTINGS_XTREAM_SAVED` back out of state immediately afterwards (which,
+ * unlike this in-flight boolean, is only current after Spektrum's next
+ * `tick()` drains the queued write).
  */
-export async function saveXtreamAccount(input: { url: string; user: string; pass: string }): Promise<void> {
+export async function saveXtreamAccount(input: { url: string; user: string; pass: string }): Promise<boolean> {
     set(SETTINGS_XTREAM_ERROR, null);
     set(SETTINGS_XTREAM_SAVED, false);
 
@@ -268,22 +273,25 @@ export async function saveXtreamAccount(input: { url: string; user: string; pass
     const user = input.user.trim();
     if (!url || !user) {
         set(SETTINGS_XTREAM_ERROR, strings.settings.streaming.xtreamMissingFields);
-        return;
+        return false;
     }
 
     const existing = await findXtreamAccountRecord();
     const pass = input.pass.trim() !== '' ? input.pass : existing?.password;
     if (!pass) {
         set(SETTINGS_XTREAM_ERROR, strings.settings.streaming.xtreamPasswordRequired);
-        return;
+        return false;
     }
 
     set(SETTINGS_XTREAM_BUSY, true);
     try {
         const outcome = await importXtreamSource({ url, user, pass, name: existing?.name ?? url });
         if (!outcome.ok) {
-            set(SETTINGS_XTREAM_ERROR, HTTP_FAILURE_STRINGS[toImportErrorKind(outcome.error.kind)] ?? strings.http.failure.httpOther);
-            return;
+            set(
+                SETTINGS_XTREAM_ERROR,
+                (strings.http.failure as Record<string, string>)[toImportErrorKind(outcome.error.kind)] ?? strings.http.failure.httpOther,
+            );
+            return false;
         }
         await loadPlaylistSources();
         setActiveSourceId(outcome.summary.sourceId);
@@ -292,7 +300,39 @@ export async function saveXtreamAccount(input: { url: string; user: string; pass
         set(SETTINGS_XTREAM_SAVED, true);
         const passwordInput = refs['xtreamAccountPassInput'];
         if (passwordInput instanceof HTMLInputElement) passwordInput.value = '';
+        return true;
     } finally {
         set(SETTINGS_XTREAM_BUSY, false);
+    }
+}
+
+/**
+ * Dev-convenience auto-seed (Electron only): if `desktop/.env` configured
+ * defaults — language/region (`THUNDERTV_LOCALE`/`THUNDERTV_LIVE_COUNTRY`)
+ * and/or a full Xtream account — applies them once, but only while the
+ * first-run wizard would otherwise open (`wizard.ts`'s `shouldOpenWizard()`:
+ * setup not yet marked complete, zero playlist sources). `.env` is treated
+ * as pre-filled wizard answers, never a standing override: once setup is
+ * complete (or any source exists), later boots leave whatever the user has
+ * since configured in-app alone. An Xtream default (if present) ends up
+ * importing a source and thereby skips the wizard outright regardless of
+ * whether locale/region were also set; locale/region alone (no Xtream
+ * default) still opens the wizard, just with step 1 pre-filled. No-op on
+ * web, where the platform has no `getDefaultConfig`.
+ */
+export async function applyDefaultConfigIfFirstRun(): Promise<void> {
+    const sources = get<PlaylistSourceSummary[]>(PLAYLIST_SOURCES) ?? [];
+    if (!shouldOpenWizard(sources, get<boolean>(UI_SETUP_COMPLETE) ?? false)) return;
+
+    const defaults = await getPlatform().getDefaultConfig?.();
+    if (!defaults) return;
+
+    // Awaited: `setLocale()` resolves a lazily-imported dictionary chunk
+    // (app/strings.ts), and the wizard this pre-fills renders right after —
+    // firing and forgetting would show step 1 in the previous language.
+    if (defaults.locale) await setLocale(defaults.locale);
+    if (defaults.liveCountry) setLiveCountry(defaults.liveCountry);
+    if (defaults.xtream) {
+        await saveXtreamAccount({ url: defaults.xtream.url, user: defaults.xtream.username, pass: defaults.xtream.password });
     }
 }

@@ -1,14 +1,19 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { resetState, tick } from 'spektrum';
+import { resetState, setValue, tick } from 'spektrum';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { withFakePlatform } from '../core/platform/fake-platform';
-import { XMLTV_SOURCE_URLS } from '../epg/xmltv';
-import type { ChannelRecord } from '../core/storage';
-import { loadDefaultEpg, XMLTV_REFRESH_TTL_MS } from './epg-load';
+import type { ChannelRecord, EpgCatalogRecord } from '../core/storage';
+import { findCountry, plainFeedUrls } from '../epg/countries';
+import { loadMapping } from '../epg/match';
+import { loadDefaultEpg } from './epg-load';
 import { initGuideState } from './guide';
-import { get } from './typed';
 import { GUIDE_CHANNELS, type GuideChannel } from './guide';
+import { SETTINGS_LIVE_COUNTRY } from './settings';
+import { get } from './typed';
 
-const [FEED_ONE, FEED_TWO] = XMLTV_SOURCE_URLS;
+const NL = findCountry('Netherlands')!;
+const NL_URLS = plainFeedUrls(NL);
+const FEED_ONE = NL_URLS[0]!;
+const FEED_TWO = NL_URLS[1]!;
 
 const XML = `<?xml version="1.0" encoding="UTF-8"?>
 <tv>
@@ -31,12 +36,19 @@ const CHANNEL: ChannelRecord = {
     radio: false,
 };
 
-describe('state/epg-load', () => {
-    afterEach(() => {
-        resetState();
-    });
+/** Plain-URL bodies throughout — `FakeHttpAdapter` only carries strings, and gzip decoding is covered directly in `feed-fetch.spec.ts`. */
+beforeEach(() => {
+    vi.stubGlobal('DecompressionStream', undefined);
+    setValue(SETTINGS_LIVE_COUNTRY, 'NL');
+});
 
-    it('fetches both feeds, stores only matched channels/programs, and records the fetch time', async () => {
+afterEach(() => {
+    resetState();
+    vi.unstubAllGlobals();
+});
+
+describe('state/epg-load', () => {
+    it('fetches both feeds, stores the country catalog, matches channels, and stores matched programs', async () => {
         await withFakePlatform({}, async ({ http, storage }) => {
             initGuideState();
             tick();
@@ -46,6 +58,9 @@ describe('state/epg-load', () => {
 
             await loadDefaultEpg();
 
+            const catalog = await storage.getAll('epgCatalog');
+            expect(catalog.map((c) => c.id)).toEqual(['24 Kitchen.nl']);
+
             const channels = await storage.getAll('epgChannels');
             expect(channels).toEqual([{ id: '24 Kitchen.nl', displayName: '24 Kitchen.nl', icon: null }]);
 
@@ -53,8 +68,8 @@ describe('state/epg-load', () => {
             expect(programs).toHaveLength(1);
             expect(programs[0]).toMatchObject({ channelId: '24 Kitchen.nl', title: 'Cooking Show' });
 
-            const lastFetchedAt = await storage.get<number>('epg.xmltv.lastFetchedAt');
-            expect(typeof lastFetchedAt).toBe('number');
+            const mapping = await loadMapping('NL');
+            expect(mapping).toEqual([{ channelKey: '24KITCHEN', catalogId: '24 Kitchen.nl', method: 'tvg-id' }]);
         });
     });
 
@@ -94,7 +109,8 @@ describe('state/epg-load', () => {
             initGuideState();
             tick();
             await storage.bulkPut('channels', [CHANNEL], (r) => [r.playlistId, r.index]);
-            await storage.set('epg.xmltv.lastFetchedAt', Date.now() - (XMLTV_REFRESH_TTL_MS - 1000));
+            await storage.set(`epg.feed.meta.${FEED_ONE}`, { etag: null, lastFetchedAt: Date.now() });
+            await storage.set(`epg.feed.meta.${FEED_TWO}`, { etag: null, lastFetchedAt: Date.now() });
 
             await loadDefaultEpg();
             expect(http.calls).toHaveLength(0);
@@ -106,7 +122,7 @@ describe('state/epg-load', () => {
         });
     });
 
-    it('no-ops when there are no locally known channels at all', async () => {
+    it('no-ops (no fetch) when there are no locally known channels at all', async () => {
         await withFakePlatform({}, async ({ http, storage }) => {
             initGuideState();
             tick();
@@ -115,6 +131,85 @@ describe('state/epg-load', () => {
 
             expect(http.calls).toHaveLength(0);
             expect(await storage.getAll('epgChannels')).toHaveLength(0);
+        });
+    });
+
+    it('no-ops (no fetch) when no country is selected', async () => {
+        await withFakePlatform({}, async ({ http, storage }) => {
+            initGuideState();
+            tick();
+            setValue(SETTINGS_LIVE_COUNTRY, '');
+            tick();
+            await storage.bulkPut('channels', [CHANNEL], (r) => [r.playlistId, r.index]);
+
+            await loadDefaultEpg();
+
+            expect(http.calls).toHaveLength(0);
+        });
+    });
+
+    it('re-matches against an already-stored catalog on a TTL-fresh run, without any new fetch — a newly imported playlist still gets matched', async () => {
+        await withFakePlatform({}, async ({ http, storage }) => {
+            initGuideState();
+            tick();
+            // Simulates a catalog + feed bookkeeping already derived by an
+            // earlier, successful run — both feeds are TTL-fresh, so this
+            // call must make zero HTTP requests.
+            const preExisting: EpgCatalogRecord = {
+                country: 'NL',
+                id: '24 Kitchen.nl',
+                displayName: '24 Kitchen',
+                normKey: '24 KITCHEN',
+                icon: null,
+                sourceFile: FEED_ONE,
+            };
+            await storage.bulkPut('epgCatalog', [preExisting], (r) => [r.country, r.id]);
+            await storage.set(`epg.feed.meta.${FEED_ONE}`, { etag: null, lastFetchedAt: Date.now() });
+            await storage.set(`epg.feed.meta.${FEED_TWO}`, { etag: null, lastFetchedAt: Date.now() });
+
+            // The playlist is only imported now — after the catalog already exists.
+            await storage.bulkPut('channels', [CHANNEL], (r) => [r.playlistId, r.index]);
+            await loadDefaultEpg();
+
+            expect(http.calls).toHaveLength(0);
+            expect(await loadMapping('NL')).toEqual([
+                { channelKey: '24KITCHEN', catalogId: '24 Kitchen.nl', method: 'tvg-id' },
+            ]);
+        });
+    });
+
+    it('matches an alias-spelled feed entry against an already-resolved playlist channel', async () => {
+        const aliasXml = `<?xml version="1.0" encoding="UTF-8"?>
+<tv><channel id="NED 1.nl"><display-name>NED 1.nl</display-name></channel></tv>`;
+        await withFakePlatform({}, async ({ http, storage }) => {
+            initGuideState();
+            tick();
+            const npo1: ChannelRecord = { ...CHANNEL, name: 'NED 1', tvgId: null };
+            await storage.bulkPut('channels', [npo1], (r) => [r.playlistId, r.index]);
+            http.onGet(FEED_ONE).reply({ kind: 'ok', body: aliasXml });
+            http.onGet(FEED_TWO).reply({ kind: 'ok', body: EMPTY_XML });
+
+            await loadDefaultEpg();
+
+            const mapping = await loadMapping('NL');
+            expect(mapping).toEqual([{ channelKey: 'NPO 1', catalogId: 'NED 1.nl', method: 'alias' }]);
+        });
+    });
+
+    it('prunes epgPrograms older than 24h on every call', async () => {
+        await withFakePlatform({}, async ({ storage }) => {
+            initGuideState();
+            tick();
+            const staleStop = Date.now() - 25 * 60 * 60 * 1000;
+            await storage.bulkPut(
+                'epgPrograms',
+                [{ channelId: 'x', start: staleStop - 1000, stop: staleStop, title: 'Old', description: null }],
+                (r) => [r.channelId, r.start],
+            );
+
+            await loadDefaultEpg();
+
+            expect(await storage.getAll('epgPrograms')).toEqual([]);
         });
     });
 });

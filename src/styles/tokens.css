@@ -1,20 +1,88 @@
 /*
- * Design tokens — the single vocabulary for color, spacing, type, and
- * density. Every later component styles itself from these variables, never
- * from literal colors/sizes (Feature 02.1.10's grep guard enforces this for
- * src/ui/ and src/app/ CSS).
+ * Design tokens — the single vocabulary for color, type, spacing, radius,
+ * elevation, glass, and motion. Only file allowed literal colors
+ * (scripts/check-css.mjs) so the light/dark themes stay a one-file concern.
+ *
+ * The palette is derived from the ThunderTV bolt logo
+ * (src/styles/thunder-bolt.svg): electric violet #863bff / #7e14ff with a
+ * cyan #47bfff flash and pale lavender highlights.
  */
+
+/* Inter — self-hosted (src/styles/fonts/, SIL OFL). No network fetch is
+   ever involved: the file ships inside the bundle on web, Electron, and
+   webOS alike. Relative url() keeps it on Vite's asset pipeline under
+   base: './'. */
+@font-face {
+    font-family: 'InterVariable';
+    src: url('./fonts/InterVariable.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
-    /* Color scale (dark-first; see the light-theme hook below) */
-    --color-bg: #0b0d10;
-    --color-surface: #14171c;
-    --color-surface-raised: #1c2027;
-    --color-border: #2a2f38;
-    --color-text: #e6e8eb;
-    --color-text-dim: #9aa1a9;
-    --color-accent: #4f8cff;
-    --color-danger: #ff5c5c;
-    --color-scrim: rgb(0 0 0 / 55%);
+    /*
+     * Color — dark (default). Measured WCAG ratios vs bg/surface/raised:
+     * text 17.2/15.8/14.7 · dim 8.3/7.6/7.1 · accent 7.4/6.8/– ·
+     * cyan 9.7 · danger 7.3. Accent-fill text (--color-bg on the accent
+     * gradient stops) 8.2/5.0. All AA+.
+     */
+    --color-bg: #0a0714;
+    --color-surface: #171128;
+    --color-surface-raised: #1f1736;
+    --color-border: rgb(190 165 255 / 20%);
+    --color-border-strong: rgb(190 165 255 / 38%);
+    --color-text: #f0ecfb;
+    --color-text-dim: #a9a3c2;
+    --color-accent: #a98aff;
+    --color-accent-weak: rgb(134 59 255 / 18%);
+    --color-cyan: #47bfff;
+    --color-danger: #ff6b7a;
+    --color-scrim: rgb(8 4 20 / 55%);
+
+    /* Glass — translucent panel surfaces, paired with backdrop-filter at
+       the component. -strong is for content-dense overlays (settings
+       drawer, modals) where readability outranks transparency. */
+    --glass-surface: rgb(26 18 48 / 55%);
+    --glass-strong: rgb(20 13 40 / 82%);
+    --glass-highlight: inset 0 1px 0 rgb(237 230 255 / 9%);
+
+    /* Background layers — a *visible* violet-to-black wash with a violet
+       bloom top-left and a cyan counter-glow bottom-right, plus the slow
+       aurora layer base.css animates. */
+    --gradient-app:
+        radial-gradient(90rem 55rem at 12% -10%, rgb(134 59 255 / 32%), transparent 60%),
+        radial-gradient(80rem 50rem at 105% 110%, rgb(71 191 255 / 16%), transparent 55%),
+        linear-gradient(165deg, #1b1038 0%, #120b26 45%, #0a0714 100%);
+    --gradient-aurora:
+        radial-gradient(42rem 30rem at 30% 25%, rgb(134 59 255 / 22%), transparent 70%),
+        radial-gradient(38rem 30rem at 72% 68%, rgb(71 191 255 / 13%), transparent 70%);
+    --gradient-panel: linear-gradient(180deg, rgb(237 230 255 / 7%), rgb(237 230 255 / 0%) 60%);
+    --gradient-accent: linear-gradient(140deg, #b494ff 0%, #9060ff 55%, #7e3bff 100%);
+
+    /* Elevation + glow */
+    --shadow-1: 0 2px 8px rgb(5 2 14 / 45%);
+    --shadow-2: 0 10px 30px rgb(5 2 14 / 55%);
+    --shadow-3: 0 24px 70px rgb(5 2 14 / 70%);
+    --glow-accent: 0 0 22px rgb(134 59 255 / 35%);
+    --glow-accent-strong: 0 4px 30px rgb(134 59 255 / 45%);
+
+    /* Radius scale */
+    --radius-s: 8px;
+    --radius-m: 10px;
+    --radius-l: 12px;
+    --radius-xl: 16px;
+    --radius-full: 999px;
+
+    /* Motion — gated globally by prefers-reduced-motion in base.css. */
+    --dur-1: 130ms;
+    --dur-2: 220ms;
+    --dur-3: 420ms;
+    --ease-swift: cubic-bezier(0.22, 0.9, 0.28, 1);
+
+    /* Ambient layer intensities (base.css body::before/::after) */
+    --logo-watermark-opacity: 0.12;
+    --aurora-opacity: 1;
 
     /* Spacing scale, 4px base */
     --space-1: 0.25rem;
@@ -24,8 +92,8 @@
     --space-5: 1.5rem;
     --space-6: 2rem;
 
-    /* Typography — system stack only, no webfont downloads */
-    --font-ui: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    /* Typography */
+    --font-ui: 'InterVariable', system-ui, -apple-system, 'Segoe UI', sans-serif;
     --text-xs: 0.75rem;
     --text-sm: 0.875rem;
     --text-md: 1rem;
@@ -42,6 +110,7 @@
 
     /* Chrome dimensions */
     --rail-w: 56px;
+    --groups-panel-w: 14rem;
     --panel-w: 320px;
     --dock-h: 96px;
 
@@ -54,36 +123,95 @@
     --floor-w: 360px;
     --panel-narrow-threshold: 480px;
 
-    /* Focus and interaction-state tokens — one consistent treatment for
-       keyboard nav now and webOS remote focus later. */
-    --focus-ring: 0 0 0 2px var(--color-accent);
-    --surface-hover: #1a1e25;
-    --surface-active: #20252d;
+    /* Focus — ring plus a soft glow so keyboard/remote focus reads at
+       10 feet. Ring vs bg: 7.4:1 dark / 6.9:1 light (3:1 non-text met). */
+    --focus-ring:
+        0 0 0 2px var(--color-accent),
+        0 0 18px rgb(134 59 255 / 40%);
+    --surface-hover: rgb(190 165 255 / 10%);
+    --surface-active: rgb(190 165 255 / 16%);
 }
 
 /*
- * Light theme hook (reserved). Theme switching lands with Settings ->
- * Appearance (Phase 22): flipping `data-theme` on <html> to "light" will
- * override this block. Tokens stay the only file any theme touches — no
- * component ever branches on theme itself.
+ * Light theme — lavender-tinted, same bolt-derived accents. :root-scoped
+ * because the Settings buttons carry the same data-* attributes as their
+ * selection values. Ratios vs bg/surface/raised: text 16.4/15.1/17.7 ·
+ * dim 6.3/5.8/6.9 · accent 6.9/–/7.5 · danger 6.2. Accent-fill text
+ * 4.7/6.9. All AA.
  */
-/*
-[data-theme='light'] {
-    --color-bg: #ffffff;
-    --color-surface: #f5f6f8;
+:root[data-theme='light'] {
+    --color-bg: #f7f5ff;
+    --color-surface: #efeafd;
     --color-surface-raised: #ffffff;
-    --color-border: #dde1e6;
-    --color-text: #14171c;
-    --color-text-dim: #5b6470;
-    --surface-hover: #eef0f3;
-    --surface-active: #e4e7ec;
+    --color-border: rgb(70 35 150 / 15%);
+    --color-border-strong: rgb(70 35 150 / 30%);
+    --color-text: #191430;
+    --color-text-dim: #5d5678;
+    --color-accent: #6d1fd6;
+    --color-accent-weak: rgb(134 59 255 / 12%);
+    --color-cyan: #0e8fd6;
+    --color-danger: #b3202c;
+    --color-scrim: rgb(25 20 48 / 40%);
+
+    --glass-surface: rgb(255 255 255 / 55%);
+    --glass-strong: rgb(255 255 255 / 82%);
+    --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 80%);
+
+    --gradient-app:
+        radial-gradient(90rem 55rem at 12% -10%, rgb(134 59 255 / 14%), transparent 60%),
+        radial-gradient(80rem 50rem at 105% 110%, rgb(71 191 255 / 12%), transparent 55%),
+        linear-gradient(165deg, #ffffff 0%, #f4efff 45%, #f0eaff 100%);
+    --gradient-aurora:
+        radial-gradient(42rem 30rem at 30% 25%, rgb(134 59 255 / 10%), transparent 70%),
+        radial-gradient(38rem 30rem at 72% 68%, rgb(71 191 255 / 9%), transparent 70%);
+    --gradient-panel: linear-gradient(180deg, rgb(255 255 255 / 65%), rgb(255 255 255 / 0%) 60%);
+    --gradient-accent: linear-gradient(140deg, #8a3bff 0%, #7a2bea 55%, #6d1fd6 100%);
+
+    --shadow-1: 0 2px 8px rgb(60 30 120 / 10%);
+    --shadow-2: 0 10px 30px rgb(60 30 120 / 14%);
+    --shadow-3: 0 24px 70px rgb(60 30 120 / 22%);
+    --glow-accent: 0 0 22px rgb(134 59 255 / 22%);
+    --glow-accent-strong: 0 4px 30px rgb(134 59 255 / 30%);
+
+    --logo-watermark-opacity: 0.1;
+
+    --surface-hover: rgb(109 31 214 / 7%);
+    --surface-active: rgb(109 31 214 / 12%);
 }
-*/
 
 /* Density modes (Feature 02.8) — data-density on <html> retargets the row
    geometry tokens; nothing else changes. */
-[data-density='compact'] {
+:root[data-density='compact'] {
     --row-h: 32px;
     --row-pad-x: var(--space-2);
     --logo-box: 24px;
+}
+
+/*
+ * Text size (Settings -> Appearance) — data-font-size on <html> retargets
+ * ONLY the --text-* tokens. Row/logo geometry never moves. 'default' has
+ * no block by design; base.css anchors <html> at font-size: 100%, so these
+ * rem values never compound. :root-scoped for the same reason as the
+ * theme block above.
+ */
+:root[data-font-size='small'] {
+    /* ~87.5% — 11/12/14/18px */
+    --text-xs: 0.6875rem;
+    --text-sm: 0.75rem;
+    --text-md: 0.875rem;
+    --text-lg: 1.125rem;
+}
+:root[data-font-size='large'] {
+    /* ~112.5% — 13/16/18/22px */
+    --text-xs: 0.8125rem;
+    --text-sm: 1rem;
+    --text-md: 1.125rem;
+    --text-lg: 1.375rem;
+}
+:root[data-font-size='xlarge'] {
+    /* ~125% — 15/17/20/24px */
+    --text-xs: 0.9375rem;
+    --text-sm: 1.0625rem;
+    --text-md: 1.25rem;
+    --text-lg: 1.5rem;
 }

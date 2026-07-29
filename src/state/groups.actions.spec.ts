@@ -4,7 +4,7 @@ import { clearRows, setRows as setMemoryRows } from '../m3u/channel-memory';
 import type { ChannelRow } from '../m3u/types';
 import { resetGroupCache } from '../ui/groups';
 import { getAllRows, resetVirtualListForTests } from '../ui/virtual-list';
-import { expandGroup, handleGroupsPanelKeydown, showAllChannels } from './groups.actions';
+import { expandGroup, handleCategoryRailKeydown, handleGroupsPanelKeydown, showAllChannels } from './groups.actions';
 import { UI_ACTIVE_GROUP, UI_VIEW_MODE } from './list-state';
 import { setActiveSourceId } from './playlist.actions';
 import { get } from './typed';
@@ -112,5 +112,39 @@ describe('handleGroupsPanelKeydown() (Feature 08.5.8)', () => {
         tick();
 
         expect(get<string>(UI_VIEW_MODE)).toBe('all');
+    });
+
+    /**
+     * The Movies/Series category rails are the same `.groups-panel` markup
+     * with a catalog behind it, so they share the focus movement — but
+     * Backspace/← republishes *channel* rows, which from a catalog view
+     * would silently swap the list out from under the viewer.
+     */
+    describe('handleCategoryRailKeydown() — the catalog rails share only the movement', () => {
+        it('moves focus and activates exactly like the groups panel', () => {
+            const { first, second } = makePanel();
+            const clickSpy = vi.fn();
+            first.addEventListener('click', clickSpy);
+
+            expect(handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'ArrowDown' }))).toBe(true);
+            expect(document.activeElement).toBe(second);
+
+            first.focus();
+            expect(handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))).toBe(true);
+            expect(clickSpy).toHaveBeenCalledOnce();
+        });
+
+        it('leaves Backspace alone instead of republishing the channel list', () => {
+            setMemoryRows([row('1', 'News'), row('2', 'Sports')]);
+            setActiveSourceId('p1');
+            tick();
+            expandGroup('News');
+            tick();
+
+            expect(handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'Backspace' }))).toBe(false);
+            tick();
+
+            expect(get<string>(UI_VIEW_MODE)).toBe('groups');
+        });
     });
 });

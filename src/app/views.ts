@@ -6,16 +6,15 @@ interface ActiveViewState extends State {
     ui?: { activeView?: Route };
 }
 
-const TITLES: Record<Route, string> = {
-    live: strings.views.live.title,
-    radio: strings.views.radio.title,
-    categories: strings.views.categories.title,
-    sources: strings.views.sources.title,
-    favorites: strings.views.favorites.title,
-    recent: strings.views.recent.title,
-    guide: strings.views.guide.title,
-    connect: strings.views.connect.title,
-};
+/**
+ * Read live (not hoisted into a module-scope map) so a locale switch is
+ * reflected the next time this recomputes — `strings` is a reassigned
+ * singleton (`app/strings.ts`), a precomputed `Record<Route, string>` built
+ * once at import time would go stale the moment the language changes.
+ */
+function titleFor(route: Route): string {
+    return strings.views[route].title;
+}
 
 // Per-view scroll position, in module memory — this is per-view UI state,
 // not durable data, so it deliberately does not live in Spektrum state
@@ -34,7 +33,10 @@ function viewContainer(): HTMLElement | undefined {
  * tears down playback.
  */
 export function registerViewSwitching(): void {
-    watch(['ui.activeView'], (state) => {
+    // `settings.locale` is a dependency too (not just `ui.activeView`) so a
+    // live language switch retitles the current view immediately, without
+    // requiring a navigation to trigger the recompute.
+    watch(['ui.activeView', 'settings.locale'], (state) => {
         const next = (state as ActiveViewState).ui?.activeView;
         if (!next) return;
 
@@ -43,7 +45,7 @@ export function registerViewSwitching(): void {
             scrollPositions.set(previousView, container.scrollTop);
         }
 
-        document.title = `${strings.appName} — ${TITLES[next]}`;
+        document.title = `${strings.appName} — ${titleFor(next)}`;
 
         // The new view's `data-if` becomes visible on Spektrum's next tick
         // (run()'s rAF loop), so restoring scrollTop must wait one frame —

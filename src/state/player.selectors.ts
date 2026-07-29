@@ -1,6 +1,10 @@
 import { computed, type State } from 'spektrum';
 import { strings } from '../app/strings';
-import { PLAYER_STREAM_HEALTH, PLAYER_ZAP_HISTORY } from './player';
+import type { MediaTrack } from '../player/tracks';
+import { isAudioVisual, PLAYER_AUDIO_MODE, PLAYER_STREAM_HEALTH, PLAYER_ZAP_HISTORY } from './player';
+import { PLAYER_SUBTITLE_TRACKS } from './player-tracks';
+import { SETTINGS_LOCALE } from './settings';
+import { UI_ACTIVE_VIEW } from './ui';
 
 /**
  * The third selector module named by Feature 05.6.1 alongside
@@ -15,11 +19,33 @@ export function registerPlayerSelectors(): void {
         return !zapHistory || zapHistory.length === 0;
     });
 
-    /** Tooltip/label for the player-bar signal bars — the readable half of `player.streamHealth`. */
-    computed('streamHealthLabel', [PLAYER_STREAM_HEALTH], (state: State) => {
+    /** Whether the subtitle popup's fixed "Off" row should read as active — true whenever no published subtitle track currently carries `active: true` (including the empty-list case, where "Off" is the only real state there is). */
+    computed('subtitlesOffActive', [PLAYER_SUBTITLE_TRACKS], (state: State) => {
+        const tracks = (state as { player?: { subtitleTracks?: MediaTrack[] } }).player?.subtitleTracks;
+        return !tracks || !tracks.some((track) => track.active);
+    });
+
+    /**
+     * Tooltip/label for the player-bar signal bars — the readable half of
+     * `player.streamHealth`. `SETTINGS_LOCALE` is an added dep so a live
+     * language switch (`strings` is a reassigned singleton, not a Spektrum
+     * key) refreshes this label immediately.
+     */
+    computed('streamHealthLabel', [PLAYER_STREAM_HEALTH, SETTINGS_LOCALE], (state: State) => {
         const health = (state as { player?: { streamHealth?: string | null } }).player?.streamHealth;
         if (health === 'poor') return strings.list.signalPoor;
         if (health === 'fair') return strings.list.signalFair;
         return strings.list.signalGood;
+    });
+
+    /**
+     * Whether the visualizer pane replaces the picture: Radio always, a TV
+     * channel only when the viewer switched to audio-only. Every piece of
+     * player markup that used to compare against `view.radio.active` binds
+     * to this instead, so the two presentations stay one decision.
+     */
+    computed('visualizerActive', [UI_ACTIVE_VIEW, PLAYER_AUDIO_MODE], (state: State) => {
+        const typed = state as { ui?: { activeView?: string }; player?: { audioMode?: boolean } };
+        return isAudioVisual(typed.ui?.activeView, typed.player?.audioMode ?? false);
     });
 }

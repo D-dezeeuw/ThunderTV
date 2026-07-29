@@ -1,8 +1,21 @@
 import { refs, watch } from 'spektrum';
 import { applyProxy } from '../core/http/proxy';
-import { effectiveProxyTemplate } from '../core/platform/desktop-proxy';
-import { PLAYER_ACTIVE } from '../state/player';
+import { effectiveProxyTemplate } from '../core/platform/electron-platform';
+import {
+    isAudioVisual,
+    PLAYER_ACTIVE,
+    PLAYER_AUDIO_MODE,
+    PLAYER_VISUALIZER_PAUSED,
+    PLAYER_VISUALIZER_PRESET,
+} from '../state/player';
+import { UI_ACTIVE_VIEW } from '../state/ui';
 import { attachAndPlay, detach } from './engine';
+import {
+    setRadioVisualizerPaused,
+    setRadioVisualizerPreset,
+    startRadioVisualizer,
+    stopRadioVisualizer,
+} from './visualizer-lazy';
 
 /**
  * Watches `player.active` (already fully wired by Phase 05/08's
@@ -23,8 +36,12 @@ import { attachAndPlay, detach } from './engine';
  * streams-toggle arrives with the Phase 22 settings work.
  */
 export function registerPlayerBindings(): () => void {
-    return watch([PLAYER_ACTIVE], (state: unknown) => {
-        const active = (state as { player?: { active?: { streamUrl: string } | null } }).player?.active;
+    const unwatchPlayback = watch([PLAYER_ACTIVE], (state: unknown) => {
+        const active = (
+            state as {
+                player?: { active?: { streamUrl: string; kind?: string } | null };
+            }
+        ).player?.active;
         const video = refs['playerVideo'];
         if (!(video instanceof HTMLVideoElement)) return;
 
@@ -32,9 +49,65 @@ export function registerPlayerBindings(): () => void {
             detach(video);
             return;
         }
-        void attachAndPlay(video, applyProxy(effectiveProxyTemplate(), active.streamUrl));
+        void attachAndPlay(video, applyProxy(effectiveProxyTemplate(), active.streamUrl), {
+            // `ActiveChannelSnapshot.kind` is absent on every live channel
+            // and on every snapshot persisted before the field existed, so
+            // "not stated" means live — the same additive-field reading
+            // `radio` already gets (`src/state/records.ts`).
+            live: active.kind !== 'vod' && active.kind !== 'series',
+        });
         revealPlayer(video);
     });
+
+    // Separate from the attach/detach watch above on purpose: this one also
+    // depends on `ui.activeView`/`player.visualizerPreset`/
+    // `player.visualizerPaused`, and folding it into the same `watch()`
+    // would re-run `attachAndPlay()` (restarting the stream) on every nav
+    // between Radio and another view or every preset/pause toggle, not just
+    // on a real channel change. `startRadioVisualizer()` itself is a no-op
+    // when already running against the same canvas (see its own comment),
+    // so calling it here on every dependency change never stomps an
+    // in-flight preset crossfade.
+    const unwatchVisualizer = watch(
+        [
+            PLAYER_ACTIVE,
+            UI_ACTIVE_VIEW,
+            PLAYER_VISUALIZER_PRESET,
+            PLAYER_VISUALIZER_PAUSED,
+            PLAYER_AUDIO_MODE,
+        ],
+        (state: unknown) => {
+            const typed = state as {
+                player?: {
+                    active?: unknown;
+                    visualizerPreset?: string;
+                    visualizerPaused?: boolean;
+                    audioMode?: boolean;
+                };
+                ui?: { activeView?: string };
+            };
+            const video = refs['playerVideo'];
+            if (!(video instanceof HTMLVideoElement)) return;
+
+            setRadioVisualizerPreset(typed.player?.visualizerPreset ?? 'auto');
+            setRadioVisualizerPaused(typed.player?.visualizerPaused ?? false);
+            // Radio always, Live/Categories only when the viewer asked for
+            // audio-only — the same predicate the `visualizerActive`
+            // selector and `player/fullscreen` use, so the canvas is
+            // running exactly when it is on screen.
+            const audioVisual = isAudioVisual(typed.ui?.activeView, typed.player?.audioMode ?? false);
+            if (typed.player?.active && audioVisual) {
+                startRadioVisualizer(video);
+            } else {
+                stopRadioVisualizer();
+            }
+        },
+    );
+
+    return () => {
+        unwatchPlayback();
+        unwatchVisualizer();
+    };
 }
 
 /**

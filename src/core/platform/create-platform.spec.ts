@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createPlatform } from './create-platform';
+import { fakeElectronBridge } from './fake-platform';
 
 afterEach(() => {
-    delete (window as { electron?: unknown }).electron;
+    delete window.electron;
     localStorage.clear();
 });
 
@@ -12,8 +13,10 @@ describe('createPlatform', () => {
         expect(platform.name).toBe('web');
     });
 
-    it('selects the (not yet implemented) Electron branch when window.electron is truthy', async () => {
-        (window as { electron?: unknown }).electron = {};
-        await expect(createPlatform()).rejects.toThrow(/Phase 28/);
+    it('selects the Electron adapter when window.electron is present, non-throwing', async () => {
+        window.electron = fakeElectronBridge('http://127.0.0.1:52301');
+        const platform = await createPlatform();
+        expect(platform.name).toBe('electron');
+        expect(platform.capabilities.corsUnrestricted).toBe(true);
     });
 });

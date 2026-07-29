@@ -1,17 +1,14 @@
 /*
- * Base reset and utilities. No CSS transitions/animations anywhere — state
- * changes are instant, per the standing convention. prefers-reduced-motion
- * needs no handling here: nothing moves by design, with or without it.
+ * Base reset, the ambient background (gradient wash + aurora + bolt
+ * watermark), and the motion policy. The former no-animation convention
+ * was retired with the theme refresh: motion is part of the design
+ * language now, and prefers-reduced-motion (bottom of this file) is the
+ * accessibility gate.
  */
 *,
 *::before,
 *::after {
     box-sizing: border-box;
-    /* Global kill-switch backing the no-animation policy — belt and
-       braces alongside the eslint no-restricted-syntax guard (TS string
-       literals) and scripts/check-dist.mjs's CSS grep. */
-    transition: none !important;
-    animation: none !important;
 }
 
 img {
@@ -22,9 +19,12 @@ img {
 html {
     /* Suppresses the mobile double-tap-to-zoom gesture only. Deliberately
        not done via the viewport meta tag's user-scalable=no/maximum-scale
-       — that also blocks pinch-zoom and fails WCAG 1.4.10 (Reflow).
-       touch-action: manipulation still allows panning and pinch-zoom. */
+       — that also blocks pinch-zoom and fails WCAG 1.4.10 (Reflow). */
     touch-action: manipulation;
+    /* The root stays at the browser's 100% so [data-font-size]'s rem
+       retargets scale text exactly once — html carrying var(--text-md)
+       itself would compound every var(--text-*) use below it. */
+    font-size: 100%;
 }
 
 html,
@@ -33,15 +33,67 @@ body {
     height: 100%;
     margin: 0;
     padding: 0;
-    background: var(--color-bg);
     color: var(--color-text);
     font-family: var(--font-ui);
-    font-size: var(--text-md);
+    font-optical-sizing: auto;
     line-height: var(--leading-normal);
     /* Fixed, full-viewport app shell — not a scrolling document. Scrollable
-       regions (the view container, future channel list, etc.) own their
-       own overflow via .scroll-y. */
+       regions own their own overflow via .scroll-y. */
     overflow: hidden;
+}
+
+html {
+    /* The wash lives on the ROOT element: root background paints before
+       the negative-z ambient pseudos below, so the watermark and aurora
+       sit above it — a body background would paint after them and bury
+       both (CSS stacking layer 3 vs 2). */
+    background: var(--color-bg);
+    background-image: var(--gradient-app);
+}
+
+body {
+    font-size: var(--text-md);
+    background: transparent;
+}
+
+/* Ambient layer 1 — the bolt watermark, oversized and bleeding off the
+   corner. Sits above the body wash, below all content (z-index -1 on a
+   positioned element paints behind in-flow content but over the canvas
+   background). */
+body::before {
+    content: '';
+    position: fixed;
+    z-index: -1;
+    right: -6vmin;
+    bottom: -10vmin;
+    width: 78vmin;
+    height: 78vmin;
+    background: url('./thunder-bolt.svg') center / contain no-repeat;
+    opacity: var(--logo-watermark-opacity);
+    transform: rotate(-8deg);
+    pointer-events: none;
+}
+
+/* Ambient layer 2 — a slow aurora drift. Soft radial gradients moved by a
+   transform-only animation, so nothing repaints per frame. */
+body::after {
+    content: '';
+    position: fixed;
+    z-index: -1;
+    inset: -12%;
+    background-image: var(--gradient-aurora);
+    opacity: var(--aurora-opacity);
+    animation: aurora-drift 42s var(--ease-swift) infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes aurora-drift {
+    from {
+        transform: translate3d(-2.5%, -2%, 0) scale(1);
+    }
+    to {
+        transform: translate3d(2.5%, 2%, 0) scale(1.1);
+    }
 }
 
 #app {
@@ -49,8 +101,7 @@ body {
     height: 100%;
 }
 
-/* Scrolling discipline: only elements carrying this class scroll; native
-   scrollbars, no custom scrollbar chrome. */
+/* Scrolling discipline: only elements carrying this class scroll. */
 .scroll-y {
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -63,19 +114,30 @@ body {
     white-space: nowrap;
 }
 
-/* Visible focus, never removed without a replacement — the base of
-   keyboard and (later) webOS remote navigation. */
+/* Visible focus, never removed without a replacement — ring + glow so
+   keyboard and TV-remote focus reads at a distance. */
 :focus {
     outline: none;
 }
 :focus-visible {
     outline: none;
     box-shadow: var(--focus-ring);
+    transition: box-shadow var(--dur-1) var(--ease-swift);
 }
 
-/* Off-screen/inactive panels stay cheap: applied to hidden view sections
-   (Feature 02.5.6) and other content that isn't the current focus. */
+/* Off-screen/inactive panels stay cheap (Feature 02.5.6). */
 .cv-auto {
     content-visibility: auto;
     contain-intrinsic-size: auto 500px;
+}
+
+/* The accessibility gate for every transition/animation in the app:
+   motion is decorative here, never load-bearing, so it can all go. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition: none !important;
+        animation: none !important;
+    }
 }

@@ -16,7 +16,11 @@ function stubPlatform(): PlatformAdapter {
             pickFile: () => Promise.resolve(null),
             readText: () => Promise.resolve({ kind: 'ok', text: '' }),
         },
-        capabilities: { corsUnrestricted: false, externalPlayers: false, durableStorage: 'none' },
+        downloads: {
+            prepare: () => Promise.resolve(null),
+            start: () => ({ cancel: () => undefined }),
+        },
+        capabilities: { corsUnrestricted: false, externalPlayers: false, durableStorage: 'none', downloads: 'none' },
     };
 }
 

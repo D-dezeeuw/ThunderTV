@@ -1,6 +1,8 @@
 import { refs, watch } from 'spektrum';
+import { EPG_TICK } from '../state/epg';
 import { toggleFavoriteById } from '../state/favorites.actions';
 import { handleRowContextMenu } from '../state/list.actions';
+import { consumeHandoff } from '../state/handoff.actions';
 import { loadActiveSource, registerActiveSourceWatch } from '../state/list-load';
 import { UI_VIEW_MODE } from '../state/list-state';
 import { registerViewRowsWatch } from '../state/live.actions';
@@ -10,7 +12,7 @@ import { get } from '../state/typed';
 import type { Density } from './density';
 import { attachLongPress } from './long-press';
 import { attachLogoFallback } from './logo-fallback';
-import { attachContainer, setDensity } from './virtual-list';
+import { attachContainer, republishWindow, setDensity } from './virtual-list';
 
 const SCROLL_SETTLE_MS = 300;
 
@@ -69,12 +71,22 @@ export function registerListBindings(): () => void {
         cleanups.push(attachLogoFallback(rowsContainer));
     }
 
-    void loadActiveSource();
+    // An arriving handoff (stone 9) resolves against loaded rows, so it has
+    // to wait for the boot load rather than race it — this is the one place
+    // that knows when those rows exist.
+    void loadActiveSource().then(() => consumeHandoff());
     cleanups.push(registerActiveSourceWatch());
     // Live and Categories share this one virtual list, so moving between
     // them — or changing a Live filter setting — republishes a different
     // row set into it rather than mounting a second list.
     cleanups.push(registerViewRowsWatch());
+
+    // The global 30s heartbeat re-enriches the visible slice's now/next line
+    // and progress bars (masterplan §5.5). Watched here rather than inside
+    // `src/state/` because the republish entry point lives in the windowing
+    // controller — and `src/state/**` must never import from `src/ui/`
+    // (state/README.md's layering rule); this direction is the sanctioned one.
+    cleanups.push(watch([EPG_TICK], () => republishWindow()));
 
     return () => cleanups.forEach((cleanup) => cleanup());
 }

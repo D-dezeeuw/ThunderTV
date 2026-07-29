@@ -79,6 +79,24 @@
     color: var(--color-text-dim);
 }
 
+/* ---- Movies/Series wrapper (Phase 21) ----
+   Takes over .view__section--fill's "fill the viewport" role one level up,
+   since the channel-list-only <section> below it now wraps just the
+   no-active-source empty state — .list-shell (shared by Movies/Series) is
+   what actually needs the remaining flex space. See index.html's own
+   comment on why the inner section couldn't just widen its own gate. */
+.channel-list-scope {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.channel-list-scope > .view__section--fill {
+    flex: none;
+    min-height: auto;
+}
+
 /* ---- List shell (Feature 08.5/08.10) ---- */
 
 .list-shell {
@@ -120,19 +138,30 @@
    under it at any viewport taller than ~1000px. min-height keeps it usable
    when the window is genuinely short. */
 .list-shell__body {
+    position: relative;
     display: flex;
     flex: 1;
     gap: var(--space-4);
     min-height: 20rem;
 }
 
-/* ---- Live/Radio two-column layout: channel list left, now-playing right ----
+/* ---- Side-by-side layout: channel list left, now-playing preview right ----
    .list already flexes at 1, so giving .now-playing the same flex splits
-   the row evenly instead of letting the player stack above the list
-   (Categories keeps the original stacked layout — this only triggers
-   under list-shell--split, set for Live/Radio in index.html). */
+   the row evenly instead of letting the player stack above the list.
+   list-shell--split is set for every channel-list view (index.html), which
+   in Categories makes three columns rather than two, since its groups panel
+   sits ahead of the list: categories -> channels -> preview. */
 .list-shell--split .list-shell__body {
     align-items: stretch;
+}
+
+/* Three columns need more room than two. Between the phone breakpoint and
+   ~1100px the category column gives some of its width back rather than
+   squeezing the list and the preview into unusable slivers. */
+@media (min-width: 701px) and (max-width: 1100px) {
+    .list-shell--has-groups .groups-panel {
+        width: 10rem;
+    }
 }
 
 .now-playing {
@@ -145,7 +174,7 @@
     height: 100%;
     justify-content: center;
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
 }
 
 @media (max-width: 700px) {
@@ -159,14 +188,17 @@
 /* Height comes from the row it sits in, so it ends level with the channel
    list beside it. The old fixed 28rem cap was sized for a list that stopped
    at 60vh; against a full-height list it left the panel floating in the top
-   third of the column. */
+   third of the column.
+
+   Also the Movies/Series category rail (see catalog.css): one vertical
+   category list, one set of styles, whatever the rows behind it are. */
 .groups-panel {
     flex: none;
-    width: 14rem;
+    width: var(--groups-panel-w);
     min-height: 0;
     overflow-y: auto;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-l);
     background: var(--color-surface);
 }
 
@@ -197,6 +229,9 @@
     font-size: var(--text-sm);
     text-align: left;
     cursor: pointer;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        color var(--dur-1) var(--ease-swift);
 }
 
 .groups-panel__item:hover,
@@ -226,7 +261,7 @@
     min-width: 0;
     overflow-y: auto;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-l);
 }
 
 .pad {
@@ -243,12 +278,25 @@
 /* ---- Channel row (Feature 08.3) ---- */
 
 .channel-row {
+    position: relative;
     display: flex;
     align-items: center;
     gap: var(--space-3);
     height: var(--row-h);
     padding-inline: var(--row-pad-x);
     border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+    transition: background var(--dur-1) var(--ease-swift);
+}
+
+/* Movies/Series row click interception (Phase 21) — see index.html's
+   channel-row__catalog-trigger comment for why a full-row invisible overlay
+   is what carries a per-row-kind click target inside a template shared with
+   plain channel rows. Absent (data-if) for every non-catalog row, so this
+   never changes Live/Radio/Categories hit-testing. */
+.channel-row__catalog-trigger {
+    position: absolute;
+    inset: 0;
     cursor: pointer;
 }
 
@@ -271,7 +319,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
+    border-radius: var(--radius-s);
     background: var(--color-surface-raised);
     overflow: hidden;
 }
@@ -321,11 +369,44 @@
     font-size: var(--text-sm);
 }
 
-/* Feature 08.3.4: reserved, fixed-width — Phase 17 fills this with now/next
-   text and a progress bar without any row reflow or restructuring. */
+/* Feature 08.3.4's reserved column, filled by Phase 32: what's on now, how
+   far through it is, and what follows. Fixed width by design — the row's
+   name column must not reflow as programmes change under it every 30s tick,
+   which a content-sized column would cause on every beat. */
 .channel-row__epg {
     flex: none;
-    width: 6rem;
+    width: 11rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.channel-row__epg-now {
+    font-size: var(--text-xs);
+    color: var(--color-text);
+}
+
+.channel-row__epg-next {
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+/* No transition on the fill (repo-wide no-animation policy): the bar steps
+   forward once per 30s tick, which reads as deliberate rather than laggy. */
+.channel-row__epg-bar {
+    display: block;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--color-border);
+    overflow: hidden;
+}
+
+.channel-row__epg-fill {
+    display: block;
+    height: 100%;
+    background: var(--color-accent);
 }
 
 /* ---- Narrow-screen labels (default: desktop) ---- */
@@ -341,7 +422,9 @@
    source has groups at all — list-shell--has-groups mirrors the
    groupsPanelVisible computed), 'groups' swaps to the channel list with
    the header button acting as "back to categories". Single-group sources
-   never enter the drill-down and just show the list. */
+   never enter the drill-down and just show the list. The preview column is
+   the third step, so it waits with the list rather than pushing the
+   category picker off the top of a phone screen. */
 @media (max-width: 700px) {
     .list-shell__body {
         flex-direction: column;
@@ -354,7 +437,8 @@
         max-height: none;
     }
 
-    .list-shell--has-groups:not(.list-shell--group-view) .list-shell__body > .list {
+    .list-shell--has-groups:not(.list-shell--group-view) .list-shell__body > .list,
+    .list-shell--has-groups:not(.list-shell--group-view) .list-shell__body > .now-playing {
         display: none;
     }
 
@@ -362,8 +446,9 @@
         display: none;
     }
 
-    /* Reclaim the reserved EPG column — a phone-width row has no room for
-       it, and Phase 17 will design its own narrow treatment. */
+    /* Reclaim the EPG column — a phone-width row has no room for a second
+       text column beside the channel name. The Guide view remains the full
+       programme surface on narrow screens. */
     .channel-row__epg {
         display: none;
     }
@@ -405,4 +490,17 @@
 
 .list-shell__stats--warn {
     color: var(--color-danger);
+}
+
+/* Stone 3's "probably dead" marker. Deliberately understated — the row is
+   still playable, and health is an estimate, so this warns rather than
+   forbids. Danger colour, but no background fill or strikethrough: those
+   read as "removed", which is exactly what this must not claim. */
+.channel-row__dead {
+    flex: none;
+    width: 1rem;
+    text-align: center;
+    color: var(--color-danger);
+    font-size: var(--text-sm);
+    font-weight: 700;
 }

@@ -1,10 +1,18 @@
 import { computed, type State } from 'spektrum';
 import { EPG_TICK } from './epg';
-import { computeGuideWindow, computeProgramLayout, formatClockTime, formatTimeRange, isProgramNow, percentInRange } from './guide-time';
-import { GUIDE_CHANNELS, GUIDE_SELECTED_KEY, guideProgramKey, type GuideChannel } from './guide';
+import {
+    computeGuideWindow,
+    computeProgramLayout,
+    formatClockTime,
+    formatTimeRange,
+    formatWindowDate,
+    isProgramNow,
+    percentInRange,
+} from './guide-time';
+import { GUIDE_CHANNELS, GUIDE_OFFSET_MS, GUIDE_SELECTED_KEY, guideProgramKey, type GuideChannel } from './guide';
 
 interface GuideShapedState extends State {
-    guide?: { channels?: GuideChannel[]; selectedKey?: string | null };
+    guide?: { channels?: GuideChannel[]; selectedKey?: string | null; offsetMs?: number };
     epg?: { tick?: number };
 }
 
@@ -34,9 +42,14 @@ export interface GuideSelectedView {
 export interface GuideView {
     channels: GuideChannelView[];
     hasData: boolean;
+    /** `-1` when "now" falls outside the visible window — the markup hides the indicator rather than pinning it to an edge, which would read as a real position. */
     nowPercent: number;
     rangeStartLabel: string;
     rangeEndLabel: string;
+    /** Empty while the window tracks the clock; a weekday/date once shifted. */
+    dateLabel: string;
+    /** True when the window has been shifted off "now" — drives the "back to now" control's visibility. */
+    isShifted: boolean;
     selected: GuideSelectedView | null;
 }
 
@@ -49,12 +62,16 @@ export interface GuideView {
  * line and which block reads as current stay live without a per-row timer.
  */
 export function registerGuideSelectors(): void {
-    computed('guide.view', [GUIDE_CHANNELS, GUIDE_SELECTED_KEY, EPG_TICK], (state: State): GuideView => {
+    computed('guide.view', [GUIDE_CHANNELS, GUIDE_SELECTED_KEY, GUIDE_OFFSET_MS, EPG_TICK], (state: State): GuideView => {
         const shaped = state as GuideShapedState;
         const channels = shaped.guide?.channels ?? [];
         const selectedKey = shaped.guide?.selectedKey ?? null;
         const nowMs = shaped.epg?.tick ?? Date.now();
-        const range = computeGuideWindow(nowMs);
+        const offsetMs = shaped.guide?.offsetMs ?? 0;
+        // The window is placed from the *shifted* instant, but "now" stays the
+        // real clock — that's what makes the now-line correctly leave the
+        // frame once the user browses to another part of the day.
+        const range = computeGuideWindow(nowMs + offsetMs);
 
         let selected: GuideSelectedView | null = null;
 
@@ -85,12 +102,15 @@ export function registerGuideSelectors(): void {
             return { id: channel.id, displayName: channel.displayName, icon: channel.icon, programs };
         });
 
+        const nowInWindow = nowMs >= range.start && nowMs <= range.end;
         return {
             channels: channelViews,
             hasData: channels.length > 0,
-            nowPercent: percentInRange(nowMs, range.start, range.end),
+            nowPercent: nowInWindow ? percentInRange(nowMs, range.start, range.end) : -1,
             rangeStartLabel: formatClockTime(range.start),
             rangeEndLabel: formatClockTime(range.end),
+            dateLabel: offsetMs === 0 ? '' : formatWindowDate(range.start),
+            isShifted: offsetMs !== 0,
             selected,
         };
     });

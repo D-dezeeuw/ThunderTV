@@ -1,0 +1,116 @@
+# electron-builder config for the ThunderTV desktop shell (masterplan
+# Phase 29). Lives at the repo root (not desktop/electron-builder.yml)
+# purely so `directories.buildResources`/`output` read naturally as
+# repo-root-relative paths in one place — electron-builder is still always
+# invoked from `desktop/` (via `npm run package` there, see that
+# package.json), passed this file with `--config ../electron-builder.yml`,
+# so `directories.app` stays the default (`desktop/`, where `main.mjs`,
+# `preload.cjs`, and this app's own `package.json`/`node_modules` live —
+# Feature 29.1.1's config-location decision).
+#
+# Feature 29.1.4 / masterplan §"no CI publishes": no `publish` config at
+# all — every artifact here is a file produced on a local machine and
+# uploaded to a GitHub release by a human, never auto-published.
+appId: dev.thundertv.app
+productName: ThunderTV
+copyright: Copyright © ThunderTV contributors
+
+directories:
+  # build/icon.ico, build/icon.icns, build/icons/*.png already exist at the
+  # repo root (branding workstream) — point electron-builder straight at
+  # them instead of duplicating them under desktop/build.
+  buildResources: ../build
+  output: ../release
+
+# Feature 29.1.3 — default-deny files allowlist: only the dumb main
+# process, the preload bridge, the splash HTML, this app's own
+# package.json (electron-builder needs it for name/version/main), and the
+# *built* web app cross into the package. Source, tests, scripts, and
+# masterplan docs never do.
+files:
+  - main.mjs
+  # `main.mjs` imports this one. The allowlist is default-deny, so a new
+  # `desktop/*.mjs` that nobody adds here is simply absent from the packaged
+  # app and only fails at runtime in a distributed build.
+  - downloads.mjs
+  - preload.cjs
+  - splash.html
+  - package.json
+  - '!node_modules/electron-builder${/*}'
+  - from: ../dist
+    to: dist
+  # The runtime window/dock icon, distinct from the OS-level `icon:` entries
+  # below: those brand the installer, the .exe and the .desktop file, but
+  # `BrowserWindow`'s own icon is read at runtime from inside the app — and
+  # with nothing mapped in here it found nothing and every packaged build
+  # showed Electron's default icon in the taskbar. `desktop/main.mjs`'s
+  # ICON_CANDIDATES looks for `icons/512.png` first for exactly this.
+  - from: ../build/icons
+    to: icons
+
+# No publish config (see header comment) — releases are manual, per
+# masterplan Phase 29's "zero GitHub Actions publishes" rule. The desktop
+# CI workflow (.github/workflows/desktop-build.yml) only builds and
+# uploads a workflow artifact for regression-catching, it never calls
+# `electron-builder --publish`.
+publish: null
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  icon: icon.ico
+  # Code-signing stub (Feature 29.5.2/29.5.8) — deliberately unsigned for
+  # v1 (no cert budget for a local-build personal project; see
+  # masterplan Phase 29.5's rationale). Dropping a real cert later is a
+  # config change here, not a research project:
+  # signtoolOptions:
+  #   certificateFile: path/to/cert.pfx
+  #   certificatePassword: env:WIN_CERT_PASSWORD
+
+nsis:
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  oneClick: false
+  artifactName: '${productName}-${version}-win-${arch}-setup.${ext}'
+
+mac:
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+  icon: icon.icns
+  category: public.app-category.entertainment
+  # Notarization stub (Feature 29.5.1/29.5.8) — deliberately unenabled for
+  # v1; a Developer ID cert plus `notarytool` would slot in here:
+  # notarize:
+  #   teamId: TEAMID1234
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  # The installed `.desktop` filename follows `desktopName` in
+  # desktop/package.json (`thundertv.desktop`) rather than the productName
+  # default (`ThunderTV.desktop`). electron-builder 26 moved this: the name
+  # itself is package.json metadata — because Electron reads it from there
+  # for the window's app_id — and this flag is what makes the packaged
+  # filename agree with it. A `desktopName:` key here is not in the schema
+  # and fails the build outright.
+  syncDesktopName: true
+  # A single square source, not the build/icons/*.png set — those are
+  # named `16.png`/`32.png`/… (the scripts/generate-icons.mjs convention),
+  # not electron-builder's expected `16x16.png` directory convention, so
+  # pointing straight at the 1024×1024 master and letting electron-builder
+  # derive what it needs is the reliable path.
+  icon: ../assets/branding/thundertv-icon-master.png
+  category: AudioVideo
+  maintainer: ThunderTV
+  # No `desktop.entry.StartupWMClass` override: electron-builder derives it
+  # from `desktopName` minus the suffix (`thundertv`), which is exactly the
+  # app_id Electron reports for the running window. Hard-coding `ThunderTV`
+  # here contradicted that and broke the window↔launcher association the
+  # key exists for.
+
+artifactName: 'thundertv-${version}-${os}-${arch}.${ext}'

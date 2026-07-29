@@ -165,6 +165,27 @@ Rough arc: **01–05** foundations → **06–09** M3U browsing → **10–12** 
 → **13–15** daily driver → **16–18** EPG → **19–21** Xtream → **22–27**
 product hardening → **28–30** desktop and TV.
 
+### Beyond 1.0 — Vision 3.0 stepping-stone phases
+
+Phases past 30 are not part of the 1.0 road; they execute
+[`VISION-3.0.md`](./VISION-3.0.md)'s stepping stones with the same phase
+template and way of working.
+
+Phase 31 has a full phase file. Phases 32 onward are documented in the
+module README each one created or owns — that is where a change to them
+starts, so a separate phase file would be a second copy to keep honest.
+
+| #   | Phase                                                                        | Stones served                                        | Reference |
+| --- | ---------------------------------------------------------------------------- | ---------------------------------------------------- | --------- |
+| 31  | [EPG Country Catalog](./phases/phase-31-epg-country-catalog.md)              | 1 (entity seam), 2 (knowledge store), 5 (resolver v0); groundwork for 4 and 7 | phase file |
+| 32  | EPG Display & Timeline                                                       | 7 (now/next on rows, guide time travel)              | `src/epg/README.md` |
+| 33  | Passive Health Signals                                                       | 3 (which feeds actually play)                        | `src/health/README.md` |
+| 34  | Codex v0 — Export & Import                                                   | 4 (the signed file the user owns)                    | `src/codex/README.md` |
+| 35  | Spatial Navigation                                                           | 8 (D-pad as a first-class input model)               | `src/ui/README.md` |
+| 36  | Codex Merge (CRDT)                                                           | 6 (convergence with no sync server)                  | `src/codex/README.md` |
+| 37  | Community Codex                                                              | 10 (follow, refresh, prune; the trust model)         | `src/codex/README.md` |
+| 38  | Handoff                                                                      | 9 (session continuity; LAN transport *not* built — see the README) | `src/handoff/README.md` |
+
 ---
 
 ## 5. Common pitfalls (with code)

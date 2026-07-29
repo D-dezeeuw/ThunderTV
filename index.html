@@ -1,8 +1,19 @@
 <!doctype html>
+<!-- data-theme / data-font-size are applied imperatively by
+     src/state/theme.ts (boot pre-paint + auto re-resolve), not bound here. -->
 <html lang="en" :data-density="ui.density">
     <head>
         <meta charset="UTF-8" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+        <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icons/favicon-192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <!-- Static dark fallback; src/state/theme.ts re-syncs it to the
+             resolved theme's surface color at boot and on every switch. -->
+        <meta name="theme-color" content="#171128" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>ThunderTV</title>
         <link rel="stylesheet" href="/src/styles/tokens.css" />
@@ -12,6 +23,7 @@
         <link rel="stylesheet" href="/src/styles/channel-list.css" />
         <link rel="stylesheet" href="/src/styles/player.css" />
         <link rel="stylesheet" href="/src/styles/guide.css" />
+        <link rel="stylesheet" href="/src/styles/catalog.css" />
 
         <!--
           Spektrum is the app's only UI/state framework, resolved at runtime
@@ -62,6 +74,14 @@
             <symbol id="icon-catchup" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.6-5.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="3.5,3.5 3.5,8.5 8.5,8.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="12,7.5 12,12 15.5,14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
             <symbol id="icon-feed" viewBox="0 0 24 24"><path d="M12 3.5l8.5 4.5-8.5 4.5-8.5-4.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><polyline points="3.5,12.5 12,17 20.5,12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="3.5,16.5 12,21 20.5,16.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
             <symbol id="icon-categories" viewBox="0 0 24 24"><line x1="9" y1="6" x2="20.5" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="18" x2="20.5" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.6" fill="currentColor" stroke="none"/></symbol>
+            <!-- Movies (Phase 21): a filmstrip — sprocket notches down each side mark it as film, distinct from icon-guide's plain grid. -->
+            <symbol id="icon-movies" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="8" y1="5" x2="8" y2="19" stroke="currentColor" stroke-width="2"/><line x1="16" y1="5" x2="16" y2="19" stroke="currentColor" stroke-width="2"/><line x1="3" y1="9" x2="8" y2="9" stroke="currentColor" stroke-width="2"/><line x1="16" y1="9" x2="21" y2="9" stroke="currentColor" stroke-width="2"/><line x1="3" y1="15" x2="8" y2="15" stroke="currentColor" stroke-width="2"/><line x1="16" y1="15" x2="21" y2="15" stroke="currentColor" stroke-width="2"/></symbol>
+            <!-- Series (Phase 21): a monitor with a play triangle and a stand — distinct from icon-live's antenna+dot broadcast glyph. -->
+            <symbol id="icon-series" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 8.2v5.6l5-2.8z" fill="currentColor" stroke="none"/><line x1="9" y1="20.5" x2="15" y2="20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="17" x2="12" y2="20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <!-- Audio tracks (final audio/subtitle stage): a speaker cone plus two sound-wave arcs. -->
+            <symbol id="icon-audio-tracks" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16.5 9.3a4 4 0 0 1 0 5.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 6.8a8 8 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <!-- Subtitles: a caption box with two lines of text — distinct from icon-guide's plain grid and icon-sources' left-aligned lines. -->
+            <symbol id="icon-subtitles" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="10" x2="11" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="13" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
         </svg>
 
         <div id="app">
@@ -99,6 +119,38 @@
                 >
                     <svg class="icon icon--m" aria-hidden="true">
                         <use href="#icon-radio"></use>
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    class="rail__btn"
+                    data-view="movies"
+                    data-if="rail.movies.visible"
+                    :class="{ 'rail__btn--active': view.movies.active }"
+                    :aria-current="view.movies.active ? 'page' : null"
+                    :aria-label="strings.rail.movies"
+                    :title="strings.rail.movies"
+                    data-action="click"
+                    data-fn="ui/navigate"
+                >
+                    <svg class="icon icon--m" aria-hidden="true">
+                        <use href="#icon-movies"></use>
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    class="rail__btn"
+                    data-view="series"
+                    data-if="rail.series.visible"
+                    :class="{ 'rail__btn--active': view.series.active }"
+                    :aria-current="view.series.active ? 'page' : null"
+                    :aria-label="strings.rail.series"
+                    :title="strings.rail.series"
+                    data-action="click"
+                    data-fn="ui/navigate"
+                >
+                    <svg class="icon icon--m" aria-hidden="true">
+                        <use href="#icon-series"></use>
                     </svg>
                 </button>
                 <button
@@ -455,47 +507,64 @@
                      data-ref="listContainer", so the row set is
                      republished on view change (src/state/live.actions.ts)
                      instead of mounting a second list. -->
-                <section class="view__section view__section--fill" data-if="view.channelList.active">
-                    <!-- Everything below is gated on `activeSource`. When that
-                         resolves to null — no source imported, none selected, or
-                         a stored id pointing at a source that is no longer in
-                         storage — Live, Radio and Categories all rendered an
-                         entirely empty pane: no list, no message, nothing. This
-                         is that case, said out loud, with the way out. -->
-                    <div class="empty-state" data-if="!activeSource" data-testid="no-active-source">
-                        <svg class="icon icon--empty" aria-hidden="true">
-                            <use href="#icon-sources"></use>
-                        </svg>
-                        <p class="empty-state__heading">{{ strings.list.noActiveSource.heading }}</p>
-                        <p class="empty-state__message">
-                            {{ hasNoSources ? strings.list.noActiveSource.noSources : strings.list.noActiveSource.pickOne }}
-                        </p>
-                        <div class="list-shell__empty-actions">
-                            <button
-                                type="button"
-                                class="btn"
-                                data-view="sources"
-                                data-action="click"
-                                data-fn="ui/navigate"
-                                data-testid="no-active-source-sources-btn"
-                            >
-                                {{ strings.list.noActiveSource.openSources }}
-                            </button>
-                            <button type="button" class="btn" data-action="click" data-fn="debug/toggle" data-testid="no-active-source-debug-btn">
-                                {{ strings.debug.open }}
-                            </button>
+                <!-- Movies/Series (Phase 21) share this exact physical list —
+                     `data-ref="listContainer"`/`"rowsContainer"` below must stay
+                     singular app-wide (src/ui/list-bindings.ts only ever wires
+                     the one Spektrum resolves into `refs`), so a wrapper spanning
+                     all five list-driven routes replaces the single-route
+                     section as the outermost gate. The inner `<section
+                     class="view__section view__section--fill" data-if="view.channelList.active">`
+                     immediately below is otherwise untouched, byte-for-byte
+                     (player-shell.markup.spec.ts asserts that literal string) —
+                     it now wraps only the "no active source" empty state, with
+                     `.list-shell` (header/body/list) pulled out to sit beside it
+                     as this wrapper's other child, shared by Movies/Series too. -->
+                <div
+                    class="channel-list-scope"
+                    data-if="view.channelList.active || view.movies.active || view.series.active"
+                >
+                    <section class="view__section view__section--fill" data-if="view.channelList.active">
+                        <!-- Gated on `activeSource`. When that resolves to null —
+                             no source imported, none selected, or a stored id
+                             pointing at a source that is no longer in storage —
+                             Live, Radio and Categories all rendered an entirely
+                             empty pane: no list, no message, nothing. This is
+                             that case, said out loud, with the way out. -->
+                        <div class="empty-state" data-if="!activeSource" data-testid="no-active-source">
+                            <svg class="icon icon--empty" aria-hidden="true">
+                                <use href="#icon-sources"></use>
+                            </svg>
+                            <p class="empty-state__heading">{{ strings.list.noActiveSource.heading }}</p>
+                            <p class="empty-state__message">
+                                {{ hasNoSources ? strings.list.noActiveSource.noSources : strings.list.noActiveSource.pickOne }}
+                            </p>
+                            <div class="list-shell__empty-actions">
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    data-view="sources"
+                                    data-action="click"
+                                    data-fn="ui/navigate"
+                                    data-testid="no-active-source-sources-btn"
+                                >
+                                    {{ strings.list.noActiveSource.openSources }}
+                                </button>
+                                <button type="button" class="btn" data-action="click" data-fn="debug/toggle" data-testid="no-active-source-debug-btn">
+                                    {{ strings.debug.open }}
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    </section>
 
                     <!-- Feature 08.1-08.10: the real virtual-scrolled channel list —
                          the surface Phases 09 (search) and 10 (playback) plug into. -->
                     <div
                         class="list-shell"
-                        :class="{ 'list-shell--group-view': view.categories.active && ui.viewMode === 'groups', 'list-shell--has-groups': view.categories.active && groupsPanelVisible, 'list-shell--split': view.live.active || view.radio.active }"
-                        data-if="activeSource"
+                        :class="{ 'list-shell--group-view': view.categories.active && ui.viewMode === 'groups', 'list-shell--has-groups': view.categories.active && groupsPanelVisible, 'list-shell--split': view.channelList.active || ((view.movies.active || view.series.active) && player.active), 'list-shell--catalog': view.movies.active || view.series.active }"
+                        data-if="(view.channelList.active && activeSource) || view.movies.active || view.series.active"
                         data-testid="channel-list-shell"
                     >
-                        <div class="list-shell__header">
+                        <div class="list-shell__header" data-if="view.channelList.active">
                             <button type="button" class="btn" data-action="click" data-fn="playlist/clearActiveSource" data-testid="back-to-sources-btn">
                                 {{ strings.list.backToSources }}
                             </button>
@@ -524,6 +593,17 @@
                             >
                                 {{ strings.live.strictFellBack }} {{ liveDroppedSamples }}
                             </p>
+                            <!-- Same never-empty-screen rule for "EPG-verified
+                                 channels only": a catalog that hasn't matched
+                                 anything yet is far more likely than every
+                                 channel genuinely lacking guide data. -->
+                            <p
+                                class="list-shell__stats list-shell__stats--warn"
+                                data-if="view.live.active && live.stats.epgFellBack"
+                                data-testid="live-epg-fallback"
+                            >
+                                {{ strings.live.epgFellBack }}
+                            </p>
                             <p class="list-shell__stats" data-if="view.categories.active" data-testid="categories-note">
                                 {{ strings.categories.note }}
                             </p>
@@ -543,10 +623,10 @@
                             </button>
                         </div>
 
-                        <p class="list-shell__empty" data-if="activeSource.needsReupload" data-testid="list-needs-reupload">
+                        <p class="list-shell__empty" data-if="view.channelList.active && activeSource.needsReupload" data-testid="list-needs-reupload">
                             {{ strings.import.sources.needsReupload }}
                         </p>
-                        <p class="list-shell__empty" data-if="!activeSource.needsReupload && activeSource.channelCount === 0" data-testid="list-empty">
+                        <p class="list-shell__empty" data-if="view.channelList.active && !activeSource.needsReupload && activeSource.channelCount === 0" data-testid="list-empty">
                             {{ strings.list.noChannels }}
                         </p>
 
@@ -602,7 +682,480 @@
                             </div>
                         </div>
 
-                        <div class="list-shell__body" data-if="!activeSource.needsReupload && activeSource.channelCount > 0 && !liveFilteredEverything && !radioIsEmpty">
+                        <!-- ==== Movies (Phase 21) ==== -->
+                        <div class="catalog-header" data-if="view.movies.active" data-testid="movies-header">
+                            <h2 class="list-shell__title truncate">{{ strings.views.movies.heading }}</h2>
+                            <span class="catalog-header__count" data-testid="movies-count">{{ strings.catalog.itemsLabel }}: {{ vod.count }}</span>
+                            <span class="catalog-header__status" data-if="vod.status === 'loading'" data-testid="movies-loading">{{ strings.catalog.loading }}</span>
+                        </div>
+
+                        <div class="catalog-search" data-if="view.movies.active" data-testid="movies-search">
+                            <input
+                                type="text"
+                                class="catalog-search__input"
+                                :placeholder="strings.search.placeholder"
+                                :aria-label="strings.search.placeholder"
+                                :value="search.query"
+                                data-action="input"
+                                data-fn="search/setQuery"
+                                data-testid="movies-search-input"
+                            />
+                            <div class="catalog-chips" role="group" :aria-label="strings.search.placeholder">
+                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'all' }" data-action="click" data-fn="search/setScope" data-scope="all" data-testid="movies-scope-all">{{ strings.search.scopeAll }}</button>
+                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'channels' }" data-action="click" data-fn="search/setScope" data-scope="channels" data-testid="movies-scope-channels">{{ strings.search.scopeChannels }}</button>
+                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'movies' }" data-action="click" data-fn="search/setScope" data-scope="movies" data-testid="movies-scope-movies">{{ strings.search.scopeMovies }}</button>
+                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'series' }" data-action="click" data-fn="search/setScope" data-scope="series" data-testid="movies-scope-series">{{ strings.search.scopeSeries }}</button>
+                            </div>
+                            <button type="button" class="icon-btn" data-if="search.active" data-action="click" data-fn="search/clear" :aria-label="strings.search.clear" data-testid="movies-search-clear">
+                                <svg class="icon icon--s" aria-hidden="true"><use href="#icon-close"></use></svg>
+                            </button>
+                            <span class="catalog-search__counts" data-if="search.active" data-testid="movies-search-counts">
+                                <span data-if="search.scope === 'all' || search.scope === 'channels'">{{ strings.search.scopeChannels }}: {{ search.resultCounts.channels }}</span>
+                                <span data-if="search.scope === 'all' || search.scope === 'movies'">{{ strings.search.scopeMovies }}: {{ search.resultCounts.movies }}</span>
+                                <span data-if="search.scope === 'all' || search.scope === 'series'">{{ strings.search.scopeSeries }}: {{ search.resultCounts.series }}</span>
+                            </span>
+                            <p class="catalog-search__hint" data-if="search.active && search.loadedOnly" data-testid="movies-search-loaded-only">{{ strings.search.loadedOnlyHint }}</p>
+                        </div>
+
+                        <div class="list-shell__empty" data-if="view.movies.active && vod.status === 'error' && vod.errorReason === 'no-source'" data-testid="movies-no-source">
+                            <p>{{ strings.catalog.noSource }}</p>
+                            <div class="list-shell__empty-actions">
+                                <button type="button" class="btn" data-action="click" data-fn="ui/toggleSettings" data-testid="movies-no-source-settings-btn">
+                                    {{ strings.catalog.noSourceAction }}
+                                </button>
+                            </div>
+                        </div>
+                        <div class="list-shell__empty" data-if="view.movies.active && vod.status === 'error' && vod.errorReason === 'fetch-failed'" data-testid="movies-fetch-failed">
+                            <p>{{ strings.catalog.fetchFailed }}</p>
+                        </div>
+                        <!-- Shown whenever the catalog on screen came from a cache
+                             whose refresh failed. It is a notice, not an error: the
+                             list below it is fully browsable, and saying so beats
+                             either an error screen or silently passing yesterday's
+                             catalog off as live. -->
+                        <p class="catalog-offline" data-if="view.movies.active && vod.stale" data-testid="movies-offline-notice">
+                            {{ strings.catalog.offline }}
+                        </p>
+                        <p class="list-shell__empty" data-if="view.movies.active && vod.status === 'ready' && vod.categories.length === 0" data-testid="movies-no-categories">
+                            {{ strings.catalog.noCategories }}
+                        </p>
+                        <p class="list-shell__empty" data-if="view.movies.active && vod.status === 'ready' && vod.categories.length > 0 && vod.count === 0" data-testid="movies-empty-category">
+                            {{ strings.catalog.emptyCategory }}
+                        </p>
+
+                        <!-- ==== Series (Phase 21) ==== -->
+                        <div class="catalog-header" data-if="view.series.active" data-testid="series-header">
+                            <h2 class="list-shell__title truncate">{{ strings.views.series.heading }}</h2>
+                            <span class="catalog-header__count" data-testid="series-count">{{ strings.catalog.itemsLabel }}: {{ series.count }}</span>
+                            <span class="catalog-header__status" data-if="series.status === 'loading'" data-testid="series-loading">{{ strings.catalog.loading }}</span>
+                        </div>
+
+                        <div class="catalog-search" data-if="view.series.active" data-testid="series-search">
+                            <input
+                                type="text"
+                                class="catalog-search__input"
+                                :placeholder="strings.search.placeholder"
+                                :aria-label="strings.search.placeholder"
+                                :value="search.query"
+                                data-action="input"
+                                data-fn="search/setQuery"
+                                data-testid="series-search-input"
+                            />
+                            <div class="catalog-chips" role="group" :aria-label="strings.search.placeholder">
+                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'all' }" data-action="click" data-fn="search/setScope" data-scope="all" data-testid="series-scope-all">{{ strings.search.scopeAll }}</button>
+                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'channels' }" data-action="click" data-fn="search/setScope" data-scope="channels" data-testid="series-scope-channels">{{ strings.search.scopeChannels }}</button>
+                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'movies' }" data-action="click" data-fn="search/setScope" data-scope="movies" data-testid="series-scope-movies">{{ strings.search.scopeMovies }}</button>
+                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'series' }" data-action="click" data-fn="search/setScope" data-scope="series" data-testid="series-scope-series">{{ strings.search.scopeSeries }}</button>
+                            </div>
+                            <button type="button" class="icon-btn" data-if="search.active" data-action="click" data-fn="search/clear" :aria-label="strings.search.clear" data-testid="series-search-clear">
+                                <svg class="icon icon--s" aria-hidden="true"><use href="#icon-close"></use></svg>
+                            </button>
+                            <span class="catalog-search__counts" data-if="search.active" data-testid="series-search-counts">
+                                <span data-if="search.scope === 'all' || search.scope === 'channels'">{{ strings.search.scopeChannels }}: {{ search.resultCounts.channels }}</span>
+                                <span data-if="search.scope === 'all' || search.scope === 'movies'">{{ strings.search.scopeMovies }}: {{ search.resultCounts.movies }}</span>
+                                <span data-if="search.scope === 'all' || search.scope === 'series'">{{ strings.search.scopeSeries }}: {{ search.resultCounts.series }}</span>
+                            </span>
+                            <p class="catalog-search__hint" data-if="search.active && search.loadedOnly" data-testid="series-search-loaded-only">{{ strings.search.loadedOnlyHint }}</p>
+                        </div>
+
+                        <div class="list-shell__empty" data-if="view.series.active && series.status === 'error' && series.errorReason === 'no-source'" data-testid="series-no-source">
+                            <p>{{ strings.catalog.noSource }}</p>
+                            <div class="list-shell__empty-actions">
+                                <button type="button" class="btn" data-action="click" data-fn="ui/toggleSettings" data-testid="series-no-source-settings-btn">
+                                    {{ strings.catalog.noSourceAction }}
+                                </button>
+                            </div>
+                        </div>
+                        <div class="list-shell__empty" data-if="view.series.active && series.status === 'error' && series.errorReason === 'fetch-failed'" data-testid="series-fetch-failed">
+                            <p>{{ strings.catalog.fetchFailed }}</p>
+                        </div>
+                        <!-- Shown whenever the catalog on screen came from a cache
+                             whose refresh failed. It is a notice, not an error: the
+                             list below it is fully browsable, and saying so beats
+                             either an error screen or silently passing yesterday's
+                             catalog off as live. -->
+                        <p class="catalog-offline" data-if="view.series.active && series.stale" data-testid="series-offline-notice">
+                            {{ strings.catalog.offline }}
+                        </p>
+                        <p class="list-shell__empty" data-if="view.series.active && series.status === 'ready' && series.categories.length === 0" data-testid="series-no-categories">
+                            {{ strings.catalog.noCategories }}
+                        </p>
+                        <p class="list-shell__empty" data-if="view.series.active && series.status === 'ready' && series.categories.length > 0 && series.count === 0" data-testid="series-empty-category">
+                            {{ strings.catalog.emptyCategory }}
+                        </p>
+
+                        <!-- The catalog halves of this condition ask only for categories,
+                             never for a non-empty item count: the category rail lives
+                             inside the body now, so gating on `count > 0` would take the
+                             rail down along with the list the moment a category came back
+                             empty (or was merely still loading) — leaving no way to pick
+                             a different one. The empty/loading notes above stay put
+                             either way; the list column just renders empty beside them. -->
+                        <div
+                            class="list-shell__body"
+                            data-if="(view.channelList.active && !activeSource.needsReupload && activeSource.channelCount > 0 && !liveFilteredEverything && !radioIsEmpty) || (view.movies.active && vod.categories.length > 0) || (view.series.active && series.categories.length > 0)"
+                        >
+                            <!-- Movies detail (Phase 21): floats over just the list area
+                                 (list-shell__body has position:relative), so the header/
+                                 search/category strip above stay reachable while it's open. -->
+                            <div
+                                class="catalog-detail"
+                                data-if="view.movies.active && vod.detailId"
+                                role="dialog"
+                                :aria-label="strings.movies.detailAria"
+                                data-testid="movies-detail"
+                            >
+                                <div class="catalog-detail__body" data-if="vod.detail">
+                                    <span class="catalog-detail__poster">
+                                        <img
+                                            data-if="vod.detail.logo"
+                                            class="catalog-detail__poster-img"
+                                            :src="vod.detail?.logo || blankImage"
+                                            loading="lazy"
+                                            decoding="async"
+                                            referrerpolicy="no-referrer"
+                                            alt=""
+                                        />
+                                        <span class="catalog-detail__poster-placeholder" data-if="!vod.detail.logo" aria-hidden="true"></span>
+                                    </span>
+                                    <h2 class="catalog-detail__title truncate">{{ vod.detail.name }}</h2>
+                                    <p class="catalog-detail__meta" data-if="vod.detail.year || vod.detail.rating">
+                                        <span data-if="vod.detail.year">{{ vod.detail.year }}</span>
+                                        <span data-if="vod.detail.rating"> · ★ {{ vod.detail.rating }}</span>
+                                    </p>
+                                    <p class="catalog-detail__plot" data-if="vod.detail.plot">{{ vod.detail.plot }}</p>
+                                    <!-- While this movie is downloading, the panel's own
+                                         buttons go inert (:disabled binds the property, not
+                                         the attribute — Spektrum assigns el[name] for
+                                         dash-free names) and the Download button is replaced
+                                         by the progress row below. Play stays disabled too:
+                                         playing opens a second connection to the same
+                                         account, which is exactly what most panels'
+                                         concurrent-connection cap refuses — and refusing it
+                                         kills the download, not the playback. -->
+                                    <div class="catalog-detail__actions">
+                                        <button
+                                            type="button"
+                                            class="btn"
+                                            data-action="click"
+                                            data-fn="vod/play"
+                                            :data-stream-id="vod.detail.streamId"
+                                            :disabled="download.detailBusy"
+                                            data-testid="movies-detail-play"
+                                        >
+                                            {{ strings.catalog.play }}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="btn"
+                                            data-if="download.supported && !download.detailBusy"
+                                            data-action="click"
+                                            data-fn="downloads/startVod"
+                                            :data-stream-id="vod.detail.streamId"
+                                            data-testid="movies-detail-download"
+                                        >
+                                            {{ strings.downloads.action }}
+                                        </button>
+                                        <button type="button" class="btn" data-action="click" data-fn="vod/closeDetail" :disabled="download.detailBusy" data-testid="movies-detail-close">
+                                            {{ strings.catalog.close }}
+                                        </button>
+                                    </div>
+
+                                    <!-- The in-place progress row. An indeterminate <progress>
+                                         (no value attribute) is the honest rendering when the
+                                         provider sent no Content-Length: download.detailMeasured
+                                         is false then, and a made-up percentage would be worse
+                                         than no number at all. -->
+                                    <div class="download-progress" data-if="download.detailBusy" data-testid="movies-detail-progress">
+                                        <progress
+                                            class="download-progress__bar"
+                                            data-if="download.detailMeasured"
+                                            max="100"
+                                            :value="download.detailPercent"
+                                            :aria-label="strings.downloads.progressAria"
+                                        ></progress>
+                                        <progress
+                                            class="download-progress__bar"
+                                            data-if="!download.detailMeasured"
+                                            :aria-label="strings.downloads.progressAria"
+                                        ></progress>
+                                        <span class="download-progress__label">
+                                            <span data-if="download.detail.status === 'queued'">{{ strings.downloads.queued }}</span>
+                                            <span data-if="download.detail.status === 'downloading' && !download.detail.sizeLabel">{{ strings.downloads.starting }}</span>
+                                            <span data-if="download.detail.status === 'downloading' && download.detail.sizeLabel">{{ download.detail.sizeLabel }}</span>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            class="btn btn--quiet"
+                                            data-action="click"
+                                            data-fn="downloads/cancel"
+                                            :data-download-id="download.detail.id"
+                                            data-testid="movies-detail-download-cancel"
+                                        >
+                                            {{ strings.downloads.cancel }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Series detail (Phase 21, Issue 2 follow-up): same overlay
+                                 chrome as Movies, plus a flattened season-header/episode row
+                                 list off series.detail.rows. Deliberately ONE flat data-each,
+                                 not seasons[].episodes[] nested two levels: Spektrum's
+                                 data-each clones an element's own *first element child* into
+                                 its container, so a season block that itself carries
+                                 data-each (the original markup here) treats its own nested
+                                 episode-list as a static, never-cloned sibling — it binds
+                                 once and never again, which is why episode lines used to
+                                 render literal "{{ }}" text. series.detail.rows
+                                 (series-rows.ts's buildSeriesDetailRows()) is pre-flattened
+                                 and pre-formatted (durationMins rounded in state, not via
+                                 Math.round() in a template expression) so this can be a
+                                 single-level data-each + data-if per row kind, the exact
+                                 pattern every other list in the app already uses. No
+                                 season-tab selection exists in state, so every season still
+                                 renders as its own collapsed-by-nothing header + episode
+                                 rows. -->
+                            <div
+                                class="catalog-detail"
+                                data-if="view.series.active && series.detailId"
+                                role="dialog"
+                                :aria-label="strings.series.detailAria"
+                                data-testid="series-detail"
+                            >
+                                <div class="catalog-detail__body" data-if="series.detail">
+                                    <span class="catalog-detail__poster">
+                                        <img
+                                            data-if="series.detail.cover"
+                                            class="catalog-detail__poster-img"
+                                            :src="series.detail?.cover || blankImage"
+                                            loading="lazy"
+                                            decoding="async"
+                                            referrerpolicy="no-referrer"
+                                            alt=""
+                                        />
+                                        <span class="catalog-detail__poster-placeholder" data-if="!series.detail.cover" aria-hidden="true"></span>
+                                    </span>
+                                    <h2 class="catalog-detail__title truncate">{{ series.detail.name }}</h2>
+                                    <p class="catalog-detail__meta" data-if="series.detail.year || series.detail.rating">
+                                        <span data-if="series.detail.year">{{ series.detail.year }}</span>
+                                        <span data-if="series.detail.rating"> · ★ {{ series.detail.rating }}</span>
+                                    </p>
+                                    <p class="catalog-detail__plot" data-if="series.detail.plot">{{ series.detail.plot }}</p>
+
+                                    <!-- Issue 2's "make failure visible" fix: openSeriesDetail()
+                                         now always resolves series.detailStatus to something the
+                                         panel can show — loading/ready/error — instead of a
+                                         failed get_series_info silently leaving the row list
+                                         looking the same as a genuinely-empty series. -->
+                                    <p class="catalog-detail__empty" data-if="series.detailStatus === 'loading'" data-testid="series-detail-loading">
+                                        {{ strings.catalog.loading }}
+                                    </p>
+                                    <div class="list-shell__empty" data-if="series.detailStatus === 'error' && series.detailErrorReason === 'no-source'" data-testid="series-detail-no-source">
+                                        <p>{{ strings.catalog.noSource }}</p>
+                                        <div class="list-shell__empty-actions">
+                                            <button type="button" class="btn" data-action="click" data-fn="ui/toggleSettings" data-testid="series-detail-no-source-settings-btn">
+                                                {{ strings.catalog.noSourceAction }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="list-shell__empty" data-if="series.detailStatus === 'error' && series.detailErrorReason === 'fetch-failed'" data-testid="series-detail-fetch-failed">
+                                        <p>{{ strings.catalog.fetchFailed }}</p>
+                                        <div class="list-shell__empty-actions">
+                                            <button
+                                                type="button"
+                                                class="btn"
+                                                data-action="click"
+                                                data-fn="series/openDetail"
+                                                :data-series-id="series.detailId"
+                                                data-testid="series-detail-retry"
+                                            >
+                                                {{ strings.catalog.retry }}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <p class="catalog-detail__empty" data-if="series.detailStatus === 'ready' && series.detail.rows.length === 0" data-testid="series-no-episodes">
+                                        {{ strings.series.noEpisodes }}
+                                    </p>
+                                    <!-- data-each binds `download.episodeRows`, not
+                                         `series.detail.rows`: a flat row cannot look itself
+                                         up in `downloads.items`, so the join has to happen
+                                         in a selector before the template sees it
+                                         (downloads.selectors.ts). The rows are otherwise
+                                         `series.detail.rows` verbatim.
+
+                                         It is also a PLAIN PATH on purpose. This was
+                                         `series.detail?.rows || []`, and Spektrum's
+                                         data-each does not evaluate an expression there —
+                                         it silently rendered zero rows, which is why the
+                                         episode list came up empty. Keep any fallback in
+                                         the selector (it already returns []), never here. -->
+                                    <div
+                                        class="catalog-seasons"
+                                        data-if="series.detailStatus === 'ready' && series.detail.rows.length > 0"
+                                        data-each="download.episodeRows"
+                                        data-as="row"
+                                        data-testid="series-rows"
+                                    >
+                                        <div class="catalog-detail-row">
+                                            <h3 class="catalog-season__title" data-if="row.kind === 'season'" data-testid="series-season">
+                                                {{ strings.series.seasonPrefix }} {{ row.season }}
+                                            </h3>
+                                            <button
+                                                type="button"
+                                                class="catalog-episode"
+                                                data-if="row.kind === 'episode'"
+                                                data-action="click"
+                                                data-fn="series/playEpisode"
+                                                :data-series-id="series.detailId"
+                                                :data-episode-id="row.episodeId"
+                                                :disabled="row.downloadBusy"
+                                                data-testid="series-episode"
+                                            >
+                                                <span class="catalog-episode__num">{{ strings.series.episodePrefix }}{{ row.episode }}</span>
+                                                <span class="catalog-episode__title truncate">{{ row.title }}</span>
+                                                <span class="catalog-episode__duration" data-if="row.durationMins !== null">{{ row.durationMins }} {{ strings.series.minutesSuffix }}</span>
+                                            </button>
+
+                                            <!-- Per episode, not per panel: several episodes
+                                                 can be queued at once, so only the one that
+                                                 is transferring goes inert. -->
+                                            <button
+                                                type="button"
+                                                class="btn btn--quiet catalog-episode__download"
+                                                data-if="row.kind === 'episode' && download.supported && !row.downloadBusy && !row.downloadDone"
+                                                data-action="click"
+                                                data-fn="downloads/startSeriesEpisode"
+                                                :data-series-id="series.detailId"
+                                                :data-episode-id="row.episodeId"
+                                                data-testid="series-episode-download"
+                                            >
+                                                {{ strings.downloads.action }}
+                                            </button>
+                                            <span
+                                                class="catalog-episode__saved"
+                                                data-if="row.kind === 'episode' && row.downloadDone"
+                                                data-testid="series-episode-saved"
+                                            >
+                                                {{ strings.downloads.done }}
+                                            </span>
+
+                                            <div class="download-progress" data-if="row.kind === 'episode' && row.downloadBusy" data-testid="series-episode-progress">
+                                                <progress
+                                                    class="download-progress__bar"
+                                                    data-if="row.downloadMeasured"
+                                                    max="100"
+                                                    :value="row.downloadPercent"
+                                                    :aria-label="strings.downloads.progressAria"
+                                                ></progress>
+                                                <progress class="download-progress__bar" data-if="!row.downloadMeasured" :aria-label="strings.downloads.progressAria"></progress>
+                                                <span class="download-progress__label">
+                                                    <span data-if="!row.downloadSizeLabel">{{ strings.downloads.queued }}</span>
+                                                    <span data-if="row.downloadSizeLabel">{{ row.downloadSizeLabel }}</span>
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn--quiet"
+                                                    data-action="click"
+                                                    data-fn="downloads/cancel"
+                                                    :data-download-id="row.downloadId"
+                                                    data-testid="series-episode-cancel"
+                                                >
+                                                    {{ strings.downloads.cancel }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="catalog-detail__actions">
+                                        <button type="button" class="btn" data-action="click" data-fn="series/closeDetail" data-testid="series-detail-close">
+                                            {{ strings.catalog.close }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Movies/Series category rail. Same `.groups-panel`
+                                 component as the channel groups below, in the same
+                                 column, for the same reason: a provider ships dozens
+                                 of categories, and the horizontal chip scroller this
+                                 replaced showed about four of them at a time with the
+                                 rest hidden behind a sideways drag no remote can do. -->
+                            <nav
+                                class="groups-panel"
+                                data-if="view.movies.active && vod.categories.length > 0"
+                                role="listbox"
+                                tabindex="0"
+                                :aria-label="strings.movies.categoriesAria"
+                                data-action="keydown"
+                                data-fn="list/handleCategoryRailKeydown"
+                                data-testid="movies-categories-wrap"
+                            >
+                                <div class="groups-panel__list" data-each="vod.categories" data-testid="movies-categories">
+                                    <button
+                                        type="button"
+                                        class="groups-panel__item"
+                                        :class="{ 'groups-panel__item--active': item.id === vod.activeCategoryId }"
+                                        role="option"
+                                        :aria-selected="item.id === vod.activeCategoryId"
+                                        data-action="click"
+                                        data-fn="vod/selectCategory"
+                                        :data-category-id="item.id"
+                                        data-testid="movies-category-chip"
+                                    >
+                                        <span class="groups-panel__name truncate">{{ item.name }}</span>
+                                    </button>
+                                </div>
+                            </nav>
+
+                            <nav
+                                class="groups-panel"
+                                data-if="view.series.active && series.categories.length > 0"
+                                role="listbox"
+                                tabindex="0"
+                                :aria-label="strings.series.categoriesAria"
+                                data-action="keydown"
+                                data-fn="list/handleCategoryRailKeydown"
+                                data-testid="series-categories-wrap"
+                            >
+                                <div class="groups-panel__list" data-each="series.categories" data-testid="series-categories">
+                                    <button
+                                        type="button"
+                                        class="groups-panel__item"
+                                        :class="{ 'groups-panel__item--active': item.id === series.activeCategoryId }"
+                                        role="option"
+                                        :aria-selected="item.id === series.activeCategoryId"
+                                        data-action="click"
+                                        data-fn="series/selectCategory"
+                                        :data-category-id="item.id"
+                                        data-testid="series-category-chip"
+                                    >
+                                        <span class="groups-panel__name truncate">{{ item.name }}</span>
+                                    </button>
+                                </div>
+                            </nav>
+
                             <!-- Feature 08.5: groups panel — renders from GroupMeta alone
                                  (list.groups), so it's ready before channel rows are even
                                  streamed in. Hidden for single-group playlists (08.5.6). -->
@@ -664,7 +1217,7 @@
                                             <img
                                                 data-if="item.logo"
                                                 class="channel-row__logo-img"
-                                                :src="item.logo"
+                                                :src="item.logo || blankImage"
                                                 loading="lazy"
                                                 decoding="async"
                                                 referrerpolicy="no-referrer"
@@ -675,57 +1228,136 @@
                                         <span class="channel-row__logo channel-row__logo--radio" data-if="item.radio" :title="strings.list.radioLabel" aria-hidden="true"></span>
                                         <span class="channel-row__name truncate">{{ item.name }}</span>
                                         <span class="channel-row__favorite" data-if="favorites.ids[item.id]" aria-hidden="true" data-testid="favorite-star">★</span>
-                                        <!-- Feature 08.3.4: reserved for Phase 17's now/next + progress bar. -->
-                                        <span class="channel-row__epg"></span>
+                                        <!-- Stone 3: advisory only. The row stays
+                                             clickable — health is an estimate, and a
+                                             wrong estimate must cost a click, never a
+                                             channel the user can no longer reach. -->
+                                        <span
+                                            class="channel-row__dead"
+                                            data-if="item.unhealthy"
+                                            :title="strings.list.streamLikelyDead"
+                                            :aria-label="strings.list.streamLikelyDead"
+                                            data-testid="channel-row-dead"
+                                            >!</span
+                                        >
+                                        <!-- Feature 08.3.4's reserved column, filled by Phase 32.
+                                             `data-if` only toggles display, so every binding inside
+                                             still evaluates on an unmatched row — each one therefore
+                                             reads a field that is safely absent (renders empty)
+                                             rather than an optional-chained path
+                                             (state/README.md's "two Spektrum gotchas"). -->
+                                        <span class="channel-row__epg" data-if="item.epgNowTitle">
+                                            <span class="channel-row__epg-now truncate">{{ item.epgNowTitle }}</span>
+                                            <span
+                                                class="channel-row__epg-bar"
+                                                aria-hidden="true"
+                                                data-testid="channel-row-epg-bar"
+                                            >
+                                                <span
+                                                    class="channel-row__epg-fill"
+                                                    :style="'width:' + item.epgProgress + '%'"
+                                                ></span>
+                                            </span>
+                                            <span class="channel-row__epg-next truncate" data-if="item.epgNextTitle">
+                                                {{ strings.list.epgNextPrefix }} {{ item.epgNextTitle }}
+                                            </span>
+                                        </span>
+                                        <!-- Movies/Series catalog rows (Phase 21): `.rows`' own
+                                             data-fn="list/selectChannel" (above) always plays via
+                                             the row's `url` — right for a live channel, wrong for
+                                             a movie (should open detail, not autoplay) and broken
+                                             for a series (row `url` is '' — see
+                                             src/state/series-rows.ts). `ChannelRow` carries no
+                                             `kind` field to branch on and `data-fn` cannot vary
+                                             per row in a shared data-each template (Spektrum binds
+                                             it once per clone, not reactively), so these two
+                                             full-row overlays key off the id prefix
+                                             (vod.actions.ts's/series-rows.ts's `vod:`/`series:`
+                                             row-id convention) and `.stop` before the click ever
+                                             reaches the container's generic handler. Absent for a
+                                             real channel row, so Live/Radio/Categories behavior is
+                                             unchanged. -->
+                                        <div
+                                            class="channel-row__catalog-trigger"
+                                            data-if="item.id.indexOf('vod:') === 0"
+                                            data-action="click.stop"
+                                            data-fn="vod/openDetail"
+                                            :data-stream-id="item.id.slice(4)"
+                                            aria-hidden="true"
+                                            data-testid="catalog-row-trigger-vod"
+                                        ></div>
+                                        <div
+                                            class="channel-row__catalog-trigger"
+                                            data-if="item.id.indexOf('series:') === 0"
+                                            data-action="click.stop"
+                                            data-fn="series/openDetail"
+                                            :data-series-id="item.id.slice(7)"
+                                            aria-hidden="true"
+                                            data-testid="catalog-row-trigger-series"
+                                        ></div>
                                     </div>
                                 </div>
                                 <div class="pad" :style="'height:' + list.padBottom + 'px'"></div>
                             </div>
 
-                            <!-- Right column: Live plays video, Radio shows only the
-                                 playing station's icon (src/player/bindings.ts still
-                                 drives the same <video> element either way — it is the
-                                 sole attach point for the audio/video engine, so Radio
-                                 keeps it mounted but visually minimal rather than
-                                 removing it, see player.css's .list-shell--split rules). -->
-                            <div class="now-playing" data-if="view.live.active || view.radio.active" data-testid="now-playing-pane">
-                                <!-- The radio/live distinction is a class on the shell,
-                                     never a `:has(.radio-now-playing)` selector: Spektrum's
-                                     data-if only sets `display: none`, it does not detach
-                                     the node, so a structural selector would match in Live
-                                     too and collapse the video away (it did — that was the
-                                     "Live shows no picture" bug). -->
+                            <!-- Right column: the preview. Live plays video; Radio (and
+                                 any TV channel switched to audio-only) shows a canvas
+                                 visualizer (src/player/visualizer/) instead —
+                                 src/player/bindings.ts still drives the same <video>
+                                 element either way, it is the sole attach point for the
+                                 audio/video engine and doubles as the visualizer's Web
+                                 Audio source, so the audio-only presentations keep it
+                                 mounted but visually minimal rather than removing it,
+                                 see player.css's .list-shell--split rules.
+
+                                 Categories gets the same column, which is what makes it
+                                 three: categories -> channels -> preview.
+
+                                 Movies/TV Shows play into that same <video> (vod.actions.ts
+                                 and series.actions.ts both go through setActiveChannel), so
+                                 they get this pane too — but only once something is
+                                 actually playing, since a permanent empty player beside a
+                                 poster grid is just noise. Without this, pressing Play on a
+                                 movie left the <video> in a `display: none` pane: audio
+                                 only, no picture, and nothing to fullscreen. -->
+                            <div
+                                class="now-playing"
+                                data-if="view.channelList.active || ((view.movies.active || view.series.active) && player.active)"
+                                data-testid="now-playing-pane"
+                            >
+                                <!-- The picture/audio-only distinction is a class on the
+                                     shell, never a `:has(.radio-now-playing)` selector:
+                                     Spektrum's data-if only sets `display: none`, it does
+                                     not detach the node, so a structural selector would
+                                     match in Live too and collapse the video away (it did
+                                     — that was the "Live shows no picture" bug).
+
+                                     `visualizerActive` (state/player.selectors.ts) is
+                                     Radio, plus any TV channel the viewer switched to
+                                     audio-only. -->
                                 <div
                                     class="player-shell"
-                                    :class="{ 'player-shell--radio': view.radio.active }"
+                                    :class="{ 'player-shell--audio': visualizerActive }"
                                     data-if="player.active"
                                     data-testid="player-shell"
                                 >
                                     <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
-                                    <div class="radio-now-playing" data-if="view.radio.active" data-testid="radio-now-playing">
-                                        <span class="radio-now-playing__logo">
-                                            <img
-                                                data-if="player.active.logo"
-                                                class="radio-now-playing__logo-img"
-                                                :src="player.active.logo"
-                                                loading="lazy"
-                                                decoding="async"
-                                                referrerpolicy="no-referrer"
-                                                alt=""
-                                            />
-                                            <span class="radio-now-playing__logo-placeholder" data-if="!player.active.logo" aria-hidden="true"></span>
-                                        </span>
+                                    <div class="radio-now-playing" data-if="visualizerActive" data-testid="radio-now-playing">
+                                        <canvas class="radio-now-playing__canvas" data-ref="radioVisualizer" data-testid="radio-visualizer" aria-hidden="true"></canvas>
                                         <span class="radio-now-playing__name truncate">{{ player.active.name }}</span>
                                     </div>
                                     <div class="player-shell__bar">
-                                        <span class="player-shell__name truncate" data-if="view.live.active">{{ player.active.name }}</span>
+                                        <!-- The audio-only pane already spells the channel
+                                             name across the visualizer, so the bar only
+                                             carries it when a picture is playing. -->
+                                        <span class="player-shell__name truncate" data-if="!visualizerActive">{{ player.active.name }}</span>
                                         <!-- Live stream-quality bars (src/player/stream-health.ts) —
                                              lit count reflects stall frequency, engine-agnostic. -->
                                         <span
                                             class="signal"
                                             :class="'signal--' + (player.streamHealth ?? 'good')"
                                             data-if="player.streamHealth"
-                                            :title="streamHealthLabel"
+                                            :data-tip="streamHealthLabel"
                                             :aria-label="streamHealthLabel"
                                             role="img"
                                             data-testid="stream-health"
@@ -734,11 +1366,191 @@
                                             <span class="signal__bar signal__bar--2"></span>
                                             <span class="signal__bar signal__bar--3"></span>
                                         </span>
-                                        <button type="button" class="btn" data-if="view.live.active" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
+
+                                        <!-- Audio/subtitle track menus (final audio/subtitle stage). Each
+                                             popup is anchored to its own trigger button (position: relative
+                                             on .track-menu-anchor), opening upward above the dock — the dock
+                                             sits low in the viewport, same reasoning as the [data-tip]
+                                             tooltip above. Always rendered, never behind a view/track-count
+                                             data-if: an empty track list still opens the menu and explains
+                                             itself (see .track-menu__empty below) rather than hiding the
+                                             button, so a viewer never wonders whether the feature is broken
+                                             or just absent for this stream. -->
+                                        <div class="track-menu-anchor">
+                                            <button
+                                                type="button"
+                                                class="icon-btn"
+                                                :aria-label="strings.list.audioTracksLabel"
+                                                :title="strings.list.audioTracksLabel"
+                                                :aria-expanded="player.trackMenu === 'audio'"
+                                                data-action="click"
+                                                data-fn="player/toggleAudioMenu"
+                                                data-testid="player-audio-tracks-btn"
+                                            >
+                                                <svg class="icon icon--s" aria-hidden="true"><use href="#icon-audio-tracks"></use></svg>
+                                            </button>
+                                            <div
+                                                class="track-menu"
+                                                data-if="player.trackMenu === 'audio'"
+                                                role="listbox"
+                                                :aria-label="strings.list.audioTracksLabel"
+                                                data-testid="audio-track-menu"
+                                            >
+                                                <div class="track-menu__list" data-each="player.audioTracks">
+                                                    <button
+                                                        type="button"
+                                                        class="track-menu__item"
+                                                        :class="{ 'track-menu__item--active': item.active }"
+                                                        role="option"
+                                                        :aria-selected="item.active"
+                                                        data-action="click"
+                                                        data-fn="player/setAudioTrack"
+                                                        :data-value="item.id"
+                                                        data-testid="audio-track-item"
+                                                    >
+                                                        <span class="track-menu__label truncate">{{ item.label }}</span>
+                                                        <span class="track-menu__lang" data-if="item.lang && item.lang !== item.label">({{ item.lang }})</span>
+                                                    </button>
+                                                </div>
+                                                <div class="track-menu__empty" data-if="!player.audioTracks.length" data-testid="audio-track-empty">
+                                                    <span class="track-menu__empty-dash" aria-hidden="true">—</span>
+                                                    <p class="track-menu__empty-message">{{ strings.list.noAudioTracks }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="track-menu-anchor">
+                                            <button
+                                                type="button"
+                                                class="icon-btn"
+                                                :aria-label="strings.list.subtitlesLabel"
+                                                :title="strings.list.subtitlesLabel"
+                                                :aria-expanded="player.trackMenu === 'subtitles'"
+                                                data-action="click"
+                                                data-fn="player/toggleSubtitleMenu"
+                                                data-testid="player-subtitles-btn"
+                                            >
+                                                <svg class="icon icon--s" aria-hidden="true"><use href="#icon-subtitles"></use></svg>
+                                            </button>
+                                            <div
+                                                class="track-menu"
+                                                data-if="player.trackMenu === 'subtitles'"
+                                                role="listbox"
+                                                :aria-label="strings.list.subtitlesLabel"
+                                                data-testid="subtitle-track-menu"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    class="track-menu__item"
+                                                    :class="{ 'track-menu__item--active': subtitlesOffActive }"
+                                                    role="option"
+                                                    :aria-selected="subtitlesOffActive"
+                                                    data-action="click"
+                                                    data-fn="player/setSubtitleTrack"
+                                                    data-value="off"
+                                                    data-testid="subtitle-track-off"
+                                                >
+                                                    <span class="track-menu__label">{{ strings.list.subtitlesOff }}</span>
+                                                </button>
+                                                <div class="track-menu__list" data-each="player.subtitleTracks">
+                                                    <button
+                                                        type="button"
+                                                        class="track-menu__item"
+                                                        :class="{ 'track-menu__item--active': item.active }"
+                                                        role="option"
+                                                        :aria-selected="item.active"
+                                                        data-action="click"
+                                                        data-fn="player/setSubtitleTrack"
+                                                        :data-value="item.id"
+                                                        data-testid="subtitle-track-item"
+                                                    >
+                                                        <span class="track-menu__label truncate">{{ item.label }}</span>
+                                                        <span class="track-menu__lang" data-if="item.lang && item.lang !== item.label">({{ item.lang }})</span>
+                                                    </button>
+                                                </div>
+                                                <div class="track-menu__empty" data-if="!player.subtitleTracks.length" data-testid="subtitle-track-empty">
+                                                    <span class="track-menu__empty-dash" aria-hidden="true">—</span>
+                                                    <p class="track-menu__empty-message">{{ strings.list.noSubtitles }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <select
+                                            class="btn"
+                                            data-if="visualizerActive"
+                                            data-action="change"
+                                            data-fn="player/setVisualizerPreset"
+                                            :aria-label="strings.list.visualizerPickerLabel"
+                                            data-testid="radio-visualizer-select"
+                                        >
+                                            <option value="auto" :selected="player.visualizerPreset === 'auto'">{{ strings.list.visualizerAuto }}</option>
+                                            <optgroup :label="strings.list.visualizerGenreGroup">
+                                                <option value="edm" :selected="player.visualizerPreset === 'edm'">{{ strings.list.visualizerEdm }}</option>
+                                                <option value="jazz" :selected="player.visualizerPreset === 'jazz'">{{ strings.list.visualizerJazz }}</option>
+                                                <option value="blues" :selected="player.visualizerPreset === 'blues'">{{ strings.list.visualizerBlues }}</option>
+                                                <option value="rock" :selected="player.visualizerPreset === 'rock'">{{ strings.list.visualizerRock }}</option>
+                                                <option value="metal" :selected="player.visualizerPreset === 'metal'">{{ strings.list.visualizerMetal }}</option>
+                                                <option value="classical" :selected="player.visualizerPreset === 'classical'">{{ strings.list.visualizerClassical }}</option>
+                                            </optgroup>
+                                            <optgroup :label="strings.list.visualizerAbstractGroup">
+                                                <option value="spectrum" :selected="player.visualizerPreset === 'spectrum'">{{ strings.list.visualizerSpectrum }}</option>
+                                                <option value="particles" :selected="player.visualizerPreset === 'particles'">{{ strings.list.visualizerParticles }}</option>
+                                                <option value="kaleidoscope" :selected="player.visualizerPreset === 'kaleidoscope'">{{ strings.list.visualizerKaleidoscope }}</option>
+                                                <option value="fractal-tunnel" :selected="player.visualizerPreset === 'fractal-tunnel'">{{ strings.list.visualizerFractalTunnel }}</option>
+                                            </optgroup>
+                                        </select>
+                                        <button
+                                            type="button"
+                                            class="btn"
+                                            data-if="visualizerActive"
+                                            data-action="click"
+                                            data-fn="player/toggleVisualizerPause"
+                                            data-testid="player-pause-visual-btn"
+                                        >
+                                            {{ player.visualizerPaused ? strings.list.playerResumeVisual : strings.list.playerPauseVisual }}
+                                        </button>
+                                        <button type="button" class="btn" data-if="visualizerActive" data-action="click" data-fn="player/nextVisualizerPreset" data-testid="player-next-visual-btn">
+                                            {{ strings.list.playerNextVisual }}
+                                        </button>
+                                        <!-- Watch a TV channel like a radio station: the
+                                             picture collapses, the visualizer takes the
+                                             pane. Not offered in Radio, which has no
+                                             picture to give up in the first place. -->
+                                        <button
+                                            type="button"
+                                            class="btn"
+                                            data-if="view.live.active || view.categories.active"
+                                            :aria-pressed="player.audioMode"
+                                            data-action="click"
+                                            data-fn="player/toggleAudioMode"
+                                            data-testid="player-audio-mode-btn"
+                                        >
+                                            {{ player.audioMode ? strings.list.playerShowPicture : strings.list.playerAudioOnly }}
+                                        </button>
+                                        <!-- No data-if: this whole shell only renders while
+                                             something is playing, and everything that plays
+                                             — Live, Radio, Categories, Movies, TV Shows —
+                                             can be fullscreened (state/player.actions.ts
+                                             picks the right element per view). -->
+                                        <button type="button" class="btn" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
                                             {{ strings.list.playerFullscreen }}
                                         </button>
                                         <button type="button" class="btn" data-action="click" data-fn="player/stop" data-testid="player-stop-btn">
                                             {{ strings.list.playerStop }}
+                                        </button>
+                                        <!-- Handoff (Phase 38, stone 9). The link is shown
+                                             as well as copied: most TV webviews have no
+                                             clipboard at all, and a button that silently
+                                             does nothing there is worse than one that just
+                                             puts the address on screen to be typed. -->
+                                        <button type="button" class="btn" data-action="click" data-fn="handoff/offer" data-testid="handoff-offer-btn">
+                                            {{ strings.handoff.button }}
+                                        </button>
+                                    </div>
+                                    <div class="handoff" data-if="player.handoffState !== 'idle'" data-testid="handoff-panel">
+                                        <p class="handoff__message">{{ player.handoffMessage }}</p>
+                                        <code class="handoff__link" data-if="player.handoffLink" data-testid="handoff-link">{{ player.handoffLink }}</code>
+                                        <p class="handoff__note" data-if="player.handoffLink">{{ strings.handoff.note }}</p>
+                                        <button type="button" class="btn" data-action="click" data-fn="handoff/dismiss" data-testid="handoff-dismiss-btn">
+                                            {{ strings.handoff.dismiss }}
                                         </button>
                                     </div>
                                     <!-- Variant switcher for the channel being watched.
@@ -757,7 +1569,12 @@
                                          the full label stays available as the accessible
                                          name — with the playing feed's label spelled out
                                          beside the strip, so the current choice is never
-                                         only an icon. -->
+                                         only an icon. Each chip also carries a short
+                                         always-visible quality caption (icons alone read
+                                         as noise at a glance), and the full label surfaces
+                                         as an instant `data-tip` tooltip on hover/focus
+                                         instead of the native `title`, which never appears
+                                         on touch/TV and lags on hover. -->
                                     <div
                                         class="variants"
                                         data-if="hasVariants"
@@ -777,7 +1594,7 @@
                                                 :class="{ 'variants__chip--active': item.id === player.activeVariantId }"
                                                 :aria-pressed="item.id === player.activeVariantId"
                                                 :aria-label="item.label"
-                                                :title="item.label"
+                                                :data-tip="item.label"
                                                 :data-variant-id="item.id"
                                                 data-testid="variant-chip"
                                             >
@@ -793,6 +1610,8 @@
                                                 <svg class="icon icon--s variants__catchup" data-if="item.isRecording" aria-hidden="true">
                                                     <use href="#icon-catchup"></use>
                                                 </svg>
+                                                <span class="variants__chip-caption" data-if="item.quality">{{ item.quality }}</span>
+                                                <span class="variants__chip-caption" data-if="!item.quality">{{ strings.live.variants.alt }}</span>
                                             </button>
                                         </div>
                                         <span class="variants__current truncate" data-testid="variant-current">{{ activeVariantLabel }}</span>
@@ -807,7 +1626,7 @@
                             </div>
                         </div>
                     </div>
-                </section>
+                </div>
 
                 <section
                     class="view__section cv-auto"
@@ -815,7 +1634,7 @@
                     data-testid="view-favorites"
                 >
                     <h1 class="view__heading">{{ strings.views.favorites.heading }}</h1>
-                    <div class="empty-state">
+                    <div class="empty-state" data-if="hasNoFavorites">
                         <svg class="icon icon--empty" aria-hidden="true">
                             <use href="#icon-favorites"></use>
                         </svg>
@@ -826,6 +1645,62 @@
                             {{ strings.emptyStates.favorites.message }}
                         </p>
                     </div>
+                    <!-- Same denormalized-snapshot contract as Recents: a
+                         starred row carries its own stream URL, so it plays
+                         on a cold boot before any source has parsed. One
+                         delegated binding for the whole list — the click
+                         target decides play vs. unstar. -->
+                    <ul
+                        class="recent-zap-history starred-list cv-auto"
+                        data-if="!hasNoFavorites"
+                        data-each="favorites.rows"
+                        data-testid="starred-list"
+                        data-action="click"
+                        data-fn="favorites/row"
+                    >
+                        <li class="recent-zap-history__row starred-list__row" :data-id="item.id">
+                            <button
+                                type="button"
+                                class="recent-zap-history__play"
+                                :class="{ 'recent-zap-history__play--active': player.active && player.active.id === item.id }"
+                                :title="strings.starred.playTitle + ' ' + item.name"
+                                data-testid="starred-play"
+                            >
+                                <span class="recent-zap-history__logo">
+                                    <img
+                                        data-if="item.logo"
+                                        class="recent-zap-history__logo-img"
+                                        :src="item.logo || blankImage"
+                                        loading="lazy"
+                                        decoding="async"
+                                        referrerpolicy="no-referrer"
+                                        alt=""
+                                    />
+                                    <svg class="icon icon--s recent-zap-history__logo-icon" data-if="!item.logo" aria-hidden="true">
+                                        <use href="#icon-play"></use>
+                                    </svg>
+                                </span>
+                                <span class="recent-zap-history__text">
+                                    <span class="recent-zap-history__name truncate">{{ item.name }}</span>
+                                    <span class="recent-zap-history__group truncate" data-if="item.group">{{ item.group }}</span>
+                                </span>
+                                <span class="recent-zap-history__badge" data-if="item.radio">{{ strings.starred.radioBadge }}</span>
+                                <svg class="icon icon--s recent-zap-history__cue" aria-hidden="true">
+                                    <use href="#icon-play"></use>
+                                </svg>
+                            </button>
+                            <button
+                                type="button"
+                                class="starred-list__unstar"
+                                data-favorite-unstar
+                                :title="strings.starred.unstar"
+                                :aria-label="strings.starred.unstar"
+                                data-testid="starred-unstar"
+                            >
+                                ★
+                            </button>
+                        </li>
+                    </ul>
                 </section>
 
                 <section
@@ -870,7 +1745,7 @@
                                     <img
                                         data-if="item.logo"
                                         class="recent-zap-history__logo-img"
-                                        :src="item.logo"
+                                        :src="item.logo || blankImage"
                                         loading="lazy"
                                         decoding="async"
                                         referrerpolicy="no-referrer"
@@ -909,14 +1784,60 @@
                     </div>
 
                     <div class="guide" data-if="guide.view.hasData" data-testid="guide-grid">
+                        <!-- Time navigation. The window follows the clock until
+                             one of these is used; "back to now" only appears
+                             once it has been shifted, so the default state
+                             carries no control the user has to reason about. -->
+                        <div class="guide__nav">
+                            <button
+                                type="button"
+                                class="icon-btn"
+                                data-action="click"
+                                data-fn="guide/shiftEarlier"
+                                :aria-label="strings.guide.earlier"
+                                :title="strings.guide.earlier"
+                                data-testid="guide-earlier-btn"
+                            >
+                                ‹
+                            </button>
+                            <button
+                                type="button"
+                                class="btn"
+                                data-if="guide.view.isShifted"
+                                data-action="click"
+                                data-fn="guide/backToNow"
+                                data-testid="guide-now-btn"
+                            >
+                                {{ strings.guide.backToNow }}
+                            </button>
+                            <span class="guide__nav-date" data-if="guide.view.dateLabel" data-testid="guide-date">
+                                {{ guide.view.dateLabel }}
+                            </span>
+                            <button
+                                type="button"
+                                class="icon-btn"
+                                data-action="click"
+                                data-fn="guide/shiftLater"
+                                :aria-label="strings.guide.later"
+                                :title="strings.guide.later"
+                                data-testid="guide-later-btn"
+                            >
+                                ›
+                            </button>
+                        </div>
+
                         <div class="guide__header">
                             <span>{{ guide.view.rangeStartLabel }}</span>
                             <span>{{ guide.view.rangeEndLabel }}</span>
                         </div>
 
                         <div class="guide__rows" data-testid="guide-rows">
+                            <!-- nowPercent is -1 once the window is shifted off
+                                 "now"; pinning the line to an edge instead would
+                                 read as a real position. -->
                             <div
                                 class="guide__now-line"
+                                data-if="guide.view.nowPercent >= 0"
                                 :style="'left:' + guide.view.nowPercent + '%'"
                                 :aria-label="strings.guide.nowLabel"
                                 role="img"
@@ -925,18 +1846,26 @@
 
                             <div class="guide__row-list" data-each="guide.view.channels" data-testid="guide-row-list">
                                 <div class="guide__row" data-testid="guide-row">
-                                    <div class="guide__channel">
+                                    <button
+                                        type="button"
+                                        class="guide__channel"
+                                        data-action="click"
+                                        data-fn="guide/playChannel"
+                                        :data-epg-id="item.id"
+                                        :title="strings.guide.playChannel"
+                                        data-testid="guide-channel-btn"
+                                    >
                                         <img
                                             data-if="item.icon"
                                             class="guide__channel-logo"
-                                            :src="item.icon"
+                                            :src="item.icon || blankImage"
                                             loading="lazy"
                                             decoding="async"
                                             referrerpolicy="no-referrer"
                                             alt=""
                                         />
                                         <span class="guide__channel-name truncate">{{ item.displayName }}</span>
-                                    </div>
+                                    </button>
                                     <div
                                         class="guide__timeline"
                                         data-each="item.programs"
@@ -984,6 +1913,85 @@
                 </section>
             </main>
 
+            <!-- Download queue. Outside <main> and fixed-position, because a
+                 transfer outlives the view that started it: closing the movie
+                 detail, or navigating to Live, must not hide a download that
+                 is still running. Hidden entirely while empty — it is a
+                 status surface, not a permanent piece of chrome.
+
+                 One row per entry, driven by download.rows (the pre-shaped
+                 copy in downloads.selectors.ts) so each row's flags are plain
+                 `data-if="row.busy"` rather than expressions doing work in
+                 the template. -->
+            <aside
+                class="download-queue"
+                data-if="download.queueVisible"
+                role="region"
+                :aria-label="strings.downloads.queueAria"
+                data-testid="download-queue"
+            >
+                <div class="download-queue__head">
+                    <h2 class="download-queue__title">{{ strings.downloads.queueTitle }}</h2>
+                    <button
+                        type="button"
+                        class="btn btn--quiet"
+                        data-if="download.hasFinished"
+                        data-action="click"
+                        data-fn="downloads/clearFinished"
+                        data-testid="download-queue-clear"
+                    >
+                        {{ strings.downloads.clearFinished }}
+                    </button>
+                </div>
+
+                <ul class="download-queue__list" data-each="download.rows" data-as="row" data-testid="download-queue-rows">
+                    <li class="download-queue__row">
+                        <span class="download-queue__name truncate">{{ row.name }}</span>
+
+                        <progress class="download-progress__bar" data-if="row.busy && row.measured" max="100" :value="row.percent"></progress>
+                        <progress class="download-progress__bar" data-if="row.busy && !row.measured"></progress>
+
+                        <span class="download-queue__status">
+                            <span data-if="row.status === 'queued'">{{ strings.downloads.queued }}</span>
+                            <span data-if="row.status === 'downloading' && !row.sizeLabel">{{ strings.downloads.starting }}</span>
+                            <span data-if="row.status === 'downloading' && row.sizeLabel">{{ row.sizeLabel }}</span>
+                            <span data-if="row.finished">{{ strings.downloads.done }}</span>
+                            <span data-if="row.handedOff">{{ strings.downloads.handoff }}</span>
+                            <span data-if="row.failed && row.errorReason === 'cancelled'">{{ strings.downloads.cancelled }}</span>
+                            <span data-if="row.failed && row.errorReason === 'network'">{{ strings.downloads.errorNetwork }}</span>
+                            <span data-if="row.failed && row.errorReason === 'disk'">{{ strings.downloads.errorDisk }}</span>
+                        </span>
+
+                        <!-- Cancel while it is still ours to stop; Remove once
+                             it is finished. Two buttons rather than one that
+                             changes meaning, so a click can never do the
+                             opposite of what its label said a frame ago. -->
+                        <button
+                            type="button"
+                            class="btn btn--quiet"
+                            data-if="row.busy"
+                            data-action="click"
+                            data-fn="downloads/cancel"
+                            :data-download-id="row.id"
+                            data-testid="download-queue-cancel"
+                        >
+                            {{ strings.downloads.cancel }}
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn--quiet"
+                            data-if="!row.busy"
+                            data-action="click"
+                            data-fn="downloads/dismiss"
+                            :data-download-id="row.id"
+                            data-testid="download-queue-dismiss"
+                        >
+                            {{ strings.downloads.remove }}
+                        </button>
+                    </li>
+                </ul>
+            </aside>
+
             <aside
                 class="settings-panel"
                 data-if="ui.settingsOpen"
@@ -1026,6 +2034,28 @@
                         <p data-testid="settings-storage-tier">
                             {{ strings.storageNotice.userSectionTier }}: {{ storage.tier }}
                         </p>
+
+                        <!-- i18n: language switcher — updates immediately, no
+                             Save step (a <select> has no "bad input" the way
+                             free text does). Each option is labeled in its own
+                             language, the standard convention for language
+                             pickers, never translated to the current UI
+                             language. -->
+                        <label class="settings-section__label" for="locale-select">
+                            {{ strings.settings.user.languageLabel }}
+                        </label>
+                        <select
+                            id="locale-select"
+                            class="settings-section__input"
+                            data-action="change"
+                            data-fn="settings/setLocale"
+                            data-testid="locale-select"
+                        >
+                            <option value="en" :selected="settings.locale === 'en'">English</option>
+                            <option value="nl" :selected="settings.locale === 'nl'">Nederlands</option>
+                            <option value="de" :selected="settings.locale === 'de'">Deutsch</option>
+                        </select>
+                        <p class="settings-section__hint">{{ strings.settings.user.languageHelp }}</p>
                     </section>
 
                     <!-- Full-configuration export. The channel entries carry
@@ -1074,6 +2104,179 @@
                             {{ strings.settings.diagnostics.exportEpgButton }}
                         </button>
                         <p class="settings-section__hint">{{ strings.settings.diagnostics.exportEpgHelp }}</p>
+
+                        <p class="settings-section__hint" data-testid="epg-catalog-readout">
+                            {{ strings.settings.diagnostics.epgCatalogReadout }}
+                            {{ settings.epgCatalogCount }} · {{ strings.settings.diagnostics.epgMatchedReadout }}
+                            {{ live.stats.epgMatched }}
+                        </p>
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="settings/refreshEpg"
+                            data-testid="refresh-epg-btn"
+                            :disabled="settings.epgCacheState === 'busy'"
+                        >
+                            {{ strings.settings.diagnostics.refreshEpgButton }}
+                        </button>
+                        <p class="settings-section__hint">{{ strings.settings.diagnostics.refreshEpgHelp }}</p>
+
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="settings/clearEpgCache"
+                            data-testid="clear-epg-cache-btn"
+                            :disabled="settings.epgCacheState === 'busy'"
+                        >
+                            {{ strings.settings.diagnostics.clearEpgCacheButton }}
+                        </button>
+                        <p class="settings-section__hint">{{ strings.settings.diagnostics.clearEpgCacheHelp }}</p>
+                        <p class="settings-section__hint" data-if="settings.epgCacheState === 'done'" data-testid="epg-cache-done">
+                            {{ strings.settings.diagnostics.epgCacheDone }}
+                        </p>
+                        <p class="settings-section__error" data-if="settings.epgCacheState === 'failed'" data-testid="epg-cache-failed">
+                            {{ strings.settings.diagnostics.epgCacheFailed }}
+                        </p>
+
+                        <h3 class="settings-section__title">{{ strings.codex.sectionTitle }}</h3>
+                        <p class="settings-section__hint">{{ strings.codex.about }}</p>
+                        <p class="settings-section__hint" data-if="settings.codexAuthorId" data-testid="codex-author">
+                            {{ strings.codex.yourId }} {{ settings.codexAuthorId }}
+                        </p>
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="codex/export"
+                            data-testid="codex-export-btn"
+                            :disabled="settings.codexState === 'busy'"
+                        >
+                            {{ strings.codex.exportButton }}
+                        </button>
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="codex/import"
+                            data-testid="codex-import-btn"
+                            :disabled="settings.codexState === 'busy'"
+                        >
+                            {{ strings.codex.importButton }}
+                        </button>
+                        <p class="settings-section__hint">{{ strings.codex.signatureNote }}</p>
+                        <p class="settings-section__hint" data-if="settings.codexState === 'done'" data-testid="codex-done">
+                            {{ settings.codexMessage }}
+                        </p>
+                        <p class="settings-section__error" data-if="settings.codexState === 'failed'" data-testid="codex-failed">
+                            {{ settings.codexMessage }}
+                        </p>
+
+                        <h3 class="settings-section__title">{{ strings.codex.library.title }}</h3>
+                        <p class="settings-section__hint">{{ strings.codex.library.about }}</p>
+                        <label class="settings-section__label" for="codex-library-url-input">
+                            {{ strings.codex.library.urlLabel }}
+                        </label>
+                        <input
+                            type="url"
+                            id="codex-library-url-input"
+                            data-ref="codexLibraryUrlInput"
+                            class="settings-section__input"
+                            :placeholder="strings.codex.library.urlPlaceholder"
+                            data-testid="codex-library-url"
+                        />
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="codexLibrary/add"
+                            data-testid="codex-library-add-btn"
+                            :disabled="settings.codexLibraryState === 'busy'"
+                        >
+                            {{ strings.codex.library.addButton }}
+                        </button>
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="codexLibrary/refresh"
+                            data-testid="codex-library-refresh-btn"
+                            :disabled="settings.codexLibraryState === 'busy'"
+                        >
+                            {{ strings.codex.library.refreshButton }}
+                        </button>
+                        <ul class="codex-library" data-each="settings.codexLibraryRows" data-testid="codex-library-list">
+                            <li class="codex-library__row">
+                                <span class="codex-library__url truncate">{{ item.url }}</span>
+                                <span class="codex-library__meta">
+                                    {{ strings.codex.library.signedBy }} {{ item.authorId }} —
+                                    {{ item.counts }} {{ strings.codex.library.claimCounts }}
+                                </span>
+                                <span class="codex-library__problem" data-if="item.problem">{{ item.problem }}</span>
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    data-action="click"
+                                    data-fn="codexLibrary/block"
+                                    data-if="!item.blocked"
+                                    :data-id="item.authorId"
+                                    data-testid="codex-library-block-btn"
+                                >
+                                    {{ strings.codex.library.blockButton }}
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    data-action="click"
+                                    data-fn="codexLibrary/unblock"
+                                    data-if="item.blocked"
+                                    :data-id="item.authorId"
+                                    data-testid="codex-library-unblock-btn"
+                                >
+                                    {{ strings.codex.library.unblockButton }}
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    data-action="click"
+                                    data-fn="codexLibrary/remove"
+                                    :data-id="item.url"
+                                    data-testid="codex-library-remove-btn"
+                                >
+                                    {{ strings.codex.library.removeButton }}
+                                </button>
+                            </li>
+                        </ul>
+                        <p class="settings-section__hint" data-if="settings.codexLibraryRows.length === 0">
+                            {{ strings.codex.library.empty }}
+                        </p>
+                        <p class="settings-section__hint">{{ strings.codex.library.trustNote }}</p>
+                        <p class="settings-section__hint">{{ strings.codex.library.blockNote }}</p>
+                        <p class="settings-section__hint" data-if="settings.codexLibraryState === 'done'" data-testid="codex-library-done">
+                            {{ settings.codexLibraryMessage }}
+                        </p>
+                        <p class="settings-section__error" data-if="settings.codexLibraryState === 'failed'" data-testid="codex-library-failed">
+                            {{ settings.codexLibraryMessage }}
+                        </p>
+
+                        <p class="settings-section__hint" data-testid="health-readout">
+                            {{ strings.health.readout }} {{ settings.healthTrackedCount }}
+                            {{ strings.health.deadReadout }} {{ settings.healthDeadCount }}
+                        </p>
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="settings/clearStreamHealth"
+                            data-testid="clear-health-btn"
+                        >
+                            {{ strings.health.clearButton }}
+                        </button>
+                        <p class="settings-section__hint">{{ strings.health.clearHelp }}</p>
+                        <p class="settings-section__hint" data-if="settings.healthCleared" data-testid="health-cleared">
+                            {{ strings.health.cleared }}
+                        </p>
 
                         <button
                             type="button"
@@ -1144,6 +2347,19 @@
                             <span>{{ strings.settings.liveFilter.knownOnly }}</span>
                         </label>
                         <p class="settings-section__hint">{{ strings.settings.liveFilter.knownOnlyHelp }}</p>
+
+                        <label class="settings-toggle">
+                            <input
+                                type="checkbox"
+                                data-setting="liveEpgVerifiedOnly"
+                                :checked="settings.liveEpgVerifiedOnly"
+                                data-action="change"
+                                data-fn="settings/toggle"
+                                data-testid="live-epg-verified-toggle"
+                            />
+                            <span>{{ strings.settings.liveFilter.epgVerifiedOnly }}</span>
+                        </label>
+                        <p class="settings-section__hint">{{ strings.settings.liveFilter.epgVerifiedOnlyHelp }}</p>
                     </section>
 
                     <section class="settings-section">
@@ -1216,6 +2432,28 @@
                                 data-testid="nav-guide-toggle"
                             />
                             <span>{{ strings.settings.navigation.guide }}</span>
+                        </label>
+                        <label class="settings-toggle">
+                            <input
+                                type="checkbox"
+                                data-setting="nav.movies"
+                                :checked="settings.nav.movies"
+                                data-action="change"
+                                data-fn="settings/toggle"
+                                data-testid="nav-movies-toggle"
+                            />
+                            <span>{{ strings.settings.navigation.movies }}</span>
+                        </label>
+                        <label class="settings-toggle">
+                            <input
+                                type="checkbox"
+                                data-setting="nav.series"
+                                :checked="settings.nav.series"
+                                data-action="change"
+                                data-fn="settings/toggle"
+                                data-testid="nav-series-toggle"
+                            />
+                            <span>{{ strings.settings.navigation.series }}</span>
                         </label>
                     </section>
 
@@ -1390,6 +2628,21 @@
                             {{ strings.settings.streaming.refreshBusy }}
                         </p>
                         <p class="settings-section__hint">{{ strings.settings.streaming.xtreamHelp }}</p>
+
+                        <!-- Manual reopen of the first-run wizard (see the
+                             <aside data-if="ui.wizardOpen"> below) — so
+                             redoing the language/country/Xtream setup is
+                             always one click away, never a one-shot trap. -->
+                        <button
+                            type="button"
+                            class="btn"
+                            data-action="click"
+                            data-fn="wizard/open"
+                            data-testid="wizard-reopen-btn"
+                        >
+                            {{ strings.settings.streaming.wizardReopenButton }}
+                        </button>
+                        <p class="settings-section__hint">{{ strings.settings.streaming.wizardReopenHint }}</p>
                     </section>
                     <section class="settings-section">
                         <h3 class="settings-section__title">
@@ -1470,6 +2723,52 @@
                             </button>
                         </div>
                         <p class="settings-section__hint">{{ strings.settings.playback.bufferingHelp }}</p>
+
+                        <!-- Movies/Series audio/subtitle preferences (Phase 21) —
+                             option labels are each language's own name, never routed
+                             through strings, matching the locale-select/live-country
+                             pickers above (this file's existing exception for
+                             proper-noun language/country names). -->
+                        <label class="settings-section__label" for="audio-language-select">
+                            {{ strings.settings.playback.audioLanguageLabel }}
+                        </label>
+                        <select
+                            id="audio-language-select"
+                            class="settings-section__input"
+                            data-action="change"
+                            data-fn="settings/setAudioLanguage"
+                            data-testid="audio-language-select"
+                        >
+                            <option value="auto" :selected="settings.audioLanguage === 'auto'">{{ strings.settings.playback.audioLanguageAuto }}</option>
+                            <option value="en" :selected="settings.audioLanguage === 'en'">English</option>
+                            <option value="nl" :selected="settings.audioLanguage === 'nl'">Nederlands</option>
+                            <option value="de" :selected="settings.audioLanguage === 'de'">Deutsch</option>
+                            <option value="fr" :selected="settings.audioLanguage === 'fr'">Français</option>
+                            <option value="es" :selected="settings.audioLanguage === 'es'">Español</option>
+                            <option value="it" :selected="settings.audioLanguage === 'it'">Italiano</option>
+                        </select>
+                        <p class="settings-section__hint">{{ strings.settings.playback.audioLanguageHelp }}</p>
+
+                        <label class="settings-section__label" for="subtitle-language-select">
+                            {{ strings.settings.playback.subtitleLanguageLabel }}
+                        </label>
+                        <select
+                            id="subtitle-language-select"
+                            class="settings-section__input"
+                            data-action="change"
+                            data-fn="settings/setSubtitleLanguage"
+                            data-testid="subtitle-language-select"
+                        >
+                            <option value="auto" :selected="settings.subtitleLanguage === 'auto'">{{ strings.settings.playback.subtitleAuto }}</option>
+                            <option value="off" :selected="settings.subtitleLanguage === 'off'">{{ strings.settings.playback.subtitleOff }}</option>
+                            <option value="en" :selected="settings.subtitleLanguage === 'en'">English</option>
+                            <option value="nl" :selected="settings.subtitleLanguage === 'nl'">Nederlands</option>
+                            <option value="de" :selected="settings.subtitleLanguage === 'de'">Deutsch</option>
+                            <option value="fr" :selected="settings.subtitleLanguage === 'fr'">Français</option>
+                            <option value="es" :selected="settings.subtitleLanguage === 'es'">Español</option>
+                            <option value="it" :selected="settings.subtitleLanguage === 'it'">Italiano</option>
+                        </select>
+                        <p class="settings-section__hint">{{ strings.settings.playback.subtitleLanguageHelp }}</p>
                     </section>
                     <section class="settings-section">
                         <h3 class="settings-section__title">
@@ -1501,7 +2800,261 @@
                                 {{ strings.settings.appearance.densityCompact }}
                             </button>
                         </div>
-                        <!-- TODO(phase-22): remaining Appearance controls -->
+                        <div
+                            class="density-toggle"
+                            role="group"
+                            :aria-label="strings.settings.appearance.theme"
+                        >
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.theme === 'auto' }"
+                                data-theme="auto"
+                                data-action="click"
+                                data-fn="ui/setTheme"
+                            >
+                                {{ strings.settings.appearance.themeAuto }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.theme === 'light' }"
+                                data-theme="light"
+                                data-action="click"
+                                data-fn="ui/setTheme"
+                            >
+                                {{ strings.settings.appearance.themeLight }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.theme === 'dark' }"
+                                data-theme="dark"
+                                data-action="click"
+                                data-fn="ui/setTheme"
+                            >
+                                {{ strings.settings.appearance.themeDark }}
+                            </button>
+                        </div>
+                        <p class="settings-section__hint">{{ strings.settings.appearance.themeHelp }}</p>
+                        <div
+                            class="density-toggle"
+                            role="group"
+                            :aria-label="strings.settings.appearance.fontSize"
+                        >
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.fontSize === 'small' }"
+                                data-font-size="small"
+                                data-action="click"
+                                data-fn="ui/setFontSize"
+                            >
+                                {{ strings.settings.appearance.fontSizeSmall }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.fontSize === 'default' }"
+                                data-font-size="default"
+                                data-action="click"
+                                data-fn="ui/setFontSize"
+                            >
+                                {{ strings.settings.appearance.fontSizeDefault }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.fontSize === 'large' }"
+                                data-font-size="large"
+                                data-action="click"
+                                data-fn="ui/setFontSize"
+                            >
+                                {{ strings.settings.appearance.fontSizeLarge }}
+                            </button>
+                            <button
+                                type="button"
+                                class="density-toggle__btn"
+                                :class="{ 'density-toggle__btn--active': ui.fontSize === 'xlarge' }"
+                                data-font-size="xlarge"
+                                data-action="click"
+                                data-fn="ui/setFontSize"
+                            >
+                                {{ strings.settings.appearance.fontSizeXlarge }}
+                            </button>
+                        </div>
+                        <p class="settings-section__hint">{{ strings.settings.appearance.fontSizeHelp }}</p>
+                    </section>
+                </div>
+            </aside>
+
+            <!-- First-run setup wizard: shown automatically when boot finds
+                 zero configured sources on an install that has never
+                 completed setup (state/wizard.ts's shouldOpenWizard(), wired
+                 in app/bootstrap.ts right after the real playlist.sources
+                 load resolves). Saving, skipping, or booting with a source
+                 already configured writes the persisted ui.setupComplete
+                 flag, so a known configuration never sees this again. Also reachable any time via
+                 the "Run setup wizard again" link in Settings → Streaming
+                 (data-fn="wizard/open" above) — never a one-shot trap. Every
+                 field reuses an existing action/setting: step 1's selects are
+                 the exact same settings/setLocale and settings/setLiveCountry
+                 data-fn's the Settings panel uses; step 2 is the same Xtream
+                 account fields/feedback as Settings → Streaming, saved
+                 through the same settings.actions.ts saveXtreamAccount(). -->
+            <aside
+                class="wizard-modal"
+                data-if="ui.wizardOpen"
+                data-ref="wizardModal"
+                tabindex="-1"
+                role="dialog"
+                aria-modal="true"
+                :aria-label="strings.wizard.title"
+            >
+                <div class="wizard-modal__backdrop"></div>
+                <div class="wizard-modal__body">
+                    <h2 class="wizard-modal__title">{{ strings.wizard.title }}</h2>
+
+                    <section data-if="ui.wizardStep === 1" data-testid="wizard-step-1">
+                        <h3 class="settings-section__title">{{ strings.wizard.step1.heading }}</h3>
+                        <p class="settings-section__hint">{{ strings.wizard.step1.intro }}</p>
+
+                        <label class="settings-section__label" for="wizard-locale-select">
+                            {{ strings.settings.user.languageLabel }}
+                        </label>
+                        <select
+                            id="wizard-locale-select"
+                            class="settings-section__input"
+                            data-action="change"
+                            data-fn="settings/setLocale"
+                            data-testid="wizard-locale-select"
+                        >
+                            <option value="en" :selected="settings.locale === 'en'">English</option>
+                            <option value="nl" :selected="settings.locale === 'nl'">Nederlands</option>
+                            <option value="de" :selected="settings.locale === 'de'">Deutsch</option>
+                        </select>
+
+                        <label class="settings-section__label" for="wizard-country-select">
+                            {{ strings.settings.liveFilter.countryLabel }}
+                        </label>
+                        <select
+                            id="wizard-country-select"
+                            class="settings-section__input"
+                            data-action="change"
+                            data-fn="settings/setLiveCountry"
+                            data-testid="wizard-country-select"
+                        >
+                            <option value="" :selected="settings.liveCountry === ''">
+                                {{ strings.settings.liveFilter.countryAll }}
+                            </option>
+                            <option value="NL" :selected="settings.liveCountry === 'NL'">NL — Nederland</option>
+                            <option value="BE" :selected="settings.liveCountry === 'BE'">BE — België</option>
+                            <option value="DE" :selected="settings.liveCountry === 'DE'">DE — Deutschland</option>
+                            <option value="UK" :selected="settings.liveCountry === 'UK'">UK — United Kingdom</option>
+                            <option value="FR" :selected="settings.liveCountry === 'FR'">FR — France</option>
+                            <option value="ES" :selected="settings.liveCountry === 'ES'">ES — España</option>
+                            <option value="US" :selected="settings.liveCountry === 'US'">US — United States</option>
+                        </select>
+
+                        <div class="wizard-modal__actions">
+                            <button
+                                type="button"
+                                class="btn"
+                                data-action="click"
+                                data-fn="wizard/skip"
+                                data-testid="wizard-skip-btn"
+                            >
+                                {{ strings.wizard.skip }}
+                            </button>
+                            <button
+                                type="button"
+                                class="btn"
+                                data-action="click"
+                                data-fn="wizard/nextStep"
+                                data-testid="wizard-next-btn"
+                            >
+                                {{ strings.wizard.step1.next }}
+                            </button>
+                        </div>
+                    </section>
+
+                    <section data-if="ui.wizardStep === 2" data-testid="wizard-step-2">
+                        <h3 class="settings-section__title">{{ strings.wizard.step2.heading }}</h3>
+                        <p class="settings-section__hint">{{ strings.wizard.step2.intro }}</p>
+
+                        <label class="settings-section__label" for="wizard-xtream-url-input">
+                            {{ strings.settings.streaming.xtreamUrlLabel }}
+                        </label>
+                        <input
+                            type="text"
+                            id="wizard-xtream-url-input"
+                            data-ref="wizardXtreamUrlInput"
+                            class="settings-section__input"
+                            :placeholder="strings.settings.streaming.xtreamUrlPlaceholder"
+                            data-testid="wizard-xtream-url-input"
+                            data-action="input"
+                            data-fn="settings/clearXtreamFeedback"
+                        />
+                        <label class="settings-section__label" for="wizard-xtream-user-input">
+                            {{ strings.settings.streaming.xtreamUserLabel }}
+                        </label>
+                        <input
+                            type="text"
+                            id="wizard-xtream-user-input"
+                            data-ref="wizardXtreamUserInput"
+                            class="settings-section__input"
+                            data-testid="wizard-xtream-user-input"
+                            data-action="input"
+                            data-fn="settings/clearXtreamFeedback"
+                        />
+                        <label class="settings-section__label" for="wizard-xtream-pass-input">
+                            {{ strings.settings.streaming.xtreamPassLabel }}
+                        </label>
+                        <input
+                            type="password"
+                            id="wizard-xtream-pass-input"
+                            data-ref="wizardXtreamPassInput"
+                            class="settings-section__input"
+                            data-testid="wizard-xtream-pass-input"
+                            data-action="input"
+                            data-fn="settings/clearXtreamFeedback"
+                        />
+                        <p class="settings-section__error" data-if="settings.xtreamError" data-testid="wizard-xtream-error">
+                            {{ settings.xtreamError }}
+                        </p>
+                        <p class="settings-section__hint" data-if="settings.xtreamBusy" data-testid="wizard-xtream-busy">
+                            {{ strings.settings.streaming.refreshBusy }}
+                        </p>
+
+                        <div class="wizard-modal__actions">
+                            <button
+                                type="button"
+                                class="btn"
+                                data-action="click"
+                                data-fn="wizard/backStep"
+                                data-testid="wizard-back-btn"
+                            >
+                                {{ strings.wizard.step2.back }}
+                            </button>
+                            <button
+                                type="button"
+                                class="btn"
+                                data-action="click"
+                                data-fn="wizard/skip"
+                                data-testid="wizard-skip-btn-2"
+                            >
+                                {{ strings.wizard.skip }}
+                            </button>
+                            <button
+                                type="button"
+                                class="btn"
+                                data-action="click"
+                                data-fn="wizard/saveXtreamAccount"
+                                data-testid="wizard-xtream-save-btn"
+                            >
+                                {{ strings.settings.streaming.xtreamSave }}
+                            </button>
+                        </div>
                     </section>
                 </div>
             </aside>

@@ -39,17 +39,55 @@ export function createProxyServer({ host = '0.0.0.0', port = 8899, publicOrigin,
                     return;
                 }
                 const reader = response.body.getReader();
+                let clientGone = false;
                 res.on('close', () => {
+                    clientGone = true;
                     void reader.cancel().catch(() => undefined);
                 });
                 for (;;) {
                     const { done, value } = await reader.read();
-                    if (done) break;
-                    if (!res.write(value)) await new Promise((resolve) => res.once('drain', resolve));
+                    if (done || clientGone) break;
+                    if (!res.write(value)) {
+                        // Wait for the socket to drain — but never outlive it.
+                        // A client that walks away mid-stream never drains,
+                        // and awaiting that alone leaves this request's reader
+                        // and buffers pinned for the life of the process.
+                        await new Promise((resolve) => {
+                            // Both listeners come off as soon as either fires.
+                            // `once` only self-removes the one that ran, so
+                            // registering a bare `close` handler per backpressure
+                            // pause leaks one listener per drain — a long stream
+                            // stalls a dozen times a minute and trips Node's
+                            // MaxListenersExceededWarning on the ServerResponse.
+                            const settle = () => {
+                                res.off('drain', settle);
+                                res.off('close', settle);
+                                resolve(undefined);
+                            };
+                            res.once('drain', settle);
+                            res.once('close', settle);
+                        });
+                        if (clientGone) break;
+                    }
                 }
                 res.end();
             })
             .catch((err) => {
+                // This catch covers the whole chain, streaming included, so by
+                // the time it runs the response is often already on the wire.
+                // Re-heading it then throws ERR_HTTP_HEADERS_SENT *inside a
+                // promise catch* — an unhandled rejection that buries the real
+                // failure under a confusing header error. Mid-stream there is
+                // no status left to send; all that remains is to hang up.
+                if (res.headersSent) {
+                    // Aborts are routine here: the player walks an engine chain
+                    // (mpegts → hls → native) and drops the previous attempt's
+                    // request, and every channel switch cancels in flight. Only
+                    // a failure the client did not cause is worth a log line.
+                    if (!res.destroyed) console.warn('[thundertv-proxy] stream ended early:', String(err));
+                    res.destroy();
+                    return;
+                }
                 res.writeHead(502);
                 res.end(String(err));
             });

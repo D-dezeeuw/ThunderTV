@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { withFakePlatform } from '../core/platform/fake-platform';
-import { authenticate, getLiveCategories, getLiveStreams } from './client';
+import {
+    authenticate,
+    getLiveCategories,
+    getLiveStreams,
+    getSeries,
+    getSeriesCategories,
+    getSeriesInfo,
+    getVodCategories,
+    getVodInfo,
+    getVodStreams,
+} from './client';
 import type { XtreamSource } from './types';
 import { apiUrl } from './urls';
 
@@ -126,6 +136,136 @@ describe('xtream/client', () => {
             http.onGet(apiUrl(source, '')).reply({ kind: 'mixed-content' });
             const result = await authenticate(source);
             expect(result).toEqual({ ok: false, error: { kind: 'mixed-content', action: '' } });
+        });
+    });
+
+    it('getVodCategories normalizes clean rows via the shared category normalizer', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            http.onGet(apiUrl(source, 'get_vod_categories')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ category_id: '3', category_name: 'ACTION' }]),
+            });
+            const result = await getVodCategories(source);
+            expect(result).toEqual({ ok: true, data: [{ id: '3', name: 'ACTION' }] });
+        });
+    });
+
+    it('getVodStreams appends category_id only when given, and normalizes dirty rows', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            http.onGet(apiUrl(source, 'get_vod_streams')).reply({
+                kind: 'ok',
+                body: JSON.stringify([
+                    { stream_id: '55', name: 'Movie A', category_id: null, rating: 8.5, added: '1700000000' },
+                    { stream_id: 56, name: 'Movie B', category_id: '2', container_extension: '' },
+                ]),
+            });
+            const result = await getVodStreams(source);
+            expect(result).toEqual({
+                ok: true,
+                data: [
+                    {
+                        streamId: 55,
+                        name: 'Movie A',
+                        categoryId: 'uncategorized',
+                        containerExtension: 'mp4',
+                        rating: '8.5',
+                        added: 1_700_000_000_000,
+                    },
+                    { streamId: 56, name: 'Movie B', categoryId: '2', containerExtension: 'mp4' },
+                ],
+            });
+        });
+
+        await withFakePlatform({}, async ({ http }) => {
+            http.onGet(apiUrl(source, 'get_vod_streams', '&category_id=7')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ stream_id: 1, name: 'X', category_id: '7', container_extension: 'mkv' }]),
+            });
+            const result = await getVodStreams(source, '7');
+            expect(result).toEqual({
+                ok: true,
+                data: [{ streamId: 1, name: 'X', categoryId: '7', containerExtension: 'mkv' }],
+            });
+        });
+    });
+
+    it('getVodInfo pulls plot/genre/duration/release from the nested info object, dropping absent fields', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            http.onGet(apiUrl(source, 'get_vod_info', '&vod_id=9')).reply({
+                kind: 'ok',
+                body: JSON.stringify({ info: { plot: 'A story', duration_secs: '5400', releasedate: '2021-01-01' } }),
+            });
+            const result = await getVodInfo(source, 9);
+            expect(result).toEqual({
+                ok: true,
+                data: { plot: 'A story', durationSecs: 5400, releaseDate: '2021-01-01' },
+            });
+        });
+    });
+
+    it('getVodInfo tolerates a missing info object, never throws', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            http.onGet(apiUrl(source, 'get_vod_info', '&vod_id=9')).reply({ kind: 'ok', body: JSON.stringify({}) });
+            const result = await getVodInfo(source, 9);
+            expect(result).toEqual({ ok: true, data: {} });
+        });
+    });
+
+    it('getSeriesCategories normalizes clean rows', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            http.onGet(apiUrl(source, 'get_series_categories')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ category_id: '1', category_name: 'DRAMA' }]),
+            });
+            const result = await getSeriesCategories(source);
+            expect(result).toEqual({ ok: true, data: [{ id: '1', name: 'DRAMA' }] });
+        });
+    });
+
+    it('getSeries normalizes a null category_id to uncategorized and keeps clean rows unchanged', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            http.onGet(apiUrl(source, 'get_series')).reply({
+                kind: 'ok',
+                body: JSON.stringify([
+                    { series_id: '3', name: 'Show A', category_id: null },
+                    { series_id: 4, name: 'Show B', category_id: '9', rating: 7 },
+                ]),
+            });
+            const result = await getSeries(source);
+            expect(result).toEqual({
+                ok: true,
+                data: [
+                    { seriesId: 3, name: 'Show A', categoryId: 'uncategorized' },
+                    { seriesId: 4, name: 'Show B', categoryId: '9', rating: '7' },
+                ],
+            });
+        });
+    });
+
+    it('getSeriesInfo coerces the object-keyed episodes shape into a sorted season map', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            http.onGet(apiUrl(source, 'get_series_info', '&series_id=12')).reply({
+                kind: 'ok',
+                body: JSON.stringify({
+                    episodes: { '1': [{ id: '100', episode_num: 1, title: 'Pilot' }] },
+                }),
+            });
+            const result = await getSeriesInfo(source, 12);
+            expect(result).toEqual({
+                ok: true,
+                data: [{ season: 1, episodes: [{ episodeId: 100, season: 1, episode: 1, title: 'Pilot', containerExtension: 'mp4' }] }],
+            });
+        });
+    });
+
+    it('getSeriesInfo returns an empty season array for a payload without usable episodes, never throws', async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            http.onGet(apiUrl(source, 'get_series_info', '&series_id=12')).reply({
+                kind: 'ok',
+                body: JSON.stringify({ info: {} }),
+            });
+            const result = await getSeriesInfo(source, 12);
+            expect(result).toEqual({ ok: true, data: [] });
         });
     });
 });

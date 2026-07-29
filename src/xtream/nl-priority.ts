@@ -1,15 +1,16 @@
+import { matchesCountry } from '../channels/country-language-map';
 import type { XtreamCategory } from './types';
 
 /**
  * MVP heuristic for "Dutch channels first" — matches a standalone `NL`
  * token (the near-universal Xtream category-naming convention, e.g.
- * `"NL | ENTERTAINMENT"`, `"NL: SPORT"`) or an explicit country name.
- * Word-boundary matching avoids false positives like "ONLINE"/"ONLY".
+ * `"NL | ENTERTAINMENT"`, `"NL: SPORT"`) or an explicit country/language
+ * name (`Nederland`, `Dutch`, `Holland`). Word-boundary matching avoids
+ * false positives like "ONLINE"/"ONLY". Thin wrapper around the generalized,
+ * synonym-aware `matchesCountry()` — see `src/channels/country-language-map.ts`.
  */
-const DUTCH_PATTERN = /\bnl\b|nederland|dutch|holland/i;
-
 export function isDutchCategory(name: string): boolean {
-    return DUTCH_PATTERN.test(name);
+    return matchesCountry(name, 'NL');
 }
 
 /** Stable sort — Dutch categories first, original provider order preserved within each group. */

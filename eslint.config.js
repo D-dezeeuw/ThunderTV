@@ -11,11 +11,10 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 // (never merges) a rule's value across matching blocks, so any block that
 // re-specifies this rule must include this selector again or the ban
 // silently disappears for that scope.
-const noTransitionSyntaxSelector = {
-    selector: 'Literal[value=/transition\\s*:|animation\\s*:/]',
-    message:
-        'No CSS transitions/animations (standing convention — masterplan §7). Remove the transition/animation declaration.',
-};
+// The former no-transition/animation literal ban was retired with the
+// theme refresh: motion is now part of the design language (hover
+// transitions, panel entrances, the ambient background drift), gated by
+// prefers-reduced-motion in base.css instead of banned outright.
 
 // Feature 03.7.8: dynamic <input> elements (file pickers, in practice) must
 // be created inside src/core/platform/ via WebFileAdapter, not ad hoc
@@ -68,8 +67,6 @@ export default tseslint.config(
             // Standing convention (masterplan §7): files stay ≤300 lines by
             // design; 400 is the hard ceiling that fails the build.
             'max-lines': ['error', { max: 400, skipBlankLines: false, skipComments: false }],
-
-            'no-restricted-syntax': ['error', noTransitionSyntaxSelector],
         },
     },
     {
@@ -175,11 +172,7 @@ export default tseslint.config(
                         'Branch on capabilities (getPlatform().capabilities), not window.electron — see Feature 03.2.6. Only src/core/platform/ may sniff window.electron directly.',
                 },
             ],
-            'no-restricted-syntax': [
-                'error',
-                noTransitionSyntaxSelector,
-                noInputElementSyntaxSelector,
-            ],
+            'no-restricted-syntax': ['error', noInputElementSyntaxSelector],
         },
     },
     {
@@ -191,16 +184,14 @@ export default tseslint.config(
         // (arrange-phase state setup in tests — the same leniency the spec
         // block below already gives other platform fences). src/core/**
         // stays exempted for the same reason as the platform-API fence
-        // above. Re-includes noTransitionSyntaxSelector/
-        // noInputElementSyntaxSelector since flat config replaces (never
-        // merges) a rule's value across matching blocks — see this file's
-        // header comment.
+        // above. Re-includes noInputElementSyntaxSelector since flat config
+        // replaces (never merges) a rule's value across matching blocks —
+        // see this file's header comment.
         files: ['src/**/*.ts'],
         ignores: ['src/core/**', 'src/state/**', 'src/app/router.ts', 'src/**/*.spec.ts'],
         rules: {
             'no-restricted-syntax': [
                 'error',
-                noTransitionSyntaxSelector,
                 noInputElementSyntaxSelector,
                 noBareSetValueSyntaxSelector,
             ],

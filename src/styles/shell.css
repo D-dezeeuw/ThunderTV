@@ -32,8 +32,10 @@
     align-items: center;
     gap: var(--space-2);
     padding-block: var(--space-3);
-    background: var(--color-surface);
+    background: var(--glass-surface);
+    backdrop-filter: blur(22px) saturate(1.4);
     border-right: 1px solid var(--color-border);
+    box-shadow: var(--glass-highlight);
 }
 
 .rail__btn {
@@ -43,19 +45,27 @@
     align-items: center;
     justify-content: center;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-l);
     background: transparent;
     color: var(--color-text-dim);
     cursor: pointer;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        color var(--dur-1) var(--ease-swift),
+        transform var(--dur-1) var(--ease-swift),
+        box-shadow var(--dur-2) var(--ease-swift);
 }
 
 .rail__btn:hover {
     background: var(--surface-hover);
+    color: var(--color-text);
+    transform: translateY(-1px);
 }
 
 .rail__btn--active {
-    background: var(--surface-active);
+    background: var(--color-accent-weak);
     color: var(--color-accent);
+    box-shadow: var(--glow-accent);
 }
 
 .rail__btn--settings {
@@ -180,10 +190,21 @@
 .btn {
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--color-border);
-    border-radius: 6px;
+    border-radius: var(--radius-m);
     background: var(--color-surface);
     color: var(--color-text);
     font-size: var(--text-sm);
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        border-color var(--dur-1) var(--ease-swift),
+        transform var(--dur-1) var(--ease-swift),
+        box-shadow var(--dur-2) var(--ease-swift);
+}
+.btn:hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: var(--color-border-strong);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-1);
 }
 .btn:disabled {
     color: var(--color-text-dim);
@@ -197,13 +218,17 @@
     align-items: center;
     justify-content: center;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-m);
     background: transparent;
     color: var(--color-text-dim);
     cursor: pointer;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        color var(--dur-1) var(--ease-swift);
 }
 .icon-btn:hover {
     background: var(--surface-hover);
+    color: var(--color-text);
 }
 
 /* ---- Density demo rows (Feature 02.8.5) ---- */
@@ -233,7 +258,7 @@
 .demo-row__logo {
     width: var(--logo-box);
     height: var(--logo-box);
-    border-radius: 4px;
+    border-radius: var(--radius-s);
     background: var(--color-surface-raised);
     flex-shrink: 0;
 }
@@ -294,7 +319,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
+    border-radius: var(--radius-s);
     background: var(--color-surface-raised);
     overflow: hidden;
     color: var(--color-text-dim);
@@ -326,7 +351,7 @@
     flex: none;
     padding: var(--space-1) var(--space-2);
     border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border-radius: var(--radius-full);
     font-size: var(--text-xs);
     color: var(--color-text-dim);
 }
@@ -346,6 +371,33 @@
     visibility: visible;
 }
 
+/* ---- Starred view (Phase 13) ---- */
+
+/* The starred list reuses the recents row wholesale — same snapshot, same
+   "the row is the play control" affordance — and adds only the one thing
+   recents has no equivalent of: unstarring from the list itself. */
+.starred-list__row {
+    display: flex;
+    align-items: center;
+}
+
+.starred-list__unstar {
+    flex: none;
+    align-self: stretch;
+    padding: 0 var(--row-pad-x);
+    border: none;
+    background: none;
+    color: var(--color-accent);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.starred-list__unstar:hover,
+.starred-list__unstar:focus-visible {
+    background: var(--color-surface-raised);
+}
+
 /* ---- Settings panel overlay (Feature 02.7) ---- */
 
 .settings-panel {
@@ -360,6 +412,8 @@
     position: absolute;
     inset: 0;
     background: var(--color-scrim);
+    backdrop-filter: blur(8px);
+    animation: overlay-fade var(--dur-2) var(--ease-swift) both;
 }
 
 .settings-panel__body {
@@ -367,10 +421,36 @@
     width: var(--panel-w);
     max-width: 100%;
     height: 100%;
-    background: var(--color-surface-raised);
-    border-left: 1px solid var(--color-border);
+    background: var(--glass-strong);
+    background-image: var(--gradient-panel);
+    backdrop-filter: blur(28px) saturate(1.4);
+    border-left: 1px solid var(--color-border-strong);
+    box-shadow:
+        var(--shadow-3),
+        var(--glass-highlight);
     padding: var(--space-4);
     overflow-y: auto;
+    animation: drawer-in var(--dur-3) var(--ease-swift) both;
+}
+
+@keyframes overlay-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes drawer-in {
+    from {
+        transform: translateX(24px);
+        opacity: 0;
+    }
+}
+
+@keyframes modal-pop {
+    from {
+        transform: scale(0.96) translateY(8px);
+        opacity: 0;
+    }
 }
 
 .settings-panel__header {
@@ -413,17 +493,85 @@
 .density-toggle__btn {
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--color-border);
-    border-radius: 6px;
+    border-radius: var(--radius-m);
     background: var(--color-surface);
     color: var(--color-text);
     font-size: var(--text-sm);
     cursor: pointer;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        border-color var(--dur-1) var(--ease-swift),
+        box-shadow var(--dur-2) var(--ease-swift),
+        transform var(--dur-1) var(--ease-swift);
 }
 
-.density-toggle__btn--active {
+.density-toggle__btn:hover {
+    border-color: var(--color-border-strong);
+    background: var(--surface-hover);
+    transform: translateY(-1px);
+}
+
+.density-toggle__btn--active,
+.density-toggle__btn--active:hover {
     background: var(--color-accent);
+    background-image: var(--gradient-accent);
     border-color: var(--color-accent);
     color: var(--color-bg);
+    box-shadow: var(--glow-accent);
+}
+
+/* ---- First-run setup wizard modal ----
+   A centered modal rather than the settings drawer's right-edge slide-in
+   (.settings-panel above) — a first-run wizard is a deliberate, focused
+   stop the user must resolve (skip or complete) before returning to the
+   app, not an ancillary panel kept open alongside other work. Shares the
+   same backdrop/surface tokens as .settings-panel for visual consistency. */
+
+.wizard-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wizard-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: var(--color-scrim);
+    backdrop-filter: blur(8px);
+    animation: overlay-fade var(--dur-2) var(--ease-swift) both;
+}
+
+.wizard-modal__body {
+    position: relative;
+    width: min(480px, calc(100% - var(--space-4) * 2));
+    max-height: calc(100% - var(--space-4) * 2);
+    background: var(--glass-strong);
+    background-image: var(--gradient-panel);
+    backdrop-filter: blur(28px) saturate(1.4);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-xl);
+    box-shadow:
+        var(--shadow-3),
+        var(--glow-accent),
+        var(--glass-highlight);
+    padding: var(--space-4);
+    overflow-y: auto;
+    animation: modal-pop var(--dur-3) var(--ease-swift) both;
+}
+
+.wizard-modal__title {
+    font-size: var(--text-lg);
+    margin: 0 0 var(--space-4);
+}
+
+.wizard-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
 }
 
 /* ---- Icons (Feature 02.9) ---- */
@@ -475,6 +623,8 @@
     position: absolute;
     inset: 0;
     background: var(--color-scrim);
+    backdrop-filter: blur(8px);
+    animation: overlay-fade var(--dur-2) var(--ease-swift) both;
 }
 
 .debug-panel__body {
@@ -486,10 +636,16 @@
     max-width: 100%;
     max-height: 100%;
     padding: var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    background: var(--color-surface-raised);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-xl);
+    background: var(--glass-strong);
+    background-image: var(--gradient-panel);
+    backdrop-filter: blur(28px) saturate(1.4);
+    box-shadow:
+        var(--shadow-3),
+        var(--glass-highlight);
     overflow: hidden;
+    animation: modal-pop var(--dur-3) var(--ease-swift) both;
 }
 
 .debug-panel__header {
@@ -517,7 +673,7 @@
     margin: 0;
     padding: var(--space-3);
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-l);
     background: var(--color-bg);
     font-size: var(--text-sm);
     color: var(--color-text);
@@ -564,7 +720,7 @@
     padding: var(--space-2);
     list-style: none;
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-l);
     background: var(--color-bg);
 }
 

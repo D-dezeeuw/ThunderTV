@@ -87,8 +87,7 @@ async function loadGroupsFor(sourceId: string): Promise<void> {
  * chunk containing the restored position — see the Phase 08 tracker's
  * Completion Notes) — acceptable because even a 90k-row source is at most 18
  * `CHUNK_ROWS` pages, each a fast indexed range read.
- */
-/**
+ *
  * `restoredGroup` keeps every incremental publish consistent with the group
  * the caller is about to settle on: streaming the raw, unfiltered
  * `accumulated` array while a group view is being restored used to flash the

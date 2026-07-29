@@ -146,6 +146,17 @@ function publishWindow(): void {
 }
 
 /**
+ * Re-publishes the *same* window without any scroll change — the hook the
+ * global `epg.tick` beat uses to refresh each visible row's now/next line
+ * and progress bar (masterplan §5.5: one 30s tick re-enriches the visible
+ * slice, instead of a timer per row). Deliberately not rAF-throttled: it
+ * fires at most twice a minute, and delaying it a frame would buy nothing.
+ */
+export function republishWindow(): void {
+    publishWindow();
+}
+
+/**
  * Wires scroll + resize to the real list container (called once the DOM ref
  * exists — `src/ui/list-bindings.ts`, post-`bindDOM()`). Returns a cleanup
  * function. `ResizeObserver` is unavailable in the jsdom test environment

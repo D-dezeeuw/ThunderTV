@@ -1,18 +1,27 @@
 import { bindDOM, run } from 'spektrum';
 import { createPlatform, setPlatform } from '../core/platform';
-import { effectiveProxyTemplate } from '../core/platform/desktop-proxy';
+import { primeHealthCache } from '../health/store';
+import { publishCodexAuthorId } from '../state/codex.actions';
+import { refreshCodexLibraryOnBoot } from '../state/codex-library.actions';
+import { effectiveProxyTemplate } from '../core/platform/electron-platform';
 import { sweepOrphanedPlaylistRows } from '../m3u/import-sweep';
 import { registerListBindings } from '../ui/list-bindings';
+import { registerSpatialNavigation } from '../ui/spatial/navigator';
+import { closeTopmostOverlay } from '../state/back-navigation';
 import { registerPlayerBindings } from '../player/bindings';
 import { installDebugCapture } from '../state/debug';
 import { registerDebugShortcut } from '../state/debug.actions';
 import { installDevtools } from '../state/devtools';
+import { registerTrackSync } from '../state/player-tracks.actions';
 import {
+    initAppearance,
     initState,
     loadDefaultEpg,
-    loadFavoriteIds,
+    loadFavorites,
     loadGuideChannels,
     loadPlaylistSources,
+    openWizardIfNoSources,
+    primeEpgMapping,
     registerActions,
     registerPersistOnHide,
     registerSelectors,
@@ -20,10 +29,11 @@ import {
     seedStrings,
     startEpgTick,
 } from '../state';
-import { loadXtreamAccountPrefill } from '../state/settings.actions';
+import { applyDefaultConfigIfFirstRun, loadXtreamAccountPrefill } from '../state/settings.actions';
 import { handleStorageDemotion } from '../state/ui.actions';
 import { refreshActiveXtreamSource } from '../state/xtream-refresh';
 import { seedPlatformDiagnostics } from '../state/ui';
+import { registerCatalogActivation } from './catalog-activation';
 import { initRouter } from './router';
 import { registerViewSwitching } from './views';
 
@@ -57,11 +67,16 @@ export async function bootstrap(): Promise<void> {
 
     initState();
     await rehydrateState();
-    seedStrings();
+    // Pre-paint (Feature 22.5.2): the restored theme/text-size land on
+    // <html> before bindDOM() renders anything, so an explicit light-theme
+    // user never sees dark content — see src/state/theme.ts.
+    initAppearance();
+    await seedStrings();
 
     registerActions();
     registerSelectors();
     registerViewSwitching();
+    registerCatalogActivation();
 
     // Resolves the initial route before bindDOM()/run() so a deep link
     // (e.g. #/favorites) renders correctly on first paint (Feature 02.4.4).
@@ -79,17 +94,40 @@ export async function bootstrap(): Promise<void> {
 
     void sweepAndLoadPlaylistSources();
     void loadXtreamAccountPrefill();
-    void loadFavoriteIds();
+    void loadFavorites();
     // Paint whatever EPG data already survived from a previous session
     // immediately, then kick off the (TTL-guarded) bulk XMLTV fetch —
     // loadDefaultEpg() itself republishes guide.channels once it writes
-    // anything new (src/state/epg-load.ts).
+    // anything new (src/state/epg-load.ts). primeEpgMapping() restores the
+    // Phase 31 match cache live-rows.ts reads synchronously, so a channel
+    // matched in a previous session shows as verified before any fetch.
     void loadGuideChannels();
+    void primeEpgMapping();
+    // Passive stream health (stone 3): restores the synchronous cache the
+    // channel list ranks rows against. Non-blocking like every other
+    // background load — an unprimed cache simply means no row is annotated
+    // yet, never a wrong annotation.
+    void primeHealthCache();
+    // Codex (stone 4): surfaces this device's author fingerprint in Settings,
+    // creating a keypair on first run. Background — nothing blocks on it.
+    void publishCodexAuthorId();
+    // Shared Codexes (stone 10): publishes the subscription list, and
+    // re-fetches anything past its TTL. Polite by construction — a reload
+    // inside the window makes zero upstream requests — and non-blocking,
+    // because a followed Codex whose host is down must not delay boot.
+    void refreshCodexLibraryOnBoot();
     void loadDefaultEpg();
     registerImportDropzoneDragover();
     registerDebugShortcut();
     registerListBindings();
+    // Spatial D-pad navigation (stone 8). Registered for every platform, not
+    // just TV: it only ever acts on an unmodified arrow press that the
+    // focused control does not already handle, so desktop keyboard
+    // behaviour is unchanged — and a desktop user gets working arrow-key
+    // navigation for free.
+    registerSpatialNavigation({ onBack: handleBackPress });
     registerPlayerBindings();
+    registerTrackSync();
     // Xtream catalogs rot (panels renumber stream ids) — silently re-import
     // the active source when its snapshot is older than the 6h TTL.
     void refreshActiveXtreamSource();
@@ -106,14 +144,37 @@ export async function bootstrap(): Promise<void> {
  * ever prevents the default; it dispatches nothing, so a drop anywhere
  * else in the app is inert rather than navigating the tab away.
  */
+/**
+ * The remote's Back button. Closes whatever overlay is open, in the order a
+ * viewer would expect to unwind them; otherwise reports unhandled so the
+ * platform can do its own thing (webOS exits the app, a browser goes back).
+ */
+function handleBackPress(): boolean {
+    return closeTopmostOverlay();
+}
+
 function registerImportDropzoneDragover(): void {
     document.addEventListener('dragover', (event) => {
         event.preventDefault();
     });
 }
 
-/** Feature 07.9.7: the sweep runs before the sources list first loads, so a crash-orphaned row never flashes into view even briefly. */
+/**
+ * Feature 07.9.7: the sweep runs before the sources list first loads, so a
+ * crash-orphaned row never flashes into view even briefly. The dev-only
+ * `desktop/.env` default-config seed runs next — if it fires, it may seed
+ * `settings.locale`/`settings.liveCountry` and/or refresh `PLAYLIST_SOURCES`
+ * via `saveXtreamAccount()`'s own `loadPlaylistSources()` call (see
+ * `settings.actions.ts`'s `applyDefaultConfigIfFirstRun()` for the exact
+ * gate). The first-run wizard's "zero sources" check runs last, so it sees
+ * whatever sources actually exist by then (real ones from the sweep, or a
+ * freshly auto-imported dev default) rather than flashing open and then
+ * needing to be dismissed (state/README.md's "First-run setup wizard"
+ * section).
+ */
 async function sweepAndLoadPlaylistSources(): Promise<void> {
     await sweepOrphanedPlaylistRows();
     await loadPlaylistSources();
+    await applyDefaultConfigIfFirstRun();
+    openWizardIfNoSources();
 }

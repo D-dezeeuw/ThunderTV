@@ -4,6 +4,7 @@ import { withFakePlatform } from '../core/platform/fake-platform';
 import { clearRows, getRows } from './channel-memory';
 import { ParserClient } from './parser-client';
 import { CHUNK } from './worker-protocol';
+import { settleWorkerModuleCache } from '../shared/testing/worker-settle';
 
 /**
  * Exercises the real `ParserClient` against the real `parser.worker.ts`
@@ -113,18 +114,9 @@ describe('ParserClient', () => {
             );
             stalled.catch(() => undefined);
 
-            // Let the worker's own async module-instantiation settle before
-            // tearing it down. @vitest/web-worker backs every `new Worker()`
-            // for the same module URL with a shared, invalidate-after-import
-            // module cache (real browsers instead give each worker a fully
-            // separate global/module graph). Calling `cancel()` — which
-            // synchronously spins up a second worker for the same module —
-            // before the first worker's own import has invalidated that
-            // cache entry races two concurrent imports of one cache slot,
-            // and the loser never gets its `self.onmessage` wired up. A
-            // real browser has no such shared cache, so this delay only
-            // works around the test harness, not a production race.
-            await new Promise((resolve) => setTimeout(resolve, 10));
+            // See settleWorkerModuleCache()'s own comment for why tearing
+            // a worker down mid-import needs a settle here at all.
+            await settleWorkerModuleCache();
 
             client.cancel();
 

@@ -5,10 +5,17 @@
     "description": "ThunderTV desktop shell (Electron) — the web app in its own window, with the proxy embedded on 127.0.0.1 so every provider request leaves from this machine's own IP.",
     "type": "module",
     "main": "main.mjs",
+    "desktopName": "thundertv.desktop",
     "scripts": {
-        "start": "npm --prefix .. run build && node ../scripts/package-target.mjs && electron ."
+        "start": "npm --prefix .. run build && node ../scripts/package-target.mjs && electron .",
+        "prepackage": "npm --prefix .. run build && node ../scripts/package-target.mjs",
+        "package": "npm run prepackage && electron-builder --config ../electron-builder.yml",
+        "package:linux": "npm run prepackage && electron-builder --config ../electron-builder.yml --linux",
+        "package:win": "npm run prepackage && electron-builder --config ../electron-builder.yml --win",
+        "package:mac": "npm run prepackage && electron-builder --config ../electron-builder.yml --mac"
     },
     "devDependencies": {
-        "electron": "38.2.1"
+        "electron": "38.2.1",
+        "electron-builder": "26.15.3"
     }
 }

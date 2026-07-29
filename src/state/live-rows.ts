@@ -1,8 +1,9 @@
 import { groupChannels, toDisplayRows, type GroupedChannel, type GroupingResult } from '../channels/grouping';
+import { getMappingSync } from '../epg/match';
 import { getRows } from '../m3u/channel-memory';
 import type { ChannelRow } from '../m3u/types';
 import { LIVE_STATS, RADIO_COUNT } from './live';
-import { SETTINGS_LIVE_COUNTRY, SETTINGS_LIVE_DROP_JUNK, SETTINGS_LIVE_KNOWN_ONLY } from './settings';
+import { SETTINGS_LIVE_COUNTRY, SETTINGS_LIVE_DROP_JUNK, SETTINGS_LIVE_EPG_VERIFIED_ONLY, SETTINGS_LIVE_KNOWN_ONLY } from './settings';
 import { get, replace, set } from './typed';
 
 /**
@@ -23,8 +24,21 @@ let radioRows: ChannelRow[] = [];
 let builtFrom = '';
 let radioBuiltFrom = '';
 
-function optionsKey(country: string, knownOnly: boolean, dropJunk: boolean, sourceRows: number): string {
-    return `${country}|${knownOnly}|${dropJunk}|${sourceRows}`;
+function optionsKey(
+    country: string,
+    knownOnly: boolean,
+    dropJunk: boolean,
+    epgVerifiedOnly: boolean,
+    epgMatchCount: number,
+    sourceRows: number,
+): string {
+    return `${country}|${knownOnly}|${dropJunk}|${epgVerifiedOnly}|${epgMatchCount}|${sourceRows}`;
+}
+
+/** Channel key → catalog id, from `src/epg/match.ts`'s sync mapping cache for the currently selected country (Feature 31.6.1's `epgMatches` input). */
+function epgMatchesFor(country: string): Map<string, string> {
+    if (!country) return new Map();
+    return new Map(getMappingSync(country).map((m) => [m.channelKey, m.catalogId]));
 }
 
 /**
@@ -37,38 +51,51 @@ export function ensureLiveRows(force = false): void {
     const country = get<string>(SETTINGS_LIVE_COUNTRY) ?? '';
     const knownOnly = get<boolean>(SETTINGS_LIVE_KNOWN_ONLY) ?? false;
     const dropJunk = get<boolean>(SETTINGS_LIVE_DROP_JUNK) ?? true;
+    const epgVerifiedOnly = get<boolean>(SETTINGS_LIVE_EPG_VERIFIED_ONLY) ?? false;
     const rows = getRows();
+    const epgMatches = epgMatchesFor(country);
 
-    const key = optionsKey(country, knownOnly, dropJunk, rows.length);
+    const key = optionsKey(country, knownOnly, dropJunk, epgVerifiedOnly, epgMatches.size, rows.length);
     if (!force && key === builtFrom && displayRows.length > 0) return;
+
+    let result = buildLiveRows(rows, country, knownOnly, dropJunk, epgMatches, epgVerifiedOnly);
+    let strictFellBack = false;
+    let epgFellBack = false;
 
     // Strict mode must never hand back an empty screen. If the curated list
     // matched nothing at all — a provider spelling the catalog has never
     // seen, not an absent channel — fall back to the unfiltered set and say
     // so in the header. A blank list teaches the user nothing; a full list
     // plus "the curated list matched nothing" tells them exactly what broke.
-    let result = buildLiveRows(rows, country, knownOnly, dropJunk);
-    let fellBack = false;
     if (knownOnly && result.channels.length === 0 && rows.length > 0) {
-        const loose = buildLiveRows(rows, country, false, dropJunk);
+        const loose = buildLiveRows(rows, country, false, dropJunk, epgMatches, epgVerifiedOnly);
         if (loose.channels.length > 0) {
-            // Keep the *strict* run's rejected names: the loose run dropped
-            // nothing, so its samples are empty, and those names are the
-            // entire point of the message.
             result = { channels: loose.channels, stats: { ...loose.stats, droppedSamples: result.stats.droppedSamples } };
-            fellBack = true;
+            strictFellBack = true;
         }
     }
+    // Same never-empty-screen rule for the EPG filter — "the catalog hasn't
+    // matched anything yet" (not fetched, wrong country selected) is far
+    // more likely than "every channel is genuinely unverifiable."
+    if (epgVerifiedOnly && result.channels.length === 0 && rows.length > 0) {
+        const loose = buildLiveRows(rows, country, knownOnly, dropJunk, epgMatches, false);
+        if (loose.channels.length > 0) {
+            result = { channels: loose.channels, stats: { ...loose.stats, droppedSamples: result.stats.droppedSamples } };
+            epgFellBack = true;
+        }
+    }
+
     grouped = result.channels;
     displayRows = toDisplayRows(grouped);
     builtFrom = key;
-    publishStats(result, fellBack);
+    publishStats(result, strictFellBack, epgFellBack);
 }
 
 /**
  * The Radio list. Same country and filler filtering, but never `knownOnly`
- * — the curated catalog lists TV channels, so applying it here would empty
- * the list outright rather than narrow it.
+ * or `epgVerifiedOnly` — the curated catalog and the EPG catalog both only
+ * ever describe TV channels, so applying either here would empty the list
+ * outright rather than narrow it.
  */
 export function ensureRadioRows(force = false): void {
     const country = get<string>(SETTINGS_LIVE_COUNTRY) ?? '';
@@ -78,7 +105,7 @@ export function ensureRadioRows(force = false): void {
     // Keyed on the options alone, not on "did we get rows": a source with no
     // stations at all would otherwise re-scan every row on every navigation
     // into Radio, forever.
-    const key = optionsKey(country, false, dropJunk, rows.length);
+    const key = optionsKey(country, false, dropJunk, false, 0, rows.length);
     if (!force && key === radioBuiltFrom) return;
 
     const result = groupChannels(rows, {
@@ -100,6 +127,8 @@ export function buildLiveRows(
     country: string,
     knownOnly: boolean,
     dropJunk: boolean,
+    epgMatches: ReadonlyMap<string, string> = new Map(),
+    epgVerifiedOnly = false,
 ): GroupingResult {
     return groupChannels(rows, {
         // An empty country means "don't filter by country" — passing `''`
@@ -108,18 +137,23 @@ export function buildLiveRows(
         knownOnly,
         dropJunk,
         radio: 'exclude',
+        epgMatches,
+        epgVerifiedOnly,
     });
 }
 
-function publishStats(result: GroupingResult, strictFellBack = false): void {
+function publishStats(result: GroupingResult, strictFellBack = false, epgFellBack = false): void {
     replace(LIVE_STATS, {
         inputRows: result.stats.inputRows,
         channels: result.stats.keptChannels,
         hiddenByCountry: result.stats.droppedByCountry,
         hiddenAsJunk: result.stats.droppedAsJunk,
         hiddenAsUnknown: result.stats.droppedAsUnknown,
+        hiddenByEpg: result.stats.droppedByEpg,
         collapsed: result.stats.collapsedVariants,
+        epgMatched: result.stats.epgMatched,
         strictFellBack,
+        epgFellBack,
         droppedSamples: result.stats.droppedSamples,
     });
 }

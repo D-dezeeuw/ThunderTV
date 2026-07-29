@@ -11,25 +11,32 @@
     gap: var(--space-2);
     padding: var(--space-3);
     border: 1px solid var(--color-border);
-    border-radius: 12px;
-    background: var(--color-surface);
+    border-radius: var(--radius-xl);
+    background: var(--glass-surface);
+    background-image: var(--gradient-panel);
+    backdrop-filter: blur(18px) saturate(1.3);
+    box-shadow:
+        var(--shadow-2),
+        var(--glass-highlight);
 }
 
 .player-shell__video {
     width: 100%;
     max-height: 60vh;
-    border-radius: 8px;
+    border-radius: var(--radius-l);
 }
 
-/* Radio has no picture — the audio element stays mounted (it's the sole
-   attach point src/player/bindings.ts drives) but collapsed out of view in
-   favor of .radio-now-playing's station icon.
+/* Audio-only presentation — Radio, which has no picture at all, and any TV
+   channel the viewer switched to audio-only (`player.audioMode`). The media
+   element stays mounted (it's the sole attach point src/player/bindings.ts
+   drives, and the visualizer's Web Audio source) but collapses out of view
+   in favor of .radio-now-playing's visualizer.
 
    Keyed on the shell's own modifier class, NOT on `:has(.radio-now-playing)`:
    Spektrum's data-if hides by setting `display: none` and leaves the node in
    the tree, so the structural form matched in the Live view as well and
    collapsed the picture to 1x1 there too. */
-.player-shell--radio .player-shell__video {
+.player-shell--audio .player-shell__video {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -37,44 +44,101 @@
     opacity: 0;
 }
 
+/* Fullscreen-friendly visualizer pane: the canvas (src/player/visualizer/)
+   fills the box, the channel name overlays its bottom edge — both stay
+   inside this element on purpose, since the audio-only fullscreen action
+   (player/fullscreen, state/player.actions.ts) targets this pane rather
+   than the (visually collapsed) <video>, so the name stays visible in
+   fullscreen too. */
 .radio-now-playing {
+    position: relative;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-6) var(--space-3);
-}
-
-.radio-now-playing__logo {
-    flex: none;
-    width: 8rem;
-    height: 8rem;
-    display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    border-radius: 12px;
-    background: var(--color-surface-raised);
+    width: 100%;
+    min-height: 40vh;
+    max-height: 70vh;
+    border-radius: var(--radius-l);
     overflow: hidden;
+    background: var(--color-bg);
 }
 
-.radio-now-playing__logo-img {
+.radio-now-playing__canvas {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain;
-}
-
-.radio-now-playing__logo-placeholder {
-    width: 45%;
-    height: 45%;
-    border-radius: 50%;
-    background: var(--color-text-dim);
 }
 
 .radio-now-playing__name {
-    max-width: 100%;
+    position: relative;
+    z-index: 1;
+    max-width: calc(100% - var(--space-6));
+    margin-bottom: var(--space-3);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
     font-size: var(--text-md);
     color: var(--color-text);
     text-align: center;
+}
+
+/* Fullscreen layout. Written out explicitly rather than leaning on the UA
+   `:fullscreen` stylesheet: desktop Chromium/Firefox reset max-height and
+   size the element to the screen for us, but the webOS/Tizen TV browsers
+   this app targets do not reliably do either, which left the shell stuck at
+   its windowed `max-height: 70vh` inside a black screen.
+
+   Radio fullscreens the whole `.player-shell` (state/player.actions.ts), so
+   the visualizer grows to fill while the control bar stays reachable — a TV
+   remote has no dependable Escape key, so the on-screen buttons ARE the way
+   out. Each vendor spelling needs its own rule: one unrecognised selector
+   invalidates an entire selector list. */
+.player-shell:fullscreen {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    background: var(--color-bg);
+}
+
+.player-shell:-webkit-full-screen {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    background: var(--color-bg);
+}
+
+.player-shell:fullscreen .radio-now-playing {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    border-radius: 0;
+}
+
+.player-shell:-webkit-full-screen .radio-now-playing {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    border-radius: 0;
+}
+
+/* The video owns the whole frame when it is the fullscreened element. */
+.player-shell__video:fullscreen {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+}
+
+.player-shell__video:-webkit-full-screen {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
 }
 
 .player-shell__bar {
@@ -104,6 +168,8 @@
     gap: 2px;
     height: 0.85rem;
     flex: none;
+    /* Anchor for the `[data-tip]` tooltip pseudo-element (see below). */
+    position: relative;
 }
 
 .signal__bar {
@@ -173,25 +239,43 @@
 .variants__chip {
     flex: none;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: var(--space-1);
     /* 44px hit target on touch without inflating the visual pill. */
     min-width: 2.25rem;
-    min-height: 2rem;
+    min-height: 2.75rem;
     padding-inline: var(--space-2);
+    padding-block: var(--space-1);
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-l);
     background: var(--color-bg);
     color: var(--color-text-dim);
     font: inherit;
     cursor: pointer;
+    /* Anchor for the `[data-tip]` tooltip pseudo-element (see below). */
+    position: relative;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        border-color var(--dur-1) var(--ease-swift),
+        color var(--dur-1) var(--ease-swift),
+        box-shadow var(--dur-2) var(--ease-swift);
 }
 
-.variants__chip--active {
+.variants__chip:hover {
+    border-color: var(--color-border-strong);
+    background: var(--surface-hover);
+    color: var(--color-text);
+}
+
+.variants__chip--active,
+.variants__chip--active:hover {
     border-color: var(--color-accent);
     background: var(--color-accent);
+    background-image: var(--gradient-accent);
     color: var(--color-bg);
+    box-shadow: var(--glow-accent);
 }
 
 /* Picture tier as lit bars — same idiom as the stream-health signal above,
@@ -231,4 +315,180 @@
    recording still has a picture quality worth choosing between. */
 .variants__catchup {
     flex: none;
+}
+
+/* Always-visible quality caption under the bars — the bars/glyphs read as
+   noise at a glance without a code to anchor them to. `flex-basis: 100%`
+   on a `flex-wrap: wrap` parent is what forces it onto its own line below
+   the bars/icons row, without a nested wrapper element. */
+.variants__chip-caption {
+    flex: 1 0 100%;
+    text-align: center;
+    font-size: 0.625rem;
+    line-height: var(--leading-tight);
+    color: inherit;
+}
+
+/* Audio/subtitle track menus (final audio/subtitle stage). Each popup is
+   anchored to its own trigger button and opens UPWARD (bottom: 100%) —
+   same reasoning as the [data-tip] tooltip below: the dock sits low in the
+   viewport, so opening downward would clip at the bottom edge. */
+.track-menu-anchor {
+    position: relative;
+    display: inline-flex;
+}
+
+.track-menu {
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    width: max-content;
+    min-width: 10rem;
+    max-width: 16rem;
+    max-height: 14rem;
+    overflow-y: auto;
+    margin-bottom: var(--space-2);
+    padding: var(--space-1) 0;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-l);
+    background: var(--glass-strong);
+    background-image: var(--gradient-panel);
+    backdrop-filter: blur(24px) saturate(1.4);
+    box-shadow:
+        var(--shadow-2),
+        var(--glass-highlight);
+    animation: menu-pop var(--dur-2) var(--ease-swift) both;
+}
+
+@keyframes menu-pop {
+    from {
+        transform: translateY(6px) scale(0.98);
+        opacity: 0;
+    }
+}
+
+.track-menu__list {
+    display: flex;
+    flex-direction: column;
+}
+
+.track-menu__item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.track-menu__item:hover,
+.track-menu__item:focus-visible {
+    background: var(--surface-hover);
+}
+
+.track-menu__item--active {
+    background: var(--surface-active);
+    color: var(--color-accent);
+}
+
+.track-menu__label {
+    min-width: 0;
+}
+
+.track-menu__lang {
+    flex: none;
+    color: var(--color-text-dim);
+    font-size: var(--text-xs);
+}
+
+.track-menu__empty {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    color: var(--color-text-dim);
+}
+
+.track-menu__empty-dash {
+    flex: none;
+    padding: 0 var(--space-2);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-s);
+    font-size: var(--text-sm);
+}
+
+.track-menu__empty-message {
+    margin: 0;
+    font-size: var(--text-xs);
+}
+
+/* Instant hover/focus tooltip, replacing native `title`: `title` never
+   appears on touch/TV and lags behind the pointer on desktop. `data-tip`
+   drives a pseudo-element pill instead, shown immediately and positioned
+   ABOVE the element — the dock sits low in the viewport, so a tooltip
+   opening downward would clip at the bottom edge. */
+.variants__chip[data-tip]::after,
+.signal[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-m);
+    background: var(--color-surface-raised);
+    color: var(--color-text);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+    display: none;
+}
+
+.variants__chip[data-tip]:hover::after,
+.variants__chip[data-tip]:focus-visible::after,
+.signal[data-tip]:hover::after,
+.signal[data-tip]:focus-visible::after {
+    display: block;
+}
+
+/* Handoff panel (Phase 38, stone 9). The address is deliberately allowed to
+   wrap and break anywhere: it is base64url, it is long, and it has to be
+   readable — and on a TV, typeable — rather than tidy. */
+.handoff {
+    padding: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+.handoff__message {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text);
+}
+
+.handoff__link {
+    display: block;
+    margin-bottom: var(--space-2);
+    padding: var(--space-2);
+    border-radius: var(--radius-m);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: var(--text-xs);
+    overflow-wrap: anywhere;
+}
+
+.handoff__note {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
 }

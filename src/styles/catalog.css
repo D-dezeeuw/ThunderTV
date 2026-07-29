@@ -1,0 +1,457 @@
+/*
+ * Movies/Series catalog views (Phase 21): header/status readout, the
+ * search bar + scope chips shared by both views' headers, the detail-panel
+ * overlay (poster/plot/seasons/episodes), and episode lines. The category
+ * rail itself is not here — it is channel-list.css's `.groups-panel`,
+ * shared with the Categories view. Token-only, no transitions/animations
+ * (scripts/check-css.mjs enforces both) — mirrors channel-list.css's own
+ * header comment.
+ */
+
+/* ---- Header row (title, count, status) ---- */
+
+.catalog-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-3);
+}
+
+.catalog-header__count,
+.catalog-header__status {
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+}
+
+/* A touch more breathing room for a catalog list versus the denser live
+   channel list — titles/posters read better with a little air. */
+.list-shell--catalog .list-shell__body {
+    padding-top: var(--space-1);
+}
+
+/* ---- Search bar (shared by both views' headers) ---- */
+
+.catalog-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+}
+
+.catalog-search__input {
+    flex: 1 1 14rem;
+    min-width: 0;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-m);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font: inherit;
+    font-size: var(--text-sm);
+}
+
+.catalog-search__counts {
+    display: flex;
+    gap: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+.catalog-search__hint {
+    flex: 1 1 100%;
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+/* ---- Chips (search scopes) ----
+   Categories are NOT chips: they're a vertical rail in the list body, the
+   same `.groups-panel` the Categories view uses (channel-list.css). The
+   horizontal scroller they started as showed about four entries at a time
+   out of the dozens a provider ships, and needed a sideways drag no remote
+   can perform. What's left here is the fixed, four-item search scope row. */
+
+.catalog-chips {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.catalog-chip {
+    flex: none;
+    white-space: nowrap;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        border-color var(--dur-1) var(--ease-swift),
+        box-shadow var(--dur-2) var(--ease-swift),
+        transform var(--dur-1) var(--ease-swift);
+}
+
+.catalog-chip:hover {
+    border-color: var(--color-border-strong);
+    background: var(--surface-hover);
+    transform: translateY(-1px);
+}
+
+.catalog-chip--active,
+.catalog-chip--active:hover {
+    background: var(--color-accent);
+    background-image: var(--gradient-accent);
+    border-color: var(--color-accent);
+    color: var(--color-bg);
+    box-shadow: var(--glow-accent);
+    transform: none;
+}
+
+/* ---- Detail panel — floats over the item list only (list-shell__body has
+   position:relative, channel-list.css), leaving the header/search above it
+   reachable while it's open. ---- */
+
+.catalog-detail {
+    position: absolute;
+    inset: 0;
+    /* ...and the category rail beside it, too: it now lives *inside* the
+       body, so a plain `inset: 0` would bury it and cost the one-click
+       category switch the horizontal strip used to keep. Offset by exactly
+       the rail's own width plus the body's column gap. */
+    inset-inline-start: calc(var(--groups-panel-w) + var(--space-4));
+    z-index: 2;
+    overflow-y: auto;
+    background: var(--glass-strong);
+    background-image: var(--gradient-panel);
+    backdrop-filter: blur(24px) saturate(1.4);
+    box-shadow:
+        var(--shadow-2),
+        var(--glass-highlight);
+    animation: detail-rise var(--dur-3) var(--ease-swift) both;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-l);
+    padding: var(--space-4);
+}
+
+.catalog-detail__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-width: 40rem;
+}
+
+/* Fixed box regardless of load state — no layout shift once the image
+   resolves, same "logo-box" principle as channel-row__logo. */
+.catalog-detail__poster {
+    flex: none;
+    width: 120px;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-m);
+    background: var(--color-surface-raised);
+    overflow: hidden;
+}
+
+.catalog-detail__poster-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.catalog-detail__poster-placeholder {
+    display: block;
+    width: 40%;
+    height: 40%;
+    border-radius: var(--radius-s);
+    background: var(--color-border);
+}
+
+.catalog-detail__title {
+    margin: 0;
+    font-size: var(--text-lg);
+    line-height: var(--leading-tight);
+}
+
+.catalog-detail__meta {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+}
+
+.catalog-detail__plot {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+}
+
+.catalog-detail__empty {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+}
+
+.catalog-detail__actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+/* ---- Seasons/episodes (Series detail only) ----
+   One flat data-each over series.detail.rows (season-header rows and
+   episode rows interleaved, state/series-rows.ts's buildSeriesDetailRows())
+   — .catalog-detail-row is the single cloned row template; data-if inside
+   it swaps between the two visual kinds. Spacing that used to come from
+   .catalog-seasons' own gap (grouping whole season blocks) now lives on
+   .catalog-season__title's top margin instead, since every row is a
+   sibling of every other row, not nested inside a per-season container. */
+
+.catalog-seasons {
+    display: flex;
+    flex-direction: column;
+}
+
+.catalog-detail-row {
+    display: contents;
+}
+
+.catalog-season__title {
+    margin: var(--space-4) 0 var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.catalog-episode {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    padding: var(--space-2) 0;
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+
+.catalog-episode:hover {
+    background: var(--surface-hover);
+}
+
+.catalog-episode__num {
+    flex: none;
+    width: 2.5rem;
+    color: var(--color-text-dim);
+    font-size: var(--text-xs);
+}
+
+.catalog-episode__title {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-sm);
+}
+
+.catalog-episode__duration {
+    flex: none;
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
+/* ---- Narrow screens ---- */
+
+@media (max-width: 700px) {
+    /* The body stacks (channel-list.css), so the rail sits above the items
+       rather than beside them — a bounded, scrollable strip instead of the
+       `flex: 1` half-and-half split the channel drill-down wants, since the
+       catalog has no drill-down to hide one of the two behind. */
+    .list-shell--catalog .groups-panel {
+        flex: none;
+        max-height: 12rem;
+    }
+
+    /* Nothing is to the rail's inline-start once they're stacked. */
+    .catalog-detail {
+        inset-inline-start: 0;
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Downloads (movies only — a live channel has no end to download to).
+
+   Two surfaces share one bar style: the in-place progress row that replaces
+   the Download button inside the movie detail panel, and the standing queue
+   panel. The queue is fixed rather than in-flow because a transfer outlives
+   the view that started it — closing the detail or navigating to Live must
+   not take a running download off screen with it.
+   --------------------------------------------------------------------------- */
+
+.btn--quiet {
+    background: transparent;
+    border-color: transparent;
+    color: var(--color-text-dim);
+}
+.btn--quiet:hover {
+    color: var(--color-text);
+    border-color: var(--color-border);
+}
+
+.download-progress {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+}
+
+/* `appearance: none` plus explicit ::-webkit-/::-moz- fills: the UA default
+   bar is a different colour on every platform, and this one has to read as
+   part of the app in both themes. */
+.download-progress__bar {
+    appearance: none;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 6px;
+    border: none;
+    border-radius: 3px;
+    background: var(--color-border);
+    color: var(--color-accent);
+}
+.download-progress__bar::-webkit-progress-bar {
+    background: var(--color-border);
+    border-radius: 3px;
+}
+.download-progress__bar::-webkit-progress-value {
+    background: var(--color-accent);
+    border-radius: 3px;
+}
+.download-progress__bar::-moz-progress-bar {
+    background: var(--color-accent);
+    border-radius: 3px;
+}
+
+.download-progress__label {
+    flex: 0 0 auto;
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+    /* Reserves room for the widest "1023 MB / 1.8 GB" the label ever holds,
+       so the bar beside it does not resize on every progress tick. */
+    min-width: 9rem;
+    text-align: right;
+}
+
+.download-queue {
+    position: fixed;
+    right: var(--space-4);
+    bottom: var(--space-4);
+    z-index: 40;
+    width: min(26rem, calc(100vw - var(--space-6)));
+    padding: var(--space-3);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-l);
+    background: var(--glass-strong);
+    background-image: var(--gradient-panel);
+    backdrop-filter: blur(24px) saturate(1.4);
+    box-shadow:
+        var(--shadow-2),
+        var(--glass-highlight);
+    animation: detail-rise var(--dur-3) var(--ease-swift) both;
+}
+
+@keyframes detail-rise {
+    from {
+        transform: translateY(10px);
+        opacity: 0;
+    }
+}
+
+.download-queue__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
+.download-queue__title {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.download-queue__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    /* A capped queue (DOWNLOAD_QUEUE_CAP) still has to fit on a laptop
+       alongside the player, so the panel scrolls rather than growing. */
+    max-height: 40vh;
+    overflow-y: auto;
+}
+
+.download-queue__row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-2) 0;
+    border-top: 1px solid var(--color-border);
+}
+.download-queue__row:first-child {
+    border-top: none;
+}
+
+.download-queue__name {
+    font-size: var(--text-sm);
+}
+
+/* The bar and the status line share the full width under the title, so a
+   long provider title never squeezes the progress into nothing. */
+.download-queue__row .download-progress__bar {
+    grid-column: 1 / -1;
+}
+
+.download-queue__status {
+    grid-column: 1 / -1;
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+}
+
+/* An episode row is now three things side by side — the play button, the
+   download control, and (while transferring) the progress row — so the row
+   itself has to lay them out rather than being a single full-width button. */
+.catalog-detail-row:has(.catalog-episode) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.catalog-episode__saved {
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+}
+
+/* Spans both columns so a long title never squeezes the bar to nothing —
+   same reasoning as the queue panel's own rows. */
+.catalog-detail-row .download-progress {
+    grid-column: 1 / -1;
+    margin-top: 0;
+}
+
+/* The stale-cache notice. Deliberately not styled as an error — the catalog
+   under it works, it is just not live. */
+.catalog-offline {
+    margin: 0;
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+    border-bottom: 1px solid var(--color-border);
+}

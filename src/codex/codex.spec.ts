@@ -1,0 +1,261 @@
+import { afterEach, describe, expect, it } from 'vitest';
+import { withFakePlatform } from '../core/platform/fake-platform';
+import { getMappingSync, resetMappingCacheForTests } from '../epg/match';
+import { observe, primeHealthCache, resetHealthCacheForTests } from '../health/store';
+import { importCodex } from './apply';
+import { buildCodex } from './build';
+import { canonicalize, isCodexDocument, type CodexDocument } from './format';
+import { fingerprint, loadOrCreateIdentity, verifyDocument } from './signing';
+
+const URL_A = 'http://p.example/live/bob/hunter2/1.ts';
+const URL_B = 'http://p.example/live/bob/hunter2/2.ts';
+
+afterEach(() => {
+    resetHealthCacheForTests();
+    resetMappingCacheForTests();
+});
+
+/** Seeds one country mapping plus some health, then exports. */
+async function seedAndBuild(storage: { set: (k: string, v: unknown) => unknown }): Promise<CodexDocument> {
+    await storage.set('epg.mapping.NL', {
+        savedAt: 1_000,
+        matches: [{ channelKey: 'NPO 1', catalogId: 'NPO 1.nl', method: 'name' }],
+    });
+    observe(URL_A, 'ok', 400);
+    observe(URL_B, 'failed');
+    return buildCodex(['NL']);
+}
+
+describe('canonicalize', () => {
+    it('is insensitive to key insertion order, so two devices sign identical bytes', () => {
+        expect(canonicalize({ b: 1, a: { d: 2, c: 3 } })).toBe(canonicalize({ a: { c: 3, d: 2 }, b: 1 }));
+    });
+
+    it('preserves array order, which the builder has already made deterministic', () => {
+        expect(canonicalize([3, 1, 2])).toBe('[3,1,2]');
+    });
+});
+
+describe('building a Codex', () => {
+    it('round-trips: what is exported verifies, and re-imports into an empty device', async () => {
+        let exported: CodexDocument | undefined;
+
+        await withFakePlatform({}, async ({ storage }) => {
+            exported = await seedAndBuild(storage);
+            expect(await verifyDocument(exported)).toBe(true);
+        });
+
+        resetHealthCacheForTests();
+
+        await withFakePlatform({}, async ({ storage }) => {
+            const result = await importCodex(JSON.stringify(exported));
+            expect(result.ok).toBe(true);
+            expect(result.identityApplied).toBe(1);
+            expect(result.healthApplied).toBe(2);
+
+            const mapping = await storage.get<{ matches: { catalogId: string }[] }>('epg.mapping.NL');
+            expect(mapping?.matches[0]?.catalogId).toBe('NPO 1.nl');
+            expect(await storage.getAll('streamHealth')).toHaveLength(2);
+        });
+    });
+
+    it('never contains a credential, even though the health it describes came from credentialed URLs', async () => {
+        await withFakePlatform({}, async ({ storage }) => {
+            const document = await seedAndBuild(storage);
+            const serialized = JSON.stringify(document);
+            expect(serialized).not.toContain('bob');
+            expect(serialized).not.toContain('hunter2');
+            // ...and the feeds are still individually identified.
+            expect(document.body.health).toHaveLength(2);
+        });
+    });
+
+    it('is human-readable JSON with the claims sorted deterministically', async () => {
+        await withFakePlatform({}, async ({ storage }) => {
+            const a = await seedAndBuild(storage);
+            const b = await buildCodex(['NL']);
+            expect(a.body.health.map((c) => c.streamKey)).toEqual(b.body.health.map((c) => c.streamKey));
+            expect([...a.body.health.map((c) => c.streamKey)]).toEqual(
+                [...a.body.health.map((c) => c.streamKey)].sort(),
+            );
+        });
+    });
+
+    it('reuses the same author identity across exports, so a recipient can recognise the source', async () => {
+        await withFakePlatform({}, async ({ storage }) => {
+            const first = await seedAndBuild(storage);
+            const second = await buildCodex(['NL']);
+            expect(second.body.author.id).toBe(first.body.author.id);
+            expect(first.body.author.id).toBe(await fingerprint(first.body.author.publicKey));
+        });
+    });
+
+    it('never puts the private key in the document', async () => {
+        await withFakePlatform({}, async ({ storage }) => {
+            const document = await seedAndBuild(storage);
+            // A JWK private key carries a `d` parameter; the public one does not.
+            expect(document.body.author.publicKey.d).toBeUndefined();
+            expect(JSON.stringify(document)).not.toContain('"d"');
+        });
+    });
+});
+
+describe('importing a Codex', () => {
+    it('rejects a tampered body, even though the signature itself is untouched', async () => {
+        await withFakePlatform({}, async ({ storage }) => {
+            const document = await seedAndBuild(storage);
+            const tampered: CodexDocument = {
+                ...document,
+                body: {
+                    ...document.body,
+                    identity: [{ ...document.body.identity[0]!, catalogId: 'ATTACKER.nl' }],
+                },
+            };
+            const result = await importCodex(JSON.stringify(tampered));
+            expect(result.ok).toBe(false);
+            expect(result.problem).toBe('bad-signature');
+        });
+    });
+
+    it('rejects a document signed by a different key than the one it carries', async () => {
+        await withFakePlatform({}, async ({ storage }) => {
+            const document = await seedAndBuild(storage);
+            // Swap in a fresh, unrelated public key.
+            await storage.set('codex.identity.privateKey', undefined);
+            await storage.set('codex.identity.publicKey', undefined);
+            const other = await loadOrCreateIdentity();
+            const swapped: CodexDocument = {
+                ...document,
+                body: { ...document.body, author: other.author },
+            };
+            expect(await verifyDocument(swapped)).toBe(false);
+        });
+    });
+
+    it('classifies a non-JSON file and a non-Codex JSON file distinctly', async () => {
+        await withFakePlatform({}, async () => {
+            expect((await importCodex('not json at all')).problem).toBe('not-json');
+            expect((await importCodex('{"hello":"world"}')).problem).toBe('not-a-codex');
+        });
+    });
+
+    it('merges health rather than overwriting it — two people\'s evidence is more evidence', async () => {
+        let exported: CodexDocument | undefined;
+        await withFakePlatform({}, async ({ storage }) => {
+            observe(URL_A, 'ok', 400);
+            observe(URL_A, 'ok', 400);
+            exported = await buildCodex([]);
+            void storage;
+        });
+
+        resetHealthCacheForTests();
+
+        await withFakePlatform({}, async () => {
+            // This device only ever saw one success for the same feed.
+            observe(URL_A, 'ok', 900);
+            await Promise.resolve();
+            await importCodex(JSON.stringify(exported));
+            await primeHealthCache();
+
+            const { allHealthRecords } = await import('../health/store');
+            const record = allHealthRecords().find((r) => r.key.endsWith('/1.ts'));
+            // Took the stronger of the two, not the local one.
+            expect(record?.okWeight).toBeGreaterThan(1);
+        });
+    });
+
+    it('does not let an older imported mapping undo a newer local one', async () => {
+        let exported: CodexDocument | undefined;
+        await withFakePlatform({}, async ({ storage }) => {
+            await storage.set('epg.mapping.NL', {
+                savedAt: 1_000,
+                matches: [{ channelKey: 'NPO 1', catalogId: 'OLD.nl', method: 'name' }],
+            });
+            exported = await buildCodex(['NL']);
+        });
+
+        await withFakePlatform({}, async ({ storage }) => {
+            await storage.set('epg.mapping.NL', {
+                savedAt: 9_999_999,
+                matches: [{ channelKey: 'NPO 1', catalogId: 'NEWER-LOCAL.nl', method: 'tvg-id' }],
+            });
+            await importCodex(JSON.stringify(exported));
+
+            const mapping = await storage.get<{ matches: { catalogId: string }[] }>('epg.mapping.NL');
+            expect(mapping?.matches[0]?.catalogId).toBe('NEWER-LOCAL.nl');
+        });
+    });
+
+    it('is a no-op the second time — the merge is idempotent end to end', async () => {
+        let exported: CodexDocument | undefined;
+        await withFakePlatform({}, async ({ storage }) => {
+            exported = await seedAndBuild(storage);
+        });
+
+        resetHealthCacheForTests();
+        resetMappingCacheForTests();
+
+        await withFakePlatform({}, async ({ storage }) => {
+            const first = await importCodex(JSON.stringify(exported));
+            expect(first.identityApplied + first.healthApplied).toBeGreaterThan(0);
+            const after = JSON.stringify(await storage.getAll('streamHealth'));
+
+            // Re-importing a file you already took must not inflate anything
+            // or report phantom work — the property that rules out summing.
+            const second = await importCodex(JSON.stringify(exported));
+            expect(second).toMatchObject({ ok: true, identityApplied: 0, healthApplied: 0 });
+            expect(JSON.stringify(await storage.getAll('streamHealth'))).toBe(after);
+        });
+    });
+
+    it('records every contributor to a health claim, so one can be pruned later', async () => {
+        let exported: CodexDocument | undefined;
+        let remoteAuthor = '';
+        await withFakePlatform({}, async () => {
+            observe(URL_A, 'ok', 400);
+            exported = await buildCodex([]);
+            remoteAuthor = exported.body.author.id;
+        });
+
+        resetHealthCacheForTests();
+
+        await withFakePlatform({}, async ({ storage }) => {
+            observe(URL_A, 'ok', 900);
+            await Promise.resolve();
+            await importCodex(JSON.stringify(exported));
+
+            const rows = await storage.getAll('streamHealth');
+            // Both sides are named: this device's own evidence and theirs.
+            expect(rows[0]?.authors).toEqual([remoteAuthor, 'local'].sort());
+        });
+    });
+
+    it('makes imported identity claims visible to the channel list without a reload', async () => {
+        let exported: CodexDocument | undefined;
+        await withFakePlatform({}, async ({ storage }) => {
+            exported = await seedAndBuild(storage);
+        });
+
+        resetHealthCacheForTests();
+        resetMappingCacheForTests();
+
+        await withFakePlatform({}, async () => {
+            await importCodex(JSON.stringify(exported));
+            // `getMappingSync` is a module-memory mirror the list reads on its
+            // synchronous rebuild; a storage-only write would leave it empty
+            // until the next boot.
+            expect(getMappingSync('NL').map((match) => match.catalogId)).toEqual(['NPO 1.nl']);
+        });
+    });
+});
+
+describe('isCodexDocument', () => {
+    it('accepts a real document and rejects near-misses', async () => {
+        await withFakePlatform({}, async ({ storage }) => {
+            expect(isCodexDocument(await seedAndBuild(storage))).toBe(true);
+        });
+        expect(isCodexDocument(null)).toBe(false);
+        expect(isCodexDocument({ body: {}, signature: 'x' })).toBe(false);
+        expect(isCodexDocument({ signature: 'x' })).toBe(false);
+    });
+});

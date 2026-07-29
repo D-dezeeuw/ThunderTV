@@ -11,10 +11,12 @@ value, only picked up by the TypeScript compiler.
   resolve `import ... from 'spektrum'` against otherwise. **Keep this in
   lockstep with `scripts/spektrum-version.json`'s pin** — bump both together
   when the CDN version changes, or types silently drift from the real API.
-- `platform.d.ts` — declares `window.electron?: unknown`. Presence, not
-  shape, is all `createPlatform()` needs to pick the Electron vs. web
-  adapter (`src/core/platform/create-platform.ts`); the real preload bridge
-  type arrives in Phase 28.
+- `platform.d.ts` — declares `window.electron?: ElectronBridge`. Both
+  presence (picks the Electron vs. web adapter in
+  `src/core/platform/create-platform.ts`) and shape (`proxyOrigin`,
+  `appVersion`) matter now; the shared contract lives in
+  `src/core/platform/electron-bridge.types.ts` and is mirrored by
+  `desktop/preload.cjs`.
 
 ## Rule
 

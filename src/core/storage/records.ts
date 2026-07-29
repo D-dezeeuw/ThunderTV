@@ -97,6 +97,68 @@ export interface EpgProgramRecord {
 }
 
 /**
+ * One canonical channel identity derived from a country's XMLTV feed
+ * (`src/epg/catalog.ts`) — Phase 31's country catalog. `id` is the feed's
+ * own `<channel id>` (e.g. `24 Kitchen.nl`), kept as the join key for
+ * `EpgChannelRecord`/`EpgProgramRecord` and any future Codex export;
+ * `displayName` is `id` with the registry's country suffix stripped;
+ * `normKey` is `normalizeKey(displayName)` (`src/channels/name-parse.ts`),
+ * computed once at derivation time so the matcher never re-derives it.
+ * Re-parseable cache, like `channels`/`epgPrograms` — no `v` field.
+ */
+export interface EpgCatalogRecord {
+    country: string;
+    id: string;
+    displayName: string;
+    normKey: string;
+    icon: string | null;
+    sourceFile: string;
+}
+
+/**
+ * Accumulated playback evidence for one stream (Phase 33, stone 3), keyed
+ * by `src/health/stream-key.ts`'s credential-free fingerprint — never a raw
+ * URL, since this table is both persisted and a Codex export candidate.
+ * `okWeight`/`failWeight` are decay-weighted counts rebased to `updatedAt`
+ * on every write (`src/health/score.ts`), so a read at any later time needs
+ * no history walk. Re-derivable in principle but expensive to relearn (it
+ * costs the user real failed clicks), so unlike `channels`/`epgPrograms`
+ * this is treated as durable data rather than a cache.
+ */
+export interface StreamHealthRecord {
+    key: string;
+    okWeight: number;
+    failWeight: number;
+    updatedAt: number;
+    ttffMs: number | null;
+    lastOutcome: 'ok' | 'failed';
+    lastAt: number;
+    /**
+     * Every Codex author whose evidence is folded into this record, plus
+     * `'local'` for this device's own observations (Phase 36). Absent on a
+     * record no merge has touched — the health join is `max`, so a merged
+     * record is genuinely several people's evidence at once and the set is
+     * what lets stone 10 prune a contributor without discarding the rest.
+     * Never exported: a Codex claim carries only its signer.
+     */
+    authors?: readonly string[];
+    /**
+     * This device's own evidence, kept apart from the merged weights above
+     * (Phase 37). The health join is `max`, which cannot be run backwards —
+     * so pruning a bad contributor and rebuilding needs a record of what we
+     * actually saw ourselves, not a maximum that already includes them.
+     * Absent on a record no merge has touched, where the row *is* the local
+     * evidence.
+     */
+    local?: {
+        okWeight: number;
+        failWeight: number;
+        ttffMs: number | null;
+        updatedAt: number;
+    };
+}
+
+/**
  * Denormalized snapshot (Feature 04.5.7, shape finalized by Feature 08.8.3
  * per masterplan §5/§9) — playable and renderable without the source
  * playlist loaded. `sourceId` lets a favorite be traced back to (and
@@ -112,6 +174,14 @@ export interface FavoriteRecord {
     group: string | null;
     sourceId: string;
     addedAt: number;
+    /**
+     * Audio-only station. Optional and additive over rows already stored
+     * without it — an entry from before this existed simply reads as
+     * television, the same contract as `ActiveChannelSnapshot.radio`
+     * (`src/state/records.ts`). Carried so the Starred view can send a
+     * station back to Radio, the only view with a layout for one.
+     */
+    radio?: boolean;
 }
 
 /** Same denormalized shape as favorites, capped to the most recent 100 by the state layer (Phase 05). */
@@ -132,7 +202,7 @@ export interface RecentRecord {
  * methods instead of table ops; mixing the two is a review reject.
  */
 export type TableName =
-    'playlists' | 'channels' | 'groups' | 'epgChannels' | 'epgPrograms' | 'favorites' | 'recent';
+    'playlists' | 'channels' | 'groups' | 'epgChannels' | 'epgPrograms' | 'epgCatalog' | 'streamHealth' | 'favorites' | 'recent';
 
 export interface TableRowMap {
     playlists: PlaylistRecord;
@@ -140,6 +210,8 @@ export interface TableRowMap {
     groups: GroupRecord;
     epgChannels: EpgChannelRecord;
     epgPrograms: EpgProgramRecord;
+    epgCatalog: EpgCatalogRecord;
+    streamHealth: StreamHealthRecord;
     favorites: FavoriteRecord;
     recent: RecentRecord;
 }

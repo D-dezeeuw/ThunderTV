@@ -5,17 +5,31 @@ import { setValue } from 'spektrum';
  * is written from exactly one place — `applyRoute()` below — so no other
  * module may set that key (Feature 02.4.3).
  */
-export type Route = 'live' | 'radio' | 'categories' | 'sources' | 'favorites' | 'recent' | 'guide' | 'connect';
+export type Route =
+    | 'live'
+    | 'radio'
+    | 'movies'
+    | 'series'
+    | 'categories'
+    | 'sources'
+    | 'favorites'
+    | 'recent'
+    | 'guide'
+    | 'connect'
+    | 'handoff';
 
 export const ROUTE_VALUES: readonly Route[] = [
     'live',
     'radio',
+    'movies',
+    'series',
     'categories',
     'sources',
     'favorites',
     'recent',
     'guide',
     'connect',
+    'handoff',
 ];
 
 /**
@@ -65,6 +79,10 @@ function applyRoute(): void {
     // reads or logs its params here — Phase 14 consumes-and-scrubs the
     // fragment via history.replaceState before any request. This router
     // only exposes parseHash()'s params to callers; it never persists them.
+    // "handoff" (Phase 38, stone 9) follows the identical discipline in
+    // `src/state/handoff.actions.ts`: read once, scrub, then act. Neither
+    // route has a view of its own — both hand off to a real one — so
+    // resolving them here just parks `ui.activeView` until that happens.
     setValue('ui.activeView', resolveRoute(path));
 }
 

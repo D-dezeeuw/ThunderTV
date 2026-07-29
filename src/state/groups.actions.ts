@@ -1,7 +1,6 @@
 import { defineFn, setValue } from 'spektrum';
 import { getRows } from '../m3u/channel-memory';
 import { resetGroupCache, rowsForGroup } from '../ui/groups';
-import { scrollToIndex } from '../ui/virtual-list';
 import { setDisplayedRows } from './list-rows';
 import { UI_ACTIVE_GROUP, UI_VIEW_MODE } from './list-state';
 import { saveListState } from './list-state-sync';
@@ -17,12 +16,6 @@ import { get } from './typed';
  * saved list state in the same call (Feature 08.5.5/08.5.7).
  */
 export function registerGroupActions(): void {
-    defineFn('list/jumpToGroup', (el) => {
-        const firstIndex = el.dataset['firstIndex'];
-        if (firstIndex === undefined) return;
-        scrollToIndex(Number(firstIndex));
-    });
-
     defineFn('list/expandGroup', (el) => {
         const name = el.dataset['group'];
         if (name === undefined) return;
@@ -35,6 +28,14 @@ export function registerGroupActions(): void {
 
     defineFn('list/handleGroupsPanelKeydown', (_el, _state, _delta, _value, event) => {
         handleGroupsPanelKeydown(event as KeyboardEvent | undefined);
+    });
+
+    // Movies/Series use the same `.groups-panel` rail with a catalog's
+    // categories behind it, so they share its focus movement — but not its
+    // Backspace/← escape, which republishes *channel* rows and would be
+    // nonsense from a catalog view.
+    defineFn('list/handleCategoryRailKeydown', (_el, _state, _delta, _value, event) => {
+        handleCategoryRailKeydown(event as KeyboardEvent | undefined);
     });
 }
 
@@ -64,34 +65,41 @@ export function resetGroupsForSourceSwitch(): void {
 }
 
 /**
- * Feature 08.5.8: ↑/↓ moves native DOM focus between sibling group buttons
+ * Feature 08.5.8: ↑/↓ moves native DOM focus between sibling rail buttons
  * (no new Spektrum state needed — the browser's own focus is the cursor),
- * Enter activates the focused button's own click binding, Backspace/←
- * returns to "All channels".
+ * Enter activates the focused button's own click binding. This half is
+ * about the *rail component*, not about channel groups, so the Movies/
+ * Series category rails share it verbatim. Returns true when it consumed
+ * the key.
  */
-export function handleGroupsPanelKeydown(event: KeyboardEvent | undefined): void {
-    if (!event) return;
+export function handleCategoryRailKeydown(event: KeyboardEvent | undefined): boolean {
+    if (!event) return false;
     const active = document.activeElement as HTMLElement | null;
     switch (event.key) {
         case 'ArrowDown': {
             event.preventDefault();
             (active?.nextElementSibling as HTMLElement | null)?.focus();
-            return;
+            return true;
         }
         case 'ArrowUp': {
             event.preventDefault();
             (active?.previousElementSibling as HTMLElement | null)?.focus();
-            return;
+            return true;
         }
         case 'Enter':
             active?.click();
-            return;
-        case 'Backspace':
-        case 'ArrowLeft':
-            event.preventDefault();
-            showAllChannels();
-            return;
+            return true;
         default:
-            return;
+            return false;
+    }
+}
+
+/** The groups panel's own keyboard: the shared rail movement above, plus Backspace/← as "back to All channels" — a channel-list escape the catalog rails deliberately don't get. */
+export function handleGroupsPanelKeydown(event: KeyboardEvent | undefined): void {
+    if (!event) return;
+    if (handleCategoryRailKeydown(event)) return;
+    if (event.key === 'Backspace' || event.key === 'ArrowLeft') {
+        event.preventDefault();
+        showAllChannels();
     }
 }

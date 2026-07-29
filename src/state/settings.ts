@@ -1,6 +1,13 @@
 import { setValue } from 'spektrum';
+import type { Locale } from '../app/strings';
 
 export const SETTINGS_PROXY_TEMPLATE = 'settings.proxyTemplate';
+/**
+ * UI language (Feature 02.6.7 i18n follow-up) — persisted, switchable live
+ * from Settings → User. Default `'en'`, the baseline locale
+ * `strings.en.ts` ships as the app's original copy.
+ */
+export const SETTINGS_LOCALE = 'settings.locale';
 /** Feature 07.8.3 validation feedback — transient, never persisted. */
 export const SETTINGS_PROXY_ERROR = 'settings.proxyError';
 /** Feature 07.8.3 success feedback — transient, never persisted; cleared the moment the field is edited again. */
@@ -86,6 +93,9 @@ export const SETTINGS_NAV_RADIO = 'settings.nav.radio';
 export const SETTINGS_NAV_STARRED = 'settings.nav.starred';
 export const SETTINGS_NAV_RECENTS = 'settings.nav.recents';
 export const SETTINGS_NAV_GUIDE = 'settings.nav.guide';
+/** Movies/Series rail entries (Phase 21 follow-up) — same default-on, same toggle mechanism as every other rail button above. */
+export const SETTINGS_NAV_MOVIES = 'settings.nav.movies';
+export const SETTINGS_NAV_SERIES = 'settings.nav.series';
 
 /**
  * Live-view filter. `liveCountry` is the country token kept from the
@@ -103,9 +113,29 @@ export const SETTINGS_LIVE_COUNTRY = 'settings.liveCountry';
 export const SETTINGS_LIVE_KNOWN_ONLY = 'settings.liveKnownOnly';
 /** Drop event-slot placeholders, separators and adult rows. On by default. */
 export const SETTINGS_LIVE_DROP_JUNK = 'settings.liveDropJunk';
+/**
+ * Strict mode — keep only channels the EPG country catalog matched
+ * (Phase 31, `src/epg/match.ts`). **Off** by default: a channel not yet
+ * matched is far more often "the catalog hasn't caught up" (feed not
+ * fetched yet, alias the matcher doesn't know) than "this channel doesn't
+ * exist," and hiding it on that guess is the wrong default. Never applies
+ * to Radio, which the catalog says nothing about.
+ */
+export const SETTINGS_LIVE_EPG_VERIFIED_ONLY = 'settings.liveEpgVerifiedOnly';
 
 /** Countries offered in Settings. Anything else can still be typed into the field — this is a shortlist, not a validation gate. */
 export const LIVE_COUNTRIES: readonly string[] = ['NL', 'BE', 'DE', 'UK', 'FR', 'ES', 'US'];
+
+/** Preferred audio track language (an ISO 639-1 code, e.g. `'en'`/`'nl'`) — Settings → Playback. Resolution against what a stream actually offers happens in the player layer; this is only the user's stated preference. */
+export const SETTINGS_AUDIO_LANGUAGE = 'settings.audioLanguage';
+/**
+ * Preferred subtitle language — `'auto'` (default: derive from
+ * `settings.liveCountry` at use time, never resolved here) or `'off'`, or an
+ * explicit ISO 639-1 code. See `subtitle-language.ts`'s
+ * `resolveSubtitleLanguage()` for the pure country → language mapping this
+ * setting's `'auto'` value defers to.
+ */
+export const SETTINGS_SUBTITLE_LANGUAGE = 'settings.subtitleLanguage';
 
 /**
  * Mirrors the stored settings blob (masterplan §6.3's `settings` key
@@ -118,6 +148,7 @@ export const LIVE_COUNTRIES: readonly string[] = ['NL', 'BE', 'DE', 'UK', 'FR', 
  * the rest of the Settings UI; the Streaming section is real starting here.
  */
 export interface SettingsState {
+    locale: Locale;
     proxyTemplate: string | null;
     proxyError: string | null;
     proxySaved: boolean;
@@ -134,6 +165,9 @@ export interface SettingsState {
     liveCountry: string;
     liveKnownOnly: boolean;
     liveDropJunk: boolean;
+    liveEpgVerifiedOnly: boolean;
+    audioLanguage: string;
+    subtitleLanguage: string;
 }
 
 export interface NavVisibility {
@@ -143,9 +177,12 @@ export interface NavVisibility {
     starred: boolean;
     recents: boolean;
     guide: boolean;
+    movies: boolean;
+    series: boolean;
 }
 
 export const SETTINGS_DEFAULTS: SettingsState = {
+    locale: 'en',
     proxyTemplate: null,
     proxyError: null,
     proxySaved: false,
@@ -158,13 +195,17 @@ export const SETTINGS_DEFAULTS: SettingsState = {
     exportState: 'idle',
     playbackEngine: 'mpegts',
     buffering: 'auto',
-    nav: { sources: false, categories: true, radio: true, starred: true, recents: true, guide: true },
+    nav: { sources: false, categories: true, radio: true, starred: true, recents: true, guide: true, movies: true, series: true },
     liveCountry: 'NL',
     liveKnownOnly: true,
     liveDropJunk: true,
+    liveEpgVerifiedOnly: false,
+    audioLanguage: 'en',
+    subtitleLanguage: 'auto',
 };
 
 export function initSettingsState(): void {
+    setValue(SETTINGS_LOCALE, SETTINGS_DEFAULTS.locale);
     setValue(SETTINGS_PROXY_TEMPLATE, SETTINGS_DEFAULTS.proxyTemplate);
     setValue(SETTINGS_PROXY_ERROR, SETTINGS_DEFAULTS.proxyError);
     setValue(SETTINGS_PROXY_SAVED, SETTINGS_DEFAULTS.proxySaved);
@@ -183,7 +224,12 @@ export function initSettingsState(): void {
     setValue(SETTINGS_NAV_STARRED, SETTINGS_DEFAULTS.nav.starred);
     setValue(SETTINGS_NAV_RECENTS, SETTINGS_DEFAULTS.nav.recents);
     setValue(SETTINGS_NAV_GUIDE, SETTINGS_DEFAULTS.nav.guide);
+    setValue(SETTINGS_NAV_MOVIES, SETTINGS_DEFAULTS.nav.movies);
+    setValue(SETTINGS_NAV_SERIES, SETTINGS_DEFAULTS.nav.series);
     setValue(SETTINGS_LIVE_COUNTRY, SETTINGS_DEFAULTS.liveCountry);
     setValue(SETTINGS_LIVE_KNOWN_ONLY, SETTINGS_DEFAULTS.liveKnownOnly);
     setValue(SETTINGS_LIVE_DROP_JUNK, SETTINGS_DEFAULTS.liveDropJunk);
+    setValue(SETTINGS_LIVE_EPG_VERIFIED_ONLY, SETTINGS_DEFAULTS.liveEpgVerifiedOnly);
+    setValue(SETTINGS_AUDIO_LANGUAGE, SETTINGS_DEFAULTS.audioLanguage);
+    setValue(SETTINGS_SUBTITLE_LANGUAGE, SETTINGS_DEFAULTS.subtitleLanguage);
 }

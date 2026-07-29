@@ -12,6 +12,30 @@
 /** The grid shows a rolling 4h window — enough to see "now" plus a few upcoming slots without needing horizontal scroll UI. */
 export const GUIDE_WINDOW_MS = 4 * 60 * 60 * 1000;
 
+/**
+ * One step of the prev/next time controls (Phase 32). Half a window rather
+ * than a whole one: a full-window jump leaves no shared programmes between
+ * the before and after states, so the eye loses its place; a half-window
+ * step always keeps the previous view's second half on screen as an anchor.
+ */
+export const GUIDE_SHIFT_MS = GUIDE_WINDOW_MS / 2;
+
+/**
+ * How far back and forward the controls may travel. Backward is capped at
+ * the programme-retention horizon (`src/epg/prune.ts` deletes anything more
+ * than 24h past its stop, so scrolling further back can only ever show
+ * empty track); forward at 7 days, past any realistic XMLTV feed's own
+ * horizon. Both are clamped rather than disabled so the buttons never
+ * become dead ends the user has to guess about.
+ */
+export const GUIDE_MIN_OFFSET_MS = -24 * 60 * 60 * 1000;
+export const GUIDE_MAX_OFFSET_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function clampGuideOffset(offsetMs: number): number {
+    if (!Number.isFinite(offsetMs)) return 0;
+    return Math.min(GUIDE_MAX_OFFSET_MS, Math.max(GUIDE_MIN_OFFSET_MS, offsetMs));
+}
+
 const HALF_HOUR_MS = 30 * 60 * 1000;
 
 /** Floors a timestamp to the previous half-hour mark, so the window's left edge sits on a stable grid line instead of drifting with the exact "now" millisecond. */
@@ -59,4 +83,14 @@ export function formatClockTime(ms: number, locale?: string): string {
 
 export function formatTimeRange(startMs: number, stopMs: number, locale?: string): string {
     return `${formatClockTime(startMs, locale)}–${formatClockTime(stopMs, locale)}`;
+}
+
+/**
+ * Weekday + day/month for the window's own date, shown only once the grid
+ * has been shifted off "now" (Phase 32) — while the window tracks the clock
+ * the date is whatever today is, and saying so is noise. Same no-`timeZone`
+ * reasoning as `formatClockTime`: local zone, DST-correct for that instant.
+ */
+export function formatWindowDate(ms: number, locale?: string): string {
+    return new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(ms));
 }
