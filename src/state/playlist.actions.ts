@@ -80,9 +80,6 @@ export function registerPlaylistActions(): void {
         const id = el.dataset['id'];
         if (id) setActiveSourceId(id);
     });
-    defineFn('playlist/clearActiveSource', () => {
-        setActiveSourceId(null);
-    });
 }
 
 function refValue(name: string): string {

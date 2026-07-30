@@ -149,8 +149,10 @@
 }
 
 .player-shell__name {
-    font-size: var(--text-sm);
-    color: var(--color-text-dim);
+    display: block;
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--color-text);
 }
 
 .player-shell__error {
@@ -329,28 +331,43 @@
     color: inherit;
 }
 
-/* Audio/subtitle track menus (final audio/subtitle stage). Each popup is
-   anchored to its own trigger button and opens UPWARD (bottom: 100%) —
-   same reasoning as the [data-tip] tooltip below: the dock sits low in the
-   viewport, so opening downward would clip at the bottom edge. */
+/* Audio/subtitle track menus (final audio/subtitle stage). Rendered as a
+   centered modal dialog with its own backdrop — an anchored popup used to
+   open here, but it could clip off the left edge of the viewport depending
+   on where its trigger button landed, which a centered dialog can't. */
 .track-menu-anchor {
     position: relative;
     display: inline-flex;
 }
 
+.track-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    background: rgb(0 0 0 / 45%);
+    animation: menu-backdrop-in var(--dur-2) var(--ease-swift) both;
+}
+
+@keyframes menu-backdrop-in {
+    from {
+        opacity: 0;
+    }
+}
+
 .track-menu {
-    position: absolute;
-    right: 0;
-    bottom: 100%;
-    z-index: 10;
+    position: relative;
+    z-index: 21;
     display: flex;
     flex-direction: column;
     width: max-content;
-    min-width: 10rem;
-    max-width: 16rem;
-    max-height: 14rem;
+    min-width: 14rem;
+    max-width: min(22rem, 100%);
+    max-height: min(20rem, 80vh);
     overflow-y: auto;
-    margin-bottom: var(--space-2);
     padding: var(--space-1) 0;
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-l);

@@ -62,7 +62,10 @@ describe('state/epg-load', () => {
             expect(catalog.map((c) => c.id)).toEqual(['24 Kitchen.nl']);
 
             const channels = await storage.getAll('epgChannels');
-            expect(channels).toEqual([{ id: '24 Kitchen.nl', displayName: '24 Kitchen.nl', icon: null }]);
+            // displayName is the feed id with the country suffix stripped
+            // (`.nl`), same as the country catalog's own naming — the Guide
+            // used to show the raw, unstripped feed name.
+            expect(channels).toEqual([{ id: '24 Kitchen.nl', displayName: '24 Kitchen', icon: null }]);
 
             const programs = await storage.getAll('epgPrograms');
             expect(programs).toHaveLength(1);

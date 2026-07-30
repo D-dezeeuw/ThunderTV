@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import type { EpgCountry } from './countries';
 import { parseXmltvDocument, parseXmltvTimestamp, toEpgRecords } from './xmltv';
+
+const NL: EpgCountry = { folder: 'Netherlands', filePrefix: 'netherlands', fileCount: 1, suffix: 'nl', iso2: 'NL', name: 'Netherlands', kind: 'country' };
 
 describe('epg/xmltv', () => {
     describe('parseXmltvTimestamp', () => {
@@ -68,17 +71,26 @@ describe('epg/xmltv', () => {
         it('keeps only the matched subset of channels and programs', () => {
             const doc = {
                 channels: [
-                    { id: 'a', displayName: 'A', icon: null },
-                    { id: 'b', displayName: 'B', icon: null },
+                    { id: 'A.nl', displayName: 'A.nl', icon: null },
+                    { id: 'B.nl', displayName: 'B.nl', icon: null },
                 ],
                 programs: [
-                    { channelId: 'a', start: 1, stop: 2, title: 'A show', description: null },
-                    { channelId: 'b', start: 3, stop: 4, title: 'B show', description: null },
+                    { channelId: 'A.nl', start: 1, stop: 2, title: 'A show', description: null },
+                    { channelId: 'B.nl', start: 3, stop: 4, title: 'B show', description: null },
                 ],
             };
-            const result = toEpgRecords(doc, new Set(['a']));
-            expect(result.channels).toEqual([{ id: 'a', displayName: 'A', icon: null }]);
-            expect(result.programs).toEqual([{ channelId: 'a', start: 1, stop: 2, title: 'A show', description: null }]);
+            const result = toEpgRecords(doc, new Set(['A.nl']), NL);
+            expect(result.channels).toEqual([{ id: 'A.nl', displayName: 'A', icon: null }]);
+            expect(result.programs).toEqual([{ channelId: 'A.nl', start: 1, stop: 2, title: 'A show', description: null }]);
+        });
+
+        it('strips the feed country suffix from displayName, deriving it from the channel id', () => {
+            const doc = {
+                channels: [{ id: 'NPO 1.nl', displayName: 'Some Unrelated Text', icon: null }],
+                programs: [],
+            };
+            const result = toEpgRecords(doc, new Set(['NPO 1.nl']), NL);
+            expect(result.channels).toEqual([{ id: 'NPO 1.nl', displayName: 'NPO 1', icon: null }]);
         });
     });
 });

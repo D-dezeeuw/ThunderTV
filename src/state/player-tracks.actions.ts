@@ -1,4 +1,4 @@
-import { defineFn, watch } from 'spektrum';
+import { defineFn, refs, watch } from 'spektrum';
 import {
     getPlayerTracks as engineGetPlayerTracks,
     onTracksChanged as engineOnTracksChanged,
@@ -70,6 +70,12 @@ export function registerPlayerTrackActions(): void {
     defineFn('player/toggleSubtitleMenu', () => {
         toggleSubtitleMenu();
     });
+    defineFn('player/closeTrackMenu', () => {
+        closeTrackMenu();
+    });
+    defineFn('player/handleTrackMenuKeydown', (_el, _state, _delta, _value, event) => {
+        handleTrackMenuKeydown(event as KeyboardEvent | undefined);
+    });
     // The `value` a data-fn dispatch carries is coerced by Spektrum itself
     // (src/state/README.md's testing section) — a numeric-looking track id
     // ("0", "1", … — exactly what every engine's index-based id looks like,
@@ -111,6 +117,57 @@ function toggleMenu(menu: 'audio' | 'subtitles'): void {
     }
     publishTrackLists();
     set(PLAYER_TRACK_MENU, menu);
+    // Move focus into the dialog once it's mounted — the trigger button's
+    // own click handler hasn't returned yet, so `data-if`'s DOM insert
+    // needs a tick before `refs` resolves the new element.
+    queueMicrotask(() => focusTrackMenuDialog(menu));
+}
+
+/** The modal's Escape-to-close/backdrop-click-to-close entry point, also wired to the backdrop's own click handler. */
+export function closeTrackMenu(): void {
+    set(PLAYER_TRACK_MENU, 'none');
+}
+
+function trackMenuRef(menu: 'audio' | 'subtitles'): HTMLElement | undefined {
+    const ref = refs[menu === 'audio' ? 'audioTrackMenu' : 'subtitleTrackMenu'];
+    return ref instanceof HTMLElement ? ref : undefined;
+}
+
+function focusTrackMenuDialog(menu: 'audio' | 'subtitles'): void {
+    const dialog = trackMenuRef(menu);
+    if (!dialog) return;
+    const firstItem = dialog.querySelector<HTMLElement>('.track-menu__item');
+    (firstItem ?? dialog).focus();
+}
+
+/**
+ * Escape closes the dialog and returns focus to nothing in particular (the
+ * trigger button re-gains focus naturally — it's still the last element the
+ * browser had focused before the dialog stole it). Arrow Up/Down roves focus
+ * between `.track-menu__item` buttons, wrapping at each end, so the dialog
+ * is fully usable without a pointer — the "keyboard navigatable" ask.
+ */
+function handleTrackMenuKeydown(event: KeyboardEvent | undefined): void {
+    if (!event) return;
+    const menu = get<TrackMenu>(PLAYER_TRACK_MENU);
+    if (menu !== 'audio' && menu !== 'subtitles') return;
+
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        closeTrackMenu();
+        return;
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+
+    const dialog = trackMenuRef(menu);
+    if (!dialog) return;
+    const items = Array.from(dialog.querySelectorAll<HTMLElement>('.track-menu__item'));
+    if (items.length === 0) return;
+    event.preventDefault();
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    const delta = event.key === 'ArrowDown' ? 1 : -1;
+    const next = current === -1 ? 0 : (current + delta + items.length) % items.length;
+    items[next]?.focus();
 }
 
 /** `id`: a `MediaTrack.id` from `player.audioTracks`. Applies through the engine, republishes so the menu's active flag updates, then closes the menu — the pick is done. */

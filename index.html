@@ -82,6 +82,14 @@
             <symbol id="icon-audio-tracks" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16.5 9.3a4 4 0 0 1 0 5.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 6.8a8 8 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
             <!-- Subtitles: a caption box with two lines of text — distinct from icon-guide's plain grid and icon-sources' left-aligned lines. -->
             <symbol id="icon-subtitles" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="10" x2="11" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="13" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <!-- Audio-only toggle: headphones, distinct from icon-audio-tracks' speaker+waves. -->
+            <symbol id="icon-headphones" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="2.5" y="13" width="4" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="17.5" y="13" width="4" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+            <!-- Stop: a filled square, the universal "stop" glyph, paired with icon-play for the toggle. -->
+            <symbol id="icon-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1.5" fill="currentColor" stroke="none"/></symbol>
+            <!-- Pause: two bars, paired with icon-play for the visualizer pause/resume toggle. -->
+            <symbol id="icon-pause" viewBox="0 0 24 24"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4.5" width="4.5" height="15" rx="1" fill="currentColor" stroke="none"/></symbol>
+            <!-- Skip/next: a play triangle against a bar. -->
+            <symbol id="icon-skip-next" viewBox="0 0 24 24"><path d="M5 4.5v15l10-7.5z" fill="currentColor" stroke="none"/><rect x="17" y="4.5" width="2.5" height="15" rx="1" fill="currentColor" stroke="none"/></symbol>
         </svg>
 
         <div id="app">
@@ -498,6 +506,41 @@
                         </ul>
                     </div>
 
+                    <!-- The persistent "your sources" list — shown whenever at
+                         least one source is configured, regardless of whether
+                         one is currently active. Without this the Sources tab
+                         went blank the instant a source became active (which
+                         happens immediately for an env/build-time-configured
+                         source), even though it was the one tab meant to show
+                         what's configured. Same list/markup as Settings →
+                         Streaming's "default-source-section". -->
+                    <div data-if="!hasNoSources" data-testid="configured-sources">
+                        <h2 class="sources-picker__hint">{{ strings.sourcesAdmin.allTitle }}</h2>
+                        <p class="settings-section__hint">{{ strings.sourcesAdmin.allHint }}</p>
+                        <ul class="sources-list" data-each="visibleSources" data-testid="configured-sources-list">
+                            <li class="sources-list__row">
+                                <button
+                                    type="button"
+                                    class="sources-list__select"
+                                    :class="{ 'sources-list__select--active': item.id === playlist.activeSourceId }"
+                                    data-action="click"
+                                    data-fn="playlist/selectSource"
+                                    :data-id="item.id"
+                                    data-testid="configured-source-select-btn"
+                                >
+                                    <span class="sources-list__name truncate">{{ item.name }}</span>
+                                    <span class="sources-list__meta">{{ item.channelCount }} channels</span>
+                                </button>
+                                <span class="sources-list__active-badge" data-if="item.id === playlist.activeSourceId" data-testid="configured-source-active-badge">
+                                    {{ strings.sourcesAdmin.activeBadge }}
+                                </span>
+                                <span class="sources-list__reupload" data-if="item.needsReupload" data-testid="configured-source-needs-reupload">
+                                    {{ strings.import.sources.needsReupload }}
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+
                 </section>
 
                 <!-- Live and Categories are two presentations of one
@@ -565,9 +608,6 @@
                         data-testid="channel-list-shell"
                     >
                         <div class="list-shell__header" data-if="view.channelList.active">
-                            <button type="button" class="btn" data-action="click" data-fn="playlist/clearActiveSource" data-testid="back-to-sources-btn">
-                                {{ strings.list.backToSources }}
-                            </button>
                             <h2 class="list-shell__title truncate">{{ activeSource.name }}</h2>
                             <!-- The Live filter is aggressive by design, so it
                                  always states what it removed: a channel the
@@ -621,6 +661,25 @@
                                 <span class="list-shell__wide-label">{{ strings.list.allChannels }}</span
                                 ><span class="list-shell__narrow-label">{{ strings.list.backToGroups }}</span>
                             </button>
+                        </div>
+
+                        <div class="catalog-search" data-if="view.live.active" data-testid="live-search">
+                            <input
+                                type="text"
+                                class="catalog-search__input"
+                                :placeholder="strings.search.placeholder"
+                                :aria-label="strings.search.placeholder"
+                                :value="search.query"
+                                data-action="input"
+                                data-fn="search/setQueryChannels"
+                                data-testid="live-search-input"
+                            />
+                            <button type="button" class="icon-btn" data-if="search.active" data-action="click" data-fn="search/clear" :aria-label="strings.search.clear" data-testid="live-search-clear">
+                                <svg class="icon icon--s" aria-hidden="true"><use href="#icon-close"></use></svg>
+                            </button>
+                            <span class="catalog-search__counts" data-if="search.active" data-testid="live-search-counts">
+                                {{ strings.search.scopeChannels }}: {{ search.resultCounts.channels }}
+                            </span>
                         </div>
 
                         <p class="list-shell__empty" data-if="view.channelList.active && activeSource.needsReupload" data-testid="list-needs-reupload">
@@ -697,22 +756,14 @@
                                 :aria-label="strings.search.placeholder"
                                 :value="search.query"
                                 data-action="input"
-                                data-fn="search/setQuery"
+                                data-fn="search/setQueryMovies"
                                 data-testid="movies-search-input"
                             />
-                            <div class="catalog-chips" role="group" :aria-label="strings.search.placeholder">
-                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'all' }" data-action="click" data-fn="search/setScope" data-scope="all" data-testid="movies-scope-all">{{ strings.search.scopeAll }}</button>
-                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'channels' }" data-action="click" data-fn="search/setScope" data-scope="channels" data-testid="movies-scope-channels">{{ strings.search.scopeChannels }}</button>
-                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'movies' }" data-action="click" data-fn="search/setScope" data-scope="movies" data-testid="movies-scope-movies">{{ strings.search.scopeMovies }}</button>
-                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'series' }" data-action="click" data-fn="search/setScope" data-scope="series" data-testid="movies-scope-series">{{ strings.search.scopeSeries }}</button>
-                            </div>
                             <button type="button" class="icon-btn" data-if="search.active" data-action="click" data-fn="search/clear" :aria-label="strings.search.clear" data-testid="movies-search-clear">
                                 <svg class="icon icon--s" aria-hidden="true"><use href="#icon-close"></use></svg>
                             </button>
                             <span class="catalog-search__counts" data-if="search.active" data-testid="movies-search-counts">
-                                <span data-if="search.scope === 'all' || search.scope === 'channels'">{{ strings.search.scopeChannels }}: {{ search.resultCounts.channels }}</span>
-                                <span data-if="search.scope === 'all' || search.scope === 'movies'">{{ strings.search.scopeMovies }}: {{ search.resultCounts.movies }}</span>
-                                <span data-if="search.scope === 'all' || search.scope === 'series'">{{ strings.search.scopeSeries }}: {{ search.resultCounts.series }}</span>
+                                {{ strings.search.scopeMovies }}: {{ search.resultCounts.movies }}
                             </span>
                             <p class="catalog-search__hint" data-if="search.active && search.loadedOnly" data-testid="movies-search-loaded-only">{{ strings.search.loadedOnlyHint }}</p>
                         </div>
@@ -758,22 +809,14 @@
                                 :aria-label="strings.search.placeholder"
                                 :value="search.query"
                                 data-action="input"
-                                data-fn="search/setQuery"
+                                data-fn="search/setQuerySeries"
                                 data-testid="series-search-input"
                             />
-                            <div class="catalog-chips" role="group" :aria-label="strings.search.placeholder">
-                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'all' }" data-action="click" data-fn="search/setScope" data-scope="all" data-testid="series-scope-all">{{ strings.search.scopeAll }}</button>
-                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'channels' }" data-action="click" data-fn="search/setScope" data-scope="channels" data-testid="series-scope-channels">{{ strings.search.scopeChannels }}</button>
-                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'movies' }" data-action="click" data-fn="search/setScope" data-scope="movies" data-testid="series-scope-movies">{{ strings.search.scopeMovies }}</button>
-                                <button type="button" class="catalog-chip" :class="{ 'catalog-chip--active': search.scope === 'series' }" data-action="click" data-fn="search/setScope" data-scope="series" data-testid="series-scope-series">{{ strings.search.scopeSeries }}</button>
-                            </div>
                             <button type="button" class="icon-btn" data-if="search.active" data-action="click" data-fn="search/clear" :aria-label="strings.search.clear" data-testid="series-search-clear">
                                 <svg class="icon icon--s" aria-hidden="true"><use href="#icon-close"></use></svg>
                             </button>
                             <span class="catalog-search__counts" data-if="search.active" data-testid="series-search-counts">
-                                <span data-if="search.scope === 'all' || search.scope === 'channels'">{{ strings.search.scopeChannels }}: {{ search.resultCounts.channels }}</span>
-                                <span data-if="search.scope === 'all' || search.scope === 'movies'">{{ strings.search.scopeMovies }}: {{ search.resultCounts.movies }}</span>
-                                <span data-if="search.scope === 'all' || search.scope === 'series'">{{ strings.search.scopeSeries }}: {{ search.resultCounts.series }}</span>
+                                {{ strings.search.scopeSeries }}: {{ search.resultCounts.series }}
                             </span>
                             <p class="catalog-search__hint" data-if="search.active && search.loadedOnly" data-testid="series-search-loaded-only">{{ strings.search.loadedOnlyHint }}</p>
                         </div>
@@ -1341,16 +1384,19 @@
                                     data-if="player.active"
                                     data-testid="player-shell"
                                 >
+                                    <!-- Moved above the video (was inside .player-shell__bar,
+                                         below it) so the title has its own full-width line
+                                         instead of fighting the control buttons for space and
+                                         truncating early. The audio-only pane already spells
+                                         the channel name across the visualizer, so this only
+                                         renders when a picture is playing. -->
+                                    <span class="player-shell__name truncate" data-if="!visualizerActive">{{ player.active.name }}</span>
                                     <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
                                     <div class="radio-now-playing" data-if="visualizerActive" data-testid="radio-now-playing">
                                         <canvas class="radio-now-playing__canvas" data-ref="radioVisualizer" data-testid="radio-visualizer" aria-hidden="true"></canvas>
                                         <span class="radio-now-playing__name truncate">{{ player.active.name }}</span>
                                     </div>
                                     <div class="player-shell__bar">
-                                        <!-- The audio-only pane already spells the channel
-                                             name across the visualizer, so the bar only
-                                             carries it when a picture is playing. -->
-                                        <span class="player-shell__name truncate" data-if="!visualizerActive">{{ player.active.name }}</span>
                                         <!-- Live stream-quality bars (src/player/stream-health.ts) —
                                              lit count reflects stall frequency, engine-agnostic. -->
                                         <span
@@ -1368,15 +1414,16 @@
                                         </span>
 
                                         <!-- Audio/subtitle track menus (final audio/subtitle stage). Each
-                                             popup is anchored to its own trigger button (position: relative
-                                             on .track-menu-anchor), opening upward above the dock — the dock
-                                             sits low in the viewport, same reasoning as the [data-tip]
-                                             tooltip above. Always rendered, never behind a view/track-count
-                                             data-if: an empty track list still opens the menu and explains
-                                             itself (see .track-menu__empty below) rather than hiding the
-                                             button, so a viewer never wonders whether the feature is broken
-                                             or just absent for this stream. -->
-                                        <div class="track-menu-anchor">
+                                             popup opens as a centered, keyboard-navigable modal dialog
+                                             (`.track-menu` below) rather than an anchored popup — the old
+                                             anchored popup could clip off the left edge of the viewport.
+                                             Hidden entirely in Radio (`!view.radio.active`): a radio stream
+                                             has no video tracks or subtitles to pick. Otherwise always
+                                             rendered regardless of track count: an empty track list still
+                                             opens the dialog and explains itself (see .track-menu__empty
+                                             below) rather than hiding the button, so a viewer never wonders
+                                             whether the feature is broken or just absent for this stream. -->
+                                        <div class="track-menu-anchor" data-if="!view.radio.active">
                                             <button
                                                 type="button"
                                                 class="icon-btn"
@@ -1390,35 +1437,47 @@
                                                 <svg class="icon icon--s" aria-hidden="true"><use href="#icon-audio-tracks"></use></svg>
                                             </button>
                                             <div
-                                                class="track-menu"
+                                                class="track-menu-backdrop"
                                                 data-if="player.trackMenu === 'audio'"
-                                                role="listbox"
-                                                :aria-label="strings.list.audioTracksLabel"
-                                                data-testid="audio-track-menu"
+                                                data-action="click"
+                                                data-fn="player/closeTrackMenu"
+                                                data-testid="audio-track-backdrop"
                                             >
-                                                <div class="track-menu__list" data-each="player.audioTracks">
-                                                    <button
-                                                        type="button"
-                                                        class="track-menu__item"
-                                                        :class="{ 'track-menu__item--active': item.active }"
-                                                        role="option"
-                                                        :aria-selected="item.active"
-                                                        data-action="click"
-                                                        data-fn="player/setAudioTrack"
-                                                        :data-value="item.id"
-                                                        data-testid="audio-track-item"
-                                                    >
-                                                        <span class="track-menu__label truncate">{{ item.label }}</span>
-                                                        <span class="track-menu__lang" data-if="item.lang && item.lang !== item.label">({{ item.lang }})</span>
-                                                    </button>
-                                                </div>
-                                                <div class="track-menu__empty" data-if="!player.audioTracks.length" data-testid="audio-track-empty">
-                                                    <span class="track-menu__empty-dash" aria-hidden="true">—</span>
-                                                    <p class="track-menu__empty-message">{{ strings.list.noAudioTracks }}</p>
+                                                <div
+                                                    class="track-menu"
+                                                    role="dialog"
+                                                    aria-modal="true"
+                                                    tabindex="-1"
+                                                    data-ref="audioTrackMenu"
+                                                    :aria-label="strings.list.audioTracksLabel"
+                                                    data-action="keydown"
+                                                    data-fn="player/handleTrackMenuKeydown"
+                                                    data-testid="audio-track-menu"
+                                                >
+                                                    <div class="track-menu__list" role="listbox" :aria-label="strings.list.audioTracksLabel" data-each="player.audioTracks">
+                                                        <button
+                                                            type="button"
+                                                            class="track-menu__item"
+                                                            :class="{ 'track-menu__item--active': item.active }"
+                                                            role="option"
+                                                            :aria-selected="item.active"
+                                                            data-action="click"
+                                                            data-fn="player/setAudioTrack"
+                                                            :data-value="item.id"
+                                                            data-testid="audio-track-item"
+                                                        >
+                                                            <span class="track-menu__label truncate">{{ item.label }}</span>
+                                                            <span class="track-menu__lang" data-if="item.lang && item.lang !== item.label">({{ item.lang }})</span>
+                                                        </button>
+                                                    </div>
+                                                    <div class="track-menu__empty" data-if="!player.audioTracks.length" data-testid="audio-track-empty">
+                                                        <span class="track-menu__empty-dash" aria-hidden="true">—</span>
+                                                        <p class="track-menu__empty-message">{{ strings.list.noAudioTracks }}</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="track-menu-anchor">
+                                        <div class="track-menu-anchor" data-if="!view.radio.active">
                                             <button
                                                 type="button"
                                                 class="icon-btn"
@@ -1432,44 +1491,58 @@
                                                 <svg class="icon icon--s" aria-hidden="true"><use href="#icon-subtitles"></use></svg>
                                             </button>
                                             <div
-                                                class="track-menu"
+                                                class="track-menu-backdrop"
                                                 data-if="player.trackMenu === 'subtitles'"
-                                                role="listbox"
-                                                :aria-label="strings.list.subtitlesLabel"
-                                                data-testid="subtitle-track-menu"
+                                                data-action="click"
+                                                data-fn="player/closeTrackMenu"
+                                                data-testid="subtitle-track-backdrop"
                                             >
-                                                <button
-                                                    type="button"
-                                                    class="track-menu__item"
-                                                    :class="{ 'track-menu__item--active': subtitlesOffActive }"
-                                                    role="option"
-                                                    :aria-selected="subtitlesOffActive"
-                                                    data-action="click"
-                                                    data-fn="player/setSubtitleTrack"
-                                                    data-value="off"
-                                                    data-testid="subtitle-track-off"
+                                                <div
+                                                    class="track-menu"
+                                                    role="dialog"
+                                                    aria-modal="true"
+                                                    tabindex="-1"
+                                                    data-ref="subtitleTrackMenu"
+                                                    :aria-label="strings.list.subtitlesLabel"
+                                                    data-action="keydown"
+                                                    data-fn="player/handleTrackMenuKeydown"
+                                                    data-testid="subtitle-track-menu"
                                                 >
-                                                    <span class="track-menu__label">{{ strings.list.subtitlesOff }}</span>
-                                                </button>
-                                                <div class="track-menu__list" data-each="player.subtitleTracks">
-                                                    <button
-                                                        type="button"
-                                                        class="track-menu__item"
-                                                        :class="{ 'track-menu__item--active': item.active }"
-                                                        role="option"
-                                                        :aria-selected="item.active"
-                                                        data-action="click"
-                                                        data-fn="player/setSubtitleTrack"
-                                                        :data-value="item.id"
-                                                        data-testid="subtitle-track-item"
-                                                    >
-                                                        <span class="track-menu__label truncate">{{ item.label }}</span>
-                                                        <span class="track-menu__lang" data-if="item.lang && item.lang !== item.label">({{ item.lang }})</span>
-                                                    </button>
-                                                </div>
-                                                <div class="track-menu__empty" data-if="!player.subtitleTracks.length" data-testid="subtitle-track-empty">
-                                                    <span class="track-menu__empty-dash" aria-hidden="true">—</span>
-                                                    <p class="track-menu__empty-message">{{ strings.list.noSubtitles }}</p>
+                                                    <div class="track-menu__list" role="listbox" :aria-label="strings.list.subtitlesLabel">
+                                                        <button
+                                                            type="button"
+                                                            class="track-menu__item"
+                                                            :class="{ 'track-menu__item--active': subtitlesOffActive }"
+                                                            role="option"
+                                                            :aria-selected="subtitlesOffActive"
+                                                            data-action="click"
+                                                            data-fn="player/setSubtitleTrack"
+                                                            data-value="off"
+                                                            data-testid="subtitle-track-off"
+                                                        >
+                                                            <span class="track-menu__label">{{ strings.list.subtitlesOff }}</span>
+                                                        </button>
+                                                        <div class="track-menu__list" data-each="player.subtitleTracks">
+                                                            <button
+                                                                type="button"
+                                                                class="track-menu__item"
+                                                                :class="{ 'track-menu__item--active': item.active }"
+                                                                role="option"
+                                                                :aria-selected="item.active"
+                                                                data-action="click"
+                                                                data-fn="player/setSubtitleTrack"
+                                                                :data-value="item.id"
+                                                                data-testid="subtitle-track-item"
+                                                            >
+                                                                <span class="track-menu__label truncate">{{ item.label }}</span>
+                                                                <span class="track-menu__lang" data-if="item.lang && item.lang !== item.label">({{ item.lang }})</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="track-menu__empty" data-if="!player.subtitleTracks.length" data-testid="subtitle-track-empty">
+                                                        <span class="track-menu__empty-dash" aria-hidden="true">—</span>
+                                                        <p class="track-menu__empty-message">{{ strings.list.noSubtitles }}</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1499,16 +1572,28 @@
                                         </select>
                                         <button
                                             type="button"
-                                            class="btn"
+                                            class="icon-btn"
                                             data-if="visualizerActive"
+                                            :aria-pressed="player.visualizerPaused"
+                                            :aria-label="player.visualizerPaused ? strings.list.playerResumeVisual : strings.list.playerPauseVisual"
+                                            :title="player.visualizerPaused ? strings.list.playerResumeVisual : strings.list.playerPauseVisual"
                                             data-action="click"
                                             data-fn="player/toggleVisualizerPause"
                                             data-testid="player-pause-visual-btn"
                                         >
-                                            {{ player.visualizerPaused ? strings.list.playerResumeVisual : strings.list.playerPauseVisual }}
+                                            <svg class="icon icon--s" aria-hidden="true"><use :href="player.visualizerPaused ? '#icon-play' : '#icon-pause'"></use></svg>
                                         </button>
-                                        <button type="button" class="btn" data-if="visualizerActive" data-action="click" data-fn="player/nextVisualizerPreset" data-testid="player-next-visual-btn">
-                                            {{ strings.list.playerNextVisual }}
+                                        <button
+                                            type="button"
+                                            class="icon-btn"
+                                            data-if="visualizerActive"
+                                            :aria-label="strings.list.playerNextVisual"
+                                            :title="strings.list.playerNextVisual"
+                                            data-action="click"
+                                            data-fn="player/nextVisualizerPreset"
+                                            data-testid="player-next-visual-btn"
+                                        >
+                                            <svg class="icon icon--s" aria-hidden="true"><use href="#icon-skip-next"></use></svg>
                                         </button>
                                         <!-- Watch a TV channel like a radio station: the
                                              picture collapses, the visualizer takes the
@@ -1516,14 +1601,17 @@
                                              picture to give up in the first place. -->
                                         <button
                                             type="button"
-                                            class="btn"
+                                            class="icon-btn"
                                             data-if="view.live.active || view.categories.active"
+                                            :class="{ 'icon-btn--active': player.audioMode }"
                                             :aria-pressed="player.audioMode"
+                                            :aria-label="player.audioMode ? strings.list.playerShowPicture : strings.list.playerAudioOnly"
+                                            :title="player.audioMode ? strings.list.playerShowPicture : strings.list.playerAudioOnly"
                                             data-action="click"
                                             data-fn="player/toggleAudioMode"
                                             data-testid="player-audio-mode-btn"
                                         >
-                                            {{ player.audioMode ? strings.list.playerShowPicture : strings.list.playerAudioOnly }}
+                                            <svg class="icon icon--s" aria-hidden="true"><use href="#icon-headphones"></use></svg>
                                         </button>
                                         <!-- No data-if: this whole shell only renders while
                                              something is playing, and everything that plays
@@ -1533,15 +1621,39 @@
                                         <button type="button" class="btn" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
                                             {{ strings.list.playerFullscreen }}
                                         </button>
-                                        <button type="button" class="btn" data-action="click" data-fn="player/stop" data-testid="player-stop-btn">
-                                            {{ strings.list.playerStop }}
+                                        <!-- Stop/Play toggle: pauses the media element in
+                                             place (state/player.actions.ts's togglePlayback())
+                                             rather than closing the channel, so the row/
+                                             episode highlight and player.active both survive
+                                             a press — press again to resume. -->
+                                        <button
+                                            type="button"
+                                            class="icon-btn"
+                                            :aria-pressed="player.paused"
+                                            :aria-label="player.paused ? strings.list.playerResume : strings.list.playerStop"
+                                            :title="player.paused ? strings.list.playerResume : strings.list.playerStop"
+                                            data-action="click"
+                                            data-fn="player/togglePlayback"
+                                            data-testid="player-stop-btn"
+                                        >
+                                            <svg class="icon icon--s" aria-hidden="true"><use :href="player.paused ? '#icon-play' : '#icon-stop'"></use></svg>
                                         </button>
                                         <!-- Handoff (Phase 38, stone 9). The link is shown
                                              as well as copied: most TV webviews have no
                                              clipboard at all, and a button that silently
                                              does nothing there is worse than one that just
-                                             puts the address on screen to be typed. -->
-                                        <button type="button" class="btn" data-action="click" data-fn="handoff/offer" data-testid="handoff-offer-btn">
+                                             puts the address on screen to be typed. Hidden
+                                             by default (Settings → Playback's
+                                             `showHandoffButton` toggle) — most viewers never
+                                             use it. -->
+                                        <button
+                                            type="button"
+                                            class="btn"
+                                            data-if="settings.showHandoffButton"
+                                            data-action="click"
+                                            data-fn="handoff/offer"
+                                            data-testid="handoff-offer-btn"
+                                        >
                                             {{ strings.handoff.button }}
                                         </button>
                                     </div>
@@ -1844,48 +1956,56 @@
                                 data-testid="guide-now-line"
                             ></div>
 
+                            <!-- Channel rows and program blocks are two SIBLING flat
+                                 `data-each` lists, not one nested inside the other —
+                                 Spektrum's `data-each` does not reliably (re)bind when
+                                 nested inside another `data-each`'s per-item template
+                                 (the same reason `series.detail.rows` flattens seasons/
+                                 episodes into one list; see `src/state/README.md`'s "Two
+                                 Spektrum gotchas"). Both lists' items are placed onto
+                                 `.guide__rows`' CSS grid by an explicit `grid-row`
+                                 (channel rows via their own loop `index`, program blocks
+                                 via `program.channelIndex`), so the 2-column-per-channel
+                                 layout is unchanged even though the markup no longer
+                                 nests. -->
                             <div class="guide__row-list" data-each="guide.view.channels" data-testid="guide-row-list">
-                                <div class="guide__row" data-testid="guide-row">
-                                    <button
-                                        type="button"
-                                        class="guide__channel"
-                                        data-action="click"
-                                        data-fn="guide/playChannel"
-                                        :data-epg-id="item.id"
-                                        :title="strings.guide.playChannel"
-                                        data-testid="guide-channel-btn"
-                                    >
-                                        <img
-                                            data-if="item.icon"
-                                            class="guide__channel-logo"
-                                            :src="item.icon || blankImage"
-                                            loading="lazy"
-                                            decoding="async"
-                                            referrerpolicy="no-referrer"
-                                            alt=""
-                                        />
-                                        <span class="guide__channel-name truncate">{{ item.displayName }}</span>
-                                    </button>
-                                    <div
-                                        class="guide__timeline"
-                                        data-each="item.programs"
-                                        data-as="program"
-                                        data-action="click"
-                                        data-fn="guide/selectProgram"
-                                    >
-                                        <button
-                                            type="button"
-                                            class="guide__program"
-                                            :class="{ 'guide__program--now': program.isNow, 'guide__program--selected': program.isSelected }"
-                                            :style="'left:' + program.leftPercent + '%; width:' + program.widthPercent + '%'"
-                                            :data-program-key="program.key"
-                                            :title="program.title"
-                                            data-testid="guide-program"
-                                        >
-                                            <span class="guide__program-title truncate">{{ program.title }}</span>
-                                        </button>
-                                    </div>
-                                </div>
+                                <button
+                                    type="button"
+                                    class="guide__channel"
+                                    :style="'grid-row:' + (index + 1)"
+                                    data-action="click"
+                                    data-fn="guide/playChannel"
+                                    :data-epg-id="item.id"
+                                    :title="strings.guide.playChannel"
+                                    data-testid="guide-channel-btn"
+                                >
+                                    <img
+                                        data-if="item.icon"
+                                        class="guide__channel-logo"
+                                        :src="item.icon || blankImage"
+                                        loading="lazy"
+                                        decoding="async"
+                                        referrerpolicy="no-referrer"
+                                        alt=""
+                                    />
+                                    <span class="guide__channel-name truncate">{{ item.displayName }}</span>
+                                </button>
+                            </div>
+
+                            <div class="guide__program-list" data-each="guide.view.programs" data-as="program" data-testid="guide-program-list">
+                                <button
+                                    type="button"
+                                    class="guide__program"
+                                    :class="{ 'guide__program--now': program.isNow, 'guide__program--selected': program.isSelected }"
+                                    :style="'grid-row:' + (program.channelIndex + 1) + '; margin-left:' + program.leftPercent + '%; width:' + program.widthPercent + '%'"
+                                    :data-program-key="program.key"
+                                    :title="program.title"
+                                    data-action="click"
+                                    data-fn="guide/selectProgram"
+                                    data-testid="guide-program"
+                                >
+                                    <span class="guide__program-title truncate">{{ program.title }}</span>
+                                </button>
                             </div>
                         </div>
 
@@ -2769,6 +2889,19 @@
                             <option value="it" :selected="settings.subtitleLanguage === 'it'">Italiano</option>
                         </select>
                         <p class="settings-section__hint">{{ strings.settings.playback.subtitleLanguageHelp }}</p>
+
+                        <label class="settings-toggle">
+                            <input
+                                type="checkbox"
+                                data-setting="showHandoffButton"
+                                :checked="settings.showHandoffButton"
+                                data-action="change"
+                                data-fn="settings/toggle"
+                                data-testid="show-handoff-button-toggle"
+                            />
+                            <span>{{ strings.settings.playback.showHandoffButton }}</span>
+                        </label>
+                        <p class="settings-section__hint">{{ strings.settings.playback.showHandoffButtonHelp }}</p>
                     </section>
                     <section class="settings-section">
                         <h3 class="settings-section__title">

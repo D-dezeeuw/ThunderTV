@@ -23,6 +23,8 @@ export const enPlayerTracks = {
     /** Switches a TV channel to Radio's audio + visualizer presentation, and back. */
     playerAudioOnly: 'Audio only',
     playerShowPicture: 'Show picture',
+    /** The Stop/Play toggle's label while paused — resumes in place rather than closing the channel. */
+    playerResume: 'Play',
     /** Appended to the MediaError label when a movie/episode file uses a container this device has no decoder for — MKV most often, which Chromium does not support at all. */
     playerUnsupportedContainer:
         "this file's container is not one this device can play; downloading it and opening it in another player will work",

@@ -33,6 +33,7 @@ import {
     SETTINGS_PROXY_SAVED,
     SETTINGS_PROXY_TEMPLATE,
     SETTINGS_REFRESH_STATE,
+    SETTINGS_SHOW_HANDOFF_BUTTON,
     SETTINGS_SUBTITLE_LANGUAGE,
     SETTINGS_XTREAM_BUSY,
     SETTINGS_XTREAM_ERROR,
@@ -135,6 +136,7 @@ const TOGGLEABLE: Record<string, string> = {
     liveKnownOnly: SETTINGS_LIVE_KNOWN_ONLY,
     liveDropJunk: SETTINGS_LIVE_DROP_JUNK,
     liveEpgVerifiedOnly: SETTINGS_LIVE_EPG_VERIFIED_ONLY,
+    showHandoffButton: SETTINGS_SHOW_HANDOFF_BUTTON,
 };
 
 /** Exported for direct testing without a DOM element. */

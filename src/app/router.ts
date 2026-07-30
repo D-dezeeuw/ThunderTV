@@ -1,4 +1,5 @@
 import { setValue } from 'spektrum';
+import { stopPlayback } from '../state/player.actions';
 
 /**
  * Hand-rolled hash router (~50 lines). Owns `location.hash`; `ui.activeView`
@@ -64,6 +65,21 @@ export function resolveRoute(path: string): Route {
     return isRoute(path) ? path : DEFAULT_ROUTE;
 }
 
+/**
+ * The route most recently applied — kept here, not read back from
+ * `ui.activeView`, since this module already owns writing that key and a
+ * plain local avoids a `src/state/` read from `src/app/`. Used only to tell
+ * a real tab switch (stop whatever was playing) apart from a redundant
+ * same-route hash rewrite (e.g. the initial bare-hash redirect).
+ */
+let previousRoute: Route | null = null;
+
+/** Stops any active playback when navigating to a genuinely different route — Feature request: switching tabs should not leave the previous tab's stream running underneath. */
+function stopPlaybackOnRouteChange(route: Route): void {
+    if (previousRoute !== null && previousRoute !== route) stopPlayback();
+    previousRoute = route;
+}
+
 function applyRoute(): void {
     const { path } = parseHash(location.hash);
 
@@ -71,6 +87,7 @@ function applyRoute(): void {
         // Bare "#/" or no hash: redirect to the default route without an
         // extra history entry (Feature 02.4.5).
         history.replaceState(null, '', `#/${DEFAULT_ROUTE}`);
+        stopPlaybackOnRouteChange(DEFAULT_ROUTE);
         setValue('ui.activeView', DEFAULT_ROUTE);
         return;
     }
@@ -83,7 +100,9 @@ function applyRoute(): void {
     // `src/state/handoff.actions.ts`: read once, scrub, then act. Neither
     // route has a view of its own — both hand off to a real one — so
     // resolving them here just parks `ui.activeView` until that happens.
-    setValue('ui.activeView', resolveRoute(path));
+    const route = resolveRoute(path);
+    stopPlaybackOnRouteChange(route);
+    setValue('ui.activeView', route);
 }
 
 /** Resolves the route once at bootstrap (before Spektrum's run()) and

@@ -21,6 +21,10 @@ export const deEpg = {
         epgVerifiedOnlyHelp:
             'Standardmäßig aus: Ein Sender, den der EPG-Katalog noch nicht zugeordnet hat, ist weit häufiger eine Lücke in den Programmdaten als ein nicht existierender Sender. Aktivieren, sobald Ihr Katalog gefüllt ist, um Sender ohne Programmdaten auszublenden. Gilt nie für Radio.',
     },
+    playback: {
+        showHandoffButton: 'Schaltfläche "Auf anderem Gerät fortsetzen" anzeigen',
+        showHandoffButtonHelp: 'Fügt der Player-Leiste eine Schaltfläche hinzu, um den aktuellen Stream an ein anderes Gerät zu übergeben. Standardmäßig aus.',
+    },
     list: {
         epgNextPrefix: 'Danach ·',
         streamLikelyDead: 'Dieser Feed ist zuletzt meistens fehlgeschlagen. Er kann trotzdem funktionieren — dies ist eine Schätzung aus Ihrem eigenen Wiedergabeverlauf.',

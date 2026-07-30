@@ -230,6 +230,10 @@
     background: var(--surface-hover);
     color: var(--color-text);
 }
+.icon-btn--active {
+    background: var(--surface-hover);
+    color: var(--color-accent, var(--color-text));
+}
 
 /* ---- Density demo rows (Feature 02.8.5) ---- */
 
