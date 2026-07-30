@@ -161,3 +161,58 @@ describe('channel-list layout fills the view', () => {
         expect(body).not.toContain('60vh');
     });
 });
+
+/**
+ * A `:href` binding on an SVG `<use>` element crashed the whole bind walk.
+ * Spektrum's generic `:attr` binder only routes through `setAttribute()` for
+ * hyphenated attribute names (Feature: `Qt()` in the vendored engine); a
+ * hyphen-less name like `href` is instead assigned as a plain DOM property
+ * (`element.href = value`). On an ordinary element that is harmless (e.g.
+ * `<a>`'s `.href` is a normal writable string), but `<use>` (and every other
+ * SVGURIReference element) exposes `href` as a *read-only* accessor
+ * returning an `SVGAnimatedString` — assigning to it throws a `TypeError`,
+ * synchronously, outside any try/catch in the bind walk's per-element loop.
+ * Because `bindDOM()` walks the DOM in document order with no per-element
+ * recovery, that throw aborts binding for every element *after* the
+ * offending one — which is how a crash in the player dock (early in
+ * index.html) left the debug panel near the end of the document permanently
+ * visible (its own `data-if="debug.open"` binding never ran, so it kept
+ * `.debug-panel`'s CSS `display: flex` default) with an inert close button
+ * (its `data-action` binding never ran either).
+ */
+describe('no dynamic :href binding on an SVG <use> element', () => {
+    it('index.html never binds :href on a <use> — it would throw and abort the rest of the bind walk', () => {
+        const useTags = indexHtml.match(/<use\b[^>]*>/g) ?? [];
+        expect(useTags.length).toBeGreaterThan(0);
+        for (const tag of useTags) expect(tag).not.toMatch(/:href=/);
+    });
+
+    // Note: real browsers implement `<use>`'s `href` as a read-only
+    // SVGURIReference accessor (assigning throws a TypeError), which is the
+    // actual mechanism behind the bug this describe block guards against —
+    // jsdom's SVG support does not model that read-only accessor, so it
+    // can't reproduce the throw here. The static guard above and the
+    // working-pattern test below are what actually protect this repo.
+    it('a two-icon data-if toggle (the fix) mounts without throwing and swaps the visible icon', () => {
+        const mounted = mountTemplate(`
+            <svg data-testid="icon">
+                <use data-if="player.paused" data-testid="use-play" href="#icon-play"></use>
+                <use data-if="!player.paused" data-testid="use-stop" href="#icon-stop"></use>
+            </svg>
+            <span data-testid="after">{{ debug.open ? 'open' : 'closed' }}</span>
+        `);
+
+        // The sentinel after the icon proves the bind walk reached and bound
+        // every subsequent element — the exact thing a :href crash prevented.
+        expect(mounted.query('[data-testid="after"]')?.textContent).toBe('closed');
+        expect(mounted.query('[data-testid="use-play"]')?.style.display).toBe('none');
+        expect(mounted.query('[data-testid="use-stop"]')?.style.display).toBe('');
+
+        setValue('player.paused', true);
+        tick();
+        expect(mounted.query('[data-testid="use-play"]')?.style.display).toBe('');
+        expect(mounted.query('[data-testid="use-stop"]')?.style.display).toBe('none');
+
+        mounted.cleanup();
+    });
+});
