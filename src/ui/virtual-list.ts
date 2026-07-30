@@ -38,6 +38,21 @@ let resizeObserver: ResizeObserver | null = null;
  */
 let grid: { shape: TileShape; columns: number; tileH: number } | null = null;
 
+/**
+ * True once a scroll event reported a position this controller did not put
+ * there — i.e. the viewer moved the list themselves. Every programmatic move
+ * assigns `scrollTop` *before* touching the DOM, so the event it triggers
+ * reports exactly the value already held here; only a real gesture arrives
+ * out of step. Reset by any `setRows()` that replaces the row set, since a
+ * new list starts a new position.
+ */
+let viewerScrolled = false;
+
+/** Whether the viewer has scrolled the current row set themselves — the signal a deferred, restored position checks before overriding where they are. */
+export function viewerHasScrolled(): boolean {
+    return viewerScrolled;
+}
+
 function currentRowH(): number {
     return grid ? grid.tileH : densityRowH;
 }
@@ -51,18 +66,40 @@ export function columnCount(): number {
     return currentColumns();
 }
 
+export interface SetRowsOptions {
+    scrollTop?: number;
+    /**
+     * This publish *grows* the row set already on screen rather than
+     * replacing it — keep the viewer exactly where they are.
+     *
+     * The chunked source load (`state/list-load.ts`'s `streamChannelsFor()`)
+     * republishes a longer accumulated array every `CHUNK_ROWS`, which is a
+     * `setRows()` call like any other: without this it reset the position to
+     * the top, so a 90k-row source yanked the list out from under whoever was
+     * scrolling it, once per page, all the way through the load — and the
+     * forced `scrollTop` write fed another `scroll` event straight back into
+     * `onScroll()`. Growth cannot move a row that is already on screen (the
+     * new rows are all past the end), so there is nothing to re-anchor: the
+     * position is simply left alone.
+     */
+    preserveScroll?: boolean;
+}
+
 /**
  * Swaps the displayed row set and republishes immediately — Feature 08.1.5's
  * "controller's only data entry point." `options.scrollTop` restores a
  * saved position (Feature 08.2.8/08.6.4/08.6.8); omitted, the view starts at
  * the top (Feature 08.10.6's "no transient render of the old source's rows"
  * — a fresh `setRows` call always fully replaces both the array and the
- * published window in one synchronous step, never two).
+ * published window in one synchronous step, never two) unless
+ * `options.preserveScroll` marks it as growth of the set already displayed.
  */
-export function setRows(rows: readonly ChannelRow[], options: { scrollTop?: number } = {}): void {
+export function setRows(rows: readonly ChannelRow[], options: SetRowsOptions = {}): void {
     allRows = rows as ChannelRow[];
     rowIndexById = new Map(allRows.map((row, index) => [row.id, index]));
-    scrollTop = clampScrollTop(options.scrollTop ?? 0, allRows.length, currentRowH(), viewportHeight, currentColumns());
+    if (!options.preserveScroll) viewerScrolled = false;
+    const requested = options.scrollTop ?? (options.preserveScroll ? scrollTop : 0);
+    scrollTop = clampScrollTop(requested, allRows.length, currentRowH(), viewportHeight, currentColumns());
     syncContainerScrollTop();
     publishWindow();
 }
@@ -256,7 +293,11 @@ function syncContainerScrollTop(): void {
 
 /** Feature 08.1.4: rAF-throttled — at most one `publishWindow()` per animation frame no matter how many `scroll` events fire in between. */
 function onScroll(event: Event): void {
-    scrollTop = (event.target as HTMLElement).scrollTop;
+    const next = (event.target as HTMLElement).scrollTop;
+    // Anything this controller scrolled to is already in `scrollTop` by the
+    // time its event lands; a value that disagrees came from the viewer.
+    if (next !== scrollTop) viewerScrolled = true;
+    scrollTop = next;
     if (rafHandle !== null) return;
     rafHandle = requestAnimationFrame(() => {
         rafHandle = null;
@@ -324,6 +365,7 @@ export function resetVirtualListForTests(): void {
     scrollTop = 0;
     densityRowH = rowHeight('comfortable');
     grid = null;
+    viewerScrolled = false;
     visibleCount = 0;
     viewportHeight = 0;
     if (rafHandle !== null) {
