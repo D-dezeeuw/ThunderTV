@@ -1,5 +1,13 @@
 import { refs } from 'spektrum';
 import { AudioFeatures } from './audio-features';
+import {
+    BIN_COUNT,
+    ensureAudioTap,
+    FFT_SIZE,
+    resetAudioTapForTests,
+    SILENT_TAP,
+    type AudioTap,
+} from './audio-tap';
 import { BeatDetector } from './beat-detector';
 import { CrossFader } from './crossfade';
 import { createRadioVisualizerPresets } from './presets/index';
@@ -14,26 +22,24 @@ import type { VisualizerPreset } from './types';
  * sizing, beat detection, and preset cycling, and leaves each preset's own
  * visuals to its own file.
  *
- * CORS caveat: a `MediaElementAudioSourceNode` reads real frequency data
- * only when the element's audio is same-origin or CORS-clean.
- * mpegts.js/hls.js (the default engines, `src/player/engine.ts`) feed the
- * shared `<video>` via a `blob:` MediaSource URL, which counts as
- * same-origin, so the analyser sees real data for the common case. The
- * native-engine fallback assigns the raw cross-origin stream URL directly to
- * `video.src`; there the browser zeroes analyser output as a fingerprinting
- * guard, and every preset just idles (still animated, at rest) instead of
- * erroring.
+ * Where the audio comes from — and why it is only ever a copy — is
+ * `audio-tap.ts`'s job; read its header before touching anything audio here.
+ * The short version: the tap never touches the element's own output, so a
+ * stream it cannot analyse (cross-origin file, no `captureStream()`) costs
+ * the presets their reactivity and costs the viewer nothing. Every preset
+ * then animates at rest against `SILENT_TAP`'s zeroed buffers.
  */
 
 /** How long each preset plays before auto-advancing — long enough to actually look at, short enough that an unattended TV doesn't stall on one preset all evening. */
 const AUTO_CYCLE_MS = 25_000;
 
-let audioCtx: AudioContext | null = null;
-let analyser: AnalyserNode | null = null;
+/** Never null and never `createMediaElementSource` — see `audio-tap.ts`. Re-read every frame so an upgrade from silent to live applies without restarting the loop. */
+let tap: AudioTap = SILENT_TAP;
 let sourceVideo: HTMLVideoElement | null = null;
-let freqData: Uint8Array<ArrayBuffer> | null = null;
-let waveData: Uint8Array<ArrayBuffer> | null = null;
-let sampleRate = 48_000;
+/** The element the tap's refresh listeners are on — see `bindTapEvents()`. */
+let tapSource: HTMLVideoElement | null = null;
+const freqData = new Uint8Array(new ArrayBuffer(BIN_COUNT));
+const waveData = new Uint8Array(new ArrayBuffer(FFT_SIZE));
 let rafId: number | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let observedCanvas: HTMLCanvasElement | null = null;
@@ -53,65 +59,38 @@ const crossFader = new CrossFader();
 
 let lastTs: number | null = null;
 
-/**
- * fftSize 2048 (not 1024): at 48 kHz that's ~23 Hz per bin, enough low-end
- * resolution for the log-spaced bars to separate kick from bassline.
- * smoothing 0.7 (not 0.82): the old value pre-smeared onsets so much the
- * beat detector had nothing to detect. min/max decibels widened from the
- * -100/-30 defaults: -30 as the ceiling clips loud radio streams' bass
- * bins flat at 255, which broke both the bars and beat detection — the
- * auto-gain in audio-features.ts handles quiet streams, so the analyser
- * itself just needs to not clip.
- */
-function configureAnalyser(node: AnalyserNode): void {
-    node.fftSize = 2048;
-    node.smoothingTimeConstant = 0.7;
-    node.minDecibels = -90;
-    node.maxDecibels = -15;
+/** Re-taps `video` (a new stream on the same element rebuilds), upgrading the module's tap in place if the capture only grows an audio track later. */
+function refreshTap(video: HTMLVideoElement): void {
+    tap = ensureAudioTap(video, () => {
+        tap = ensureAudioTap(video);
+    });
 }
 
 /**
- * (Re)creates the Web Audio graph against `video`, reusing it across
- * start/stop cycles. `createMediaElementSource()` may only ever be called
- * once per media element, so this is a no-op past the first call for a
- * given `<video>` node — which is the shared, long-lived player element
- * (`src/player/engine.ts`'s sole attach point), never recreated per channel.
+ * `bindings.ts` starts the visualizer from a `player.active` change, which
+ * happens a beat *before* the engine has given the element anything to
+ * capture — `video.src` is still the previous stream's, or nothing at all.
+ * So the tap is also refreshed off the element's own "there is media now"
+ * events; `ensureAudioTap()` is keyed on the current stream and idempotent,
+ * so the extra calls cost a comparison.
  */
-function ensureAudioGraph(video: HTMLVideoElement): AnalyserNode | null {
-    if (sourceVideo === video && audioCtx && analyser) {
-        configureAnalyser(analyser);
-        if (freqData?.length !== analyser.frequencyBinCount) {
-            freqData = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
-        }
-        if (waveData?.length !== analyser.fftSize) {
-            waveData = new Uint8Array(new ArrayBuffer(analyser.fftSize));
-        }
-        if (audioCtx.state === 'suspended') void audioCtx.resume();
-        return analyser;
-    }
-    try {
-        const ctx = audioCtx ?? new AudioContext();
-        audioCtx = ctx;
-        sampleRate = ctx.sampleRate;
-        const node = ctx.createMediaElementSource(video);
-        const analyserNode = ctx.createAnalyser();
-        configureAnalyser(analyserNode);
-        node.connect(analyserNode);
-        // A MediaElementAudioSourceNode routes the element's audio
-        // exclusively through the graph it's connected to (spec behavior) —
-        // without this the station goes silent the moment the visualizer
-        // starts.
-        analyserNode.connect(ctx.destination);
-        analyser = analyserNode;
-        sourceVideo = video;
-        freqData = new Uint8Array(new ArrayBuffer(analyserNode.frequencyBinCount));
-        waveData = new Uint8Array(new ArrayBuffer(analyserNode.fftSize));
-        if (ctx.state === 'suspended') void ctx.resume();
-        return analyserNode;
-    } catch (err) {
-        console.error('[ThunderTV] radio visualizer: audio graph unavailable:', err);
-        return null;
-    }
+function onStreamStart(): void {
+    if (tapSource) refreshTap(tapSource);
+}
+
+function bindTapEvents(video: HTMLVideoElement): void {
+    if (tapSource === video) return;
+    unbindTapEvents();
+    tapSource = video;
+    video.addEventListener('loadeddata', onStreamStart);
+    video.addEventListener('playing', onStreamStart);
+}
+
+function unbindTapEvents(): void {
+    if (!tapSource) return;
+    tapSource.removeEventListener('loadeddata', onStreamStart);
+    tapSource.removeEventListener('playing', onStreamStart);
+    tapSource = null;
 }
 
 function sizeCanvas(canvas: HTMLCanvasElement): boolean {
@@ -144,18 +123,13 @@ function observeSize(canvas: HTMLCanvasElement): void {
     observedCanvas = canvas;
 }
 
-function render(
-    ts: number,
-    canvas: HTMLCanvasElement,
-    node: AnalyserNode,
-    data: Uint8Array<ArrayBuffer>,
-    wave: Uint8Array<ArrayBuffer>,
-): void {
-    rafId = requestAnimationFrame((next) => render(next, canvas, node, data, wave));
+function render(ts: number, canvas: HTMLCanvasElement): void {
+    rafId = requestAnimationFrame((next) => render(next, canvas));
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    node.getByteFrequencyData(data);
-    node.getByteTimeDomainData(wave);
+    const data = freqData;
+    const wave = waveData;
+    tap.read(data, wave);
 
     const dt = lastTs === null ? 16 : Math.min(ts - lastTs, 64);
     lastTs = ts;
@@ -168,7 +142,7 @@ function render(
         beginTransition(canvas, (presetIndex + 1) % presets.length);
     }
 
-    const { bass, mid, treble, energy } = audioFeatures.update(data, dt, sampleRate);
+    const { bass, mid, treble, energy } = audioFeatures.update(data, dt, tap.sampleRate);
     const { beat, intensity: beatIntensity } = beatDetector.update(bass, dt);
     const shared = {
         width: canvas.width,
@@ -247,13 +221,10 @@ export function setRadioVisualizerPaused(value: boolean): void {
         stopRadioVisualizerLoop();
         return;
     }
-    if (!activePresetCanvas || !analyser || !freqData || !waveData || rafId !== null) return;
+    if (!activePresetCanvas || rafId !== null) return;
     lastTs = null;
     const canvas = activePresetCanvas;
-    const node = analyser;
-    const data = freqData;
-    const wave = waveData;
-    rafId = requestAnimationFrame((ts) => render(ts, canvas, node, data, wave));
+    rafId = requestAnimationFrame((ts) => render(ts, canvas));
 }
 
 /**
@@ -269,9 +240,13 @@ export function setRadioVisualizerPaused(value: boolean): void {
 export function startRadioVisualizer(video: HTMLVideoElement): void {
     const canvas = refs['radioVisualizer'];
     if (!(canvas instanceof HTMLCanvasElement)) return;
+    // Re-tapped even on the already-running path: this is called on every
+    // `player.active` change, and the station/channel that changed is
+    // precisely what the tap is keyed on.
+    refreshTap(video);
+    bindTapEvents(video);
     if (activePresetCanvas === canvas && sourceVideo === video) return;
-    const node = ensureAudioGraph(video);
-    if (!node || !freqData || !waveData) return;
+    sourceVideo = video;
 
     stopRadioVisualizerLoop();
     sizeCanvas(canvas);
@@ -284,14 +259,13 @@ export function startRadioVisualizer(video: HTMLVideoElement): void {
     audioFeatures.reset();
     presets[presetIndex]?.reset(canvas.width, canvas.height);
     if (paused) return;
-    const data = freqData;
-    const wave = waveData;
-    rafId = requestAnimationFrame((ts) => render(ts, canvas, node, data, wave));
+    rafId = requestAnimationFrame((ts) => render(ts, canvas));
 }
 
 /** Stops the render loop only — the audio graph stays connected (sound keeps playing, and the source node can't be recreated) so a later `startRadioVisualizer()` just resumes drawing, on whichever preset was active. Also drops any pause/transition in progress — leaving Radio and coming back starts clean rather than silently still-paused. */
 export function stopRadioVisualizer(): void {
     stopRadioVisualizerLoop();
+    unbindTapEvents();
     activePresetCanvas = null;
     crossFader.cancel();
     paused = false;
@@ -310,12 +284,10 @@ export function resetRadioVisualizerForTests(): void {
     resizeObserver?.disconnect();
     resizeObserver = null;
     observedCanvas = null;
-    audioCtx = null;
-    analyser = null;
+    unbindTapEvents();
+    resetAudioTapForTests();
+    tap = SILENT_TAP;
     sourceVideo = null;
-    freqData = null;
-    waveData = null;
-    sampleRate = 48_000;
     activePresetCanvas = null;
     paused = false;
     crossFader.reset();

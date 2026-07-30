@@ -1,7 +1,9 @@
 import { defineFn } from 'spektrum';
-import { GUIDE_OFFSET_MS, GUIDE_SELECTED_KEY } from './guide';
+import type { ChannelRow } from '../m3u/types';
+import { GUIDE_CHANNELS, GUIDE_OFFSET_MS, GUIDE_SELECTED_KEY, type GuideChannel } from './guide';
+import { buildLiveEpgIndex, matchGuideChannel } from './guide-live-join';
 import { clampGuideOffset, GUIDE_SHIFT_MS } from './guide-time';
-import { liveDisplayRows } from './live-rows';
+import { liveChannels, liveDisplayRows } from './live-rows';
 import { publishVariantsFor } from './live.actions';
 import { setActiveChannel } from './player.actions';
 import { get, set } from './typed';
@@ -46,16 +48,18 @@ export function shiftGuide(deltaMs: number): void {
 /**
  * Resolves a guide row back to a playable channel and starts it.
  *
- * The join is `ChannelRow.epgId` — the Phase 31 matcher's output, already
- * carried onto every published Live row — so this is a lookup, never a
- * second round of name matching. Returns `false` when the currently-built
- * Live list has no row for that EPG channel: the Guide describes the whole
- * country's catalog, so it legitimately shows channels this particular
- * subscription doesn't carry, and that must be a quiet no-op rather than an
- * error (the grid is still useful for reading what's on elsewhere).
+ * Runs `guide-live-join.ts`'s ladder — the same one that decided this row
+ * belonged in the grid at all — so a channel bound by the provider's
+ * `epg_channel_id` or by name plays exactly like one the country catalog
+ * matched. Matching only on `ChannelRow.epgId`, as this used to, meant every
+ * row of an Xtream-sourced guide was unplayable.
+ *
+ * Returns `false` when the currently-built Live list has no row for that
+ * channel — a quiet no-op rather than an error, and now a genuinely rare
+ * one, since the grid only lists channels the join already resolved.
  */
 export function playChannelByEpgId(epgId: string): boolean {
-    const row = liveDisplayRows().find((candidate) => candidate.epgId === epgId);
+    const row = liveRowForGuideChannel(epgId);
     if (!row) return false;
 
     publishVariantsFor(row.id, row.url);
@@ -70,4 +74,29 @@ export function playChannelByEpgId(epgId: string): boolean {
     });
     location.hash = '#/live';
     return true;
+}
+
+/**
+ * The guide channel id → Live row lookup behind the above.
+ *
+ * `liveChannels()` and `liveDisplayRows()` are index-aligned by construction
+ * — `toDisplayRows()` maps one to the other one-for-one — so a match's
+ * `liveIndex` indexes straight into the display rows. The grouped array is
+ * what the ladder needs (it carries the identity `key` the name rung
+ * compares against); the display row is what the player wants.
+ *
+ * The guide channel's own `displayName` comes from `guide.channels`, since
+ * the name rung has nothing to compare without it. A row picked from a grid
+ * that is currently painted always has one.
+ */
+function liveRowForGuideChannel(guideChannelId: string): ChannelRow | null {
+    const rows = liveDisplayRows();
+    if (rows.length === 0) return null;
+
+    const channel = (get<GuideChannel[]>(GUIDE_CHANNELS) ?? []).find((candidate) => candidate.id === guideChannelId);
+    const match = matchGuideChannel(buildLiveEpgIndex(liveChannels()), {
+        id: guideChannelId,
+        displayName: channel?.displayName ?? '',
+    });
+    return match ? rows[match.liveIndex] ?? null : null;
 }

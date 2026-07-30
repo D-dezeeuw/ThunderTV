@@ -92,6 +92,9 @@
             <symbol id="icon-catchup" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.6-5.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="3.5,3.5 3.5,8.5 8.5,8.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="12,7.5 12,12 15.5,14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
             <symbol id="icon-feed" viewBox="0 0 24 24"><path d="M12 3.5l8.5 4.5-8.5 4.5-8.5-4.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><polyline points="3.5,12.5 12,17 20.5,12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="3.5,16.5 12,21 20.5,16.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
             <symbol id="icon-categories" viewBox="0 0 24 24"><line x1="9" y1="6" x2="20.5" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="18" x2="20.5" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.6" fill="currentColor" stroke="none"/></symbol>
+            <!-- List/grid switch: rows-with-leading-marks vs. four tiles. Deliberately not icon-categories/icon-guide — those two name destinations in the rail, and reusing them here would read as navigation rather than a change of layout. -->
+            <symbol id="icon-view-list" viewBox="0 0 24 24"><rect x="3" y="5" width="4" height="4" rx="1" fill="currentColor" stroke="none"/><rect x="3" y="10" width="4" height="4" rx="1" fill="currentColor" stroke="none"/><rect x="3" y="15" width="4" height="4" rx="1" fill="currentColor" stroke="none"/><line x1="10" y1="7" x2="21" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="10" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="10" y1="17" x2="21" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+            <symbol id="icon-view-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="8.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="13.5" y="3.5" width="7" height="8.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="3.5" y="14" width="7" height="6.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="13.5" y="14" width="7" height="6.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
             <!-- Category accordion: a plain downward chevron. Rotated 180° by CSS when its group is open, so one glyph covers both states. -->
             <symbol id="icon-chevron-down" viewBox="0 0 24 24"><polyline points="6,9.5 12,15.5 18,9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
             <!-- Movies (Phase 21): a filmstrip — sprocket notches down each side mark it as film, distinct from icon-guide's plain grid. -->
@@ -707,6 +710,38 @@
                             <span class="catalog-search__counts" data-if="search.active" data-testid="live-search-counts">
                                 {{ strings.search.scopeChannels }}: {{ search.resultCounts.channels }}
                             </span>
+                            <div class="layout-toggle" role="group" :aria-label="strings.layout.group" data-testid="live-layout-toggle">
+                                <button
+                                    type="button"
+                                    class="layout-toggle__btn"
+                                    :class="{ 'layout-toggle__btn--active': ui.listLayout.live !== 'grid' }"
+                                    :aria-pressed="ui.listLayout.live !== 'grid'"
+                                    :title="strings.layout.list"
+                                    :aria-label="strings.layout.list"
+                                    data-scope="live"
+                                    data-layout="list"
+                                    data-action="click"
+                                    data-fn="list/setLayout"
+                                    data-testid="live-layout-list"
+                                >
+                                    <svg class="icon icon--s" aria-hidden="true"><use href="#icon-view-list"></use></svg>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="layout-toggle__btn"
+                                    :class="{ 'layout-toggle__btn--active': ui.listLayout.live === 'grid' }"
+                                    :aria-pressed="ui.listLayout.live === 'grid'"
+                                    :title="strings.layout.grid"
+                                    :aria-label="strings.layout.grid"
+                                    data-scope="live"
+                                    data-layout="grid"
+                                    data-action="click"
+                                    data-fn="list/setLayout"
+                                    data-testid="live-layout-grid"
+                                >
+                                    <svg class="icon icon--s" aria-hidden="true"><use href="#icon-view-grid"></use></svg>
+                                </button>
+                            </div>
                         </div>
 
                         <p class="list-shell__empty" data-if="view.channelList.active && activeSource.needsReupload" data-testid="list-needs-reupload">
@@ -792,6 +827,38 @@
                             <span class="catalog-search__counts" data-if="search.active" data-testid="movies-search-counts">
                                 {{ strings.search.scopeMovies }}: {{ search.resultCounts.movies }}
                             </span>
+                            <div class="layout-toggle" role="group" :aria-label="strings.layout.group" data-testid="movies-layout-toggle">
+                                <button
+                                    type="button"
+                                    class="layout-toggle__btn"
+                                    :class="{ 'layout-toggle__btn--active': ui.listLayout.movies !== 'grid' }"
+                                    :aria-pressed="ui.listLayout.movies !== 'grid'"
+                                    :title="strings.layout.list"
+                                    :aria-label="strings.layout.list"
+                                    data-scope="movies"
+                                    data-layout="list"
+                                    data-action="click"
+                                    data-fn="list/setLayout"
+                                    data-testid="movies-layout-list"
+                                >
+                                    <svg class="icon icon--s" aria-hidden="true"><use href="#icon-view-list"></use></svg>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="layout-toggle__btn"
+                                    :class="{ 'layout-toggle__btn--active': ui.listLayout.movies === 'grid' }"
+                                    :aria-pressed="ui.listLayout.movies === 'grid'"
+                                    :title="strings.layout.grid"
+                                    :aria-label="strings.layout.grid"
+                                    data-scope="movies"
+                                    data-layout="grid"
+                                    data-action="click"
+                                    data-fn="list/setLayout"
+                                    data-testid="movies-layout-grid"
+                                >
+                                    <svg class="icon icon--s" aria-hidden="true"><use href="#icon-view-grid"></use></svg>
+                                </button>
+                            </div>
                             <p class="catalog-search__hint" data-if="search.active && search.loadedOnly" data-testid="movies-search-loaded-only">{{ strings.search.loadedOnlyHint }}</p>
                         </div>
 
@@ -845,6 +912,38 @@
                             <span class="catalog-search__counts" data-if="search.active" data-testid="series-search-counts">
                                 {{ strings.search.scopeSeries }}: {{ search.resultCounts.series }}
                             </span>
+                            <div class="layout-toggle" role="group" :aria-label="strings.layout.group" data-testid="series-layout-toggle">
+                                <button
+                                    type="button"
+                                    class="layout-toggle__btn"
+                                    :class="{ 'layout-toggle__btn--active': ui.listLayout.series !== 'grid' }"
+                                    :aria-pressed="ui.listLayout.series !== 'grid'"
+                                    :title="strings.layout.list"
+                                    :aria-label="strings.layout.list"
+                                    data-scope="series"
+                                    data-layout="list"
+                                    data-action="click"
+                                    data-fn="list/setLayout"
+                                    data-testid="series-layout-list"
+                                >
+                                    <svg class="icon icon--s" aria-hidden="true"><use href="#icon-view-list"></use></svg>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="layout-toggle__btn"
+                                    :class="{ 'layout-toggle__btn--active': ui.listLayout.series === 'grid' }"
+                                    :aria-pressed="ui.listLayout.series === 'grid'"
+                                    :title="strings.layout.grid"
+                                    :aria-label="strings.layout.grid"
+                                    data-scope="series"
+                                    data-layout="grid"
+                                    data-action="click"
+                                    data-fn="list/setLayout"
+                                    data-testid="series-layout-grid"
+                                >
+                                    <svg class="icon icon--s" aria-hidden="true"><use href="#icon-view-grid"></use></svg>
+                                </button>
+                            </div>
                             <p class="catalog-search__hint" data-if="search.active && search.loadedOnly" data-testid="series-search-loaded-only">{{ strings.search.loadedOnlyHint }}</p>
                         </div>
 
@@ -1316,6 +1415,7 @@
                                  the published slice (≤ ~40 rows), never the full array. -->
                             <div
                                 class="list"
+                                :class="{ 'list--grid': listGridActive }"
                                 data-ref="listContainer"
                                 data-testid="channel-list"
                                 tabindex="0"
@@ -1650,6 +1750,20 @@
                                                         <span class="track-menu__empty-dash" aria-hidden="true">—</span>
                                                         <p class="track-menu__empty-message">{{ strings.list.noSubtitles }}</p>
                                                     </div>
+                                                    <!-- Always offered, not just when the list is empty: a
+                                                         movie's own subtitles live inside its container and no
+                                                         browser exposes them (src/player/external-subs.ts), so
+                                                         a file from disk is the only subtitle route Movies/TV
+                                                         Shows ever has. -->
+                                                    <button
+                                                        type="button"
+                                                        class="track-menu__item track-menu__item--action"
+                                                        data-action="click"
+                                                        data-fn="player/loadSubtitleFile"
+                                                        data-testid="subtitle-load-file"
+                                                    >
+                                                        <span class="track-menu__label">{{ strings.list.subtitlesLoadFile }}</span>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -1905,6 +2019,12 @@
                                     </div>
                                     <p class="player-shell__error" data-if="player.playbackError" data-testid="player-error">
                                         {{ strings.list.playerErrorPrefix }} {{ player.playbackError }}
+                                    </p>
+                                    <!-- Not an error, and deliberately not styled like one: the
+                                         stream is playing, it is just missing something this
+                                         device cannot supply (src/player/audio-output.ts). -->
+                                    <p class="player-shell__notice" data-if="player.playbackNotice" data-testid="player-notice">
+                                        {{ player.playbackNotice }}
                                     </p>
                                 </div>
                                 <div class="empty-state now-playing__empty" data-if="!player.active" data-testid="now-playing-empty">

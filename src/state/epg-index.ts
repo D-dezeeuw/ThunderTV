@@ -34,6 +34,27 @@ export function programsForChannel(channelId: string): readonly EpgProgramRecord
     return byChannel.get(channelId) ?? [];
 }
 
+/**
+ * Which stored channel id a Live row's programmes are filed under.
+ *
+ * Two ingest pipelines write `epgPrograms` in two different id namespaces:
+ * `xtream-epg-load.ts` keys by the panel's own `epg_channel_id` (the row's
+ * `tvgId`), `epg-load.ts`'s country catalog keys by its catalog id (the
+ * row's `epgId`). Reading only `epgId`, as the enricher used to, is why a
+ * subscription whose panel serves a perfectly good guide still showed no
+ * now/next line on any row.
+ *
+ * The provider's own key wins when a row carries both: it is an exact join
+ * between two copies of the same string, where `epgId` is the output of a
+ * name matcher. `null` when neither has programmes — a channel with no data
+ * renders no EPG line rather than a wrong guess, same contract as before.
+ */
+export function epgChannelIdForRow(row: { tvgId?: string | null; epgId?: string | null }): string | null {
+    if (row.tvgId && byChannel.has(row.tvgId)) return row.tvgId;
+    if (row.epgId && byChannel.has(row.epgId)) return row.epgId;
+    return null;
+}
+
 export interface RowEpgSnapshot {
     nowTitle: string | null;
     nextTitle: string | null;
@@ -42,9 +63,10 @@ export interface RowEpgSnapshot {
 }
 
 /**
- * One row's EPG line. `channelId` is `ChannelRow.epgId` — the Phase 31
- * matcher's output — so a channel the catalog never matched simply has no
- * id to look up and gets `null` here, rather than a wrong guess.
+ * One row's EPG line. `channelId` is whatever `epgChannelIdForRow()`
+ * resolved for the row, so a channel neither pipeline filed programmes for
+ * simply has no id to look up and gets `null` here, rather than a wrong
+ * guess.
  */
 export function rowEpgSnapshot(channelId: string | null | undefined, nowMs: number): RowEpgSnapshot | null {
     if (!channelId) return null;

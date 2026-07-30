@@ -9,11 +9,19 @@
 
 export interface WindowMathInput {
     scrollTop: number;
+    /** Height of one *line* — a row in the list layout, a line of tiles in the grid. */
     rowH: number;
     overscan: number;
-    /** Rows that fit the viewport at the current row height (Feature 08.1.6). */
+    /** Lines that fit the viewport at the current line height (Feature 08.1.6). */
     visibleCount: number;
     totalRows: number;
+    /**
+     * Items per line — 1 (the default) for the list layout, N for the grid
+     * (`src/ui/grid-metrics.ts`). Everything below counts in lines and only
+     * multiplies back out to item indices at the slice bounds, so a grid is
+     * the same math with a wider stride rather than a second implementation.
+     */
+    columns?: number;
 }
 
 export interface WindowMathResult {
@@ -35,20 +43,24 @@ export interface WindowMathResult {
  */
 export function computeWindow(input: WindowMathInput): WindowMathResult {
     const { scrollTop, rowH, overscan, visibleCount, totalRows } = input;
+    const columns = Math.max(1, Math.floor(input.columns ?? 1));
 
     if (totalRows <= 0 || rowH <= 0) {
         return { sliceStart: 0, sliceEnd: 0, padTop: 0, padBottom: 0 };
     }
 
-    const maxFirst = totalRows - 1;
+    const totalLines = Math.ceil(totalRows / columns);
     const rawFirst = Math.floor(Math.max(scrollTop, 0) / rowH);
-    const first = Math.min(Math.max(rawFirst, 0), maxFirst);
+    const firstLine = Math.min(Math.max(rawFirst, 0), totalLines - 1);
 
-    const sliceStart = Math.max(0, first - overscan);
-    const sliceEnd = Math.min(totalRows, first + Math.max(visibleCount, 0) + overscan);
+    const startLine = Math.max(0, firstLine - overscan);
+    const endLine = Math.min(totalLines, firstLine + Math.max(visibleCount, 0) + overscan);
 
-    const padTop = sliceStart * rowH;
-    const padBottom = Math.max(0, (totalRows - sliceEnd) * rowH);
+    const sliceStart = startLine * columns;
+    const sliceEnd = Math.min(totalRows, endLine * columns);
+
+    const padTop = startLine * rowH;
+    const padBottom = Math.max(0, (totalLines - endLine) * rowH);
 
     return { sliceStart, sliceEnd, padTop, padBottom };
 }
@@ -59,8 +71,15 @@ export function computeVisibleCount(viewportHeight: number, rowH: number): numbe
     return Math.max(1, Math.ceil(Math.max(viewportHeight, 0) / rowH));
 }
 
-/** Clamps a candidate `scrollTop` into the real scrollable range for `totalRows` at `rowH`, given the current `viewportHeight` (Feature 08.1.8/08.6.5) — used both for live scroll events and for restoring a persisted position against a list that may have shrunk since it was saved. */
-export function clampScrollTop(scrollTop: number, totalRows: number, rowH: number, viewportHeight: number): number {
-    const maxScrollTop = Math.max(0, totalRows * rowH - viewportHeight);
+/** Clamps a candidate `scrollTop` into the real scrollable range for `totalRows` at `rowH`, given the current `viewportHeight` (Feature 08.1.8/08.6.5) — used both for live scroll events and for restoring a persisted position against a list that may have shrunk since it was saved. `columns > 1` shortens the extent proportionally, since a grid packs the same rows into fewer lines. */
+export function clampScrollTop(
+    scrollTop: number,
+    totalRows: number,
+    rowH: number,
+    viewportHeight: number,
+    columns = 1,
+): number {
+    const totalLines = Math.ceil(totalRows / Math.max(1, Math.floor(columns)));
+    const maxScrollTop = Math.max(0, totalLines * rowH - viewportHeight);
     return Math.min(Math.max(scrollTop, 0), maxScrollTop);
 }

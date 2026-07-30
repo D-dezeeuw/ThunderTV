@@ -7,6 +7,15 @@ export const PLAYER_ACTIVE = 'player.active';
 export const PLAYER_ZAP_HISTORY = 'player.zapHistory';
 /** Transient, session-only: the last fatal playback failure's technical detail, rendered in the player bar so a phone user can report *why* a stream died without devtools. */
 export const PLAYER_PLAYBACK_ERROR = 'player.playbackError';
+/**
+ * Transient, session-only: a stream that *plays* but is missing something —
+ * today only "the picture is running and no audio is being decoded", which
+ * `src/player/audio-output.ts` detects from the element's own decoder
+ * counters. Deliberately not `playbackError`: nothing failed, the title is
+ * watchable, and a red "Playback failed:" over a perfectly good picture
+ * would be a lie. Cleared on every new attach/stop like its neighbour.
+ */
+export const PLAYER_PLAYBACK_NOTICE = 'player.playbackNotice';
 /** Transient: live stream quality ('good' | 'fair' | 'poor'), from stall frequency — the player-bar signal indicator. Null when nothing is playing. */
 export const PLAYER_STREAM_HEALTH = 'player.streamHealth';
 /**
@@ -21,13 +30,15 @@ export const PLAYER_VARIANTS = 'player.variants';
 /** Id of the variant currently playing, so the strip can mark one chip active. */
 export const PLAYER_ACTIVE_VARIANT_ID = 'player.activeVariantId';
 /**
- * The listener's Radio visualizer preference: `'auto'` (the default —
- * `src/player/visualizer/index.ts` cycles through every preset) or a
- * specific preset id (a genre preset pins to that look until switched back
- * to `'auto'`). No audio analysis ever picks this — the listener does, via
- * the picker in the player bar (`index.html`'s `radio-visualizer-btn` and
- * the menu it opens; options from `player.selectors.ts`'s
- * `VISUALIZER_PICKER_OPTIONS`).
+ * The listener's Radio visualizer preference: `'auto'`
+ * (`src/player/visualizer/index.ts` cycles through every preset) or a
+ * specific preset id, which pins to that look until switched back to
+ * `'auto'`. The default is `'classical'` — out of the box Radio opens on one
+ * settled look rather than rotating through ten, and the picker's first row
+ * is always there to turn the rotation on. No audio analysis ever picks
+ * this — the listener does, via the picker in the player bar (`index.html`'s
+ * `radio-visualizer-btn` and the menu it opens; options from
+ * `player.selectors.ts`'s `VISUALIZER_PICKER_OPTIONS`).
  */
 export const PLAYER_VISUALIZER_PRESET = 'player.visualizerPreset';
 /** Transient, session-only: whether the listener paused the Radio visualizer's render loop. Never persisted — reopening Radio always starts unpaused. */
@@ -72,6 +83,7 @@ export interface PlayerState {
     active: ActiveChannelSnapshot | null;
     zapHistory: ActiveChannelSnapshot[];
     playbackError: string | null;
+    playbackNotice: string | null;
     streamHealth: string | null;
     variants: ChannelVariant[];
     activeVariantId: string | null;
@@ -85,10 +97,11 @@ export const PLAYER_DEFAULTS: PlayerState = {
     active: null,
     zapHistory: [],
     playbackError: null,
+    playbackNotice: null,
     streamHealth: null,
     variants: [],
     activeVariantId: null,
-    visualizerPreset: 'auto',
+    visualizerPreset: 'classical',
     visualizerPaused: false,
     audioMode: false,
     paused: false,
@@ -99,6 +112,7 @@ export function initPlayerState(): void {
     setValue(PLAYER_ACTIVE, PLAYER_DEFAULTS.active);
     setValue(PLAYER_ZAP_HISTORY, PLAYER_DEFAULTS.zapHistory);
     setValue(PLAYER_PLAYBACK_ERROR, PLAYER_DEFAULTS.playbackError);
+    setValue(PLAYER_PLAYBACK_NOTICE, PLAYER_DEFAULTS.playbackNotice);
     setValue(PLAYER_STREAM_HEALTH, PLAYER_DEFAULTS.streamHealth);
     setValue(PLAYER_VARIANTS, PLAYER_DEFAULTS.variants);
     setValue(PLAYER_ACTIVE_VARIANT_ID, PLAYER_DEFAULTS.activeVariantId);

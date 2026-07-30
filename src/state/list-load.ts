@@ -6,6 +6,7 @@ import { getPlatform } from '../core/platform';
 import { clearRows, getRows, setRows as setMemoryRows } from '../m3u/channel-memory';
 import { makeChannelRowId, type ChannelRow, type GroupMeta } from '../m3u/types';
 import { rowsForGroup } from '../ui/groups';
+import { viewerHasScrolled } from '../ui/virtual-list';
 import { resetGroupsForSourceSwitch } from './groups.actions';
 import { publishGroups } from './list-groups';
 import { setDisplayedRows } from './list-rows';
@@ -47,18 +48,33 @@ export async function loadActiveSource(): Promise<void> {
     // (one row per real channel), so neither uses the restored group /
     // scroll position — those describe the raw, ungrouped list.
     const activeView = get<Route>(UI_ACTIVE_VIEW);
+    // A boot straight into #/guide has to build Live's rows too — the Guide
+    // filters itself to them. Deliberately not an early return: the Guide
+    // doesn't own the shared virtual list, so that list still wants the
+    // restored group/scroll position below, for whenever the viewer leaves.
+    if (activeView === 'guide') publishRowsForCurrentView();
     if (activeView === 'live' || activeView === 'radio') {
         publishRowsForCurrentView();
         return;
     }
 
+    // The restored position lands here, at the end, because only now is the
+    // list long enough to hold it. A viewer who started scrolling while the
+    // pages were still arriving outranks it, though — having sat through the
+    // load without being moved (`preserveScroll` above), being jumped
+    // somewhere else the instant it finishes is the same yank one step later.
+    const keepPosition = viewerHasScrolled() ? { preserveScroll: true } : null;
+
     if (restored.viewMode === 'groups' && restored.activeGroup) {
         setDisplayedRows(rowsForGroup(getRows(), restored.activeGroup), {
-            scrollTop: restored.groupScrollTop,
+            ...(keepPosition ?? { scrollTop: restored.groupScrollTop }),
             selectedId: restored.selectedId,
         });
     } else {
-        setDisplayedRows(getRows(), { scrollTop: restored.scrollTop, selectedId: restored.selectedId });
+        setDisplayedRows(getRows(), {
+            ...(keepPosition ?? { scrollTop: restored.scrollTop }),
+            selectedId: restored.selectedId,
+        });
     }
 }
 
@@ -107,7 +123,11 @@ async function streamChannelsFor(sourceId: string, restoredGroup: string | null)
 
         accumulated = accumulated.concat(page.map((record) => toChannelRow(record, sourceId)));
         setMemoryRows(accumulated);
-        setDisplayedRows(restoredGroup ? rowsForGroup(accumulated, restoredGroup) : accumulated);
+        // Appending, not replacing — every row already on screen keeps its
+        // index and its offset, so the viewer keeps their place instead of
+        // being thrown back to the top once per page (`preserveScroll`'s own
+        // doc in `ui/virtual-list.ts` has the full story).
+        setDisplayedRows(restoredGroup ? rowsForGroup(accumulated, restoredGroup) : accumulated, { preserveScroll: true });
 
         offset += CHUNK_ROWS;
         if (page.length < CHUNK_ROWS) break;

@@ -100,11 +100,46 @@ false`); native (`native-tracks.ts`) is feature-detected — audio only where
 the browser exposes Safari's non-standard `video.audioTracks`, subtitles via
 the standard `video.textTracks` (`kind` `subtitles`/`captions`; off = every
 track's `mode` set to `'disabled'`) — both APIs absent means an empty,
-correct-and-expected snapshot; mpegts.js has no track-switching API at all,
-so its `PlayerEngine` only implements `getTracks()` (always empty) and skips
-the setters/`onTracksChanged` entirely. `track-prefs.ts` is the pure
-preference resolver (`normalizeLangCode`, `pickDefaultAudioTrack`,
-`pickDefaultSubtitleTrack`), engine/Spektrum-free by design.
+correct-and-expected snapshot. mpegts.js has no track API of its own, so it
+gets the same element-level engine (`attachElementTracks()`): it adds
+nothing to `video.textTracks`, but a subtitle file the viewer loaded is a
+real `<track>` on that element and belongs in the menu whatever is feeding
+it. `track-prefs.ts` is the pure preference resolver (`normalizeLangCode`,
+`pickDefaultAudioTrack`, `pickDefaultSubtitleTrack`), engine/Spektrum-free
+by design.
+
+### Subtitles the viewer brings (`external-subs.ts`, `subtitle-text.ts`)
+
+A movie's own subtitles are, in practice, unreachable: Xtream VOD is a
+progressive file played natively, its subtitle streams live inside the
+container (MKV's SRT/PGS, an `.mp4`'s tx3g), and no browser exposes those to
+`video.textTracks` — Chromium does not even demux them. So for the whole
+Movies/TV Shows catalog the subtitle menu was correctly, permanently empty,
+which reads as a broken feature rather than an absent one. The menu's
+"Load subtitle file…" row (`player/loadSubtitleFile`, `player-tracks.
+actions.ts`) is the route that always works: pick a `.srt`/`.vtt` through
+`getPlatform().files`, `toVtt()` it (SubRip differs by a header and a
+decimal comma), and attach it as a `<track>` with a blob URL. From there
+nothing is special-cased — the browser renders and positions it, the
+element lists it, `native-tracks.ts` maps it like any other track, and the
+menu's existing "Off" row turns it off. `clearExternalSubtitles()` runs in
+the engine's `stopVideoElement()`, so a file loaded for one film never
+follows the viewer into the next one with silently wrong timings.
+
+### No decodable audio (`audio-output.ts`)
+
+A browser that meets an audio codec it has no decoder for does not fail the
+load: it plays the video track, drops the audio one, and leaves
+`video.error` null. AC-3/E-AC-3/DTS are all over movie files (and a fair few
+`.ts` channels), Chromium's ffmpeg decodes none of them, and mpegts.js only
+demuxes AAC/MP3 regardless — so "perfect picture, no sound, no reason
+given" was the single most confusing thing playback could do. The element's
+own decoder counters answer it for every engine at once: three samples over
+the first half-minute, and video climbing while `webkitAudioDecodedByteCount`
+stays at zero (or Firefox's `mozHasAudio === false`) publishes
+`player.playbackNotice`. Anything less positive stays `'unknown'` and says
+nothing — a false "no sound" over a stream that has sound is worse than
+silence about it.
 
 The state/UI stage this section used to describe as "later" is
 `src/state/player-tracks.ts`/`player-tracks.actions.ts` (`state/README.md`'s
@@ -170,7 +205,11 @@ motes).
 Presets auto-advance every `AUTO_CYCLE_MS` — unless the listener pins one via
 the picker (`index.html`'s `radio-visualizer-btn` menu, `player.visualizerPreset`
 in `state/player.ts`, persisted), in which case only picking `'auto'` again
-resumes the rotation. `player/nextVisualizerPreset` (`state/player.actions.ts`)
+resumes the rotation. That preference **defaults to `'classical'`**, so out of
+the box a pin is already in effect: Radio opens on one settled look rather than
+rotating through ten, and the rotation is opt-in via the picker's first row.
+(Persisted, so an install that already chose something keeps it.)
+`player/nextVisualizerPreset` (`state/player.actions.ts`)
 skips manually and always clears a pin. Every switch — auto-advance, the
 picker, or "Next visual" — crossfades rather than cutting instantly: the
 outgoing preset keeps rendering into one offscreen buffer (seeded from the
@@ -178,6 +217,32 @@ frame on screen, so trail-based looks carry into the fade instead of
 dipping to black), the incoming one (freshly reset) renders into another,
 and the visible canvas is just the two alpha-blended each frame
 (`crossfade.ts`'s `CrossFader`).
+
+### Trails, and why they used to fade to grey
+
+Most presets fade rather than clear: a translucent full-canvas fill each
+frame leaves the afterimage that reads as a trail. Every one of them used a
+*tinted* fill (`rgba(6, 8, 16, .22)` and friends), and that is the whole
+problem — a repeated alpha blend converges on the colour it paints, so the
+floor of each preset was that tint by construction, never black. Two more
+things pushed the same way: canvas compositing is 8-bit and rounds, so even a
+pure black fade is `round(v · (1 − α))`, which has a fixed point wherever
+`v · α < 0.5` (α = 0.05 stalls at a permanent #0a0a0a); and the canvas never
+reached full alpha, letting `.radio-now-playing`'s CSS background bleed
+through the shortfall — `--color-bg`, which is *white* in the light theme.
+
+`presets/preset-utils.ts`'s `fadeTrails()` is the single fade every preset now
+calls, and it is three passes: the fade in pure black, a `destination-over`
+opaque black backing the frame with real black instead of the pane behind it,
+and a `color-burn` floor against `rgb(254, 254, 254)` that subtracts about one
+8-bit unit from the shadows and nothing from the highlights — `Cb ≤ 1/255`
+hits the `min()` clamp and lands on exactly 0, so the residue counts down a
+unit a frame and *stops* at #000 with the bright end of the trail untouched.
+The burn is feature-detected, since assigning an unsupported operation is a
+no-op and painting near-white through `source-over` would blow out the frame.
+Fractal Tunnel fades by redrawing a dimmed copy of the previous frame instead
+of by filling, so it calls the floor pass alone (`floorToBlack()`), right
+after the history composite and before this frame's fresh detail goes on.
 
 `player/toggleVisualizerPause` (`player.visualizerPaused`, transient —
 always false on a fresh Radio visit) freezes the render loop entirely rather
@@ -208,10 +273,32 @@ restarts the stream. `startRadioVisualizer()` is itself a no-op when already
 running against the same canvas — the same `watch()` fires on every one of
 those four dependencies, and a full reset on each call would stomp an
 in-flight crossfade or the pause state; preset/pause changes apply through
-their own setters instead. The visualizer reads real frequency data only
-when the audio is same-origin/CORS-clean, which mpegts.js/hls.js's `blob:`
-MediaSource URL satisfies (the default engines); the native-engine fallback
-still animates, just without music-reactivity.
+their own setters instead.
+
+### Where the audio comes from (`visualizer/audio-tap.ts`)
+
+**Listening must never change what comes out of the speakers**, and that is
+the whole reason this module exists. The original graph used
+`createMediaElementSource(video)`, which *re-routes* the element's audio into
+the graph — and per spec outputs **silence** whenever the element's current
+resource is CORS-cross-origin. One call marks that `<video>` for the life of
+the page, and the shared element is never recreated. So: play one Radio
+station or one audio-only TV channel (both `blob:` MediaSource, both
+audible), then open a movie — a progressive file the native engine hands
+straight to `video.src`, cross-origin — and it plays picture-perfect and dead
+silent. That was "movies have no sound".
+
+`captureStream()` (`mozCaptureStream()` on Firefox) is the same data without
+the hijack: a *copy* of what the element plays, leaving the element's own
+output alone. Nothing here connects to `ctx.destination` for that reason — an
+`AnalyserNode` with no downstream connection still runs (the spec's
+automatic-pull list), so the analyser reads real data from a graph that is
+audibly inert. Every route that cannot produce data — Safari (no
+`captureStream()`), a tainted resource (Chromium throws), a capture taken
+before the stream had an audio track — returns `SILENT_TAP` (zeroed spectrum,
+128-centred waveform) rather than `null`, so the presets animate at rest and
+the viewer keeps their sound. The tap is keyed on the element *and* its
+current stream, so a new channel/movie on the same element re-taps.
 
 ## Fullscreen
 

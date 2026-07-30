@@ -1,5 +1,5 @@
 import type { FrameContext, VisualizerPreset } from '../types';
-import { barAt, decay } from './preset-utils';
+import { barAt, decay, fadeTrails } from './preset-utils';
 
 /** Odd count on purpose: an even segment count makes opposite wedges line up into a tidy mandala, which is the opposite of what this preset wants. */
 const SEGMENTS = 7;
@@ -84,9 +84,10 @@ export class MetalPreset implements VisualizerPreset {
         this.angle += (0.0008 + treble * 0.004) * dt * this.direction;
 
         // Trails, plus a soft red wash riding the bass — a smooth swell
-        // (alpha capped low), deliberately not a beat-keyed strobe.
-        ctx.fillStyle = 'rgba(2, 0, 0, 0.36)';
-        ctx.fillRect(0, 0, width, height);
+        // (alpha capped low), deliberately not a beat-keyed strobe. The wash
+        // goes on *after* the fade, so it stays an audio-reactive swell that
+        // falls back to black with the bass instead of a permanent red floor.
+        fadeTrails(ctx, width, height, 0.36);
         ctx.fillStyle = `hsla(0, 80%, 30%, ${(bass * 0.1).toFixed(2)})`;
         ctx.fillRect(0, 0, width, height);
 

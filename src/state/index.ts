@@ -28,6 +28,8 @@ import { registerLiveSelectors } from './live.selectors';
 import { registerListActions } from './list.actions';
 import { registerListSelectors } from './list.selectors';
 import { initListGroupsState } from './list-groups';
+import { initListLayoutModule } from './list-layout';
+import { registerListLayoutActions } from './list-layout.actions';
 import { initListStateModule } from './list-state';
 import { unwrapPersisted } from './persist';
 import { initPlayerState } from './player';
@@ -111,6 +113,7 @@ export function initState(): void {
     initUiState();
     initListState();
     initListStateModule();
+    initListLayoutModule();
     initListGroupsState();
     initLiveState();
     initFavoritesState();
@@ -136,6 +139,7 @@ export function registerActions(): void {
     registerPlayerTrackActions();
     registerUiActions();
     registerListActions();
+    registerListLayoutActions();
     registerGroupActions();
     registerLiveActions();
     registerRecentActions();

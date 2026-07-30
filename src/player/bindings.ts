@@ -9,6 +9,7 @@ import {
     PLAYER_VISUALIZER_PRESET,
 } from '../state/player';
 import { UI_ACTIVE_VIEW } from '../state/ui';
+import { stopAudioOutputWatch, watchAudioOutput } from './audio-output';
 import { attachAndPlay, detach } from './engine';
 import { attachPlaybackStateSync } from './playback-state-sync';
 import {
@@ -48,8 +49,14 @@ export function registerPlayerBindings(): () => void {
 
         if (!active) {
             detach(video);
+            stopAudioOutputWatch();
             return;
         }
+        // Armed per stream, alongside the attach: a file whose audio codec
+        // no browser decodes plays a picture in perfect silence and emits no
+        // error at all, so nothing else in the chain ever says why
+        // (`audio-output.ts`).
+        watchAudioOutput(video);
         void attachAndPlay(video, applyProxy(effectiveProxyTemplate(), active.streamUrl), {
             // `ActiveChannelSnapshot.kind` is absent on every live channel
             // and on every snapshot persisted before the field existed, so

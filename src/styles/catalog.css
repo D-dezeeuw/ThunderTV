@@ -64,6 +64,46 @@
     color: var(--color-text-dim);
 }
 
+/* ---- List/grid switch ----
+   Two segments of one control, pinned to the far end of the search row so
+   the input keeps every pixel it can take. Segmented rather than a single
+   toggling button: which layout you are in has to be readable at a glance
+   from a couch, and a one-button toggle only ever shows the state you are
+   *not* in. */
+.layout-toggle {
+    flex: none;
+    margin-inline-start: auto;
+    display: flex;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-m);
+    overflow: hidden;
+}
+
+.layout-toggle__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    background: transparent;
+    color: var(--color-text-dim);
+    cursor: pointer;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        color var(--dur-1) var(--ease-swift);
+}
+
+.layout-toggle__btn:hover,
+.layout-toggle__btn:focus-visible {
+    background: var(--surface-hover);
+    color: var(--color-text);
+}
+
+.layout-toggle__btn--active {
+    background: var(--surface-active);
+    color: var(--color-accent);
+}
+
 /* ---- Chips (search scopes) ----
    Categories are NOT chips: they're a vertical rail in the list body, the
    same `.groups-panel` the Categories view uses (channel-list.css). The

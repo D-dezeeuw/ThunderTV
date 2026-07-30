@@ -56,4 +56,10 @@ export const nlCatalog = {
         scopeSeries: 'Series',
         loadedOnlyHint: 'Doorzoekt alleen geladen titels — open meer categorieën voor volledigere resultaten.',
     },
+    /** De lijst/raster-schakelaar naast het zoekveld van elke weergave. */
+    layout: {
+        group: 'Weergave',
+        list: 'Lijstweergave',
+        grid: 'Rasterweergave',
+    },
 } as const;

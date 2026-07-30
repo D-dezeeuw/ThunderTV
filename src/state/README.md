@@ -10,8 +10,9 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | Module              | Keys                                                                                                          | Persisted?                                  |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | `playlist.ts`        | `playlist.sources`, `playlist.activeSourceId`, `playlist.demoRows`                                                   | `activeSourceId` yes (Feature 08.10.6); `sources` is a live storage projection, `demoRows` is static demo data — neither persists |
-| `player.ts`          | `player.active`, `player.zapHistory`, `player.visualizerPreset`, `player.visualizerPaused`, `player.audioMode`        | Yes — the §6.4 instant-restore pair; `visualizerPreset` also persists (the listener's Radio visualizer choice) and so does `audioMode` (watch TV channels audio-only, with the visualizer standing in for the picture — a viewing preference, and the player bar always carries the switch back); `visualizerPaused` does not (always false on a fresh Radio visit) |
+| `player.ts`          | `player.active`, `player.zapHistory`, `player.visualizerPreset`, `player.visualizerPaused`, `player.audioMode`, plus the transient diagnostics trio `player.playbackError`, `player.playbackNotice` (the stream plays but decodes no audio — `src/player/audio-output.ts`), `player.streamHealth` | Yes — the §6.4 instant-restore pair; the diagnostics trio never persists (all three describe one attach and are cleared by the next); `visualizerPreset` also persists (the listener's Radio visualizer choice) and so does `audioMode` (watch TV channels audio-only, with the visualizer standing in for the picture — a viewing preference, and the player bar always carries the switch back); `visualizerPaused` does not (always false on a fresh Radio visit) |
 | `xtream-epg-load.ts` | *(no keys of its own — writes `settings.epgFeedThrough` and the `epgChannels`/`epgPrograms` storage tables)* | n/a — the Xtream guide pipeline. `loadXtreamGuide()` pulls the panel's whole `xmltv.php` once per source (12h TTL); `ensureChannelEpg()` fills a single channel via `get_short_epg` when it starts playing with nothing to show. Joined by `epg_channel_id`/`tvgId`, so it uses none of `src/epg/`'s catalog or matcher |
+| `guide-live-join.ts` | *(no keys — a pure function over two arrays)* | n/a — the tvg-id → catalog-id → name ladder that decides which stored guide channels the Guide shows, and which Live row a picked one plays. See `src/epg/README.md`'s "Which channels the Guide shows" |
 | `player-tracks.ts`   | `player.audioTracks`, `player.subtitleTracks`, `player.trackMenu`                                                     | No — the dock/theater popups' own published lists (`player-tracks.actions.ts`'s `registerTrackSync()` republishes them from `getPlayerTracks()`) and which popup is open (`'audio' \| 'subtitles' \| 'visualizer'` — Radio's preset picker shares the key so only one can be open); rebuilt every stream, never restored |
 | `epg.ts`             | `epg.tick`                                                                                                            | No — a heartbeat timestamp, recomputed every boot |
 | `epg-settings.ts`    | `settings.epgCacheState`, `settings.epgCatalogCount`                                                                  | No — transient Settings → Diagnostics feedback (`epg-settings.actions.ts`'s `refreshEpgCatalog()`/`clearEpgCache()`) and a derived count `state/epg-load.ts`'s `loadDefaultEpg()` re-publishes on every run; neither survives a reload (nor should — the count is wrong the instant the underlying `epgCatalog` table changes) |
@@ -24,6 +25,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`, `ui.setupComplete`                                                                 | `ui.setupComplete` yes — it is what stops a configured install from being asked again; `wizardOpen`/`wizardStep` no (transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen`) |
 | `boot.ts`             | `ui.bootPhase`                                                                                                        | No — the wallpaper splash's `'loading' \| 'exiting' \| 'done'` lifecycle, recomputed fresh (always starts at `'loading'`) every boot |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
+| `list-layout.ts`      | `ui.listLayout`                                                                                                      | Yes — the per-view list/grid choice for the shared virtual list, keyed by the three views that offer the switch (live/movies/series). A browsing preference, not session state, so asking once is enough; a scope missing from a stored value falls back to the list layout. Radio/Categories share the list but show no switch and therefore stay on rows — a mode with no visible control is a mode nobody can turn off |
 | `list-state.ts`       | `ui.listState`, `ui.activeGroup`, `ui.viewMode`                                                                      | `ui.listState` yes (Feature 08.6, LRU-capped at 20 sources); the two live mirrors restore from it on source entry but aren't separately persisted |
 | `list-groups.ts`      | `list.groups`, `list.groupsTruncated`                                                                                | No — the groups panel's own row set, capped independently of Phase 06's `MAX_GROUPS` (Feature 08.5.9) |
 | `favorites.ts`        | `favorites.ids`, `favorites.rows`                                                                                     | No — two live projections of the real `favorites` storage table (Feature 08.8.4), exactly like `playlist.sources`. `ids` is the O(1) star-badge lookup, `rows` is the Starred view's newest-first row source; both are written only by `publishFavorites()`, never apart — that is how a starred row and a Starred tab get to disagree |
@@ -133,19 +135,18 @@ recording once rather than re-discovering per call site:
 - **`registry-overflow.ts`**: `registry.ts` was already at eslint's 400-line
   `max-lines` ceiling with zero slack, so the ~20 new `KEY_REGISTRY` entries
   for `vod`/`series`/`search`/the two new `settings.*` language keys live in
-  their own file and are merged into `KEY_REGISTRY` via one spread. It has
-  stayed full since, so **every new `KEY_REGISTRY` entry goes here**,
-  whichever module owns it — that's why the file is named for the role
-  rather than the phase that created it.
+  their own file and are merged into `KEY_REGISTRY` via one spread. That file
+  has since hit the same ceiling, so it now spreads in themed leaf files of
+  its own (`registry-epg.ts`, `registry-ui.ts`) — **a new `KEY_REGISTRY` entry
+  goes into whichever leaf file owns its subject, or a new leaf file**, never
+  into the two full ones.
   `KEY_REGISTRY` itself is still the one object every consumer
   (`persist.ts`, `bulk-policy.ts`, `index.ts`'s `rehydrateState()`) reads —
   this only changes how it's assembled. `KeyMeta.owner`'s union gained
-  `'vod' | 'series' | 'search'`. `registry-overflow.ts` itself later hit the
-  same 400-line ceiling (the boot splash's `ui.bootPhase`, `boot.ts`) — one
-  level deeper, `registry-overflow-2.ts` exists for exactly that reason and
-  is spread into `KEY_REGISTRY` the same way. Once a `-2` file exists, add to
-  whichever overflow file still has room rather than always reaching for the
-  newest one.
+  `'vod' | 'series' | 'search'`. The boot splash's `ui.bootPhase` (`boot.ts`)
+  is the example this pattern was built for: it landed in `registry-ui.ts`
+  (the `ui`-owned leaf file), not a new one — check whether an existing leaf
+  already owns your key's subject before adding another.
 - **Catalog payload persistence** (`catalog-storage.ts`): no bulk table in
   `src/core/storage/records.ts`'s `TableName` union fits a VOD/series
   catalog, and adding one means editing `src/core/storage/**`, outside this
@@ -538,6 +539,21 @@ layer:
   mechanism — a catalog that hasn't matched anything yet is far more often
   "not fetched" or "wrong country" than "every channel genuinely lacks
   guide data."
+- **The Guide is the one place that never-empty-screen rule does *not*
+  apply.** `guide.selectors.ts` shows nothing until Live has published
+  rows to narrow against, because the alternative is painting a whole
+  provider's guide — channels the viewer's list does not show and a click
+  cannot play. The Live filters are a view over a list the viewer still
+  has; an unjoined guide is a list they don't. `guide.view` therefore
+  depends on `live.stats`: the rows themselves are module memory (the
+  bulk-data bypass), so that readout is the only published value that
+  changes exactly when they are rebuilt, and without it the grid stayed
+  unnarrowed until the next 30s `epg.tick`.
+- **`publishRowsForCurrentView()` builds Live's rows for the `guide` view
+  too**, without publishing anything into the shared virtual list. The
+  Guide doesn't own that list but does depend on those rows existing, and
+  a viewer who boots straight into `#/guide` would otherwise never build
+  them (`list-load.ts` has the matching non-early-returning branch).
 
 ## The persistence bridge, in one paragraph
 

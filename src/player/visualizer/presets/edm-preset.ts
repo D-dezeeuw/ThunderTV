@@ -1,5 +1,5 @@
 import type { FrameContext, VisualizerPreset } from '../types';
-import { barAtMirrored, decay } from './preset-utils';
+import { barAtMirrored, decay, fadeTrails } from './preset-utils';
 
 const BAR_COUNT = 64;
 const MAX_RINGS = 14;
@@ -43,8 +43,7 @@ export class EdmPreset implements VisualizerPreset {
         const maxRadius = Math.min(width, height) * 0.5;
 
         // Fast trail fade for snappy, sharp motion rather than a smear.
-        ctx.fillStyle = 'rgba(4, 2, 10, 0.3)';
-        ctx.fillRect(0, 0, width, height);
+        fadeTrails(ctx, width, height, 0.3);
 
         if (beat) {
             this.kick = Math.min(1.4, this.kick + 0.5 + beatIntensity * 0.5);

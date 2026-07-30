@@ -48,10 +48,10 @@ repeated here, to avoid the two drifting apart.
 | `player.playbackError` | player | no | — | v1 | Transient diagnostics: the last fatal playback failure (hls.js fatal kind or MediaError label), rendered in the player bar — cleared on every new attach/stop. |
 | `player.streamHealth` | player | no | — | v1 | Live stream quality (good/fair/poor) derived from stall frequency — the player-bar signal indicator; null when idle. |
 | `player.subtitleTracks` | player | no | 50 | v1 | Same role/lifecycle as player.audioTracks, for the subtitle-track popup. |
-| `player.trackMenu` | player | no | — | v1 | 'none' | 'audio' | 'subtitles' — which track popup (if any) is open. Reset to 'none' on every player.active change (state/player-tracks.actions.ts's registerTrackSync()). |
+| `player.trackMenu` | player | no | — | v1 | 'none' | 'audio' | 'subtitles' | 'visualizer' — which dock popup (if any) is open. 'visualizer' is Radio's preset picker, which shares this key so two popups can never be open at once (it publishes no track list of its own). Reset to 'none' on every player.active change (state/player-tracks.actions.ts's registerTrackSync()). |
 | `player.variants` | player | no | 12 | v1 | The playing channel\'s alternate feeds (other qualities, a provider bundle\'s copy, catch-up) — rebuilt from the loaded catalog on every channel change, so never persisted: a stale copy would offer stream ids the provider may already have rotated. |
 | `player.visualizerPaused` | player | no | — | v1 | Whether the listener paused the Radio visualizer render loop — transient, always false on a fresh Radio visit. |
-| `player.visualizerPreset` | player | yes | — | v1 | Radio visualizer preference — \'auto\' (cycle every preset) or a specific preset id (a genre preset stays pinned). Chosen by the listener, never inferred from the audio. |
+| `player.visualizerPreset` | player | yes | — | v1 | Radio visualizer preference — \'auto\' (cycle every preset) or a specific preset id (a genre preset stays pinned). Defaults to \'classical\'. Chosen by the listener, never inferred from the audio. |
 | `player.zapHistory` | player | yes | 20 | v1 | Capped, deduped list of recently played channel snapshots. |
 | `playlist.activeSourceId` | playlist | yes | — | v1 | The source the user last navigated into (Feature 05.6.2, persisted starting Feature 08.10.6) — a reload lands back in the same channel list instead of a source picker, matching Feature 08.6\'s "never left" framing. |
 | `playlist.demoRows` | playlist | no | — | v1 | Phase 02 density-preview fixture rows — never real data, never persisted. |
@@ -62,7 +62,7 @@ repeated here, to avoid the two drifting apart.
 | `search.resultCounts` | search | no | — | v1 | {channels, movies, series} match counts, each scope\'s own (pre-concatenation) rankSearch() result length — stays accurate even when the "all" scope\'s combined row set had to truncate at DEFAULT_SEARCH_LIMIT. |
 | `search.scope` | search | no | — | v1 | "channels" | "movies" | "series" | "all" — which catalog(s) recomputeSearch() ranks against. |
 | `series.activeCategoryId` | series | no | — | v1 | The Series category currently selected/open. |
-| `series.categories` | series | no | 500 | v1 | Same shape/role as vod.categories, for get_series_categories. |
+| `series.categories` | series | no | 500 | v1 | Same shape/role as vod.categories, including the service accordion, for get_series_categories. |
 | `series.count` | series | no | — | v1 | Item count of the currently-selected series category. |
 | `series.detail` | series | no | — | v1 | Denormalized snapshot for the open series, including a flattened season-header/episode rows array (rows, series.ts\'s SeriesDetailRow) bounded to SERIES_DETAIL_EPISODES_CAP total episode rows — always written via replace(), same merge-hazard reasoning as vod.detail. |
 | `series.detailErrorReason` | series | no | — | v1 | Same no-source/fetch-failed/null contract as series.errorReason, scoped to series.detailStatus. |
@@ -81,6 +81,7 @@ repeated here, to avoid the two drifting apart.
 | `settings.codexLibraryState` | settings | no | — | v1 | idle/busy/done/failed for the follow, unfollow, refresh and trust actions. |
 | `settings.codexMessage` | settings | no | — | v1 | Human-readable outcome of the last Codex action — claim counts on success, the specific reason on failure. |
 | `settings.codexState` | settings | no | — | v1 | idle/busy/done/failed for the Codex export and import buttons. |
+| `settings.epgFeedThrough` | settings | yes | — | v1 | Epoch ms of the newest programme stop in the last parsed XMLTV feed, 0 before any parse. Persisted because it must outlive the data it describes: prune.ts deletes every programme past its stop + 24h, so against a feed that has stopped updating the stored rows are gone and only this value still says how far the source actually reaches. |
 | `settings.exportState` | settings | no | — | v1 | Feedback for the Settings configuration export (idle/done/failed) — transient, reset on each attempt. |
 | `settings.healthCleared` | settings | no | — | v1 | One-shot confirmation that the forget-stream-health button ran. |
 | `settings.healthDeadCount` | settings | no | — | v1 | How many of those score below the likely-dead threshold. Advisory: such rows are marked in the list, never removed. |
@@ -109,6 +110,7 @@ repeated here, to avoid the two drifting apart.
 | `ui.activeView` | ui | no | — | v1 | Current route — driven by the URL hash, which is its own persistence mechanism. |
 | `ui.density` | ui | yes | — | v1 | Channel-list row density preference. |
 | `ui.fontSize` | ui | yes | — | v1 | Text size step (small/default/large/xlarge) — Settings → Appearance. Retargets only tokens.css's --text-* via <html data-font-size>; row geometry never moves (that stays ui.density's alone, src/ui/density.ts). |
+| `ui.listLayout` | ui | yes | — | v1 | Per-view list/grid choice for the shared virtual list, keyed by the three views that offer the toggle (live/movies/series). Persisted because it is a browsing preference, not session state; a scope missing from the stored value falls back to the list layout (src/state/list-layout.ts). |
 | `ui.listState` | ui | yes | — | v1 | Per-source list UI state map (scrollTop, groupScrollTop, viewMode, activeGroup, selectedId), LRU-capped to the last 20 touched sources (Feature 08.6.1/08.6.7) — what makes returning to a playlist feel like never having left. |
 | `ui.settingsOpen` | ui | no | — | v1 | Transient settings-panel open/closed state — reopening automatically on boot would be surprising. |
 | `ui.setupComplete` | ui | yes | — | v1 | Whether first-run setup has already been dealt with on this install (saved, skipped, or a source found at boot) — the one wizard key that must survive a reload, since it is what stops a configured user from being asked again (wizard.actions.ts\'s markSetupComplete()). |
@@ -118,7 +120,7 @@ repeated here, to avoid the two drifting apart.
 | `ui.wizardOpen` | ui | no | — | v1 | First-run setup wizard open/closed — computed fresh every boot from whether playlist.sources is empty once the real load finishes (wizard.actions.ts\'s openWizardIfNoSources()), same "never auto-reopen a stale value" reasoning as ui.settingsOpen. Can also be reopened manually (wizard/open, Settings → Streaming). |
 | `ui.wizardStep` | ui | no | — | v1 | Which of the wizard\'s two steps (1 = language/country, 2 = Xtream credentials) is showing — reset to 1 every time the wizard opens. |
 | `vod.activeCategoryId` | vod | no | — | v1 | The Movies category currently selected/open — drives vod.actions.ts\'s "superseded mid-flight" check. |
-| `vod.categories` | vod | no | 500 | v1 | Compact {id,name} list from get_vod_categories, country-first sorted (catalog-sort.ts) — module memory (vod-rows.ts) holds the full XtreamCategory[]/items; this is only the picker\'s row set. |
+| `vod.categories` | vod | no | 500 | v1 | The Movies category accordion\'s VISIBLE rows (catalog-category-tree.ts): one head per streaming service, popularity/country sorted (catalog-sort.ts), plus the variants of whichever heads are open. Module memory (vod-rows.ts) holds the full XtreamCategory[]/items and the rail\'s own grouping; this is only what the picker draws, so a collapsed variant is absent from it and an expanded one carries a shortened label — read a category\'s full name via vodCategoryName(), never back out of here. |
 | `vod.count` | vod | no | — | v1 | Item count of the currently-selected VOD category — same "count, not rows" role as live.ts\'s RADIO_COUNT. |
 | `vod.detail` | vod | no | — | v1 | Denormalized snapshot for the open movie (VodItem fields + get_vod_info once fetched) — always written via replace(), never set(), since two movies\' differing optional fields would otherwise bleed together (state/README.md\'s merge-hazard finding). |
 | `vod.detailId` | vod | no | — | v1 | streamId of the currently-open movie detail, or null — vod.actions.ts\'s openVodDetail()/closeVodDetail(). |

@@ -1,4 +1,5 @@
 import type { FrameContext, VisualizerPreset } from '../types';
+import { fadeTrails } from './preset-utils';
 
 const POINTS = 240;
 
@@ -26,8 +27,7 @@ export class BluesPreset implements VisualizerPreset {
 
         // Barely-there trail fade — the slowest of any preset, for a long,
         // dreamy afterglow rather than a sharp motion trail.
-        ctx.fillStyle = 'rgba(3, 6, 14, 0.05)';
-        ctx.fillRect(0, 0, width, height);
+        fadeTrails(ctx, width, height, 0.05);
 
         this.angle += 0.00007 * dt;
         const targetBreath = 1 + mid * 0.2;

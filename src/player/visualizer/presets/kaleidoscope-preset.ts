@@ -1,5 +1,5 @@
 import type { FrameContext, VisualizerPreset } from '../types';
-import { barAt, decay } from './preset-utils';
+import { barAt, decay, fadeTrails } from './preset-utils';
 
 const SEGMENTS = 12;
 const RAYS = 30;
@@ -125,8 +125,7 @@ export class KaleidoscopePreset implements VisualizerPreset {
         }
         bctx.restore();
 
-        ctx.fillStyle = 'rgba(4, 4, 10, 0.2)';
-        ctx.fillRect(0, 0, width, height);
+        fadeTrails(ctx, width, height, 0.2);
 
         ctx.save();
         ctx.translate(cx, cy);
