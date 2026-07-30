@@ -1,6 +1,7 @@
 import type { ChannelRow } from '../m3u/types';
 import { publishListWindow } from '../state/list-publish';
 import { rowHeight, type Density } from './density';
+import { gridColumns, gridTileHeight, type TileShape } from './grid-metrics';
 import { clampScrollTop, computeVisibleCount, computeWindow } from './window-math';
 
 /**
@@ -21,7 +22,7 @@ export const OVERSCAN = 8;
 let allRows: ChannelRow[] = [];
 let rowIndexById = new Map<string, number>();
 let scrollTop = 0;
-let rowH = rowHeight('comfortable');
+let densityRowH = rowHeight('comfortable');
 let visibleCount = 0;
 let viewportHeight = 0;
 let rafHandle: number | null = null;
@@ -29,17 +30,76 @@ let containerEl: HTMLElement | null = null;
 let resizeObserver: ResizeObserver | null = null;
 
 /**
+ * The poster-grid layout, or `null` for the list layout. `shape` is what the
+ * app asked for; `columns`/`tileH` are what that resolves to at the current
+ * container width, recomputed on every resize. Everything below counts in
+ * *lines* — one row in the list layout, `columns` tiles in the grid — so the
+ * two layouts share one set of scroll math rather than forking it.
+ */
+let grid: { shape: TileShape; columns: number; tileH: number } | null = null;
+
+/**
+ * True once a scroll event reported a position this controller did not put
+ * there — i.e. the viewer moved the list themselves. Every programmatic move
+ * assigns `scrollTop` *before* touching the DOM, so the event it triggers
+ * reports exactly the value already held here; only a real gesture arrives
+ * out of step. Reset by any `setRows()` that replaces the row set, since a
+ * new list starts a new position.
+ */
+let viewerScrolled = false;
+
+/** Whether the viewer has scrolled the current row set themselves — the signal a deferred, restored position checks before overriding where they are. */
+export function viewerHasScrolled(): boolean {
+    return viewerScrolled;
+}
+
+function currentRowH(): number {
+    return grid ? grid.tileH : densityRowH;
+}
+
+function currentColumns(): number {
+    return grid ? grid.columns : 1;
+}
+
+/** Tiles across in the current layout — 1 while the list layout is active. `state/list.actions.ts` reads it to step the selection cursor a whole line at a time. */
+export function columnCount(): number {
+    return currentColumns();
+}
+
+export interface SetRowsOptions {
+    scrollTop?: number;
+    /**
+     * This publish *grows* the row set already on screen rather than
+     * replacing it — keep the viewer exactly where they are.
+     *
+     * The chunked source load (`state/list-load.ts`'s `streamChannelsFor()`)
+     * republishes a longer accumulated array every `CHUNK_ROWS`, which is a
+     * `setRows()` call like any other: without this it reset the position to
+     * the top, so a 90k-row source yanked the list out from under whoever was
+     * scrolling it, once per page, all the way through the load — and the
+     * forced `scrollTop` write fed another `scroll` event straight back into
+     * `onScroll()`. Growth cannot move a row that is already on screen (the
+     * new rows are all past the end), so there is nothing to re-anchor: the
+     * position is simply left alone.
+     */
+    preserveScroll?: boolean;
+}
+
+/**
  * Swaps the displayed row set and republishes immediately — Feature 08.1.5's
  * "controller's only data entry point." `options.scrollTop` restores a
  * saved position (Feature 08.2.8/08.6.4/08.6.8); omitted, the view starts at
  * the top (Feature 08.10.6's "no transient render of the old source's rows"
  * — a fresh `setRows` call always fully replaces both the array and the
- * published window in one synchronous step, never two).
+ * published window in one synchronous step, never two) unless
+ * `options.preserveScroll` marks it as growth of the set already displayed.
  */
-export function setRows(rows: readonly ChannelRow[], options: { scrollTop?: number } = {}): void {
+export function setRows(rows: readonly ChannelRow[], options: SetRowsOptions = {}): void {
     allRows = rows as ChannelRow[];
     rowIndexById = new Map(allRows.map((row, index) => [row.id, index]));
-    scrollTop = clampScrollTop(options.scrollTop ?? 0, allRows.length, rowH, viewportHeight);
+    if (!options.preserveScroll) viewerScrolled = false;
+    const requested = options.scrollTop ?? (options.preserveScroll ? scrollTop : 0);
+    scrollTop = clampScrollTop(requested, allRows.length, currentRowH(), viewportHeight, currentColumns());
     syncContainerScrollTop();
     publishWindow();
 }
@@ -71,19 +131,79 @@ export function getScrollTop(): number {
 }
 
 export function getRowHeight(): number {
-    return rowH;
+    return currentRowH();
 }
 
-/** Feature 08.1.7: a density switch is exactly one republish — rescale the preserved scroll position proportionally so roughly the same rows stay in view. */
+/** Feature 08.1.7: a density switch is exactly one republish — rescale the preserved scroll position proportionally so roughly the same rows stay in view. A no-op for geometry while the grid is on (a tile is sized by the container, not by density), but the new value is still recorded so switching back to the list layout uses it. */
 export function setDensity(density: Density): void {
     const nextRowH = rowHeight(density);
-    if (nextRowH === rowH) return;
-    const ratio = nextRowH / rowH;
-    rowH = nextRowH;
-    visibleCount = computeVisibleCount(viewportHeight, rowH);
-    scrollTop = clampScrollTop(scrollTop * ratio, allRows.length, rowH, viewportHeight);
+    if (nextRowH === densityRowH) return;
+    const ratio = nextRowH / densityRowH;
+    densityRowH = nextRowH;
+    if (grid) return;
+    visibleCount = computeVisibleCount(viewportHeight, densityRowH);
+    scrollTop = clampScrollTop(scrollTop * ratio, allRows.length, densityRowH, viewportHeight);
     syncContainerScrollTop();
     publishWindow();
+}
+
+/**
+ * Switches between the list layout (`null`) and the poster grid. The tile
+ * geometry is resolved from the container's real width here and pushed back
+ * out as `--grid-cols`/`--grid-tile-h`, so the stylesheet lays out exactly
+ * the grid this module's scroll math assumes — a column of disagreement
+ * between the two shows up as rows you can scroll past but never see.
+ *
+ * Idempotent per shape, but always re-measures: `attachContainer()`'s
+ * `ResizeObserver` routes width changes back through here too.
+ */
+export function setGridMode(shape: TileShape | null): void {
+    if (grid?.shape === shape && shape !== null) {
+        applyLayoutMetrics();
+        return;
+    }
+    if (shape === null && grid === null) return;
+    applyLayoutMetrics(shape);
+}
+
+function applyLayoutMetrics(nextShape: TileShape | null = grid?.shape ?? null): void {
+    const previousRowH = currentRowH();
+    const previousColumns = currentColumns();
+    // The item sitting at the top of the viewport, so a layout switch keeps
+    // the user roughly where they were instead of jumping to the top.
+    const anchorIndex = previousRowH > 0 ? Math.floor(scrollTop / previousRowH) * previousColumns : 0;
+
+    if (nextShape === null) {
+        grid = null;
+    } else {
+        const width = containerEl?.clientWidth ?? 0;
+        const columns = gridColumns(width);
+        grid = { shape: nextShape, columns, tileH: gridTileHeight(width, columns, nextShape) };
+    }
+
+    const rowH = currentRowH();
+    const columns = currentColumns();
+    if (rowH !== previousRowH || columns !== previousColumns) {
+        scrollTop = Math.floor(anchorIndex / columns) * rowH;
+    }
+    visibleCount = computeVisibleCount(viewportHeight, rowH);
+    scrollTop = clampScrollTop(scrollTop, allRows.length, rowH, viewportHeight, columns);
+    writeGridCustomProperties();
+    syncContainerScrollTop();
+    publishWindow();
+}
+
+function writeGridCustomProperties(): void {
+    if (!containerEl) return;
+    if (grid) {
+        containerEl.style.setProperty('--grid-cols', String(grid.columns));
+        containerEl.style.setProperty('--grid-tile-h', `${grid.tileH}px`);
+        containerEl.dataset['tileShape'] = grid.shape;
+    } else {
+        containerEl.style.removeProperty('--grid-cols');
+        containerEl.style.removeProperty('--grid-tile-h');
+        delete containerEl.dataset['tileShape'];
+    }
 }
 
 /**
@@ -101,28 +221,40 @@ export function setDensity(density: Density): void {
  */
 export function setViewportHeight(height: number): void {
     viewportHeight = height;
-    visibleCount = computeVisibleCount(viewportHeight, rowH);
-    scrollTop = clampScrollTop(scrollTop, allRows.length, rowH, viewportHeight);
+    // A resize can change the container's *width* too, which is what decides
+    // the grid's column count — so the grid re-derives its geometry here
+    // rather than keeping the columns it was created with.
+    if (grid) {
+        applyLayoutMetrics();
+        return;
+    }
+    visibleCount = computeVisibleCount(viewportHeight, densityRowH);
+    scrollTop = clampScrollTop(scrollTop, allRows.length, densityRowH, viewportHeight);
     syncContainerScrollTop();
     publishWindow();
 }
 
-/** Feature 08.5.2: jump to an exact row index (group jump, restored position) — lands exactly, since row height is fixed and never measured. */
+/** Feature 08.5.2: jump to an exact row index (group jump, restored position) — lands exactly, since line height is fixed and never measured. In the grid layout it lands on the *line* holding `index`. */
 export function scrollToIndex(index: number): void {
-    scrollTop = clampScrollTop(index * rowH, allRows.length, rowH, viewportHeight);
+    const rowH = currentRowH();
+    const columns = currentColumns();
+    scrollTop = clampScrollTop(Math.floor(index / columns) * rowH, allRows.length, rowH, viewportHeight, columns);
     syncContainerScrollTop();
     publishWindow();
 }
 
 /** Feature 08.7.4: scrolls just enough to bring `index` into the visible (non-overscan) viewport — a no-op if it's already visible. Selection drives scroll, never the other way around. */
 export function ensureIndexVisible(index: number): void {
+    const rowH = currentRowH();
+    const columns = currentColumns();
     if (rowH <= 0 || visibleCount <= 0) return;
-    const first = Math.floor(scrollTop / rowH);
-    const last = first + visibleCount - 1;
-    if (index < first) {
+    const line = Math.floor(index / columns);
+    const firstLine = Math.floor(scrollTop / rowH);
+    const lastLine = firstLine + visibleCount - 1;
+    if (line < firstLine) {
         scrollToIndex(index);
-    } else if (index > last) {
-        scrollToIndex(Math.max(0, index - visibleCount + 1));
+    } else if (line > lastLine) {
+        scrollToIndex(Math.max(0, line - visibleCount + 1) * columns);
     }
 }
 
@@ -145,11 +277,14 @@ const REVEAL_LEAD_ROWS = 2;
  */
 export function revealIndex(index: number): void {
     if (index < 0) return;
+    const rowH = currentRowH();
+    const columns = currentColumns();
+    const line = Math.floor(index / columns);
     if (visibleCount > 0 && rowH > 0) {
-        const first = Math.floor(scrollTop / rowH);
-        if (index >= first && index < first + visibleCount) return;
+        const firstLine = Math.floor(scrollTop / rowH);
+        if (line >= firstLine && line < firstLine + visibleCount) return;
     }
-    scrollToIndex(Math.max(0, index - REVEAL_LEAD_ROWS));
+    scrollToIndex(Math.max(0, line - REVEAL_LEAD_ROWS) * columns);
 }
 
 function syncContainerScrollTop(): void {
@@ -158,7 +293,11 @@ function syncContainerScrollTop(): void {
 
 /** Feature 08.1.4: rAF-throttled — at most one `publishWindow()` per animation frame no matter how many `scroll` events fire in between. */
 function onScroll(event: Event): void {
-    scrollTop = (event.target as HTMLElement).scrollTop;
+    const next = (event.target as HTMLElement).scrollTop;
+    // Anything this controller scrolled to is already in `scrollTop` by the
+    // time its event lands; a value that disagrees came from the viewer.
+    if (next !== scrollTop) viewerScrolled = true;
+    scrollTop = next;
     if (rafHandle !== null) return;
     rafHandle = requestAnimationFrame(() => {
         rafHandle = null;
@@ -167,7 +306,14 @@ function onScroll(event: Event): void {
 }
 
 function publishWindow(): void {
-    const result = computeWindow({ scrollTop, rowH, overscan: OVERSCAN, visibleCount, totalRows: allRows.length });
+    const result = computeWindow({
+        scrollTop,
+        rowH: currentRowH(),
+        overscan: OVERSCAN,
+        visibleCount,
+        totalRows: allRows.length,
+        columns: currentColumns(),
+    });
     publishListWindow(allRows.slice(result.sliceStart, result.sliceEnd), result.padTop, result.padBottom);
 }
 
@@ -193,6 +339,7 @@ export function republishWindow(): void {
 export function attachContainer(el: HTMLElement): () => void {
     containerEl = el;
     el.addEventListener('scroll', onScroll);
+    writeGridCustomProperties();
 
     if (typeof ResizeObserver !== 'undefined') {
         resizeObserver = new ResizeObserver((entries) => {
@@ -216,7 +363,9 @@ export function resetVirtualListForTests(): void {
     allRows = [];
     rowIndexById = new Map();
     scrollTop = 0;
-    rowH = rowHeight('comfortable');
+    densityRowH = rowHeight('comfortable');
+    grid = null;
+    viewerScrolled = false;
     visibleCount = 0;
     viewportHeight = 0;
     if (rafHandle !== null) {

@@ -58,6 +58,16 @@ export function publishRowsForCurrentView(): void {
         setDisplayedRows(radioDisplayRows());
         return;
     }
+    // The Guide narrows itself to the channels Live carries
+    // (`guide.selectors.ts`), so those rows must exist even for a viewer who
+    // never opened TV this session — otherwise the grid has nothing to join
+    // against and stays empty. It doesn't drive the shared virtual list, so
+    // nothing is published here; building the rows writes `live.stats`,
+    // which is what re-runs `guide.view`.
+    if (view === 'guide') {
+        ensureLiveRows();
+        return;
+    }
     if (view === 'categories') setDisplayedRows(getRows());
 }
 

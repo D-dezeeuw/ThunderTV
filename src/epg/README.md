@@ -27,6 +27,30 @@ becomes both a **country catalog** (identity — is this a real, known
 channel?) and the **Guide** timetable's stored data. Built across Phase 16
 (ingestion, superseded) and Phase 31 (the country catalog and matcher).
 
+## Which channels the Guide shows — `src/state/guide-live-join.ts`
+
+Both pipelines above store *more* channels than the viewer's list shows: a
+country feed covers everything broadcast in the country, and a panel's
+`xmltv.php` covers the whole account including whatever the Live filters
+hid. The Guide therefore narrows `guide.channels` to the channels Live
+carries, in Live's order, and does it through one ladder:
+
+| Rung | Guide side | Live side | Why here |
+| ---- | ---------- | --------- | -------- |
+| 1 | `<channel id>` | `ChannelRow.tvgId` | Two copies of the same `epg_channel_id`. Exact — the Xtream pipeline's whole point. |
+| 2 | `<channel id>` | `ChannelRow.epgId` | `match.ts`'s output, for a source that serves no guide of its own. |
+| 3 | `display-name` | the row's identity key | `parseChannelName()` on both sides, so `\| NL \| NPO 1 HD` in the feed finds the `NPO 1` row. A guess, so it goes last. |
+
+Two rules the ladder exists to keep: **an empty Live list means wait**, not
+"show everything" (that fallback is what painted a whole panel's guide on
+screen), and **at most one guide row per Live row**, since a feed routinely
+carries `NPO 1` and `NPO 1 HD` as separate entries.
+
+The same resolution answers "which programmes belong to this channel row"
+for the list's now/next line — `src/state/epg-index.ts`'s
+`epgChannelIdForRow()`, which prefers `tvgId` over `epgId` for the same
+exact-join reason.
+
 ## The pipeline, end to end
 
 ```

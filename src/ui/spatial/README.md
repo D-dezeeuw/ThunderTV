@@ -38,7 +38,13 @@ Two details in `geometry.ts` carry most of the quality:
    arrow keys meaningfully. The handler defers on those, so desktop
    behaviour is completely unchanged — which is why this ships enabled on
    every platform rather than behind a TV-only flag. Horizontal presses
-   inside them are still handled, because that is the only way *out*.
+   inside them are still handled, because that is the only way *out* —
+   with one narrow exception: in the list's grid layout, a Left/Right press
+   that has another tile on the same line to move to belongs to the grid
+   cursor. The `listHandlesHorizontal` option is how the list says so, and
+   it deliberately answers `false` at a line edge so the way out never
+   closes. That exception is the *list's* alone; the rail never claims a
+   horizontal press.
 
    **A container with its own arrow handling MUST be added to
    `SELF_CURSOR_SELECTOR`.** Forgetting is not a no-op: because this
