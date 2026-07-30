@@ -1,0 +1,14 @@
+Create a premium, cinematic TV app wallpaper/background image for "ThunderTV", a fast, modern IPTV streaming player. The attached reference image is ThunderTV's official app icon/logo (a stylized lightning bolt inside a rounded badge) — reproduce that exact logo faithfully, centered in the composition, at a moderate size (roughly 18-22% of the frame width), with clean edges and no distortion.
+
+Mood: powerful, energetic, yet friendly and approachable — not aggressive or corporate. Modern flat-gradient / soft-glow aesthetic matching a contemporary streaming-app brand (think premium OTT app splash screens).
+
+Background: a deep, dark navy-to-indigo-to-electric-blue gradient (dark enough that the logo pops with strong contrast), with a subtle sense of motion and energy — soft diagonal light streaks or faint lightning-bolt-shaped light trails, gentle glowing particles/bokeh, and a soft radial glow directly behind the logo so it reads clearly even on a bright TV. Keep the overall image DARKENED and moody, not washed out — this is a background, the logo is the hero.
+
+Composition rules (very important, this will be cropped to many aspect ratios from ultra-wide to 4:3):
+- Keep the logo perfectly centered, both horizontally and vertically.
+- Leave generous empty "safe zone" padding around the logo — at least 35% of the frame height above and below it — so the image still looks good when cropped much wider (ultrawide, 21:9, 24:9) or narrower (4:3).
+- No text, no watermark, no UI elements, no other logos.
+- No busy detail near the very top or bottom edges (these get cropped first).
+- Smooth, high-quality, noise-free gradients suitable for a large 4K TV screen — avoid banding.
+
+Output a single wide 16:9 image at the highest resolution available.
