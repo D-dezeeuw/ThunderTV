@@ -1,9 +1,10 @@
 import { appState, defineFn, getPathObj } from 'spektrum';
 import type { Route } from '../app/router';
 import { selectChannel } from './list.actions';
-import { publishVariantsFor } from './live.actions';
+import { revealRowOnNextPublish } from './list-rows';
+import { publishRowsForCurrentView, publishVariantsFor } from './live.actions';
 import { PLAYER_ZAP_HISTORY } from './player';
-import { setActiveChannel } from './player.actions';
+import { keepPlaybackThroughRoute, setActiveChannel } from './player.actions';
 import type { ActiveChannelSnapshot } from './records';
 
 /**
@@ -34,6 +35,33 @@ export function viewForSnapshot(snapshot: ActiveChannelSnapshot): Route {
 }
 
 /**
+ * Sends the viewer to the view a just-started channel plays in, and makes
+ * that view arrive on the channel: exempt from the router's
+ * stop-on-tab-switch (it would otherwise stop the stream this navigation
+ * exists to show), with the row queued to be scrolled into view once the
+ * target view republishes its rows.
+ *
+ * Shared by Starred and Recents — both hand the player a full snapshot and
+ * then need exactly this. Navigating last is deliberate: the router owns
+ * `ui.activeView`, and the view it lands on already has the channel playing
+ * when it paints.
+ */
+export function showReplayedChannel(snapshot: ActiveChannelSnapshot): void {
+    const route = viewForSnapshot(snapshot);
+    revealRowOnNextPublish(snapshot.id);
+
+    const target = `#/${route}`;
+    if (location.hash === target) {
+        // Already there: no `hashchange`, so nothing would republish the rows
+        // (or consume the reveal armed above) — do it here instead.
+        publishRowsForCurrentView();
+        return;
+    }
+    keepPlaybackThroughRoute(route);
+    location.hash = target;
+}
+
+/**
  * Replays a zap-history entry. The snapshot is the source of truth for the
  * stream; the variant strip is a best-effort extra — `publishVariantsFor()`
  * only finds alternates when the channel happens to be in the list that is
@@ -51,7 +79,5 @@ export function playFromHistory(id: string): void {
     // list highlighted whatever row the cursor happened to be parked on —
     // which reads as "it jumped to the tab and nothing happened".
     selectChannel(snapshot.id);
-    // Navigating last: the router owns `ui.activeView`, and the view it
-    // lands on already has the channel playing when it paints.
-    location.hash = `#/${viewForSnapshot(snapshot)}`;
+    showReplayedChannel(snapshot);
 }
