@@ -1581,7 +1581,10 @@
                                             data-fn="player/toggleVisualizerPause"
                                             data-testid="player-pause-visual-btn"
                                         >
-                                            <svg class="icon icon--s" aria-hidden="true"><use :href="player.visualizerPaused ? '#icon-play' : '#icon-pause'"></use></svg>
+                                            <svg class="icon icon--s" aria-hidden="true">
+                                                <use data-if="player.visualizerPaused" href="#icon-play"></use>
+                                                <use data-if="!player.visualizerPaused" href="#icon-pause"></use>
+                                            </svg>
                                         </button>
                                         <button
                                             type="button"
@@ -1636,7 +1639,10 @@
                                             data-fn="player/togglePlayback"
                                             data-testid="player-stop-btn"
                                         >
-                                            <svg class="icon icon--s" aria-hidden="true"><use :href="player.paused ? '#icon-play' : '#icon-stop'"></use></svg>
+                                            <svg class="icon icon--s" aria-hidden="true">
+                                                <use data-if="player.paused" href="#icon-play"></use>
+                                                <use data-if="!player.paused" href="#icon-stop"></use>
+                                            </svg>
                                         </button>
                                         <!-- Handoff (Phase 38, stone 9). The link is shown
                                              as well as copied: most TV webviews have no
