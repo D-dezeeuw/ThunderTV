@@ -168,7 +168,7 @@ rings each rippling with its own orchestral register, drifting golden
 motes).
 
 Presets auto-advance every `AUTO_CYCLE_MS` — unless the listener pins one via
-the picker (`index.html`'s `#radio-visualizer-select`, `player.visualizerPreset`
+the picker (`index.html`'s `radio-visualizer-btn` menu, `player.visualizerPreset`
 in `state/player.ts`, persisted), in which case only picking `'auto'` again
 resumes the rotation. `player/nextVisualizerPreset` (`state/player.actions.ts`)
 skips manually and always clears a pin. Every switch — auto-advance, the

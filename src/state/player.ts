@@ -25,7 +25,9 @@ export const PLAYER_ACTIVE_VARIANT_ID = 'player.activeVariantId';
  * `src/player/visualizer/index.ts` cycles through every preset) or a
  * specific preset id (a genre preset pins to that look until switched back
  * to `'auto'`). No audio analysis ever picks this — the listener does, via
- * the picker in the player bar (`index.html`'s `#radio-visualizer-select`).
+ * the picker in the player bar (`index.html`'s `radio-visualizer-btn` and
+ * the menu it opens; options from `player.selectors.ts`'s
+ * `VISUALIZER_PICKER_OPTIONS`).
  */
 export const PLAYER_VISUALIZER_PRESET = 'player.visualizerPreset';
 /** Transient, session-only: whether the listener paused the Radio visualizer's render loop. Never persisted — reopening Radio always starts unpaused. */

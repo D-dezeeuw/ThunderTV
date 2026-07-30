@@ -18,6 +18,7 @@ import {
     PLAYER_ZAP_HISTORY,
     ZAP_HISTORY_CAP,
 } from './player';
+import { closeTrackMenu } from './player-tracks.actions';
 import type { ActiveChannelSnapshot } from './records';
 import { get, replace, set } from './typed';
 import { UI_ACTIVE_VIEW } from './ui';
@@ -63,8 +64,15 @@ export function registerPlayerActions(): void {
         setVisualizerPreset('auto');
         cycleRadioVisualizerPreset();
     });
-    defineFn('player/setVisualizerPreset', (el) => {
-        if (el instanceof HTMLSelectElement) setVisualizerPreset(el.value);
+    // Dispatched from the visualizer picker's menu rows (`data-value` is a
+    // `VISUALIZER_PICKER_OPTIONS` id). Spektrum coerces a dispatch `value`,
+    // so a hypothetical numeric preset id would arrive as a number —
+    // `String()` normalizes it back, same reasoning as
+    // `player-tracks.actions.ts`'s `trackIdFromValue()`.
+    defineFn('player/setVisualizerPreset', (_el, _state, _delta, value: unknown) => {
+        if (typeof value !== 'string' && typeof value !== 'number') return;
+        setVisualizerPreset(String(value));
+        closeTrackMenu();
     });
     defineFn('player/toggleVisualizerPause', () => {
         setValue(PLAYER_VISUALIZER_PAUSED, !(get<boolean>(PLAYER_VISUALIZER_PAUSED) ?? false));

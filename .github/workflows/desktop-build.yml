@@ -1,18 +1,26 @@
 name: Desktop build
 
-# Catches electron-builder packaging regressions. Linux (AppImage) runs on
-# every push/PR — cheapest CI minutes, and the target most likely to build
-# cleanly headless. Windows (nsis/portable) and macOS (dmg) are gated to
-# version tags only (masterplan Phase 29's "local-build, no signing infra"
-# posture — burning full-matrix CI minutes on every push isn't worth it for
-# a project that ships unsigned installers built and uploaded by hand
-# anyway; a tag push is the actual release moment worth verifying on every
-# OS).
+# Catches electron-builder packaging regressions.
+#
+# Automatic runs are DISABLED — packaging is by far the most expensive thing
+# this repo asks of hosted runners (a full `npm ci` in two workspaces plus an
+# AppImage/nsis/dmg build), and Phase 29's posture is that installers are
+# built and uploaded by hand anyway. Run it from the Actions tab
+# ("Run workflow") when a release is actually being cut. To put it back on
+# pushes and tags, restore:
+#
+#   on:
+#     push:
+#       branches: [main]
+#       tags: ['v*']
+#     pull_request:
 on:
-  push:
-    branches: [main]
-    tags: ['v*']
-  pull_request:
+  workflow_dispatch:
+    inputs:
+      full_matrix:
+        description: 'Also package Windows (nsis) and macOS (dmg), not just the Linux AppImage'
+        type: boolean
+        default: false
 
 jobs:
   linux:
@@ -46,7 +54,10 @@ jobs:
 
   windows-macos:
     name: package (${{ matrix.os }})
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Off by default even on a manual run: Linux alone catches nearly every
+    # packaging regression, and the Windows/macOS legs cost several times as
+    # much per run. Tick `full_matrix` when cutting an actual release.
+    if: inputs.full_matrix
     strategy:
       matrix:
         os: [windows-latest, macos-latest]

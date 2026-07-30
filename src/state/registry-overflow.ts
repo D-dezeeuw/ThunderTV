@@ -221,7 +221,7 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     [PLAYER_TRACK_MENU]: {
         owner: 'player',
         persisted: false,
-        description: "'none' | 'audio' | 'subtitles' — which track popup (if any) is open. Reset to 'none' on every player.active change (state/player-tracks.actions.ts's registerTrackSync()).",
+        description: "'none' | 'audio' | 'subtitles' | 'visualizer' — which dock popup (if any) is open. 'visualizer' is Radio's preset picker, which shares this key so two popups can never be open at once (it publishes no track list of its own). Reset to 'none' on every player.active change (state/player-tracks.actions.ts's registerTrackSync()).",
     },
 
     // --- player: audio-only TV ---
