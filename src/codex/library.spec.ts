@@ -173,7 +173,12 @@ describe('pruning a contributor', () => {
             await primeHealthCache();
 
             const record = allHealthRecords()[0]!;
-            expect(record.okWeight).toBeGreaterThanOrEqual(2);
+            // Both local 'ok' observations survived the rebuild. Not an exact
+            // `2`: the score decays against wall-clock time, so a slow run of
+            // the whole suite lands on 1.9999999988 and an exact/`>=`
+            // comparison fails intermittently. The claim is "neither
+            // observation was lost", which the tolerance states honestly.
+            expect(record.okWeight).toBeGreaterThan(1.99);
             expect(record.failWeight).toBe(0);
         });
     });

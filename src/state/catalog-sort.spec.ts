@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { XtreamCategory } from '../xtream/types';
 import { sortCategoriesCountryFirst } from './catalog-sort';
+import { popularityRank, UNRANKED } from './catalog-popularity';
 
 const categories: XtreamCategory[] = [
     { id: '1', name: 'US | MOVIES' },
@@ -30,5 +31,53 @@ describe('sortCategoriesCountryFirst()', () => {
     it('is a stable no-op when nothing matches (unknown country code)', () => {
         const sorted = sortCategoriesCountryFirst(categories, 'ZZ');
         expect(sorted.map((c) => c.id)).toEqual(['1', '2', '3', '4']);
+    });
+});
+
+/**
+ * Popularity ranking (`catalog-popularity.ts`). A provider's category order
+ * is whatever its panel stored, so the services a viewer actually opens sat
+ * scattered among long-tail entries — the "seemingly random list" this
+ * replaces.
+ */
+describe('popularity ordering', () => {
+    const messy: XtreamCategory[] = [
+        { id: 'a', name: 'Turks nu te zien' },
+        { id: 'b', name: 'NL | VIAPLAY' },
+        { id: 'c', name: 'NL | DISNEY+' },
+        { id: 'd', name: 'Bollywood 2019' },
+        { id: 'e', name: 'NL | NETFLIX' },
+        { id: 'f', name: 'NL | Apple TV+' },
+        { id: 'g', name: 'NL | AMAZON PRIME VIDEO' },
+    ];
+
+    it('puts the named services first, in weight order', () => {
+        const sorted = sortCategoriesCountryFirst(messy, 'NL');
+        expect(sorted.slice(0, 5).map((c) => c.id)).toEqual(['e', 'g', 'f', 'c', 'b']);
+    });
+
+    it('keeps everything else after them, in its original relative order', () => {
+        const sorted = sortCategoriesCountryFirst(messy, 'NL');
+        expect(sorted.slice(5).map((c) => c.id)).toEqual(['a', 'd']);
+    });
+
+    it('matches a service however the provider punctuated it', () => {
+        expect(popularityRank('DISNEY+')).toBe(popularityRank('Disney Plus'));
+        expect(popularityRank('┃NL┃ NETFLIX | 4K')).toBe(popularityRank('netflix'));
+        expect(popularityRank('Apple TV+')).toBe(popularityRank('appletv'));
+    });
+
+    it('leaves an unknown category unranked rather than guessing', () => {
+        expect(popularityRank('Turks nu te zien')).toBe(UNRANKED);
+        expect(popularityRank('')).toBe(UNRANKED);
+    });
+
+    it('still sorts by country among unranked categories', () => {
+        const mixed: XtreamCategory[] = [
+            { id: '1', name: 'FR | FILMS' },
+            { id: '2', name: 'DE | FILME' },
+            { id: '3', name: 'NL | NETFLIX' },
+        ];
+        expect(sortCategoriesCountryFirst(mixed, 'DE').map((c) => c.id)).toEqual(['3', '2', '1']);
     });
 });
