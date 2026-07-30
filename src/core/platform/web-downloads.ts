@@ -4,6 +4,7 @@ import type {
     DownloadHandle,
     DownloadTarget,
 } from './download-adapter';
+import { isTvWebview } from './tv-webview';
 
 /**
  * The browser's two ways of putting a large file on disk, and why both are
@@ -51,8 +52,21 @@ function savePicker(): SaveFilePicker | null {
     return typeof picker === 'function' ? picker : null;
 }
 
-/** `'managed'` only where the streaming path is actually available — the capability must describe what the host can really do, never what it wishes it could. */
-export function webDownloadSupport(): 'managed' | 'handoff' {
+/**
+ * `'managed'` only where the streaming path is actually available — the
+ * capability must describe what the host can really do, never what it wishes
+ * it could.
+ *
+ * A TV reports `'none'`. It has no File System Access API, and the
+ * `'handoff'` fallback — hand the URL to the browser's download manager —
+ * describes a thing a TV webview does not have: there is no download
+ * manager, no visible filesystem, and nothing the viewer could do with the
+ * file afterwards. Offering the control there is exactly the "a control that
+ * cannot work is worse than no control" case `Capabilities.downloads`'
+ * `'none'` was defined for, and this is its first real producer.
+ */
+export function webDownloadSupport(): 'managed' | 'handoff' | 'none' {
+    if (isTvWebview()) return 'none';
     return savePicker() ? 'managed' : 'handoff';
 }
 
