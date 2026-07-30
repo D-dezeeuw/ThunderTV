@@ -205,7 +205,11 @@ motes).
 Presets auto-advance every `AUTO_CYCLE_MS` — unless the listener pins one via
 the picker (`index.html`'s `radio-visualizer-btn` menu, `player.visualizerPreset`
 in `state/player.ts`, persisted), in which case only picking `'auto'` again
-resumes the rotation. `player/nextVisualizerPreset` (`state/player.actions.ts`)
+resumes the rotation. That preference **defaults to `'classical'`**, so out of
+the box a pin is already in effect: Radio opens on one settled look rather than
+rotating through ten, and the rotation is opt-in via the picker's first row.
+(Persisted, so an install that already chose something keeps it.)
+`player/nextVisualizerPreset` (`state/player.actions.ts`)
 skips manually and always clears a pin. Every switch — auto-advance, the
 picker, or "Next visual" — crossfades rather than cutting instantly: the
 outgoing preset keeps rendering into one offscreen buffer (seeded from the
@@ -213,6 +217,32 @@ frame on screen, so trail-based looks carry into the fade instead of
 dipping to black), the incoming one (freshly reset) renders into another,
 and the visible canvas is just the two alpha-blended each frame
 (`crossfade.ts`'s `CrossFader`).
+
+### Trails, and why they used to fade to grey
+
+Most presets fade rather than clear: a translucent full-canvas fill each
+frame leaves the afterimage that reads as a trail. Every one of them used a
+*tinted* fill (`rgba(6, 8, 16, .22)` and friends), and that is the whole
+problem — a repeated alpha blend converges on the colour it paints, so the
+floor of each preset was that tint by construction, never black. Two more
+things pushed the same way: canvas compositing is 8-bit and rounds, so even a
+pure black fade is `round(v · (1 − α))`, which has a fixed point wherever
+`v · α < 0.5` (α = 0.05 stalls at a permanent #0a0a0a); and the canvas never
+reached full alpha, letting `.radio-now-playing`'s CSS background bleed
+through the shortfall — `--color-bg`, which is *white* in the light theme.
+
+`presets/preset-utils.ts`'s `fadeTrails()` is the single fade every preset now
+calls, and it is three passes: the fade in pure black, a `destination-over`
+opaque black backing the frame with real black instead of the pane behind it,
+and a `color-burn` floor against `rgb(254, 254, 254)` that subtracts about one
+8-bit unit from the shadows and nothing from the highlights — `Cb ≤ 1/255`
+hits the `min()` clamp and lands on exactly 0, so the residue counts down a
+unit a frame and *stops* at #000 with the bright end of the trail untouched.
+The burn is feature-detected, since assigning an unsupported operation is a
+no-op and painting near-white through `source-over` would blow out the frame.
+Fractal Tunnel fades by redrawing a dimmed copy of the previous frame instead
+of by filling, so it calls the floor pass alone (`floorToBlack()`), right
+after the history composite and before this frame's fresh detail goes on.
 
 `player/toggleVisualizerPause` (`player.visualizerPaused`, transient —
 always false on a fresh Radio visit) freezes the render loop entirely rather

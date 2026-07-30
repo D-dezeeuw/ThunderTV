@@ -1,5 +1,5 @@
 import type { FrameContext, VisualizerPreset } from '../types';
-import { barAt, decay } from './preset-utils';
+import { barAt, decay, fadeTrails } from './preset-utils';
 
 const PARTICLE_COUNT = 150;
 
@@ -48,8 +48,7 @@ export class ParticlesPreset implements VisualizerPreset {
         // frame; re-seed rather than drawing particles sized for the old box.
         if (width !== this.width || height !== this.height) this.reset(width, height);
 
-        ctx.fillStyle = 'rgba(4, 6, 14, 0.16)';
-        ctx.fillRect(0, 0, width, height);
+        fadeTrails(ctx, width, height, 0.16);
 
         // Jumps up sharply on a beat, then eases back down — applied as a
         // shared multiplier so every particle pulses together.

@@ -1,5 +1,5 @@
 import type { FrameContext, VisualizerPreset } from '../types';
-import { barAtMirrored, decay } from './preset-utils';
+import { barAtMirrored, decay, floorToBlack } from './preset-utils';
 
 /** Nested squares get closer to a genuine fractal look with every extra level, but each level costs a `strokeRect` — 6 is the point where it reads as "fractal" without being the frame's bottleneck. */
 const CORE_DEPTH = 6;
@@ -15,7 +15,9 @@ const STAR_POINTS = 10;
  * whose vertex radii follow the spectrum, and on every beat a bright ring
  * that the zoom turns into an expanding pulse racing down the tunnel.
  * History is drawn at slightly under full alpha so old generations fade
- * instead of accumulating into grey mush.
+ * instead of accumulating into grey mush — and `floorToBlack()` finishes
+ * that fade, since 96% of an 8-bit value rounds back to itself below v ≈ 12
+ * and left the far end of the tunnel sitting on a permanent dark-grey wall.
  */
 export class FractalTunnelPreset implements VisualizerPreset {
     readonly id = 'fractal-tunnel';
@@ -57,7 +59,7 @@ export class FractalTunnelPreset implements VisualizerPreset {
         this.rotation += (0.0002 + mid * 0.0008) * dt;
 
         ctx.save();
-        ctx.fillStyle = '#04050b';
+        ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, width, height);
         ctx.translate(cx, cy);
         ctx.rotate(this.rotation);
@@ -69,6 +71,9 @@ export class FractalTunnelPreset implements VisualizerPreset {
         ctx.globalAlpha = 0.96;
         ctx.drawImage(history, 0, 0);
         ctx.restore();
+        // On the carried-over generations only — before this frame's fresh
+        // detail is stamped, so the injections below are never dimmed by it.
+        floorToBlack(ctx, width, height);
 
         const hueBase = (ts / 28) % 360;
         const coreSize = Math.min(width, height) * 0.06;
