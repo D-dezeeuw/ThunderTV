@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLiveEpgIndex, matchGuideChannel, selectGuideChannelsForLive, type LiveChannelRef } from './guide-live-join';
+import { bindGuideChannelsToLive, buildLiveEpgIndex, matchGuideChannel, type LiveChannelRef } from './guide-live-join';
 
 /**
  * The reported defect: with an Xtream source the Guide painted the panel's
@@ -52,7 +52,7 @@ describe('the guide → live join ladder', () => {
     });
 });
 
-describe('selectGuideChannelsForLive', () => {
+describe('bindGuideChannelsToLive', () => {
     it('keeps only what Live carries, in Live\'s order — not the feed\'s', () => {
         const rows = [live('NPO 1', { tvgId: 'npo1.nl' }), live('RTL 4', { tvgId: 'rtl4.nl' })];
         const feed = [
@@ -61,27 +61,34 @@ describe('selectGuideChannelsForLive', () => {
             guide('aaa.nl', 'Another One'),
             guide('npo1.nl', 'NPO 1'),
         ];
-        expect(selectGuideChannelsForLive(feed, rows).map((c) => c.id)).toEqual(['npo1.nl', 'rtl4.nl']);
+        expect(bindGuideChannelsToLive(feed, rows).map((b) => b.channel.id)).toEqual(['npo1.nl', 'rtl4.nl']);
+    });
+
+    it('hands back the Live channel each row bound to, which is what names the row', () => {
+        const rows = [live('NPO 1', { tvgId: 'npo1.nl' })];
+        // The feed's own spelling — the grid must not use it.
+        const bound = bindGuideChannelsToLive([guide('npo1.nl', 'NPO 1 HD (NL) [BACKUP]')], rows);
+        expect(bound).toHaveLength(1);
+        expect(bound[0]?.live.name).toBe('NPO 1');
     });
 
     it('waits instead of painting the whole feed when Live has not propagated yet', () => {
         // The actual regression: an empty Live list used to mean "show
         // everything", which is how the grid filled with the wrong channels.
-        expect(selectGuideChannelsForLive([guide('a.nl', 'A'), guide('b.nl', 'B')], [])).toEqual([]);
+        expect(bindGuideChannelsToLive([guide('a.nl', 'A'), guide('b.nl', 'B')], [])).toEqual([]);
     });
 
     it('shows one row per channel when the feed carries the same channel twice', () => {
         const rows = [live('NPO 1', { tvgId: 'npo1.nl' })];
         const feed = [guide('npo1.nl', 'NPO 1', 12), guide('npo1hd.nl', 'NPO 1 HD', 12)];
-        const selected = selectGuideChannelsForLive(feed, rows);
-        expect(selected.map((c) => c.id)).toEqual(['npo1.nl']);
+        expect(bindGuideChannelsToLive(feed, rows).map((b) => b.channel.id)).toEqual(['npo1.nl']);
     });
 
     it('lets a full entry displace an empty one that matched on the same rung', () => {
         const rows = [live('NPO 1')];
         const feed = [guide('npo1-empty.nl', 'NPO 1', 0), guide('npo1-full.nl', 'NPO 1', 40)];
-        expect(selectGuideChannelsForLive(feed, rows).map((c) => c.id)).toEqual(['npo1-full.nl']);
+        expect(bindGuideChannelsToLive(feed, rows).map((b) => b.channel.id)).toEqual(['npo1-full.nl']);
         // Same result whichever order the feed happened to arrive in.
-        expect(selectGuideChannelsForLive([...feed].reverse(), rows).map((c) => c.id)).toEqual(['npo1-full.nl']);
+        expect(bindGuideChannelsToLive([...feed].reverse(), rows).map((b) => b.channel.id)).toEqual(['npo1-full.nl']);
     });
 });
