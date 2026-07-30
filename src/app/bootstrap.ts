@@ -21,6 +21,8 @@ import {
     loadFavorites,
     loadGuideChannels,
     loadPlaylistSources,
+    manageBootOverlay,
+    markChannelDataReady,
     openWizardIfNoSources,
     primeEpgMapping,
     registerActions,
@@ -93,7 +95,11 @@ export async function bootstrap(): Promise<void> {
     registerPersistOnHide();
     if (import.meta.env.DEV) installDevtools();
 
-    void sweepAndLoadPlaylistSources();
+    const sourcesLoaded = sweepAndLoadPlaylistSources();
+    // The boot splash's own lifetime (src/state/boot.ts) — waits on the same
+    // sources load below, plus (once a source turns out to exist) the first
+    // real Live paint, before fading out.
+    void manageBootOverlay(sourcesLoaded);
     void loadXtreamAccountPrefill();
     void loadFavorites();
     // Paint whatever EPG data already survived from a previous session
@@ -126,7 +132,7 @@ export async function bootstrap(): Promise<void> {
     void loadXtreamGuide().then(() => loadDefaultEpg());
     registerImportDropzoneDragover();
     registerDebugShortcut();
-    registerListBindings();
+    registerListBindings(markChannelDataReady);
     // Spatial D-pad navigation (stone 8). Registered for every platform, not
     // just TV: it only ever acts on an unmodified arrow press that the
     // focused control does not already handle, so desktop keyboard

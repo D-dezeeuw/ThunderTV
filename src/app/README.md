@@ -11,6 +11,10 @@ page. Nothing here owns a Spektrum key of its own except `ui.activeView`
   `run()`) → only *after* first paint, the heavy stuff (EPG tick, playlist
   load, Xtream refresh). If you're adding a new "run once at startup" step,
   it goes here, and it matters whether it lands before or after `run()`.
+  It also wires up `src/state/boot.ts`'s wallpaper splash (`ui.bootPhase`):
+  passes it the sources-load promise and gives `registerListBindings()` a
+  callback for "the first Live paint landed," so the overlay can fade out
+  once real data (or the first-run wizard) is actually ready.
 - `router.ts` — hand-rolled `#/path?query` hash router. `applyRoute()` is
   the **sole** writer of `ui.activeView` — enforced by the ESLint carve-out
   documented in `src/state/README.md`'s "Sanctioned non-action publishers."

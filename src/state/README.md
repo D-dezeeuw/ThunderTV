@@ -22,6 +22,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `handoff.ts`         | `player.handoffLink`, `player.handoffState`, `player.handoffMessage`                                                  | No — the link outlives its usefulness within hours (Phase 38), and is published rather than hidden only so it can be read off screen where no clipboard exists |
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.theme`, `ui.fontSize`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.theme`/`ui.fontSize`/`ui.storageNoticeDismissed` yes; the rest no |
 | `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`, `ui.setupComplete`                                                                 | `ui.setupComplete` yes — it is what stops a configured install from being asked again; `wizardOpen`/`wizardStep` no (transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen`) |
+| `boot.ts`             | `ui.bootPhase`                                                                                                        | No — the wallpaper splash's `'loading' \| 'exiting' \| 'done'` lifecycle, recomputed fresh (always starts at `'loading'`) every boot |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
 | `list-state.ts`       | `ui.listState`, `ui.activeGroup`, `ui.viewMode`                                                                      | `ui.listState` yes (Feature 08.6, LRU-capped at 20 sources); the two live mirrors restore from it on source entry but aren't separately persisted |
 | `list-groups.ts`      | `list.groups`, `list.groupsTruncated`                                                                                | No — the groups panel's own row set, capped independently of Phase 06's `MAX_GROUPS` (Feature 08.5.9) |
@@ -139,7 +140,12 @@ recording once rather than re-discovering per call site:
   `KEY_REGISTRY` itself is still the one object every consumer
   (`persist.ts`, `bulk-policy.ts`, `index.ts`'s `rehydrateState()`) reads —
   this only changes how it's assembled. `KeyMeta.owner`'s union gained
-  `'vod' | 'series' | 'search'`.
+  `'vod' | 'series' | 'search'`. `registry-overflow.ts` itself later hit the
+  same 400-line ceiling (the boot splash's `ui.bootPhase`, `boot.ts`) — one
+  level deeper, `registry-overflow-2.ts` exists for exactly that reason and
+  is spread into `KEY_REGISTRY` the same way. Once a `-2` file exists, add to
+  whichever overflow file still has room rather than always reaching for the
+  newest one.
 - **Catalog payload persistence** (`catalog-storage.ts`): no bulk table in
   `src/core/storage/records.ts`'s `TableName` union fits a VOD/series
   catalog, and adding one means editing `src/core/storage/**`, outside this

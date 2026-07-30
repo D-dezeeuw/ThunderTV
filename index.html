@@ -18,6 +18,7 @@
         <title>ThunderTV</title>
         <link rel="stylesheet" href="/src/styles/tokens.css" />
         <link rel="stylesheet" href="/src/styles/base.css" />
+        <link rel="stylesheet" href="/src/styles/boot-overlay.css" />
         <link rel="stylesheet" href="/src/styles/shell.css" />
         <link rel="stylesheet" href="/src/styles/import-card.css" />
         <link rel="stylesheet" href="/src/styles/channel-list.css" />
@@ -48,6 +49,22 @@
         </script>
     </head>
     <body>
+        <!-- Boot splash (src/state/boot.ts) — sits above #app until the
+             first Live load (or, on an unconfigured install, the wizard)
+             is ready, then fades out. Kept as a sibling of #app, not inside
+             it, so it can be removed via data-if without touching the
+             shell's own layout. -->
+        <div
+            class="boot-overlay"
+            data-if="ui.bootPhase !== 'done'"
+            :class="{ 'boot-overlay--exiting': ui.bootPhase === 'exiting' }"
+            role="status"
+            :aria-label="strings.catalog.loading"
+            data-testid="boot-overlay"
+        >
+            <div class="boot-overlay__wallpaper"></div>
+        </div>
+
         <!--
           Feature 02.9 inline SVG icon sprite. Hand-drawn 24x24 stroke-based
           paths (stroke-width 2, no copied icon-font glyphs) referenced via

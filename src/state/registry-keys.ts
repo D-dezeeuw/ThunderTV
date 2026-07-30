@@ -56,6 +56,7 @@ import {
 } from './ui';
 import { UI_SETUP_COMPLETE, UI_WIZARD_OPEN, UI_WIZARD_STEP } from './wizard';
 import { OVERFLOW_REGISTRY_ENTRIES } from './registry-overflow';
+import { OVERFLOW_REGISTRY_ENTRIES_2 } from './registry-overflow-2';
 /**
  * One source of truth for every Spektrum key's persistence class and owner
  * (Feature 05.1.7) — the persistence bridge (05.3) and the generated
@@ -196,7 +197,6 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         persisted: false,
         description: 'Live id -> true lookup for O(1) row-badge derivation (Feature 08.8.4) — a projection of the real `favorites` storage table, rebuilt at boot and on every toggle; the table (denormalized snapshots), not this map, is the source of truth and what actually persists.',
     },
-
     // --- player ---
     [PLAYER_ACTIVE]: {
         owner: 'player',
@@ -379,7 +379,6 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         persisted: false,
         description: 'Set from the real boot-time probe (Phase 04) every session — persisting a stale tier would be actively wrong.',
     },
-
     // --- ui: first-run setup wizard ---
     [UI_WIZARD_OPEN]: {
         owner: 'ui',
@@ -397,4 +396,5 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         description: 'Whether first-run setup has already been dealt with on this install (saved, skipped, or a source found at boot) — the one wizard key that must survive a reload, since it is what stops a configured user from being asked again (wizard.actions.ts\'s markSetupComplete()).',
     },
     ...OVERFLOW_REGISTRY_ENTRIES,
+    ...OVERFLOW_REGISTRY_ENTRIES_2,
 };
