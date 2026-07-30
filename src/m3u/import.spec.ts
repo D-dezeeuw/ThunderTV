@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resetPlatformForTests } from '../core/platform';
 import { withFakePlatform } from '../core/platform/fake-platform';
 import { clearRows } from './channel-memory';
-import { importPlaylistFile, importPlaylistText, importPlaylistUrl } from './import';
+import { importPlaylistFile, importPlaylistText, importPlaylistUrl, redactPlaylistUrl } from './import';
 
 const SAMPLE = '#EXTM3U\n#EXTINF:-1,One\nhttps://example.com/1.m3u8\n';
 
@@ -173,5 +173,23 @@ describe('importPlaylistUrl (Feature 07.4)', () => {
             const outcome = await importPlaylistUrl('https://example.com/list.m3u');
             expect(outcome).toMatchObject({ ok: false, errorKind: 'invalidM3u' });
         });
+    });
+});
+
+describe('redactPlaylistUrl', () => {
+    it('strips userinfo and credential-shaped query params', () => {
+        const url = redactPlaylistUrl('https://bob:p@ss@example.com/get.php?username=bob&password=p%40ss&type=m3u');
+        expect(url).not.toContain('bob');
+        expect(url).not.toContain('p%40ss');
+        expect(url).not.toContain('p@ss');
+        expect(url).toBe('https://example.com/get.php?username=REDACTED&password=REDACTED&type=m3u');
+    });
+
+    it('falls back to a placeholder for an unparseable URL rather than leaking the input', () => {
+        expect(redactPlaylistUrl('::not a url::')).toBe('[unparseable url redacted]');
+    });
+
+    it('leaves a URL with no credential-shaped parts unchanged', () => {
+        expect(redactPlaylistUrl('https://example.com/list.m3u')).toBe('https://example.com/list.m3u');
     });
 });

@@ -96,8 +96,8 @@ export interface ImportUrlOptions {
  * choose both the right copy and the right retry affordance without
  * re-deriving either from a message string.
  */
-/** Playlist URLs often carry credentials as query parameters; the raw capture records the endpoint, never the account. */
-function redactPlaylistUrl(url: string): string {
+/** Playlist URLs often carry credentials as query parameters; the raw capture records the endpoint, never the account. Exported for direct hostile-fixture testing (import.spec.ts), same rationale as `xtream/urls.ts`'s own `redactUrl`. */
+export function redactPlaylistUrl(url: string): string {
     try {
         const parsed = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `http://${url}`);
         parsed.username = '';

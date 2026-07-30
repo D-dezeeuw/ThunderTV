@@ -130,6 +130,42 @@ describe('spatial navigation', () => {
         expect(document.activeElement).toBe(b);
     });
 
+    it('excludes background content while a dialog is open', () => {
+        document.body.innerHTML =
+            '<button id="bg">BG</button><div role="dialog"><button id="d1">D1</button></div>';
+        const bg = document.getElementById('bg') as HTMLButtonElement;
+        const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+        const d1 = document.getElementById('d1') as HTMLButtonElement;
+        layout(bg, 0, 100);
+        layout(dialog, 0, 0, 300, 300);
+        layout(d1, 0, 0);
+
+        cleanup = registerSpatialNavigation();
+        d1.focus();
+        const event = press('ArrowDown');
+
+        // Geometrically "bg" is the next candidate below d1 — excluded because
+        // it sits outside the open dialog, so the press has nowhere to go.
+        expect(document.activeElement).toBe(d1);
+        expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('still navigates between elements inside an open dialog', () => {
+        document.body.innerHTML = '<div role="dialog"><button id="d1">D1</button><button id="d2">D2</button></div>';
+        const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+        const d1 = document.getElementById('d1') as HTMLButtonElement;
+        const d2 = document.getElementById('d2') as HTMLButtonElement;
+        layout(dialog, 0, 0, 300, 300);
+        layout(d1, 0, 0);
+        layout(d2, 0, 100);
+
+        cleanup = registerSpatialNavigation();
+        d1.focus();
+        press('ArrowDown');
+
+        expect(document.activeElement).toBe(d2);
+    });
+
     it('routes a webOS Back keyCode to the handler and respects its answer', () => {
         cleanup = registerSpatialNavigation({ onBack: () => true });
         expect(press('Unidentified', { keyCode: 461 }).defaultPrevented).toBe(true);

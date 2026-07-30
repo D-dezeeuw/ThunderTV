@@ -2,7 +2,8 @@
 // Rewrites a built dist/index.html for a packaged target (Electron, webOS)
 // so it never depends on the Spektrum CDN. webOS additionally gets an
 // es-module-shims polyfill for TV engines under Chromium 89, which predates
-// native `<script type="importmap">` support. Run after `vite build`,
+// native `<script type="importmap">` support, and src/styles/tv-mode.css's
+// LG-App-Self-Checklist button/text-size overrides. Run after `vite build`,
 // before packaging.
 //
 // The Spektrum swap depends on the exact import-map JSON shape documented
@@ -13,7 +14,7 @@
 //   node scripts/package-target.mjs <electron|webos> [--dist <path>] [--check]
 //
 // --check   dry-run: report what would change, change nothing.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -73,6 +74,33 @@ if (target === 'webos') {
         html = html.replace(importMapTagPattern, `$1${shimScriptTag}$1$2`);
         changed = true;
         console.log(`package-target: injected the es-module-shims script tag before the import map in ${indexHtmlPath}`);
+    }
+
+    // LG App Self Checklist button/text-size overrides — a plain file copy
+    // (not something Vite bundles, since the source index.html never
+    // references it) plus a <link> injected after every other stylesheet so
+    // its rules win the cascade on source order alone, no !important
+    // needed. See src/styles/tv-mode.css's header comment.
+    const tvModeCssTag = '<link rel="stylesheet" href="./tv-mode.css" />';
+    const headCloseTagPattern = /(\s*)(<\/head>)/;
+    if (checkOnly) {
+        console.log(
+            `package-target: --check — would copy tv-mode.css into ${distDir}/tv-mode.css and inject "${tvModeCssTag}" before </head> in ${indexHtmlPath}`,
+        );
+    } else {
+        copyFileSync(`${repoRoot}src/styles/tv-mode.css`, `${distDir}/tv-mode.css`);
+        if (html.includes(tvModeCssTag)) {
+            console.log(`package-target: ${indexHtmlPath} already has the tv-mode.css <link> tag`);
+        } else {
+            const headCloseMatch = html.match(headCloseTagPattern);
+            if (!headCloseMatch) {
+                console.error(`package-target: no </head> tag found in ${indexHtmlPath}`);
+                process.exit(1);
+            }
+            html = html.replace(headCloseTagPattern, `$1${tvModeCssTag}$1$2`);
+            changed = true;
+        }
+        console.log(`package-target: copied tv-mode.css to ${distDir}/tv-mode.css and ensured its <link> tag is present`);
     }
 }
 

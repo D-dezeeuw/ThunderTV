@@ -1,5 +1,6 @@
 import { setValue } from 'spektrum';
 import { DEBUG_OPEN } from './debug';
+import { PLAYER_TRACK_MENU, type TrackMenu } from './player-tracks';
 import { SERIES_DETAIL_ID } from './series';
 import { get } from './typed';
 import { UI_SETTINGS_OPEN } from './ui';
@@ -22,6 +23,17 @@ import { UI_WIZARD_OPEN } from './wizard';
  * a webOS certification failure as well as bad manners.
  */
 export function closeTopmostOverlay(): boolean {
+    // The audio/subtitle track menu is the most transient overlay — a
+    // popover tied directly to a still-visible player control — so it
+    // unwinds before the app-level panels below. Its own local keydown
+    // handler (player-tracks.actions.ts) only reacts to a literal Escape
+    // key, which no TV remote sends; this is what actually makes Back close
+    // it on webOS/Tizen hardware.
+    const trackMenu = get<TrackMenu>(PLAYER_TRACK_MENU);
+    if (trackMenu === 'audio' || trackMenu === 'subtitles') {
+        setValue(PLAYER_TRACK_MENU, 'none');
+        return true;
+    }
     if (get<boolean>(DEBUG_OPEN) === true) {
         setValue(DEBUG_OPEN, false);
         return true;
