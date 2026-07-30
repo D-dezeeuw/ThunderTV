@@ -85,11 +85,12 @@ function collectCandidates(root: ParentNode, exclude: Element | null): Candidate
 }
 
 /** True when this press should be left entirely to the focused control. */
-function shouldDefer(active: HTMLElement, direction: Direction): boolean {
+function shouldDefer(active: HTMLElement, direction: Direction, options: SpatialNavigationOptions): boolean {
     if (SELF_HANDLING.has(active.tagName)) return true;
     if (active.isContentEditable) return true;
-    const inList = active.closest(LIST_CONTAINER_SELECTOR) !== null;
-    return inList && (direction === 'up' || direction === 'down');
+    if (active.closest(LIST_CONTAINER_SELECTOR) === null) return false;
+    if (direction === 'up' || direction === 'down') return true;
+    return options.listHandlesHorizontal?.(direction) ?? false;
 }
 
 export interface SpatialNavigationOptions {
@@ -97,6 +98,15 @@ export interface SpatialNavigationOptions {
     root?: ParentNode;
     /** Invoked for a remote Back press; return true if it was handled. */
     onBack?: () => boolean;
+    /**
+     * Asked before claiming a Left/Right press made inside the channel list.
+     * The list's grid layout wants those presses for its own cursor, but only
+     * between tiles on the same line — at a line edge the press has to fall
+     * through here, since horizontal is the only way out of the list. Absent
+     * (the default), every horizontal press in the list is navigation's, which
+     * is the list layout's behaviour.
+     */
+    listHandlesHorizontal?: (direction: 'left' | 'right') => boolean;
 }
 
 /**
@@ -133,7 +143,7 @@ export function registerSpatialNavigation(options: SpatialNavigationOptions = {}
 
         const direction = directionFor(event);
         if (!direction) return;
-        if (activeElement && shouldDefer(activeElement, direction)) return;
+        if (activeElement && shouldDefer(activeElement, direction, options)) return;
 
         const origin = activeElement?.getBoundingClientRect() ?? firstEntryRect();
         const candidates = collectCandidates(root, activeElement);

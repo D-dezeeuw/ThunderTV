@@ -1,6 +1,6 @@
 import { defineFn, setValue } from 'spektrum';
 import { wasJustLongPressed } from '../ui/long-press';
-import { ensureIndexVisible, findRowById, indexOfRow, rowAt, rowCount } from '../ui/virtual-list';
+import { columnCount, ensureIndexVisible, findRowById, indexOfRow, rowAt, rowCount } from '../ui/virtual-list';
 import { ensureChannelEpg } from './xtream-epg-load';
 import { toggleFavoriteById } from './favorites.actions';
 import { LIST_SELECTED_ID } from './list';
@@ -82,20 +82,56 @@ export function handleRowTap(id: string): void {
     playChannelById(id);
 }
 
-/** Feature 08.7.4: moves selection over the current row order (filtered or full) and scrolls only as needed to keep it visible. */
-export function moveSelection(delta: 1 | -1): void {
+/**
+ * Feature 08.7.4: moves selection over the current row order (filtered or
+ * full) and scrolls only as needed to keep it visible. `delta` is ±1 along
+ * the row order, or ±`columnCount()` in the grid layout, where one press of
+ * Up/Down should cross a whole line of tiles rather than step one item.
+ *
+ * With nothing selected yet, any forward press lands on the first row and
+ * any backward press on the last, whatever the step size — a first Down on
+ * a grid must not skip the entire top line.
+ */
+export function moveSelection(delta: number): void {
     const total = rowCount();
-    if (total === 0) return;
+    if (total === 0 || delta === 0) return;
 
     const currentId = get<string | null>(LIST_SELECTED_ID);
     const currentIndex = currentId ? indexOfRow(currentId) : -1;
-    const base = currentIndex === -1 ? (delta > 0 ? -1 : total) : currentIndex;
-    const nextIndex = Math.min(Math.max(base + delta, 0), total - 1);
+    const nextIndex =
+        currentIndex === -1
+            ? delta > 0
+                ? 0
+                : total - 1
+            : Math.min(Math.max(currentIndex + delta, 0), total - 1);
 
     const nextRow = rowAt(nextIndex);
     if (!nextRow) return;
     selectChannel(nextRow.id);
     ensureIndexVisible(nextIndex);
+}
+
+/**
+ * Whether a Left/Right press inside the list belongs to the row cursor
+ * rather than to spatial navigation (`src/ui/spatial/navigator.ts`, which
+ * consults this before claiming the press).
+ *
+ * True only in the grid layout, and only when there is another tile on the
+ * same line in that direction. The edge cases matter more than the middle:
+ * horizontal presses are the only way *out* of the list — vertical ones are
+ * always the cursor's — so a grid that swallowed Left at column 0 would trap
+ * D-pad focus in the list with no way back to the rail.
+ */
+export function listHandlesHorizontal(direction: 'left' | 'right'): boolean {
+    const columns = columnCount();
+    if (columns <= 1) return false;
+
+    const currentId = get<string | null>(LIST_SELECTED_ID);
+    const index = currentId ? indexOfRow(currentId) : -1;
+    if (index === -1) return false;
+
+    const column = index % columns;
+    return direction === 'left' ? column > 0 : column < columns - 1 && index + 1 < rowCount();
 }
 
 /**
@@ -178,9 +214,22 @@ export function handleListKeydown(event: KeyboardEvent | undefined): void {
     switch (event.key) {
         case 'ArrowDown':
             event.preventDefault();
-            moveSelection(1);
+            moveSelection(columnCount());
             return;
         case 'ArrowUp':
+            event.preventDefault();
+            moveSelection(-columnCount());
+            return;
+        // Grid only, and only away from a line edge — see
+        // `listHandlesHorizontal()`. Left unhandled otherwise, so spatial
+        // navigation keeps its one route out of the list.
+        case 'ArrowRight':
+            if (!listHandlesHorizontal('right')) return;
+            event.preventDefault();
+            moveSelection(1);
+            return;
+        case 'ArrowLeft':
+            if (!listHandlesHorizontal('left')) return;
             event.preventDefault();
             moveSelection(-1);
             return;

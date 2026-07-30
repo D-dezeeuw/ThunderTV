@@ -70,4 +70,10 @@ export const enCatalog = {
         scopeSeries: 'Series',
         loadedOnlyHint: 'Searching loaded titles only — open more categories to widen results.',
     },
+    /** The list/grid switch beside each view's search box. */
+    layout: {
+        group: 'View layout',
+        list: 'List view',
+        grid: 'Grid view',
+    },
 } as const;

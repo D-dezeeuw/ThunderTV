@@ -1,5 +1,5 @@
 import type { FrameContext, VisualizerPreset } from '../types';
-import { barAtMirrored, decay } from './preset-utils';
+import { barAtMirrored, decay, fadeTrails } from './preset-utils';
 
 const BAR_COUNT = 96;
 
@@ -48,11 +48,11 @@ export class SpectrumPreset implements VisualizerPreset {
         const baseRadius = Math.min(width, height) * 0.16;
         const maxBarLength = Math.min(width, height) * 0.34;
 
-        // Trails instead of a hard clear — a translucent fill leaves a
-        // fading afterimage, the cheapest feedback-buffer approximation
-        // canvas 2D can do.
-        ctx.fillStyle = 'rgba(6, 8, 16, 0.22)';
-        ctx.fillRect(0, 0, width, height);
+        // Trails instead of a hard clear — a fading afterimage is the
+        // cheapest feedback-buffer approximation canvas 2D can do, and
+        // `fadeTrails` is the one that reaches #000 rather than stalling on
+        // a dark blue haze.
+        fadeTrails(ctx, width, height, 0.22);
 
         ctx.save();
         ctx.translate(cx, cy);

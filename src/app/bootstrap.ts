@@ -8,6 +8,7 @@ import { sweepOrphanedPlaylistRows } from '../m3u/import-sweep';
 import { registerListBindings } from '../ui/list-bindings';
 import { registerSpatialNavigation } from '../ui/spatial/navigator';
 import { closeTopmostOverlay } from '../state/back-navigation';
+import { listHandlesHorizontal } from '../state/list.actions';
 import { registerPlayerBindings } from '../player/bindings';
 import { installDebugCapture } from '../state/debug';
 import { registerDebugShortcut } from '../state/debug.actions';
@@ -132,7 +133,7 @@ export async function bootstrap(): Promise<void> {
     // focused control does not already handle, so desktop keyboard
     // behaviour is unchanged — and a desktop user gets working arrow-key
     // navigation for free.
-    registerSpatialNavigation({ onBack: handleBackPress });
+    registerSpatialNavigation({ onBack: handleBackPress, listHandlesHorizontal });
     registerPlayerBindings();
     registerTrackSync();
     // Xtream catalogs rot (panels renumber stream ids) — silently re-import
