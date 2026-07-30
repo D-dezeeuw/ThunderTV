@@ -1247,7 +1247,21 @@
                                 data-fn="list/handleListKeydown"
                             >
                                 <div class="pad" :style="'height:' + list.padTop + 'px'"></div>
-                                <div class="rows" data-ref="rowsContainer" data-each="list.visibleRows" data-action="click" data-fn="list/selectChannel">
+                                <!-- `data-key` matters more here than anywhere else in
+                                     the app. Without it Spektrum's `data-each` diffs by
+                                     object identity over a plain prefix scan, so any
+                                     change that isn't a pure append/trim destroys and
+                                     rebuilds every row clone. A virtual list's window
+                                     changes on every scroll frame, and the rows Live and
+                                     Radio publish are re-allocated by
+                                     `state/list-publish.ts`'s EPG/health enrichment — so
+                                     the whole row DOM was being torn down mid-scroll,
+                                     collapsing this container's height, which makes the
+                                     browser clamp scrollTop and fire another scroll event
+                                     at a different position. That feedback loop is the
+                                     "list ping-pongs while scrolling" report. Keyed by
+                                     row id, clones are reused and only re-bound. -->
+                                <div class="rows" data-ref="rowsContainer" data-each="list.visibleRows" data-key="item.id" data-action="click" data-fn="list/selectChannel">
                                     <div
                                         class="channel-row"
                                         :class="{ 'channel-row--selected': item.id === list.selectedId, 'channel-row--active': player.active && player.active.id === item.id }"

@@ -57,6 +57,13 @@ export function rowEpgSnapshot(channelId: string | null | undefined, nowMs: numb
     return {
         nowTitle: found.now?.title ?? null,
         nextTitle: found.next?.title ?? null,
-        progress: found.now ? progressPercent(found.now.start, found.now.stop, nowMs) : 0,
+        // Rounded to a whole percent, which is the most the progress bar can
+        // possibly render (`index.html` binds it straight to a `width: %`).
+        // The raw value is a float off `Date.now()`, so it changed on every
+        // single scroll frame — 50.00083 then 50.00167 — which made the row
+        // re-derive, the published array churn identities, and the keyless
+        // `data-each` rebuild every row. Invisible precision was driving a
+        // visible bug; see `list-publish.stability.spec.ts`.
+        progress: found.now ? Math.round(progressPercent(found.now.start, found.now.stop, nowMs)) : 0,
     };
 }
