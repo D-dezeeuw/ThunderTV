@@ -45,16 +45,6 @@ const LINUX_SIZES = [16, 32, 48, 64, 128, 256, 512];
 const WEBOS_ICON_SIZE = 80;
 const WEBOS_LARGE_ICON_SIZE = 130;
 
-// The master has no alpha channel — its rounded-corner tile sits on a plain
-// white square canvas, which reads as ugly white corners on webOS's dark
-// launcher tiles (favicon/electron consumers don't show this: browser tabs
-// and OS icon frames already crop/mask square art). Sampled directly from
-// the master's background fill (a flat vector edge, confirmed pixel-by-pixel
-// with no antialiasing gradient to blend), so this threshold swap has no
-// visible seam.
-const NAVY_CORNER_FILL = { r: 27, g: 41, b: 56 };
-const WHITE_CORNER_THRESHOLD = 150; // navy channels top out ~57; corner whites sample 248+
-
 // Sizes icon-gen needs pre-rendered on disk (as `<size>.png`) to assemble
 // the Windows .ico and macOS .icns containers.
 const ICO_SIZES = [16, 24, 32, 48, 64, 128, 256];
@@ -62,21 +52,6 @@ const ICNS_SIZES = [16, 32, 64, 128, 256, 512, 1024];
 
 async function writePng(size, outFile) {
     await sharp(masterIcon).resize(size, size).png().toFile(outFile);
-}
-
-/** The master, re-encoded with its white corner fill swapped for the tile's own navy — see WHITE_CORNER_THRESHOLD's comment. */
-async function navyCorneredMaster() {
-    const { data, info } = await sharp(masterIcon).raw().toBuffer({ resolveWithObject: true });
-    const { width, height, channels } = info;
-    for (let i = 0; i < width * height; i++) {
-        const o = i * channels;
-        if (data[o] > WHITE_CORNER_THRESHOLD && data[o + 1] > WHITE_CORNER_THRESHOLD && data[o + 2] > WHITE_CORNER_THRESHOLD) {
-            data[o] = NAVY_CORNER_FILL.r;
-            data[o + 1] = NAVY_CORNER_FILL.g;
-            data[o + 2] = NAVY_CORNER_FILL.b;
-        }
-    }
-    return sharp(data, { raw: { width, height, channels } }).png().toBuffer();
 }
 
 async function main() {
@@ -95,14 +70,9 @@ async function main() {
         await writePng(size, path.join(buildIconsDir, `${size}.png`));
     }
 
-    // webOS appinfo.json icon/largeIcon — from the navy-cornered master, not
-    // the plain one every other output above uses.
-    const navyMaster = await navyCorneredMaster();
-    await sharp(navyMaster).resize(WEBOS_ICON_SIZE, WEBOS_ICON_SIZE).png().toFile(path.join(webosDir, 'icon.png'));
-    await sharp(navyMaster)
-        .resize(WEBOS_LARGE_ICON_SIZE, WEBOS_LARGE_ICON_SIZE)
-        .png()
-        .toFile(path.join(webosDir, 'largeIcon.png'));
+    // webOS appinfo.json icon/largeIcon.
+    await writePng(WEBOS_ICON_SIZE, path.join(webosDir, 'icon.png'));
+    await writePng(WEBOS_LARGE_ICON_SIZE, path.join(webosDir, 'largeIcon.png'));
 
     // Splash screen — copied as-is; it's already a finished composition.
     await copyFile(masterSplash, path.join(rootDir, 'public/splash.png'));
