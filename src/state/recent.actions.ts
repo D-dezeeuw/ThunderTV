@@ -1,5 +1,6 @@
 import { appState, defineFn, getPathObj } from 'spektrum';
 import type { Route } from '../app/router';
+import { selectChannel } from './list.actions';
 import { publishVariantsFor } from './live.actions';
 import { PLAYER_ZAP_HISTORY } from './player';
 import { setActiveChannel } from './player.actions';
@@ -45,6 +46,11 @@ export function playFromHistory(id: string): void {
 
     publishVariantsFor(snapshot.id, snapshot.streamUrl);
     setActiveChannel(snapshot);
+    // Move the list cursor onto it too, exactly as `playFavorite()` does.
+    // Without this a replayed channel started playing but the target view's
+    // list highlighted whatever row the cursor happened to be parked on —
+    // which reads as "it jumped to the tab and nothing happened".
+    selectChannel(snapshot.id);
     // Navigating last: the router owns `ui.activeView`, and the view it
     // lands on already has the channel playing when it paints.
     location.hash = `#/${viewForSnapshot(snapshot)}`;
