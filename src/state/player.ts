@@ -21,13 +21,15 @@ export const PLAYER_VARIANTS = 'player.variants';
 /** Id of the variant currently playing, so the strip can mark one chip active. */
 export const PLAYER_ACTIVE_VARIANT_ID = 'player.activeVariantId';
 /**
- * The listener's Radio visualizer preference: `'auto'` (the default —
- * `src/player/visualizer/index.ts` cycles through every preset) or a
- * specific preset id (a genre preset pins to that look until switched back
- * to `'auto'`). No audio analysis ever picks this — the listener does, via
- * the picker in the player bar (`index.html`'s `radio-visualizer-btn` and
- * the menu it opens; options from `player.selectors.ts`'s
- * `VISUALIZER_PICKER_OPTIONS`).
+ * The listener's Radio visualizer preference: `'auto'`
+ * (`src/player/visualizer/index.ts` cycles through every preset) or a
+ * specific preset id, which pins to that look until switched back to
+ * `'auto'`. The default is `'classical'` — out of the box Radio opens on one
+ * settled look rather than rotating through ten, and the picker's first row
+ * is always there to turn the rotation on. No audio analysis ever picks
+ * this — the listener does, via the picker in the player bar (`index.html`'s
+ * `radio-visualizer-btn` and the menu it opens; options from
+ * `player.selectors.ts`'s `VISUALIZER_PICKER_OPTIONS`).
  */
 export const PLAYER_VISUALIZER_PRESET = 'player.visualizerPreset';
 /** Transient, session-only: whether the listener paused the Radio visualizer's render loop. Never persisted — reopening Radio always starts unpaused. */
@@ -88,7 +90,7 @@ export const PLAYER_DEFAULTS: PlayerState = {
     streamHealth: null,
     variants: [],
     activeVariantId: null,
-    visualizerPreset: 'auto',
+    visualizerPreset: 'classical',
     visualizerPaused: false,
     audioMode: false,
     paused: false,

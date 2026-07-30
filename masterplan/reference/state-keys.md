@@ -51,7 +51,7 @@ repeated here, to avoid the two drifting apart.
 | `player.trackMenu` | player | no | — | v1 | 'none' | 'audio' | 'subtitles' — which track popup (if any) is open. Reset to 'none' on every player.active change (state/player-tracks.actions.ts's registerTrackSync()). |
 | `player.variants` | player | no | 12 | v1 | The playing channel\'s alternate feeds (other qualities, a provider bundle\'s copy, catch-up) — rebuilt from the loaded catalog on every channel change, so never persisted: a stale copy would offer stream ids the provider may already have rotated. |
 | `player.visualizerPaused` | player | no | — | v1 | Whether the listener paused the Radio visualizer render loop — transient, always false on a fresh Radio visit. |
-| `player.visualizerPreset` | player | yes | — | v1 | Radio visualizer preference — \'auto\' (cycle every preset) or a specific preset id (a genre preset stays pinned). Chosen by the listener, never inferred from the audio. |
+| `player.visualizerPreset` | player | yes | — | v1 | Radio visualizer preference — \'auto\' (cycle every preset) or a specific preset id (a genre preset stays pinned). Defaults to \'classical\'. Chosen by the listener, never inferred from the audio. |
 | `player.zapHistory` | player | yes | 20 | v1 | Capped, deduped list of recently played channel snapshots. |
 | `playlist.activeSourceId` | playlist | yes | — | v1 | The source the user last navigated into (Feature 05.6.2, persisted starting Feature 08.10.6) — a reload lands back in the same channel list instead of a source picker, matching Feature 08.6\'s "never left" framing. |
 | `playlist.demoRows` | playlist | no | — | v1 | Phase 02 density-preview fixture rows — never real data, never persisted. |

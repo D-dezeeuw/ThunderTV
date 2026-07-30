@@ -1,5 +1,5 @@
 import type { FrameContext, VisualizerPreset } from '../types';
-import { barAt } from './preset-utils';
+import { barAt, fadeTrails } from './preset-utils';
 
 const RINGS = 5;
 const POINTS_PER_RING = 72;
@@ -62,8 +62,7 @@ export class ClassicalPreset implements VisualizerPreset {
 
         // A near-imperceptible trail — layers should read as steady and
         // composed, not smeared.
-        ctx.fillStyle = 'rgba(6, 4, 10, 0.05)';
-        ctx.fillRect(0, 0, width, height);
+        fadeTrails(ctx, width, height, 0.05);
 
         const cx = width / 2;
         const cy = height / 2;

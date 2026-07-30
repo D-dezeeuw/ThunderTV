@@ -1,5 +1,5 @@
 import type { FrameContext, VisualizerPreset } from '../types';
-import { barAtMirrored, decay } from './preset-utils';
+import { barAtMirrored, decay, fadeTrails } from './preset-utils';
 
 const SPIKE_COUNT = 44;
 const EMBER_COUNT = 48;
@@ -45,8 +45,7 @@ export class RockPreset implements VisualizerPreset {
         const { ctx, width, height, dt, bars, bass, beat, beatIntensity } = fc;
         if (this.envelope.length === 0) this.reset();
 
-        ctx.fillStyle = 'rgba(8, 6, 6, 0.22)';
-        ctx.fillRect(0, 0, width, height);
+        fadeTrails(ctx, width, height, 0.22);
 
         this.angle += (0.00025 + bass * 0.0008) * dt;
         if (beat) this.kick = Math.min(1, 0.4 + beatIntensity * 0.6);

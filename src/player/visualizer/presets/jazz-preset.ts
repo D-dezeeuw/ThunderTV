@@ -1,5 +1,5 @@
 import type { FrameContext, VisualizerPreset } from '../types';
-import { barAt } from './preset-utils';
+import { barAt, fadeTrails } from './preset-utils';
 
 const RIBBONS = 6;
 const POINTS = 90;
@@ -77,9 +77,10 @@ export class JazzPreset implements VisualizerPreset {
         }
 
         // A very slow trail fade — long, smooth, overlapping traces read as
-        // flowing improvisation rather than a sharp bar chart.
-        ctx.fillStyle = 'rgba(10, 6, 2, 0.06)';
-        ctx.fillRect(0, 0, width, height);
+        // flowing improvisation rather than a sharp bar chart. Slow enough
+        // that the 8-bit rounding floor `fadeTrails` clears used to be the
+        // most visible thing about it (a permanent warm-brown wash).
+        fadeTrails(ctx, width, height, 0.06);
 
         const cx = width / 2;
         const cy = height / 2;
