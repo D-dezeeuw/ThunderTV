@@ -212,6 +212,21 @@ export function togglePlayback(): void {
     }
 }
 
+/**
+ * Called by `src/player/playback-state-sync.ts` as the `<video>` element
+ * actually plays and pauses — the same reporter shape as
+ * `reportPlaybackError()`/`reportStreamHealth()` below.
+ *
+ * The element's own events are the authority on this, not whoever asked for
+ * the change: a viewer can pause from the native control bar, by clicking the
+ * picture (Chromium toggles on the whole video surface), with a media key, or
+ * from the app's own button. Only the last of those used to update
+ * `player.paused`, so the Stop/Play icon could disagree with reality.
+ */
+export function reportPaused(paused: boolean): void {
+    setValue(PLAYER_PAUSED, paused);
+}
+
 /** Called by `src/player/engine.ts` when a stream dies (hls.js fatal error or the native element's `error` event) — the one visible diagnostic a phone user can screenshot. `null` clears it on a fresh attach. Stone 3's failure evidence is recorded by the engine itself (`advanceChain()`), not here: the player layer already owns the health monitor, and hooking it here would have `src/state/` reach into `src/player/`. */
 export function reportPlaybackError(detail: string | null): void {
     setValue(PLAYER_PLAYBACK_ERROR, detail);

@@ -10,7 +10,7 @@ import {
 } from '../state/player';
 import { UI_ACTIVE_VIEW } from '../state/ui';
 import { attachAndPlay, detach } from './engine';
-import { attachTapToPause } from './tap-to-pause';
+import { attachPlaybackStateSync } from './playback-state-sync';
 import {
     setRadioVisualizerPaused,
     setRadioVisualizerPreset,
@@ -105,22 +105,24 @@ export function registerPlayerBindings(): () => void {
         },
     );
 
-    // Tap-to-pause on the picture. Wired once the element exists — the same
-    // `data-if="player.active"` caveat the watches above handle by re-reading
-    // `refs`, so this re-attaches on the first change that produces a video.
-    let detachTap: (() => void) | null = null;
-    const unwatchTap = watch([PLAYER_ACTIVE], () => {
+    // Mirrors the element's real play/pause state into `player.paused`, so
+    // every way of pausing agrees with the UI — including clicking the
+    // picture, which Chromium already handles natively. Wired once the
+    // element exists: same `data-if="player.active"` caveat the watches above
+    // handle by re-reading `refs`.
+    let detachStateSync: (() => void) | null = null;
+    const unwatchStateSync = watch([PLAYER_ACTIVE], () => {
         const video = refs['playerVideo'];
-        if (!(video instanceof HTMLVideoElement) || detachTap) return;
-        detachTap = attachTapToPause(video);
+        if (!(video instanceof HTMLVideoElement) || detachStateSync) return;
+        detachStateSync = attachPlaybackStateSync(video);
     });
 
     return () => {
         unwatchPlayback();
         unwatchVisualizer();
-        unwatchTap();
-        detachTap?.();
-        detachTap = null;
+        unwatchStateSync();
+        detachStateSync?.();
+        detachStateSync = null;
     };
 }
 
