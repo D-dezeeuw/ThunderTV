@@ -81,9 +81,12 @@ inside it, so `Discovery Channel` under `| NL | DOCU` is correctly Dutch.
 `groupChannels()` takes two more options: `epgMatches` (a `Map<channelKey,
 catalogId>` from `src/epg/match.ts`'s `getMappingSync()`, built by
 `src/state/live-rows.ts`) and `epgVerifiedOnly`. Presence in the map alone
-never drops a row — it only supplies `GroupedChannel.epgId` (carried through
-`toDisplayRows()` onto the `ChannelRow`, for a future now/next span to key
-off directly). `epgVerifiedOnly` is the actual filter, off by default, same
+never drops a row — it only supplies `GroupedChannel.epgId`, carried through
+`toDisplayRows()` onto the `ChannelRow`. That field is one rung of the
+guide-to-list join, not the whole of it: a provider that serves its own EPG
+is matched on `tvgId` instead, and by name after that — see
+`src/epg/README.md`'s "Which channels the Guide shows".
+`epgVerifiedOnly` is the actual filter, off by default, same
 never-empty-screen contract as `knownOnly`, and — like `knownOnly` — never
 applied to Radio (`src/epg/countries.ts`'s catalog is TV-only).
 

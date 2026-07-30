@@ -12,6 +12,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `playlist.ts`        | `playlist.sources`, `playlist.activeSourceId`, `playlist.demoRows`                                                   | `activeSourceId` yes (Feature 08.10.6); `sources` is a live storage projection, `demoRows` is static demo data — neither persists |
 | `player.ts`          | `player.active`, `player.zapHistory`, `player.visualizerPreset`, `player.visualizerPaused`, `player.audioMode`, plus the transient diagnostics trio `player.playbackError`, `player.playbackNotice` (the stream plays but decodes no audio — `src/player/audio-output.ts`), `player.streamHealth` | Yes — the §6.4 instant-restore pair; the diagnostics trio never persists (all three describe one attach and are cleared by the next); `visualizerPreset` also persists (the listener's Radio visualizer choice) and so does `audioMode` (watch TV channels audio-only, with the visualizer standing in for the picture — a viewing preference, and the player bar always carries the switch back); `visualizerPaused` does not (always false on a fresh Radio visit) |
 | `xtream-epg-load.ts` | *(no keys of its own — writes `settings.epgFeedThrough` and the `epgChannels`/`epgPrograms` storage tables)* | n/a — the Xtream guide pipeline. `loadXtreamGuide()` pulls the panel's whole `xmltv.php` once per source (12h TTL); `ensureChannelEpg()` fills a single channel via `get_short_epg` when it starts playing with nothing to show. Joined by `epg_channel_id`/`tvgId`, so it uses none of `src/epg/`'s catalog or matcher |
+| `guide-live-join.ts` | *(no keys — a pure function over two arrays)* | n/a — the tvg-id → catalog-id → name ladder that decides which stored guide channels the Guide shows, and which Live row a picked one plays. See `src/epg/README.md`'s "Which channels the Guide shows" |
 | `player-tracks.ts`   | `player.audioTracks`, `player.subtitleTracks`, `player.trackMenu`                                                     | No — the dock/theater popups' own published lists (`player-tracks.actions.ts`'s `registerTrackSync()` republishes them from `getPlayerTracks()`) and which popup is open (`'audio' \| 'subtitles' \| 'visualizer'` — Radio's preset picker shares the key so only one can be open); rebuilt every stream, never restored |
 | `epg.ts`             | `epg.tick`                                                                                                            | No — a heartbeat timestamp, recomputed every boot |
 | `epg-settings.ts`    | `settings.epgCacheState`, `settings.epgCatalogCount`                                                                  | No — transient Settings → Diagnostics feedback (`epg-settings.actions.ts`'s `refreshEpgCatalog()`/`clearEpgCache()`) and a derived count `state/epg-load.ts`'s `loadDefaultEpg()` re-publishes on every run; neither survives a reload (nor should — the count is wrong the instant the underlying `epgCatalog` table changes) |
@@ -532,6 +533,21 @@ layer:
   mechanism — a catalog that hasn't matched anything yet is far more often
   "not fetched" or "wrong country" than "every channel genuinely lacks
   guide data."
+- **The Guide is the one place that never-empty-screen rule does *not*
+  apply.** `guide.selectors.ts` shows nothing until Live has published
+  rows to narrow against, because the alternative is painting a whole
+  provider's guide — channels the viewer's list does not show and a click
+  cannot play. The Live filters are a view over a list the viewer still
+  has; an unjoined guide is a list they don't. `guide.view` therefore
+  depends on `live.stats`: the rows themselves are module memory (the
+  bulk-data bypass), so that readout is the only published value that
+  changes exactly when they are rebuilt, and without it the grid stayed
+  unnarrowed until the next 30s `epg.tick`.
+- **`publishRowsForCurrentView()` builds Live's rows for the `guide` view
+  too**, without publishing anything into the shared virtual list. The
+  Guide doesn't own that list but does depend on those rows existing, and
+  a viewer who boots straight into `#/guide` would otherwise never build
+  them (`list-load.ts` has the matching non-early-returning branch).
 
 ## The persistence bridge, in one paragraph
 
