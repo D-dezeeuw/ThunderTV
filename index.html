@@ -1417,7 +1417,22 @@
                                          renders when a picture is playing. -->
                                     <span class="player-shell__name truncate" data-if="!visualizerActive">{{ player.active.name }}</span>
                                     <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
-                                    <div class="radio-now-playing" data-if="visualizerActive" data-testid="radio-now-playing">
+                                    <!-- Tapping the audio-only pane toggles playback, the same
+                                         way tapping the picture does (`src/player/bindings.ts`
+                                         wires the video side, which needs event geometry to
+                                         stay off the native control strip). Safe to bind
+                                         declaratively here: the visualizer canvas has no
+                                         controls of its own to compete with. -->
+                                    <div
+                                        class="radio-now-playing"
+                                        data-if="visualizerActive"
+                                        data-action="click"
+                                        data-fn="player/togglePlayback"
+                                        :aria-label="strings.list.playerTogglePlayback"
+                                        role="button"
+                                        tabindex="0"
+                                        data-testid="radio-now-playing"
+                                    >
                                         <canvas class="radio-now-playing__canvas" data-ref="radioVisualizer" data-testid="radio-visualizer" aria-hidden="true"></canvas>
                                         <span class="radio-now-playing__name truncate">{{ player.active.name }}</span>
                                     </div>

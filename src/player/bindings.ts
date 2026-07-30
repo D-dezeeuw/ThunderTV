@@ -10,6 +10,7 @@ import {
 } from '../state/player';
 import { UI_ACTIVE_VIEW } from '../state/ui';
 import { attachAndPlay, detach } from './engine';
+import { attachTapToPause } from './tap-to-pause';
 import {
     setRadioVisualizerPaused,
     setRadioVisualizerPreset,
@@ -104,9 +105,22 @@ export function registerPlayerBindings(): () => void {
         },
     );
 
+    // Tap-to-pause on the picture. Wired once the element exists — the same
+    // `data-if="player.active"` caveat the watches above handle by re-reading
+    // `refs`, so this re-attaches on the first change that produces a video.
+    let detachTap: (() => void) | null = null;
+    const unwatchTap = watch([PLAYER_ACTIVE], () => {
+        const video = refs['playerVideo'];
+        if (!(video instanceof HTMLVideoElement) || detachTap) return;
+        detachTap = attachTapToPause(video);
+    });
+
     return () => {
         unwatchPlayback();
         unwatchVisualizer();
+        unwatchTap();
+        detachTap?.();
+        detachTap = null;
     };
 }
 

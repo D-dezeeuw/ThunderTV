@@ -13,6 +13,7 @@ export const nlPlayerTracks = {
     playerAudioOnly: 'Alleen geluid',
     playerShowPicture: 'Beeld tonen',
     playerResume: 'Afspelen',
+    playerTogglePlayback: 'Afspelen of pauzeren',
     playerUnsupportedContainer:
         'dit apparaat kan de container van dit bestand niet afspelen; download het en open het in een andere speler',
     playerNoDataYet: 'na 20 seconden nog geen afspeelbare gegevens',
