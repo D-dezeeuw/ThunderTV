@@ -100,9 +100,9 @@ describe('Movies/Series catalog markup (Phase 21, DOM-bound)', () => {
         mounted.cleanup();
     });
 
-    it('typing in the search input dispatches search/setQuery live, per keystroke', () => {
+    it('typing in the search input dispatches search/setQueryMovies live, per keystroke', () => {
         const mounted = mountTemplate(`
-            <input type="text" data-action="input" data-fn="search/setQuery" data-testid="search-input" />
+            <input type="text" data-action="input" data-fn="search/setQueryMovies" data-testid="search-input" />
             <span data-testid="query-echo">{{ search.query }}</span>
             <span data-testid="active-echo">{{ search.active ? 'yes' : 'no' }}</span>
         `);

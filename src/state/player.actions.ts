@@ -44,9 +44,6 @@ export function registerPlayerActions(): void {
     defineFn('player/setActiveChannel', (_el, _state, _delta, value: unknown) => {
         setActiveChannel(value as ActiveChannelSnapshot);
     });
-    defineFn('player/stop', () => {
-        stopPlayback();
-    });
     defineFn('player/togglePlayback', () => {
         togglePlayback();
     });

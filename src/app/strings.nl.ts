@@ -314,7 +314,6 @@ export const nl = {
     list: {
         ...nlEpg.list,
         chooseSource: 'Kies een playlist',
-        backToSources: '← Bronnen',
         allChannels: 'Alle zenders',
         groupsHeading: 'Groepen',
         groupsTruncatedTemplate: 'De eerste {count} groepen worden getoond.',

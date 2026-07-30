@@ -11,7 +11,6 @@ import {
     seriesItemToRow,
 } from './series-rows';
 import {
-    isSearchScope,
     SEARCH_ACTIVE,
     SEARCH_LOADED_ONLY,
     SEARCH_QUERY,
@@ -45,13 +44,6 @@ import { allLoadedVodItems, cachedVodSource, vodCategoryName, vodHasUnfetchedCat
 let currentQuery = '';
 let currentScope: SearchScope = 'all';
 export function registerSearchActions(): void {
-    defineFn('search/setQuery', (el) => {
-        if (el instanceof HTMLInputElement) setSearchQuery(el.value);
-    });
-    defineFn('search/setScope', (el) => {
-        const scope = el.dataset['scope'];
-        if (isSearchScope(scope)) setSearchScope(scope);
-    });
     // Each catalog tab's search bar is scoped to its own content — Live only
     // searches channels, Movies only movies, Series only series — so the
     // scope is forced from the input's own view rather than left to a

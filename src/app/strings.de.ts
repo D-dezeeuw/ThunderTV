@@ -314,7 +314,6 @@ export const de = {
     list: {
         ...deEpg.list,
         chooseSource: 'Playlist auswählen',
-        backToSources: '← Quellen',
         allChannels: 'Alle Sender',
         groupsHeading: 'Gruppen',
         groupsTruncatedTemplate: 'Die ersten {count} Gruppen werden angezeigt.',
