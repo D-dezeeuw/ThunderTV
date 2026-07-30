@@ -68,7 +68,10 @@ describe('Settings language switcher (i18n, DOM-bound)', () => {
         await settleLocaleSwitch('Categorieën', 'rail-categories-label', mounted);
 
         expect(mounted.query('[data-testid="rail-categories-label"]')?.textContent?.trim()).toBe('Categorieën');
-        expect(mounted.query('[data-testid="rail-live-label"]')?.textContent?.trim()).toBe('Live');
+        // 'TV' is spelled the same in all three locales — which is the point
+        // here: it proves the *other* label re-rendered rather than the whole
+        // template being re-created.
+        expect(mounted.query('[data-testid="rail-live-label"]')?.textContent?.trim()).toBe('TV');
 
         changeSelectTo(select as HTMLSelectElement, 'de');
         await settleLocaleSwitch('Kategorien', 'rail-categories-label', mounted);

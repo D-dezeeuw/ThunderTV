@@ -95,10 +95,49 @@
 
         <div id="app">
             <nav class="rail" aria-label="Main">
-                <!-- Live is the app's home and the destination every empty
-                     state points at, so alone among these it has no
-                     visibility toggle: switching every button off must never
-                     strand the user with nowhere to go. -->
+                <!-- Order is by how often a viewer reaches for each: what they
+                     saved, what is on now, then the two live lists, then the
+                     catalogs, then the things you visit to set something up.
+
+                     TV (route `live`) is the app's home and the destination
+                     every empty state points at, so alone among these it has
+                     no visibility toggle: switching every button off must
+                     never strand the user with nowhere to go. Its route id
+                     stays `live` on purpose — `#/live` is in bookmarks,
+                     handoff links and saved list state, and renaming a label
+                     is not a reason to break them. -->
+                <button
+                    type="button"
+                    class="rail__btn"
+                    data-view="favorites"
+                    data-if="rail.favorites.visible"
+                    :class="{ 'rail__btn--active': view.favorites.active }"
+                    :aria-current="view.favorites.active ? 'page' : null"
+                    :aria-label="strings.rail.favorites"
+                    :title="strings.rail.favorites"
+                    data-action="click"
+                    data-fn="ui/navigate"
+                >
+                    <svg class="icon icon--m" aria-hidden="true">
+                        <use href="#icon-favorites"></use>
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    class="rail__btn"
+                    data-view="guide"
+                    data-if="rail.guide.visible"
+                    :class="{ 'rail__btn--active': view.guide.active }"
+                    :aria-current="view.guide.active ? 'page' : null"
+                    :aria-label="strings.rail.guide"
+                    :title="strings.rail.guide"
+                    data-action="click"
+                    data-fn="ui/navigate"
+                >
+                    <svg class="icon icon--m" aria-hidden="true">
+                        <use href="#icon-guide"></use>
+                    </svg>
+                </button>
                 <button
                     type="button"
                     class="rail__btn"
@@ -181,38 +220,6 @@
                 <button
                     type="button"
                     class="rail__btn"
-                    data-view="sources"
-                    data-if="rail.sources.visible"
-                    :class="{ 'rail__btn--active': view.sources.active }"
-                    :aria-current="view.sources.active ? 'page' : null"
-                    :aria-label="strings.rail.sources"
-                    :title="strings.rail.sources"
-                    data-action="click"
-                    data-fn="ui/navigate"
-                >
-                    <svg class="icon icon--m" aria-hidden="true">
-                        <use href="#icon-sources"></use>
-                    </svg>
-                </button>
-                <button
-                    type="button"
-                    class="rail__btn"
-                    data-view="favorites"
-                    data-if="rail.favorites.visible"
-                    :class="{ 'rail__btn--active': view.favorites.active }"
-                    :aria-current="view.favorites.active ? 'page' : null"
-                    :aria-label="strings.rail.favorites"
-                    :title="strings.rail.favorites"
-                    data-action="click"
-                    data-fn="ui/navigate"
-                >
-                    <svg class="icon icon--m" aria-hidden="true">
-                        <use href="#icon-favorites"></use>
-                    </svg>
-                </button>
-                <button
-                    type="button"
-                    class="rail__btn"
                     data-view="recent"
                     data-if="rail.recent.visible"
                     :class="{ 'rail__btn--active': view.recent.active }"
@@ -229,17 +236,17 @@
                 <button
                     type="button"
                     class="rail__btn"
-                    data-view="guide"
-                    data-if="rail.guide.visible"
-                    :class="{ 'rail__btn--active': view.guide.active }"
-                    :aria-current="view.guide.active ? 'page' : null"
-                    :aria-label="strings.rail.guide"
-                    :title="strings.rail.guide"
+                    data-view="sources"
+                    data-if="rail.sources.visible"
+                    :class="{ 'rail__btn--active': view.sources.active }"
+                    :aria-current="view.sources.active ? 'page' : null"
+                    :aria-label="strings.rail.sources"
+                    :title="strings.rail.sources"
                     data-action="click"
                     data-fn="ui/navigate"
                 >
                     <svg class="icon icon--m" aria-hidden="true">
-                        <use href="#icon-guide"></use>
+                        <use href="#icon-sources"></use>
                     </svg>
                 </button>
                 <button

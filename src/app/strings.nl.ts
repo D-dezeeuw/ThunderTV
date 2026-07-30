@@ -14,7 +14,7 @@ export const nl = {
     appName: 'ThunderTV',
 
     rail: {
-        live: 'Live',
+        live: 'TV',
         radio: 'Radio',
         movies: 'Films',
         series: 'Series',
@@ -27,7 +27,7 @@ export const nl = {
     },
 
     views: {
-        live: { title: 'Live', heading: 'Live' },
+        live: { title: 'TV', heading: 'TV' }, // route id stays `live`: `#/live` is in bookmarks, handoff links and saved list state
         radio: { title: 'Radio', heading: 'Radio' },
         movies: { title: 'Films', heading: 'Films' },
         series: { title: 'Series', heading: 'Series' },

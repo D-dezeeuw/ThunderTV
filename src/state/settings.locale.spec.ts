@@ -29,7 +29,7 @@ describe('setLocale() (i18n)', () => {
             initSettingsState();
             tick();
             expect(strings.appName).toBe('ThunderTV');
-            expect(strings.rail.live).toBe('Live');
+            expect(strings.rail.live).toBe('TV');
 
             await setLocale('nl');
             tick();
