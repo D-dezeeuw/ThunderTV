@@ -7,7 +7,12 @@ same feature; see that layer's own module-ownership table in
 `src/state/README.md` for the full picture of which side owns what.
 
 - `virtual-list.ts` — scroll math, the current view's row array (module
-  memory, never Spektrum state), and `publishListWindow()` calls.
+  memory, never Spektrum state), and `publishListWindow()` calls. A
+  `setRows()` call replaces the row set and starts at the top; one flagged
+  `preserveScroll` *grows* it (the chunked source load) and leaves the
+  viewer's position alone. `viewerHasScrolled()` reports whether that
+  position is theirs or ours, so a deferred restore can decline to override
+  someone who is already reading.
 - `window-math.ts` — the pure slice/pad-height math, unit-tested exhaustively
   in isolation from the DOM/Spektrum.
 - `groups.ts` — group-name row filtering (memoized per row-array identity).

@@ -10,6 +10,8 @@ export interface SetDisplayedRowsOptions {
     scrollTop?: number;
     /** Explicit selection to apply (e.g. a restored value) — omitted, the current selection is re-validated against the new set instead. */
     selectedId?: string | null;
+    /** This publish appends to the set already on screen rather than replacing it — leave the viewer's scroll position alone (see `ui/virtual-list.ts`'s `SetRowsOptions`). */
+    preserveScroll?: boolean;
 }
 
 /**
@@ -56,7 +58,10 @@ function rowIdFor(rows: readonly ChannelRow[], id: string | null): string | null
  * the first row, instead of silently pointing at nothing.
  */
 export function setDisplayedRows(rows: readonly ChannelRow[], options: SetDisplayedRowsOptions = {}): void {
-    setVirtualListRows(rows, options.scrollTop !== undefined ? { scrollTop: options.scrollTop } : {});
+    setVirtualListRows(rows, {
+        ...(options.scrollTop !== undefined ? { scrollTop: options.scrollTop } : {}),
+        ...(options.preserveScroll ? { preserveScroll: true } : {}),
+    });
 
     const reveal = pendingRevealId;
     pendingRevealId = null;
