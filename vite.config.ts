@@ -90,13 +90,29 @@ function stripRegistryDescriptions(): Plugin {
     };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
     // Relative asset URLs, not root-absolute. One dist/ then loads correctly
     // from all three consumers: a GitHub Pages subpath (/thundertv/), a
     // packaged Electron `file://` window, and a packaged webOS app.
     base: './',
     plugins: [externalizeSpektrum(), stripRegistryDescriptions()],
     build: {
+        // `--mode webos` (npm run build:lg) builds to a separate directory
+        // and a lower syntax floor than the evergreen web/Electron build.
+        // Kept out of the default `dist/` so `npm run deploy` and
+        // desktop/'s `prepackage` — both plain `npm run build` — can never
+        // pick up the webOS-swapped output by accident.
+        outDir: mode === 'webos' ? 'dist-webos' : 'dist',
+        // webOS TVs from the confirmed compatibility floor (webOS 6+,
+        // ~2021+) ship Chromium 87+. That's still short of Chromium 89,
+        // where native `<script type="importmap">` support landed — see
+        // scripts/package-target.mjs's es-module-shims injection for that
+        // gap — but otherwise close enough to evergreen that no aggressive
+        // syntax down-leveling is needed. Other modes keep esbuild's
+        // default (evergreen) target — `exactOptionalPropertyTypes` forbids
+        // setting `target: undefined` explicitly, so it's omitted via
+        // spread instead.
+        ...(mode === 'webos' ? { target: 'chrome87' } : {}),
         /**
          * The default 500 kB warning fires on one chunk, and it is a chunk
          * that is already doing the right thing: hls.js (~509 kB) is a
@@ -134,4 +150,4 @@ export default defineConfig({
         // must never try to resolve/pre-bundle the bare specifier itself.
         exclude: ['spektrum'],
     },
-});
+}));

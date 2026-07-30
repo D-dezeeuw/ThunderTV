@@ -11,6 +11,7 @@
     "scripts": {
         "dev": "vite",
         "build": "tsc --noEmit && vite build",
+        "build:lg": "tsc --noEmit && vite build --mode webos && node scripts/package-target.mjs webos && node scripts/package-webos.mjs",
         "preview": "vite preview",
         "deploy": "vite build && gh-pages -d dist --dotfiles",
         "lint": "eslint . --max-warnings 0",

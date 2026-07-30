@@ -1,0 +1,7 @@
+{
+  "version": "2.8.4",
+  "cdnUrl": "https://unpkg.com/es-module-shims@2.8.4/dist/es-module-shims.js",
+  "sha384": "XCYz0V79m/Nex83lKvfhMD2R7JHcINUuKrEt+xEoNmakEsh354CNM0h2mNT7xJqq",
+  "vendoredPath": "public/vendor/es-module-shims.js",
+  "note": "Single source of truth for the pinned es-module-shims version, used only by the webOS build (scripts/package-target.mjs) to polyfill import-map support on Chromium <89. Bump via scripts/sync-vendor-es-module-shims.mjs, never by hand-editing the hash."
+}

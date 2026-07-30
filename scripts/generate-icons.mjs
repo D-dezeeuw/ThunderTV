@@ -13,6 +13,7 @@
 //   build/icon.ico                                    — Windows electron-builder icon
 //   build/icon.icns                                   — macOS electron-builder icon
 //   build/icons/*.png                                 — Linux electron-builder icon set (16..512)
+//   webos/icon.png, webos/largeIcon.png                — webOS appinfo.json icon/largeIcon (80/130, LG's required sizes)
 //
 // Pure-JS pipeline (sharp for resizing, icon-gen for .ico/.icns
 // packaging) — no ImageMagick/native tooling required.
@@ -29,6 +30,7 @@ const masterSplash = path.join(rootDir, 'assets/branding/thundertv-splash-master
 const publicIconsDir = path.join(rootDir, 'public/icons');
 const buildDir = path.join(rootDir, 'build');
 const buildIconsDir = path.join(buildDir, 'icons');
+const webosDir = path.join(rootDir, 'webos');
 
 // Web favicon/PWA sizes (masterplan/phases/phase-24-pwa-and-offline-shell.md
 // Feature 24.1 names 192/512 for the manifest; 16/32/48/180 cover the
@@ -38,6 +40,10 @@ const APPLE_TOUCH_SIZE = 180;
 
 // Linux electron-builder expects a directory of square PNGs at these sizes.
 const LINUX_SIZES = [16, 32, 48, 64, 128, 256, 512];
+
+// LG's appinfo.json schema names these exact sizes for `icon`/`largeIcon`.
+const WEBOS_ICON_SIZE = 80;
+const WEBOS_LARGE_ICON_SIZE = 130;
 
 // Sizes icon-gen needs pre-rendered on disk (as `<size>.png`) to assemble
 // the Windows .ico and macOS .icns containers.
@@ -51,6 +57,7 @@ async function writePng(size, outFile) {
 async function main() {
     await mkdir(publicIconsDir, { recursive: true });
     await mkdir(buildIconsDir, { recursive: true });
+    await mkdir(webosDir, { recursive: true });
 
     // Web favicon/PWA set.
     for (const size of FAVICON_SIZES) {
@@ -62,6 +69,10 @@ async function main() {
     for (const size of LINUX_SIZES) {
         await writePng(size, path.join(buildIconsDir, `${size}.png`));
     }
+
+    // webOS appinfo.json icon/largeIcon.
+    await writePng(WEBOS_ICON_SIZE, path.join(webosDir, 'icon.png'));
+    await writePng(WEBOS_LARGE_ICON_SIZE, path.join(webosDir, 'largeIcon.png'));
 
     // Splash screen — copied as-is; it's already a finished composition.
     await copyFile(masterSplash, path.join(rootDir, 'public/splash.png'));

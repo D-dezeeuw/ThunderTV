@@ -7,8 +7,8 @@
     "main": "main.mjs",
     "desktopName": "thundertv.desktop",
     "scripts": {
-        "start": "npm --prefix .. run build && node ../scripts/package-target.mjs && electron .",
-        "prepackage": "npm --prefix .. run build && node ../scripts/package-target.mjs",
+        "start": "npm --prefix .. run build && node ../scripts/package-target.mjs electron && electron .",
+        "prepackage": "npm --prefix .. run build && node ../scripts/package-target.mjs electron",
         "package": "npm run prepackage && electron-builder --config ../electron-builder.yml",
         "package:linux": "npm run prepackage && electron-builder --config ../electron-builder.yml --linux",
         "package:win": "npm run prepackage && electron-builder --config ../electron-builder.yml --win",
