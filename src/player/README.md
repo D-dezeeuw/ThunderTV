@@ -208,10 +208,32 @@ restarts the stream. `startRadioVisualizer()` is itself a no-op when already
 running against the same canvas — the same `watch()` fires on every one of
 those four dependencies, and a full reset on each call would stomp an
 in-flight crossfade or the pause state; preset/pause changes apply through
-their own setters instead. The visualizer reads real frequency data only
-when the audio is same-origin/CORS-clean, which mpegts.js/hls.js's `blob:`
-MediaSource URL satisfies (the default engines); the native-engine fallback
-still animates, just without music-reactivity.
+their own setters instead.
+
+### Where the audio comes from (`visualizer/audio-tap.ts`)
+
+**Listening must never change what comes out of the speakers**, and that is
+the whole reason this module exists. The original graph used
+`createMediaElementSource(video)`, which *re-routes* the element's audio into
+the graph — and per spec outputs **silence** whenever the element's current
+resource is CORS-cross-origin. One call marks that `<video>` for the life of
+the page, and the shared element is never recreated. So: play one Radio
+station or one audio-only TV channel (both `blob:` MediaSource, both
+audible), then open a movie — a progressive file the native engine hands
+straight to `video.src`, cross-origin — and it plays picture-perfect and dead
+silent. That was "movies have no sound".
+
+`captureStream()` (`mozCaptureStream()` on Firefox) is the same data without
+the hijack: a *copy* of what the element plays, leaving the element's own
+output alone. Nothing here connects to `ctx.destination` for that reason — an
+`AnalyserNode` with no downstream connection still runs (the spec's
+automatic-pull list), so the analyser reads real data from a graph that is
+audibly inert. Every route that cannot produce data — Safari (no
+`captureStream()`), a tainted resource (Chromium throws), a capture taken
+before the stream had an audio track — returns `SILENT_TAP` (zeroed spectrum,
+128-centred waveform) rather than `null`, so the presets animate at rest and
+the viewer keeps their sound. The tap is keyed on the element *and* its
+current stream, so a new channel/movie on the same element re-taps.
 
 ## Fullscreen
 
