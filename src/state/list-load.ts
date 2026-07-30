@@ -47,6 +47,11 @@ export async function loadActiveSource(): Promise<void> {
     // (one row per real channel), so neither uses the restored group /
     // scroll position — those describe the raw, ungrouped list.
     const activeView = get<Route>(UI_ACTIVE_VIEW);
+    // A boot straight into #/guide has to build Live's rows too — the Guide
+    // filters itself to them. Deliberately not an early return: the Guide
+    // doesn't own the shared virtual list, so that list still wants the
+    // restored group/scroll position below, for whenever the viewer leaves.
+    if (activeView === 'guide') publishRowsForCurrentView();
     if (activeView === 'live' || activeView === 'radio') {
         publishRowsForCurrentView();
         return;

@@ -10,9 +10,11 @@ import {
     percentInRange,
 } from './guide-time';
 import { GUIDE_CHANNELS, GUIDE_OFFSET_MS, GUIDE_SELECTED_KEY, guideProgramKey, type GuideChannel } from './guide';
+import { selectGuideChannelsForLive } from './guide-live-join';
 import { EPG_FEED_THROUGH } from './epg-settings';
 import { SETTINGS_LOCALE } from './settings';
-import { liveDisplayRows } from './live-rows';
+import { LIVE_STATS } from './live';
+import { liveChannels } from './live-rows';
 
 interface GuideShapedState extends State {
     guide?: { channels?: GuideChannel[]; selectedKey?: string | null; offsetMs?: number };
@@ -71,32 +73,31 @@ export interface GuideView {
 /**
  * Restricts the Guide to the channels Live actually carries, in Live's own
  * order — `groupChannels()`'s broadcast-rank order (`src/channels/
- * grouping.ts`), read here via `liveDisplayRows()`. The join is the same
- * `ChannelRow.epgId` `guide.actions.ts`'s `playChannelByEpgId()` uses.
+ * grouping.ts`), read here via `liveChannels()`.
  *
  * Filtering, not just sorting, is the fix for "the guide shows different
- * channels than Live". The country catalog describes everything broadcast
- * in the country, which is legitimately a superset of one subscription: on
- * the demo playlist that superset is 205 guide channels against 139 Live
- * can actually tune. Listing the other 66 offered rows that do nothing when
- * picked (`playChannelByEpgId()` returns a quiet `false` for them) and
- * pushed the channels the viewer does have further down the grid.
+ * channels than Live". A guide document legitimately describes a superset of
+ * one subscription — the country catalog covers everything broadcast in the
+ * country, and a panel's `xmltv.php` covers the whole account including
+ * whatever the Live filters hid. Listing the extras offered rows that do
+ * nothing when picked and pushed the channels the viewer does have further
+ * down the grid.
  *
- * They aren't lost data — they simply have no row to play, so the Guide has
- * nothing to say about them the viewer can act on.
+ * The join itself lives in `guide-live-join.ts` (tvg-id → catalog id → name);
+ * `guide.actions.ts`'s `playChannelByEpgId()` resolves a picked row back
+ * through the same ladder, so what the grid shows and what a click plays
+ * cannot drift apart.
+ *
+ * **Empty until Live propagates, deliberately.** This used to hand back the
+ * whole feed whenever the join produced nothing, on the theory that a
+ * populated grid beats a blank one. It doesn't: with an Xtream source that
+ * branch fired on every boot (nothing fills `epgId` there) and painted
+ * thousands of alphabetically-sorted channels the viewer's list does not
+ * show. Waiting is the honest answer, and the wait is short — the view
+ * depends on `live.stats`, which changes the moment those rows are built.
  */
 function channelsShownInLiveOrder(channels: readonly GuideChannel[]): GuideChannel[] {
-    const rank = new Map<string, number>();
-    liveDisplayRows().forEach((row, index) => {
-        if (row.epgId && !rank.has(row.epgId)) rank.set(row.epgId, index);
-    });
-    // Before Live has published its rows (first paint, or a source still
-    // importing) `rank` is empty — showing the full catalog then is better
-    // than blanking the grid, and the next republish narrows it.
-    if (rank.size === 0) return [...channels];
-    return channels
-        .filter((channel) => rank.has(channel.id))
-        .sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
+    return selectGuideChannelsForLive(channels, liveChannels());
 }
 
 /**
@@ -106,9 +107,15 @@ function channelsShownInLiveOrder(channels: readonly GuideChannel[]): GuideChann
  * rather than growing its own per-field computed dependency list. Recomputes
  * on every `epg.tick` beat (Feature 05.5's global heartbeat) so the "now"
  * line and which block reads as current stay live without a per-row timer.
+ *
+ * `live.stats` is in the dependency list for `channelsShownInLiveOrder()`'s
+ * sake: the Live rows themselves are module memory (the bulk-data bypass),
+ * so this is the one published value that changes exactly when they are
+ * rebuilt. Without it the grid stayed unnarrowed until the next 30s tick
+ * happened to re-run it — "the Guide is wrong, then right a moment later".
  */
 export function registerGuideSelectors(): void {
-    computed('guide.view', [GUIDE_CHANNELS, GUIDE_SELECTED_KEY, GUIDE_OFFSET_MS, EPG_TICK, SETTINGS_LOCALE, EPG_FEED_THROUGH], (state: State): GuideView => {
+    computed('guide.view', [GUIDE_CHANNELS, GUIDE_SELECTED_KEY, GUIDE_OFFSET_MS, EPG_TICK, SETTINGS_LOCALE, EPG_FEED_THROUGH, LIVE_STATS], (state: State): GuideView => {
         const shaped = state as GuideShapedState;
         // The app's own locale, not the webview's — see `formatClockTime`.
         const locale = shaped.settings?.locale;

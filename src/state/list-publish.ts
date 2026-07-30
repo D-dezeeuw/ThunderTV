@@ -3,7 +3,7 @@ import { proxyImageUrl } from '../core/http/proxy';
 import { effectiveProxyTemplate } from '../core/platform/electron-platform';
 import type { ChannelRow } from '../m3u/types';
 import { isUrlLikelyDead } from '../health/store';
-import { hasEpgPrograms, rowEpgSnapshot } from './epg-index';
+import { epgChannelIdForRow, hasEpgPrograms, rowEpgSnapshot } from './epg-index';
 import { LIST_PAD_BOTTOM, LIST_PAD_TOP, LIST_VISIBLE_ROWS } from './list';
 import { set } from './typed';
 
@@ -51,7 +51,7 @@ export function publishListWindow(visibleRows: readonly ChannelRow[], padTop: nu
 
     const rows = visibleRows.map((row) => {
         const logo = proxyImageUrl(template, row.logo);
-        const epg = enrich ? rowEpgSnapshot(row.epgId, nowMs) : null;
+        const epg = enrich ? rowEpgSnapshot(epgChannelIdForRow(row), nowMs) : null;
         const unhealthy = isUrlLikelyDead(row.url, nowMs);
         if (logo === row.logo && !epg && !unhealthy) return row;
 
