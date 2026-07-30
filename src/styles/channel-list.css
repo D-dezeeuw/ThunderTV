@@ -468,6 +468,84 @@
     background: var(--color-accent);
 }
 
+/* ---- Grid layout (list/grid switch) ----
+   The same `.channel-row` template, restacked into a poster tile: artwork
+   on top, one truncated line of title under it. Not a second `data-each`
+   template — Spektrum binds a clone's `data-fn`/structure once, so a second
+   template would mean a second row surface, a second selection cursor and
+   twice the bindings for one list.
+
+   --grid-cols/--grid-tile-h are written onto this element by
+   src/ui/virtual-list.ts, which derives them from the container's measured
+   width (src/ui/grid-metrics.ts). The stylesheet consumes them rather than
+   deriving its own tracks: the scroll extent is
+   ceil(rows / cols) * tile-h, so a column of disagreement between CSS and
+   the windowing math is rows you can scroll past but never see. Row gap is
+   deliberately 0 for the same reason — a tile's breathing room is its own
+   padding, so one line is exactly one --grid-tile-h. */
+.list--grid .rows {
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 2), minmax(0, 1fr));
+}
+
+.list--grid .channel-row {
+    height: var(--grid-tile-h, 12rem);
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border-bottom: none;
+    border-radius: var(--radius-m);
+}
+
+.list--grid .channel-row__logo {
+    width: 100%;
+    height: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.list--grid .channel-row__logo-img {
+    object-fit: cover;
+}
+
+/* A logo is artwork with margins built in; a poster is meant to bleed to
+   the tile edge. `contain` keeps a wide channel logo whole. The attribute is
+   written alongside the custom properties by src/ui/virtual-list.ts. */
+.list--grid[data-tile-shape='square'] .channel-row__logo-img {
+    object-fit: contain;
+}
+
+/* Left-aligned, not centred: most titles here are long enough to truncate,
+   and a centred line that only centres when it happens to fit reads as the
+   grid shifting under the user. */
+.list--grid .channel-row__name {
+    flex: none;
+    font-size: var(--text-xs);
+}
+
+/* Badges leave the flow entirely — in a column tile they would otherwise
+   push the title out of the space reserved for it, and the tile height is
+   fixed. */
+.list--grid .channel-row__favorite,
+.list--grid .channel-row__dead {
+    position: absolute;
+    top: var(--space-2);
+    inset-inline-end: var(--space-2);
+}
+
+.list--grid .channel-row__dead {
+    inset-inline-end: auto;
+    inset-inline-start: var(--space-2);
+}
+
+/* The now/next column has nowhere to go in a tile, and a poster grid is a
+   browsing surface rather than a "what's on" one — the list layout and the
+   Guide view both remain a click away. */
+.list--grid .channel-row__epg {
+    display: none;
+}
+
 /* ---- Narrow-screen labels (default: desktop) ---- */
 
 .list-shell__narrow-label {

@@ -4,15 +4,18 @@ import { toggleFavoriteById } from '../state/favorites.actions';
 import { handleRowContextMenu } from '../state/list.actions';
 import { consumeHandoff } from '../state/handoff.actions';
 import { loadActiveSource, registerActiveSourceWatch } from '../state/list-load';
+import { isGridLayout, layoutScopeForRoute, UI_LIST_LAYOUT, type ListLayoutMap } from '../state/list-layout';
 import { UI_VIEW_MODE } from '../state/list-state';
+import { UI_ACTIVE_VIEW } from '../state/ui';
 import { registerViewRowsWatch } from '../state/live.actions';
 import { saveListState } from '../state/list-state-sync';
 import { PLAYLIST_ACTIVE_SOURCE_ID } from '../state/playlist';
 import { get } from '../state/typed';
 import type { Density } from './density';
+import type { TileShape } from './grid-metrics';
 import { attachLongPress } from './long-press';
 import { attachLogoFallback } from './logo-fallback';
-import { attachContainer, republishWindow, setDensity } from './virtual-list';
+import { attachContainer, republishWindow, setDensity, setGridMode } from './virtual-list';
 
 const SCROLL_SETTLE_MS = 300;
 
@@ -43,6 +46,16 @@ export function registerListBindings(): () => void {
         cleanups.push(attachContainer(scrollContainer));
         cleanups.push(attachScrollPersistence(scrollContainer));
     }
+
+    // The list/grid switch, and every view change that could reveal a
+    // different view's saved choice. Watched after `attachContainer()` so the
+    // controller has a real container to measure a column count from —
+    // `setGridMode()` re-derives it on every resize afterwards.
+    cleanups.push(
+        watch([UI_LIST_LAYOUT, UI_ACTIVE_VIEW], (state) => {
+            setGridMode(tileShapeFor(state));
+        }),
+    );
 
     const rowsContainer = refs['rowsContainer'] as HTMLElement | undefined;
     if (rowsContainer) {
@@ -89,6 +102,17 @@ export function registerListBindings(): () => void {
     cleanups.push(watch([EPG_TICK], () => republishWindow()));
 
     return () => cleanups.forEach((cleanup) => cleanup());
+}
+
+/**
+ * Which tile shape the active view's grid uses, or `null` when it is showing
+ * the list. Movies and TV Shows ship 2:3 posters; a channel logo is roughly
+ * square, and stretching it into a poster frame would be mostly empty box.
+ */
+function tileShapeFor(state: unknown): TileShape | null {
+    const ui = (state as { ui?: { listLayout?: Partial<ListLayoutMap>; activeView?: string } }).ui;
+    if (!isGridLayout(ui?.listLayout, ui?.activeView)) return null;
+    return layoutScopeForRoute(ui?.activeView) === 'live' ? 'square' : 'poster';
 }
 
 function resolveRowElement(eventTarget: HTMLElement): HTMLElement | null {
