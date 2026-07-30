@@ -52,6 +52,28 @@ export function registerSearchActions(): void {
         const scope = el.dataset['scope'];
         if (isSearchScope(scope)) setSearchScope(scope);
     });
+    // Each catalog tab's search bar is scoped to its own content — Live only
+    // searches channels, Movies only movies, Series only series — so the
+    // scope is forced from the input's own view rather than left to a
+    // scope-picker the user could point at the wrong category.
+    defineFn('search/setQueryChannels', (el) => {
+        if (el instanceof HTMLInputElement) {
+            setSearchScope('channels');
+            setSearchQuery(el.value);
+        }
+    });
+    defineFn('search/setQueryMovies', (el) => {
+        if (el instanceof HTMLInputElement) {
+            setSearchScope('movies');
+            setSearchQuery(el.value);
+        }
+    });
+    defineFn('search/setQuerySeries', (el) => {
+        if (el instanceof HTMLInputElement) {
+            setSearchScope('series');
+            setSearchQuery(el.value);
+        }
+    });
     defineFn('search/clear', () => {
         clearSearch();
     });

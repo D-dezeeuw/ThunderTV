@@ -38,6 +38,13 @@ export const PLAYER_VISUALIZER_PAUSED = 'player.visualizerPaused';
  * Radio ignores this key entirely: it has no picture to give up.
  */
 export const PLAYER_AUDIO_MODE = 'player.audioMode';
+/**
+ * Transient, session-only: whether the viewer paused playback via the
+ * Stop/Play toggle without closing the channel. `player.active` stays set —
+ * only the media element itself is paused — so the channel/episode remains
+ * selected and playback resumes from where it left off on the next press.
+ */
+export const PLAYER_PAUSED = 'player.paused';
 
 /**
  * Should the visualizer pane stand in for the picture right now? True for
@@ -69,6 +76,7 @@ export interface PlayerState {
     visualizerPreset: string;
     visualizerPaused: boolean;
     audioMode: boolean;
+    paused: boolean;
 }
 
 export const PLAYER_DEFAULTS: PlayerState = {
@@ -81,6 +89,7 @@ export const PLAYER_DEFAULTS: PlayerState = {
     visualizerPreset: 'auto',
     visualizerPaused: false,
     audioMode: false,
+    paused: false,
 };
 
 /** Seeds this module's defaults — called once from `state/index.ts`'s `initState()`, before rehydration can overwrite it (Feature 05.1.8). */
@@ -94,4 +103,5 @@ export function initPlayerState(): void {
     setValue(PLAYER_VISUALIZER_PRESET, PLAYER_DEFAULTS.visualizerPreset);
     setValue(PLAYER_VISUALIZER_PAUSED, PLAYER_DEFAULTS.visualizerPaused);
     setValue(PLAYER_AUDIO_MODE, PLAYER_DEFAULTS.audioMode);
+    setValue(PLAYER_PAUSED, PLAYER_DEFAULTS.paused);
 }

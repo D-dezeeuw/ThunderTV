@@ -21,6 +21,10 @@ export const nlEpg = {
         epgVerifiedOnlyHelp:
             'Standaard uit: een zender die de EPG-catalogus nog niet heeft gekoppeld, is vaker een ontbrekend stukje programmagegevens dan een niet-bestaande zender. Zet dit aan zodra uw catalogus gevuld is om zenders zonder programmagegevens te verbergen. Geldt nooit voor Radio.',
     },
+    playback: {
+        showHandoffButton: 'Toon knop "Doorgaan op ander apparaat"',
+        showHandoffButtonHelp: 'Voegt een knop toe aan de spelerbalk om de huidige stream over te dragen naar een ander scherm. Standaard uit.',
+    },
     list: {
         epgNextPrefix: 'Straks ·',
         streamLikelyDead: 'Deze feed is de laatste tijd meestal mislukt. Hij kan nog steeds werken — dit is een inschatting op basis van uw eigen kijkgeschiedenis.',

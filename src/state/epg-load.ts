@@ -86,7 +86,7 @@ export async function loadDefaultEpg(force = false): Promise<void> {
     const matchedIds = matchedCatalogIds(matchResult);
     let wroteGuideData = false;
     for (const file of parsedFiles) {
-        const { channels, programs } = toEpgRecords(file.document, matchedIds);
+        const { channels, programs } = toEpgRecords(file.document, matchedIds, country);
         if (channels.length > 0) {
             await storage.bulkPut('epgChannels', channels, (r) => r.id);
             wroteGuideData = true;

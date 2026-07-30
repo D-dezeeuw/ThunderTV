@@ -138,6 +138,13 @@ export const SETTINGS_AUDIO_LANGUAGE = 'settings.audioLanguage';
 export const SETTINGS_SUBTITLE_LANGUAGE = 'settings.subtitleLanguage';
 
 /**
+ * Whether the "Continue on another device" (handoff) button appears in the
+ * player bar. **Off** by default — most viewers never use it, and it was
+ * cluttering the bar for everyone; Settings → Playback turns it back on.
+ */
+export const SETTINGS_SHOW_HANDOFF_BUTTON = 'settings.showHandoffButton';
+
+/**
  * Mirrors the stored settings blob (masterplan §6.3's `settings` key
  * family). `proxyTemplate` is the only persisted field — density lives
  * under `ui.density` (kept there for continuity with Phase 02 rather than
@@ -168,6 +175,7 @@ export interface SettingsState {
     liveEpgVerifiedOnly: boolean;
     audioLanguage: string;
     subtitleLanguage: string;
+    showHandoffButton: boolean;
 }
 
 export interface NavVisibility {
@@ -202,6 +210,7 @@ export const SETTINGS_DEFAULTS: SettingsState = {
     liveEpgVerifiedOnly: false,
     audioLanguage: 'en',
     subtitleLanguage: 'auto',
+    showHandoffButton: false,
 };
 
 export function initSettingsState(): void {
@@ -232,4 +241,5 @@ export function initSettingsState(): void {
     setValue(SETTINGS_LIVE_EPG_VERIFIED_ONLY, SETTINGS_DEFAULTS.liveEpgVerifiedOnly);
     setValue(SETTINGS_AUDIO_LANGUAGE, SETTINGS_DEFAULTS.audioLanguage);
     setValue(SETTINGS_SUBTITLE_LANGUAGE, SETTINGS_DEFAULTS.subtitleLanguage);
+    setValue(SETTINGS_SHOW_HANDOFF_BUTTON, SETTINGS_DEFAULTS.showHandoffButton);
 }

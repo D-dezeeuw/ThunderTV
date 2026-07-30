@@ -1,4 +1,5 @@
 import type { EpgChannelRecord, EpgProgramRecord } from '../core/storage';
+import { stripCountrySuffix, type EpgCountry } from './countries';
 
 /**
  * XMLTV parsing (README's "Phase 16 — EPG Ingestion" / Phase 31's country
@@ -96,14 +97,28 @@ export function parseXmltvDocument(xmlText: string): XmltvDocument {
     return { channels, programs };
 }
 
-/** Maps a matched subset of one parsed document into the storage record shapes (Feature: keeps `EpgProgramRecord.channelId` equal to the feed's own channel id — `raw-export.ts`'s documented "tvg-id a channel row must carry" contract, since this feed's ids already follow that convention for a matched channel). */
-export function toEpgRecords(doc: XmltvDocument, matchedChannelIds: ReadonlySet<string>): {
+/**
+ * Maps a matched subset of one parsed document into the storage record
+ * shapes (Feature: keeps `EpgProgramRecord.channelId` equal to the feed's
+ * own channel id — `raw-export.ts`'s documented "tvg-id a channel row must
+ * carry" contract, since this feed's ids already follow that convention for
+ * a matched channel). `displayName` is stripped of the feed's trailing
+ * `.<country-suffix>` (e.g. `"NPO 1.nl"` → `"NPO 1"`) the same way
+ * `catalog.ts`'s `deriveCatalog()` already does for the country catalog —
+ * without this the Guide showed the raw, unstripped feed name even though
+ * every other surface (Live, the country catalog) shows the clean one.
+ */
+export function toEpgRecords(
+    doc: XmltvDocument,
+    matchedChannelIds: ReadonlySet<string>,
+    country: EpgCountry,
+): {
     channels: EpgChannelRecord[];
     programs: EpgProgramRecord[];
 } {
     const channels = doc.channels
         .filter((c) => matchedChannelIds.has(c.id))
-        .map((c): EpgChannelRecord => ({ id: c.id, displayName: c.displayName, icon: c.icon }));
+        .map((c): EpgChannelRecord => ({ id: c.id, displayName: stripCountrySuffix(c.id, country).trim(), icon: c.icon }));
 
     const programs = doc.programs
         .filter((p) => matchedChannelIds.has(p.channelId))

@@ -12,6 +12,7 @@ export const dePlayerTracks = {
     noSubtitles: 'Keine Untertitel in diesem Stream',
     playerAudioOnly: 'Nur Ton',
     playerShowPicture: 'Bild anzeigen',
+    playerResume: 'Abspielen',
     playerUnsupportedContainer:
         'den Container dieser Datei kann dieses Gerät nicht abspielen; laden Sie sie herunter und öffnen Sie sie in einem anderen Player',
     playerNoDataYet: 'nach 20 Sekunden noch keine abspielbaren Daten',

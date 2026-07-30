@@ -289,6 +289,7 @@ export const nl = {
             audioLanguageAuto: 'Origineel / Automatisch',
             subtitleLanguageLabel: 'Voorkeurstaal ondertitels',
             subtitleLanguageHelp: 'Gebruikt wanneer een film of aflevering ondertitelsporen bevat. "Automatisch" leidt een taal af van uw Live-filterland.',
+            ...nlEpg.playback,
             subtitleAuto: 'Automatisch (mijn land)',
             subtitleOff: 'Uit',
         },

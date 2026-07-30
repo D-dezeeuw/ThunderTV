@@ -289,6 +289,7 @@ export const de = {
             audioLanguageAuto: 'Original / Automatisch',
             subtitleLanguageLabel: 'Bevorzugte Untertitelsprache',
             subtitleLanguageHelp: 'Wird verwendet, wenn ein Film oder eine Folge Untertitelspuren enthält. "Automatisch" leitet eine Sprache von Ihrem Live-Filterland ab.',
+            ...deEpg.playback,
             subtitleAuto: 'Automatisch (mein Land)',
             subtitleOff: 'Aus',
         },

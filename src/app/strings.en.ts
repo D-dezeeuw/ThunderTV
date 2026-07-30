@@ -289,6 +289,7 @@ export const en = {
             audioLanguageAuto: 'Original / Auto',
             subtitleLanguageLabel: 'Preferred subtitle language',
             subtitleLanguageHelp: 'Used when a movie or episode ships subtitle tracks. "Auto" derives a language from your Live filter country.',
+            ...enEpg.playback,
             subtitleAuto: 'Auto (my country)',
             subtitleOff: 'Off',
         },

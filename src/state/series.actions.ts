@@ -4,6 +4,7 @@ import type { XtreamSeriesInfo } from '../xtream/types';
 import { seriesEpisodeUrl } from '../xtream/urls';
 import { cleanCatalogDisplayName } from './catalog-clean-name';
 import { setDisplayedRows } from './list-rows';
+import { selectChannel } from './list.actions';
 import { sortCategoriesCountryFirst } from './catalog-sort';
 import { loadStoredCategories, loadStoredDetail, loadStoredItems, saveStoredCategories, saveStoredDetail, saveStoredItems } from './catalog-storage';
 import { setActiveChannel } from './player.actions';
@@ -25,6 +26,7 @@ import {
 } from './series';
 import {
     makeSeriesEpisodeId,
+    makeSeriesRowId,
     seriesCategoryName,
     seriesItemToRow,
     seriesMemory,
@@ -331,6 +333,7 @@ export async function playSeriesEpisode(seriesId: number, episodeId: number | st
         group: seriesCategoryName(item.categoryId),
         kind: 'series',
     });
+    selectChannel(makeSeriesRowId(seriesId));
     // Same reason as `playVod()`: the detail panel covers the list body,
     // player pane included.
     closeSeriesDetail();

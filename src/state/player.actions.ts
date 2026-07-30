@@ -9,6 +9,7 @@ import {
     PLAYER_ACTIVE,
     PLAYER_ACTIVE_VARIANT_ID,
     PLAYER_AUDIO_MODE,
+    PLAYER_PAUSED,
     PLAYER_PLAYBACK_ERROR,
     PLAYER_STREAM_HEALTH,
     PLAYER_VARIANTS,
@@ -45,6 +46,9 @@ export function registerPlayerActions(): void {
     });
     defineFn('player/stop', () => {
         stopPlayback();
+    });
+    defineFn('player/togglePlayback', () => {
+        togglePlayback();
     });
     // No state mutation involved (only a read) — registered here anyway
     // because every defineFn is registered before bindDOM()
@@ -178,10 +182,29 @@ export function stopPlayback(): void {
     setValue(PLAYER_PLAYBACK_ERROR, null);
     setValue(PLAYER_STREAM_HEALTH, null);
     setValue(PLAYER_ACTIVE_VARIANT_ID, null);
+    setValue(PLAYER_PAUSED, false);
     // Array-bearing write: `replace()` rather than `setValue`, since
     // Spektrum deep-merges objects and would otherwise leave the previous
     // channel's variants behind.
     replace(PLAYER_VARIANTS, []);
+}
+
+/**
+ * The Stop/Play toggle: pauses or resumes the media element in place,
+ * leaving `player.active` (and so the row/episode highlight) untouched —
+ * unlike `stopPlayback()`, which fully closes the channel. Reused across
+ * Live/Radio/Movies/TV Shows since they all share the one `<video>` ref.
+ */
+export function togglePlayback(): void {
+    const video = refs['playerVideo'];
+    if (!(video instanceof HTMLVideoElement)) return;
+    if (video.paused) {
+        void video.play();
+        setValue(PLAYER_PAUSED, false);
+    } else {
+        video.pause();
+        setValue(PLAYER_PAUSED, true);
+    }
 }
 
 /** Called by `src/player/engine.ts` when a stream dies (hls.js fatal error or the native element's `error` event) — the one visible diagnostic a phone user can screenshot. `null` clears it on a fresh attach. Stone 3's failure evidence is recorded by the engine itself (`advanceChain()`), not here: the player layer already owns the health monitor, and hooking it here would have `src/state/` reach into `src/player/`. */
@@ -203,6 +226,7 @@ export function setVisualizerPreset(preference: string): void {
 export function setActiveChannel(channel: ActiveChannelSnapshot): void {
     setValue(PLAYER_ACTIVE, channel);
     setValue(PLAYER_PLAYBACK_ERROR, null);
+    setValue(PLAYER_PAUSED, false);
     const zapHistory = getPathObj<ActiveChannelSnapshot[]>(appState, PLAYER_ZAP_HISTORY) ?? [];
     // Array-bearing write — routed through the typed `set()` (Feature
     // 05.9.2) so the dev-mode bulk-data guard (Feature 05.8.2) actually

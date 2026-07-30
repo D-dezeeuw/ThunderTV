@@ -29,6 +29,12 @@ export const enEpg = {
         epgVerifiedOnlyHelp:
             'Off by default: a channel the EPG catalog has not matched yet is far more often a guide-data gap than a channel that does not exist. Switch this on once your catalog is populated to hide channels with no programme data. Never applies to Radio.',
     },
+    /** Spread into `settings.playback` — that block is full too. */
+    playback: {
+        showHandoffButton: 'Show "Continue on another device" button',
+        showHandoffButtonHelp:
+            'Adds a button to the player bar for handing the current stream off to another screen. Off by default.',
+    },
     list: {
         /** Prefixes the upcoming programme on a channel row: "Then · The Nine O'Clock News". */
         epgNextPrefix: 'Then ·',
