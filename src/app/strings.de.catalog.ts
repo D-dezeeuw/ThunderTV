@@ -56,4 +56,10 @@ export const deCatalog = {
         scopeSeries: 'Serien',
         loadedOnlyHint: 'Durchsucht nur bereits geladene Titel — öffnen Sie weitere Kategorien für vollständigere Ergebnisse.',
     },
+    /** Der Listen-/Raster-Umschalter neben dem Suchfeld jeder Ansicht. */
+    layout: {
+        group: 'Ansicht',
+        list: 'Listenansicht',
+        grid: 'Rasteransicht',
+    },
 } as const;

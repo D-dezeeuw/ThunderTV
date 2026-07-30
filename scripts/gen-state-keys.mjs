@@ -30,9 +30,11 @@ const MODULE_FILES = [
     'player.ts',
     'player-tracks.ts',
     'epg.ts',
+    'epg-settings.ts',
     'settings.ts',
     'ui.ts',
     'list.ts',
+    'list-layout.ts',
     'list-state.ts',
     'list-groups.ts',
     'live.ts',
@@ -71,11 +73,15 @@ function resolveExpr(expr, consts) {
 
 function parseRegistry(consts) {
     // The literal lives in registry-keys.ts since the Phase 21 max-lines
-    // split, with post-cap entries spread in from registry-overflow.ts —
-    // parse both bodies as one stream (registry.ts only re-exports).
+    // split, with post-cap entries spread in from registry-overflow.ts and,
+    // once that file hit the same ceiling, from its own themed leaf files —
+    // parse every body as one stream (registry.ts only re-exports). A new
+    // leaf file must be added here or its keys silently miss this doc.
     const sources = [
         { file: 'registry-keys.ts', pattern: /export const KEY_REGISTRY[^={]*=\s*{([\s\S]*?)\n};/ },
         { file: 'registry-overflow.ts', pattern: /export const OVERFLOW_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
+        { file: 'registry-epg.ts', pattern: /export const EPG_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
+        { file: 'registry-ui.ts', pattern: /export const UI_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
     ];
     let body = '';
     for (const { file, pattern } of sources) {

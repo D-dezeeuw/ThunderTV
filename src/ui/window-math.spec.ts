@@ -105,3 +105,46 @@ describe('clampScrollTop() (Feature 08.1.8/08.6.5)', () => {
         expect(clamped).toBe(Math.max(0, 50 * 44 - 400));
     });
 });
+
+describe('computeWindow() in the grid layout (columns > 1)', () => {
+    it('publishes whole lines and a pad measured in lines, not rows', () => {
+        // 100 tiles, 5 across = 20 lines of 300px. Scrolled to line 10, with
+        // 3 lines visible and no overscan.
+        const result = computeWindow({
+            scrollTop: 10 * 300,
+            rowH: 300,
+            overscan: 0,
+            visibleCount: 3,
+            totalRows: 100,
+            columns: 5,
+        });
+        expect(result.sliceStart).toBe(50);
+        expect(result.sliceEnd).toBe(65);
+        expect(result.padTop).toBe(10 * 300);
+        expect(result.padBottom).toBe(7 * 300);
+    });
+
+    it('covers a partial last line rather than dropping its tiles', () => {
+        // 7 tiles at 3 across is 3 lines, the last one only two thirds full.
+        const result = computeWindow({ scrollTop: 0, rowH: 200, overscan: 0, visibleCount: 9, totalRows: 7, columns: 3 });
+        expect(result.sliceStart).toBe(0);
+        expect(result.sliceEnd).toBe(7);
+        expect(result.padBottom).toBe(0);
+    });
+
+    it('matches the list layout exactly at one column', () => {
+        const input = { scrollTop: 1234, rowH: 44, overscan: 8, visibleCount: 12, totalRows: 900 };
+        expect(computeWindow({ ...input, columns: 1 })).toEqual(computeWindow(input));
+    });
+});
+
+describe('clampScrollTop() in the grid layout', () => {
+    it('shortens the extent proportionally — the same rows fill fewer lines', () => {
+        // 100 tiles, 4 across, 300px lines = 25 lines against a 900px viewport.
+        expect(clampScrollTop(999_999, 100, 300, 900, 4)).toBe(25 * 300 - 900);
+    });
+
+    it('rounds a partial last line up, so its tiles stay reachable', () => {
+        expect(clampScrollTop(999_999, 10, 300, 0, 4)).toBe(3 * 300);
+    });
+});

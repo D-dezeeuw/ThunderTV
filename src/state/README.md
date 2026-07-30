@@ -24,6 +24,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.theme`, `ui.fontSize`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.theme`/`ui.fontSize`/`ui.storageNoticeDismissed` yes; the rest no |
 | `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`, `ui.setupComplete`                                                                 | `ui.setupComplete` yes — it is what stops a configured install from being asked again; `wizardOpen`/`wizardStep` no (transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen`) |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
+| `list-layout.ts`      | `ui.listLayout`                                                                                                      | Yes — the per-view list/grid choice for the shared virtual list, keyed by the three views that offer the switch (live/movies/series). A browsing preference, not session state, so asking once is enough; a scope missing from a stored value falls back to the list layout. Radio/Categories share the list but show no switch and therefore stay on rows — a mode with no visible control is a mode nobody can turn off |
 | `list-state.ts`       | `ui.listState`, `ui.activeGroup`, `ui.viewMode`                                                                      | `ui.listState` yes (Feature 08.6, LRU-capped at 20 sources); the two live mirrors restore from it on source entry but aren't separately persisted |
 | `list-groups.ts`      | `list.groups`, `list.groupsTruncated`                                                                                | No — the groups panel's own row set, capped independently of Phase 06's `MAX_GROUPS` (Feature 08.5.9) |
 | `favorites.ts`        | `favorites.ids`, `favorites.rows`                                                                                     | No — two live projections of the real `favorites` storage table (Feature 08.8.4), exactly like `playlist.sources`. `ids` is the O(1) star-badge lookup, `rows` is the Starred view's newest-first row source; both are written only by `publishFavorites()`, never apart — that is how a starred row and a Starred tab get to disagree |
@@ -133,10 +134,11 @@ recording once rather than re-discovering per call site:
 - **`registry-overflow.ts`**: `registry.ts` was already at eslint's 400-line
   `max-lines` ceiling with zero slack, so the ~20 new `KEY_REGISTRY` entries
   for `vod`/`series`/`search`/the two new `settings.*` language keys live in
-  their own file and are merged into `KEY_REGISTRY` via one spread. It has
-  stayed full since, so **every new `KEY_REGISTRY` entry goes here**,
-  whichever module owns it — that's why the file is named for the role
-  rather than the phase that created it.
+  their own file and are merged into `KEY_REGISTRY` via one spread. That file
+  has since hit the same ceiling, so it now spreads in themed leaf files of
+  its own (`registry-epg.ts`, `registry-ui.ts`) — **a new `KEY_REGISTRY` entry
+  goes into whichever leaf file owns its subject, or a new leaf file**, never
+  into the two full ones.
   `KEY_REGISTRY` itself is still the one object every consumer
   (`persist.ts`, `bulk-policy.ts`, `index.ts`'s `rehydrateState()`) reads —
   this only changes how it's assembled. `KeyMeta.owner`'s union gained

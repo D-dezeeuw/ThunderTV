@@ -37,7 +37,11 @@ Two details in `geometry.ts` carry most of the quality:
    handler defers on those, so desktop behaviour is completely unchanged —
    which is why this ships enabled on every platform rather than behind a
    TV-only flag. Horizontal presses inside the list are still handled,
-   because that is the only way *out* of it.
+   because that is the only way *out* of it — with one narrow exception: in
+   the list's grid layout, a Left/Right press that has another tile on the
+   same line to move to belongs to the grid cursor. The `listHandlesHorizontal`
+   option is how the list says so, and it deliberately answers `false` at a
+   line edge so the way out never closes.
 2. **Never wrap around.** A press with nothing in that direction does
    nothing. Focus silently teleporting from the top of a TV screen to the
    bottom is far more disorienting than a press that no-ops.
