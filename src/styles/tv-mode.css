@@ -1,0 +1,32 @@
+/*
+ * webOS-only TV-mode overrides — LG's App Self Checklist recommends
+ * >=75x75px buttons and >=20px primary text at 1080p. Never linked from the
+ * source index.html: scripts/package-target.mjs injects this file's
+ * <link> only into the webOS build's dist-webos/index.html, placed after
+ * every other stylesheet so these rules win the cascade on their own
+ * source order — no !important needed. Web and Electron never load it, so
+ * their layout/type scale is completely unaffected.
+ */
+
+:root {
+    /* Only the *default* --text-* scale is retargeted — a viewer who opens
+       Settings -> Appearance and explicitly picks small/large/xlarge keeps
+       that choice: tokens.css's :root[data-font-size='...'] blocks carry
+       higher specificity than this plain :root block regardless of load
+       order, so they still win. */
+    --text-xs: 1rem; /* 16px, up from 12px */
+    --text-sm: 1.25rem; /* 20px, up from 14px */
+    --text-md: 1.375rem; /* 22px, up from 16px */
+    --text-lg: 1.625rem; /* 26px, up from 20px */
+
+    /* .rail__btn grows to the 75px floor below; --rail-w grows with it so
+       the nav rail doesn't clip its own buttons (shell.css's #app grid and
+       .rail width both read this token, so nothing else needs to change). */
+    --rail-w: 96px;
+}
+
+.icon-btn,
+.rail__btn {
+    width: 75px;
+    height: 75px;
+}

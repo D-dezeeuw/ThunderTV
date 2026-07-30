@@ -10,6 +10,7 @@ import {
     getVodCategories,
     getVodInfo,
     getVodStreams,
+    redactApiUrl,
 } from './client';
 import type { XtreamSource } from './types';
 import { apiUrl } from './urls';
@@ -267,5 +268,13 @@ describe('xtream/client', () => {
             const result = await getSeriesInfo(source, 12);
             expect(result).toEqual({ ok: true, data: [] });
         });
+    });
+
+    it('redactApiUrl strips the real credentials even when they contain URL-hostile characters', () => {
+        const hostile: XtreamSource = { url: 'http://example.com:8080', user: 'bob', pass: 'p@ss&w/rd%1' };
+        const url = redactApiUrl(hostile, 'get_live_categories');
+        expect(url).toBe('http://example.com:8080/player_api.php?username=REDACTED&password=REDACTED&action=get_live_categories');
+        expect(url).not.toContain('bob');
+        expect(url).not.toContain('p@ss');
     });
 });

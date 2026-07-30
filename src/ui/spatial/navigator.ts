@@ -50,10 +50,34 @@ function isVisible(element: Element): boolean {
     return element.checkVisibility?.({ visibilityProperty: true, contentVisibilityAuto: true }) ?? true;
 }
 
+/**
+ * Every modal (settings, wizard, debug panel, the audio/subtitle track
+ * menus, the VOD/series detail panels) marks its container `role="dialog"`
+ * — this module stays state-agnostic (it never imports `src/state/*`) so
+ * it can't ask "is the settings panel open," but it can ask the DOM the
+ * same question `isVisible()` already answers for individual controls.
+ */
+const DIALOG_SELECTOR = '[role="dialog"]';
+
+/**
+ * When at least one dialog is open, background content (the rail, the
+ * channel list, anything behind the dialog's backdrop) must never become a
+ * focus candidate — those overlays render *on top of* the still-mounted
+ * main view rather than hiding it, so without this a press could land
+ * D-pad focus on a control the viewer can't see. webOS App Self Checklist
+ * item 4 ("every selectable object shows a selection effect") only holds
+ * if the focused thing is ever visible in the first place.
+ */
+function openDialogs(root: ParentNode): HTMLElement[] {
+    return Array.from(root.querySelectorAll<HTMLElement>(DIALOG_SELECTOR)).filter(isVisible);
+}
+
 function collectCandidates(root: ParentNode, exclude: Element | null): Candidate<HTMLElement>[] {
+    const dialogs = openDialogs(root);
     const candidates: Candidate<HTMLElement>[] = [];
     for (const element of root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)) {
         if (element === exclude || !isVisible(element)) continue;
+        if (dialogs.length > 0 && !dialogs.some((dialog) => dialog.contains(element))) continue;
         const rect = element.getBoundingClientRect();
         candidates.push({ ref: element, rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } });
     }
