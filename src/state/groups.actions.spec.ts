@@ -124,12 +124,52 @@ describe('handleGroupsPanelKeydown() (Feature 08.5.8)', () => {
         expect(document.activeElement).toBe(first);
     });
 
-    it('Enter clicks the focused button', () => {
+    /**
+     * A `<button>` fires its own click on Enter/OK, so synthesizing one here
+     * as well activated the row *twice*. Idempotent on a category row, but
+     * on the accordion's expand triangle it opened and closed the group in
+     * a single press — OK on the triangle appeared to do nothing at all.
+     * `navigator.ts`'s activate branch carves buttons out for exactly this
+     * reason; the rail now matches it.
+     */
+    it('leaves a button’s own Enter activation alone instead of clicking it twice', () => {
         const { first } = makePanel();
         const clickSpy = vi.fn();
         first.addEventListener('click', clickSpy);
         handleGroupsPanelKeydown(new KeyboardEvent('keydown', { key: 'Enter' }));
+        expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    it('still synthesizes a click for a focusable non-button, which has no native activation', () => {
+        const panel = document.createElement('div');
+        panel.className = 'groups-panel';
+        const item = document.createElement('div');
+        item.className = 'groups-panel__item';
+        item.tabIndex = 0;
+        panel.append(item);
+        document.body.append(panel);
+        item.focus();
+
+        const clickSpy = vi.fn();
+        item.addEventListener('click', clickSpy);
+        handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'Enter' }));
         expect(clickSpy).toHaveBeenCalledOnce();
+    });
+
+    /**
+     * TV remotes are keyboards that lie about it (`src/ui/spatial/keys.ts`):
+     * older webOS/Tizen webviews report `Down`, or nothing but keyCode 40.
+     * Matching `ArrowDown` alone left this handler dead on the very devices
+     * the rail's keyboard exists for.
+     */
+    it('accepts the legacy key names and bare keyCodes older TV webviews send', () => {
+        const { first, second } = makePanel();
+        handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'Down' }));
+        expect(document.activeElement).toBe(second);
+
+        first.focus();
+        handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'Unidentified', keyCode: 40 }));
+        expect(document.activeElement).toBe(second);
     });
 
     it('Backspace returns to all channels', () => {
@@ -152,17 +192,18 @@ describe('handleGroupsPanelKeydown() (Feature 08.5.8)', () => {
      * would silently swap the list out from under the viewer.
      */
     describe('handleCategoryRailKeydown() — the catalog rails share only the movement', () => {
-        it('moves focus and activates exactly like the groups panel', () => {
+        it('moves focus one row per press, and claims the activate key', () => {
             const { first, second } = makePanel();
-            const clickSpy = vi.fn();
-            first.addEventListener('click', clickSpy);
 
             expect(handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'ArrowDown' }))).toBe(true);
             expect(document.activeElement).toBe(second);
 
+            // Claimed (so the groups panel never falls through to its own
+            // Backspace/← branch on it), but the button's native activation
+            // is what actually fires the click — see the double-click case
+            // above.
             first.focus();
             expect(handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))).toBe(true);
-            expect(clickSpy).toHaveBeenCalledOnce();
         });
 
         it('→/← open and close the focused category’s variants, and stop there', () => {

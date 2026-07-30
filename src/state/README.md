@@ -224,6 +224,18 @@ recording once rather than re-discovering per call site:
   rail's own `displayName()` (through `vodCategoryName()`/
   `seriesCategoryName()`) is the only correct way to ask what a category is
   called.
+- **The accordion has three TV-specific obligations**, none of which the
+  web build makes visible. (a) Expanding a group republishes the rows, and
+  `data-each` rebuilds them by cloning — the focused button is destroyed
+  and focus falls back to `<body>`, so `refocusCategoryRow()` puts it back
+  by category id on a double-rAF (`ui.actions.ts`'s `focusAfterOpen()`
+  precedent). (b) The rail's keyboard reads
+  `src/ui/spatial/keys.ts`'s `directionFor()`/`isActivateKey()` rather than
+  comparing `event.key`, because older webOS/Tizen webviews send `Down` or
+  a bare keyCode. (c) A `<button>` activates natively on Enter/OK, so the
+  handler must not also synthesize a click — doing both opened and closed a
+  group in one press. `src/styles/tv-mode.css` carries the matching 75px
+  hit-target floor for the triangle.
 - **`series.detail.rows` replaces a nested `seasons[].episodes[]`
   structure**: Spektrum's `data-each` clones an element's own *first
   element child* into its container, so a season block that itself carries

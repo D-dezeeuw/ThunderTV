@@ -35,12 +35,19 @@ const FOCUSABLE_SELECTOR = [
 const SELF_HANDLING = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
 
 /**
- * The channel list already implements its own row cursor
- * (`src/state/list.actions.ts`'s `handleListKeydown`). Vertical presses
- * inside it belong to that cursor; horizontal ones are how you get *out*
- * of the list, which nothing else provides.
+ * Containers that run their own vertical cursor: the channel list
+ * (`src/state/list.actions.ts`'s `handleListKeydown`) and the group/category
+ * rail beside it (`src/state/groups.actions.ts`'s
+ * `handleCategoryRailKeydown`). Vertical presses inside these belong to that
+ * cursor; horizontal ones are how you get *out*, which nothing else
+ * provides.
+ *
+ * The rail was missing here, and both handlers ran on one press: this one
+ * moved focus a row (capture phase, `document`), then the rail's own
+ * bubble-phase handler moved it a second row from there. One press, two
+ * rows — every other row silently unreachable on a remote.
  */
-const LIST_CONTAINER_SELECTOR = '.list';
+const SELF_CURSOR_SELECTOR = '.list, .groups-panel';
 
 function isVisible(element: Element): boolean {
     const rect = element.getBoundingClientRect();
@@ -88,8 +95,8 @@ function collectCandidates(root: ParentNode, exclude: Element | null): Candidate
 function shouldDefer(active: HTMLElement, direction: Direction): boolean {
     if (SELF_HANDLING.has(active.tagName)) return true;
     if (active.isContentEditable) return true;
-    const inList = active.closest(LIST_CONTAINER_SELECTOR) !== null;
-    return inList && (direction === 'up' || direction === 'down');
+    const ownsCursor = active.closest(SELF_CURSOR_SELECTOR) !== null;
+    return ownsCursor && (direction === 'up' || direction === 'down');
 }
 
 export interface SpatialNavigationOptions {
