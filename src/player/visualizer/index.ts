@@ -36,6 +36,8 @@ const AUTO_CYCLE_MS = 25_000;
 /** Never null and never `createMediaElementSource` — see `audio-tap.ts`. Re-read every frame so an upgrade from silent to live applies without restarting the loop. */
 let tap: AudioTap = SILENT_TAP;
 let sourceVideo: HTMLVideoElement | null = null;
+/** The element the tap's refresh listeners are on — see `bindTapEvents()`. */
+let tapSource: HTMLVideoElement | null = null;
 const freqData = new Uint8Array(new ArrayBuffer(BIN_COUNT));
 const waveData = new Uint8Array(new ArrayBuffer(FFT_SIZE));
 let rafId: number | null = null;
@@ -62,6 +64,33 @@ function refreshTap(video: HTMLVideoElement): void {
     tap = ensureAudioTap(video, () => {
         tap = ensureAudioTap(video);
     });
+}
+
+/**
+ * `bindings.ts` starts the visualizer from a `player.active` change, which
+ * happens a beat *before* the engine has given the element anything to
+ * capture — `video.src` is still the previous stream's, or nothing at all.
+ * So the tap is also refreshed off the element's own "there is media now"
+ * events; `ensureAudioTap()` is keyed on the current stream and idempotent,
+ * so the extra calls cost a comparison.
+ */
+function onStreamStart(): void {
+    if (tapSource) refreshTap(tapSource);
+}
+
+function bindTapEvents(video: HTMLVideoElement): void {
+    if (tapSource === video) return;
+    unbindTapEvents();
+    tapSource = video;
+    video.addEventListener('loadeddata', onStreamStart);
+    video.addEventListener('playing', onStreamStart);
+}
+
+function unbindTapEvents(): void {
+    if (!tapSource) return;
+    tapSource.removeEventListener('loadeddata', onStreamStart);
+    tapSource.removeEventListener('playing', onStreamStart);
+    tapSource = null;
 }
 
 function sizeCanvas(canvas: HTMLCanvasElement): boolean {
@@ -215,6 +244,7 @@ export function startRadioVisualizer(video: HTMLVideoElement): void {
     // `player.active` change, and the station/channel that changed is
     // precisely what the tap is keyed on.
     refreshTap(video);
+    bindTapEvents(video);
     if (activePresetCanvas === canvas && sourceVideo === video) return;
     sourceVideo = video;
 
@@ -235,6 +265,7 @@ export function startRadioVisualizer(video: HTMLVideoElement): void {
 /** Stops the render loop only — the audio graph stays connected (sound keeps playing, and the source node can't be recreated) so a later `startRadioVisualizer()` just resumes drawing, on whichever preset was active. Also drops any pause/transition in progress — leaving Radio and coming back starts clean rather than silently still-paused. */
 export function stopRadioVisualizer(): void {
     stopRadioVisualizerLoop();
+    unbindTapEvents();
     activePresetCanvas = null;
     crossFader.cancel();
     paused = false;
@@ -253,6 +284,7 @@ export function resetRadioVisualizerForTests(): void {
     resizeObserver?.disconnect();
     resizeObserver = null;
     observedCanvas = null;
+    unbindTapEvents();
     resetAudioTapForTests();
     tap = SILENT_TAP;
     sourceVideo = null;
