@@ -204,9 +204,26 @@ recording once rather than re-discovering per call site:
   and `vod.actions.ts`'s/`series.actions.ts`'s category-row builders.
   Stored catalog memory and search keys keep the raw name; a category's
   cleaned name cascades into every row's `group` field and every detail's
-  `categoryName` for free, since those are looked up back out of the
-  already-cleaned `vod.categories`/`series.categories` state rather than
-  re-derived from the raw `XtreamCategory`.
+  `categoryName` for free, since those are looked up once through
+  `vodCategoryName()`/`seriesCategoryName()` rather than re-derived from
+  the raw `XtreamCategory`.
+- **`vod.categories`/`series.categories` publish an accordion, not a flat
+  list** (`catalog-category-tree.ts`). A real panel ships the same service
+  a dozen times over — `| NL | NETFLIX`, `| FR | NETFLIX`, `NETFLIX`,
+  `| NL | NETFLIX KIDS`, `| US | NETFLIX BLACK LEAD` — and once the tag
+  stripping above has run, several of those rows read as the identical
+  word. So the rail lists one head per *service* (the viewer's own country
+  when the provider has one), and folds the rest behind an expand triangle,
+  each labelled by what makes it different (`FR`, `KIDS`, `US · BLACK
+  LEAD`). Which heads are open is module memory on the rail instance in
+  `vod-rows.ts`/`series-rows.ts`, not a Spektrum key: the published row
+  array is recomputed from it anyway, so a second key would only be a
+  second thing to keep in sync. Two consequences worth knowing before
+  reading `vod.categories` for anything else — a collapsed variant is
+  **absent** from it, and an expanded one carries a *shortened* label. The
+  rail's own `displayName()` (through `vodCategoryName()`/
+  `seriesCategoryName()`) is the only correct way to ask what a category is
+  called.
 - **`series.detail.rows` replaces a nested `seasons[].episodes[]`
   structure**: Spektrum's `data-each` clones an element's own *first
   element child* into its container, so a season block that itself carries

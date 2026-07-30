@@ -73,6 +73,17 @@ export function popularityRank(name: string): number {
     return UNRANKED;
 }
 
+/**
+ * Which service this category names, or null for the long tail. Same table,
+ * same matching as `popularityRank()` — the identity behind the rank, which
+ * is what `catalog-category-tree.ts` groups a service's dozen country/
+ * editorial variants by.
+ */
+export function serviceIdFor(name: string): string | null {
+    const rank = popularityRank(name);
+    return rank === UNRANKED ? null : (POPULAR_SERVICES[rank]?.id ?? null);
+}
+
 /** The ranked service ids, top first — exported so a spec can assert the order without reaching into the table. */
 export function popularServiceIds(): readonly string[] {
     return POPULAR_SERVICES.map((service) => service.id);

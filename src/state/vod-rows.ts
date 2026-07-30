@@ -2,10 +2,10 @@ import type { ChannelRow } from '../m3u/types';
 import { normalizeForSearch } from '../search/normalize';
 import type { XtreamSource, XtreamVodInfo, XtreamVodStream } from '../xtream/types';
 import { vodStreamUrl } from '../xtream/urls';
+import { createCategoryRail } from './catalog-category-tree';
 import { cleanCatalogDisplayName } from './catalog-clean-name';
 import { createCatalogMemory } from './catalog-memory';
-import { get } from './typed';
-import { VOD_CATEGORIES, type VodCategoryRow, type VodDetail, type VodItem } from './vod';
+import type { VodDetail, VodItem } from './vod';
 
 /**
  * The Movies catalog's module memory (never Spektrum state — see `vod.ts`'s
@@ -17,6 +17,16 @@ import { VOD_CATEGORIES, type VodCategoryRow, type VodDetail, type VodItem } fro
  * fetch/select/detail flow in the other.
  */
 export const vodMemory = createCatalogMemory<VodItem, XtreamVodInfo>((item) => item.streamId);
+
+/**
+ * The Movies category accordion (`catalog-category-tree.ts`) — one service
+ * per rail row, its country/editorial variants folded behind an expand
+ * triangle. Lives here rather than in `vod.actions.ts` for the same reason
+ * `vodMemory` does: `vodCategoryName()` below has to read it, and
+ * `vod.actions.ts` already imports this module (the reverse would be a
+ * cycle).
+ */
+export const vodCategoryRail = createCategoryRail();
 
 /**
  * The `XtreamSource` last successfully resolved by `vod.actions.ts` (open/
@@ -44,9 +54,16 @@ export function vodHasUnfetchedCategories(): boolean {
     return vodMemory.hasUnfetchedCategories();
 }
 
-/** Looks up a category's display name out of the already-published compact list — the one source of truth for what a category is called, shared by row/detail building and search result rows alike. */
+/**
+ * Looks up a category's full display name — the one source of truth for
+ * what a category is called, shared by row/detail building and search result
+ * rows alike. Read from the rail, not from the published `vod.categories`:
+ * that array is the accordion's *visible* rows, so a collapsed variant is
+ * absent from it and an expanded one carries only its shortened label
+ * (`BLACK LEAD`, not `NETFLIX BLACK LEAD`).
+ */
 export function vodCategoryName(categoryId: string): string | null {
-    return get<VodCategoryRow[]>(VOD_CATEGORIES)?.find((c) => c.id === categoryId)?.name ?? null;
+    return vodCategoryRail.displayName(categoryId);
 }
 
 export function toVodItem(stream: XtreamVodStream): VodItem {
@@ -97,5 +114,6 @@ export function toVodDetail(item: VodItem, categoryName: string | null, info?: X
 /** Test-only / source-switch reset. */
 export function resetVodMemoryForTests(): void {
     vodMemory.reset();
+    vodCategoryRail.reset();
     cachedSource = null;
 }

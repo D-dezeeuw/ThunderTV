@@ -2,10 +2,8 @@ import { defineFn } from 'spektrum';
 import { getSeries, getSeriesCategories, getSeriesInfo } from '../xtream/client';
 import type { XtreamSeriesInfo } from '../xtream/types';
 import { seriesEpisodeUrl } from '../xtream/urls';
-import { cleanCatalogDisplayName } from './catalog-clean-name';
 import { setDisplayedRows } from './list-rows';
 import { selectChannel } from './list.actions';
-import { sortCategoriesCountryFirst } from './catalog-sort';
 import { loadStoredCategories, loadStoredDetail, loadStoredItems, saveStoredCategories, saveStoredDetail, saveStoredItems } from './catalog-storage';
 import { setActiveChannel } from './player.actions';
 import { createSequenceToken } from './sequence-token';
@@ -28,6 +26,7 @@ import {
     makeSeriesEpisodeId,
     makeSeriesRowId,
     seriesCategoryName,
+    seriesCategoryRail,
     seriesItemToRow,
     seriesMemory,
     setCachedSeriesSource,
@@ -52,6 +51,10 @@ export function registerSeriesActions(): void {
     defineFn('series/selectCategory', (el) => {
         const id = el.dataset['categoryId'];
         if (id) void selectSeriesCategory(id);
+    });
+    defineFn('series/toggleCategory', (el) => {
+        const id = el.dataset['categoryId'];
+        if (id && seriesCategoryRail.toggle(id)) publishSeriesCategories();
     });
     defineFn('series/openDetail', (el) => {
         const id = parseSeriesId(el.dataset['seriesId']);
@@ -130,11 +133,8 @@ export async function openSeriesCatalog(): Promise<void> {
             set(SERIES_STALE, false);
         }
 
-        const sorted = sortCategoriesCountryFirst(categories, get<string>(SETTINGS_LIVE_COUNTRY) ?? '');
-        const rows: SeriesCategoryRow[] = sorted
-            .slice(0, SERIES_CATEGORIES_CAP)
-            .map((c) => ({ id: c.id, name: cleanCatalogDisplayName(c.name) }));
-        set(SERIES_CATEGORIES, rows);
+        seriesCategoryRail.setCategories(categories, get<string>(SETTINGS_LIVE_COUNTRY) ?? '', SERIES_CATEGORIES_CAP);
+        const rows = publishSeriesCategories();
 
         const first = rows[0];
         if (first) {
@@ -147,10 +147,20 @@ export async function openSeriesCatalog(): Promise<void> {
     }
 }
 
+/** Same role as `vod.actions.ts`'s `publishVodCategories()` — the accordion's visible rows. */
+function publishSeriesCategories(): SeriesCategoryRow[] {
+    const rows = seriesCategoryRail.rows();
+    set(SERIES_CATEGORIES, rows);
+    return rows;
+}
+
 export async function selectSeriesCategory(categoryId: string): Promise<void> {
     const token = categorySelection.begin();
     set(SERIES_ACTIVE_CATEGORY_ID, categoryId);
     set(SERIES_STATUS, 'loading');
+    // Same reasoning as `selectVodCategory()`'s reveal — a selected variant
+    // must never sit inside a collapsed group.
+    if (seriesCategoryRail.reveal(categoryId)) publishSeriesCategories();
 
     const account = await resolveActiveXtreamSource();
     if (!account) {

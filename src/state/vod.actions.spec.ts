@@ -86,7 +86,11 @@ describe('vod.actions', () => {
             tick();
 
             const categories = get<VodCategoryRow[]>(VOD_CATEGORIES);
-            expect(categories).toEqual([{ id: '1', name: 'TOP 100' }]);
+            // A category nothing else groups with publishes as a plain,
+            // triangle-less head row (`catalog-category-tree.ts`).
+            expect(categories).toEqual([
+                { id: '1', name: 'TOP 100', hasVariants: false, expanded: false, variant: false },
+            ]);
         });
     });
 

@@ -21,6 +21,8 @@ export const enCatalog = {
         play: 'Play',
         retry: 'Retry',
         offline: 'Showing saved data — could not reach the provider. Downloaded titles still play.',
+        /** The expand triangle on a category that a provider ships in several country/editorial versions. State is carried by aria-expanded, so one label covers both. */
+        variantsToggle: 'Other versions of this category',
     },
 
     movies: {

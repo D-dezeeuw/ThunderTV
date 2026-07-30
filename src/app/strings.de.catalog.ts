@@ -12,6 +12,7 @@ export const deCatalog = {
         play: 'Abspielen',
         retry: 'Erneut versuchen',
         offline: 'Gespeicherte Daten — der Anbieter war nicht erreichbar. Heruntergeladene Titel laufen weiterhin.',
+        variantsToggle: 'Andere Versionen dieser Kategorie',
     },
 
     movies: {
