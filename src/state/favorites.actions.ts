@@ -8,7 +8,7 @@ import { selectChannel } from './list.actions';
 import { setActiveChannel } from './player.actions';
 import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
 import type { ActiveChannelSnapshot } from './records';
-import { viewForSnapshot } from './recent.actions';
+import { showReplayedChannel } from './recent.actions';
 import { get } from './typed';
 
 /**
@@ -92,7 +92,5 @@ export function playFavorite(id: string): void {
     publishVariantsFor(snapshot.id, snapshot.streamUrl);
     setActiveChannel(snapshot);
     selectChannel(snapshot.id);
-    // Navigating last, same as Recents: the router owns `ui.activeView`, and
-    // the view it lands on already has the channel playing when it paints.
-    location.hash = `#/${viewForSnapshot(snapshot)}`;
+    showReplayedChannel(snapshot);
 }

@@ -426,6 +426,27 @@ This is a **full-tier feature**, by design: `catalog-storage.ts` refuses to
 persist a multi-thousand-item catalog into `localStorage`, so a `'partial'`
 or `'none'` tier still fails honestly rather than half-working.
 
+### Replaying a Starred or Recent entry
+
+`favorites.actions.ts`'s `playFavorite()` and `recent.actions.ts`'s
+`playFromHistory()` both play from a stored snapshot and then hand off to
+`showReplayedChannel()`, which is where the three things that make it
+*visibly* work live:
+
+1. **The router must not stop it.** `applyRoute()` stops playback on every
+   route change; a replay navigates *because* something just started, so it
+   arms a one-shot, route-matched exemption
+   (`player.actions.ts`'s `keepPlaybackThroughRoute()` /
+   `isPlaybackHandoff()`). Without it the channel was already dead by the
+   time the tab painted — the whole of "it switches tab and nothing happens."
+2. **The row has to be on screen.** `revealRowOnNextPublish()` queues the id
+   for the target view's arrival republish (which resets the scroll to the
+   top), consumed once by `setDisplayedRows()`.
+3. **The row may wear a different id.** Live keys each row on its *primary*
+   feed, so an entry captured elsewhere resolves through that row's
+   `variants` (`list-rows.ts`'s `rowIdFor()`) before the cursor gives up and
+   falls back to the first row.
+
 ## The shared list has to be republished on every view switch
 
 Live, Categories, Movies, Series and Search all publish into **one** virtual

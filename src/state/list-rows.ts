@@ -1,5 +1,5 @@
 import type { ChannelRow } from '../m3u/types';
-import { setRows as setVirtualListRows } from '../ui/virtual-list';
+import { indexOfRow, revealIndex, setRows as setVirtualListRows } from '../ui/virtual-list';
 import { selectChannel } from './list.actions';
 import { LIST_SELECTED_ID } from './list';
 import { PLAYER_ACTIVE } from './player';
@@ -10,6 +10,40 @@ export interface SetDisplayedRowsOptions {
     scrollTop?: number;
     /** Explicit selection to apply (e.g. a restored value) — omitted, the current selection is re-validated against the new set instead. */
     selectedId?: string | null;
+}
+
+/**
+ * A channel id the *next* publish should scroll onto the screen, armed by
+ * the Starred/Recent replay path. One-shot: the publish that consumes it
+ * clears it, so a later, unrelated republish never yanks the list around.
+ *
+ * It has to be deferred like this because the row set that will contain the
+ * row does not exist yet at click time — the target view republishes on
+ * arrival (`live.actions.ts`'s `publishRowsForCurrentView()`), and that
+ * republish resets the scroll to the top.
+ */
+let pendingRevealId: string | null = null;
+
+/** Asks the next `setDisplayedRows()` to put this channel's row on screen. */
+export function revealRowOnNextPublish(id: string): void {
+    pendingRevealId = id;
+}
+
+/**
+ * The id of the row in `rows` that represents `id` — the row itself, or the
+ * grouped row that collapsed it into a variant.
+ *
+ * The variant hop is what makes a starred or recently-watched channel land
+ * on the right row after the Live view has regrouped: Live shows one row per
+ * channel keyed on its *primary* feed (`channels/grouping.ts`'s
+ * `toDisplayRows()`), so an entry captured from Categories — or from a
+ * different primary, since the primary is whichever variant sorts best —
+ * carries an id that no Live row wears on the outside.
+ */
+function rowIdFor(rows: readonly ChannelRow[], id: string | null): string | null {
+    if (id === null) return null;
+    if (rows.some((row) => row.id === id)) return id;
+    return rows.find((row) => row.variants?.some((variant) => variant.id === id))?.id ?? null;
 }
 
 /**
@@ -24,14 +58,13 @@ export interface SetDisplayedRowsOptions {
 export function setDisplayedRows(rows: readonly ChannelRow[], options: SetDisplayedRowsOptions = {}): void {
     setVirtualListRows(rows, options.scrollTop !== undefined ? { scrollTop: options.scrollTop } : {});
 
-    const has = (id: string | null): boolean => id !== null && rows.some((row) => row.id === id);
+    const reveal = pendingRevealId;
+    pendingRevealId = null;
 
+    // A pending reveal outranks both: it names the row the viewer just
+    // clicked, in the view they were sent to see it in.
+    const revealId = rowIdFor(rows, reveal);
     const requestedId = options.selectedId !== undefined ? options.selectedId : (get<string | null>(LIST_SELECTED_ID) ?? null);
-    if (has(requestedId)) {
-        selectChannel(requestedId);
-        return;
-    }
-
     // Before falling back to the first row: if something is actually playing
     // and this row set contains it, that is the row the cursor belongs on.
     //
@@ -43,10 +76,12 @@ export function setDisplayedRows(rows: readonly ChannelRow[], options: SetDispla
     // look absent here and get handed to row 0, highlighting an unrelated
     // channel while a different one played.
     const activeId = get<ActiveChannelSnapshot | null>(PLAYER_ACTIVE)?.id ?? null;
-    if (has(activeId)) {
-        selectChannel(activeId);
-        return;
-    }
 
-    selectChannel(rows[0]?.id ?? null);
+    const selectedId = revealId ?? rowIdFor(rows, requestedId) ?? rowIdFor(rows, activeId) ?? rows[0]?.id ?? null;
+    selectChannel(selectedId);
+
+    // A row nobody can see is indistinguishable from no selection at all —
+    // the Live list runs to thousands of rows, and `setRows()` above just put
+    // the scroll back at the top.
+    if (revealId !== null) revealIndex(indexOfRow(revealId));
 }

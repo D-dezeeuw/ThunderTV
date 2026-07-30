@@ -126,6 +126,32 @@ export function ensureIndexVisible(index: number): void {
     }
 }
 
+/** How many rows of lead-in a revealed row keeps above it, so it lands in the list rather than glued to the top edge. */
+const REVEAL_LEAD_ROWS = 2;
+
+/**
+ * Puts `index` on screen for a jump that started somewhere else — a Starred
+ * or Recent entry replayed from another view, which lands in this list with
+ * the scroll reset to the top by `setRows()`.
+ *
+ * Two things separate it from `ensureIndexVisible()` (keyboard nav): it
+ * leaves a couple of rows of context above the target instead of parking it
+ * on the viewport edge, and it still scrolls when the viewport hasn't been
+ * measured yet. That second case is the normal one here: the target view's
+ * list is still hidden (`data-if`, zero height) at the moment the replay
+ * publishes its rows, so `visibleCount` is 0 and there is nothing to compare
+ * against — `setViewportHeight()` re-clamps and republishes the moment the
+ * container appears, which is what makes the position stick.
+ */
+export function revealIndex(index: number): void {
+    if (index < 0) return;
+    if (visibleCount > 0 && rowH > 0) {
+        const first = Math.floor(scrollTop / rowH);
+        if (index >= first && index < first + visibleCount) return;
+    }
+    scrollToIndex(Math.max(0, index - REVEAL_LEAD_ROWS));
+}
+
 function syncContainerScrollTop(): void {
     if (containerEl && containerEl.scrollTop !== scrollTop) containerEl.scrollTop = scrollTop;
 }

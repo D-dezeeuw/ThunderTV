@@ -1,5 +1,5 @@
 import { setValue } from 'spektrum';
-import { stopPlayback } from '../state/player.actions';
+import { isPlaybackHandoff, stopPlayback } from '../state/player.actions';
 
 /**
  * Hand-rolled hash router (~50 lines). Owns `location.hash`; `ui.activeView`
@@ -74,9 +74,19 @@ export function resolveRoute(path: string): Route {
  */
 let previousRoute: Route | null = null;
 
-/** Stops any active playback when navigating to a genuinely different route — Feature request: switching tabs should not leave the previous tab's stream running underneath. */
+/**
+ * Stops any active playback when navigating to a genuinely different route —
+ * Feature request: switching tabs should not leave the previous tab's stream
+ * running underneath.
+ *
+ * The exception is a navigation a replay asked for: a Starred or Recent pick
+ * starts its channel and *then* comes here to show it, so stopping would kill
+ * the very stream this route change exists to display
+ * (`player.actions.ts`'s `keepPlaybackThroughRoute()`).
+ */
 function stopPlaybackOnRouteChange(route: Route): void {
-    if (previousRoute !== null && previousRoute !== route) stopPlayback();
+    const handoff = isPlaybackHandoff(route);
+    if (previousRoute !== null && previousRoute !== route && !handoff) stopPlayback();
     previousRoute = route;
 }
 

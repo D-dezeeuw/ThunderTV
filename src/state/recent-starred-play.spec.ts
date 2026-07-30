@@ -1,7 +1,8 @@
 import { resetState, setValue, tick } from 'spektrum';
-import { afterEach, describe, expect, it } from 'vitest';
-import type { ChannelRow } from '../m3u/types';
-import { resetVirtualListForTests } from '../ui/virtual-list';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { initRouter } from '../app/router';
+import type { ChannelRow, ChannelVariant } from '../m3u/types';
+import { getScrollTop, getRowHeight, resetVirtualListForTests, setViewportHeight } from '../ui/virtual-list';
 import type { FavoriteRecord } from '../core/storage';
 import { FAVORITES_ROWS } from './favorites';
 import { playFavorite } from './favorites.actions';
@@ -114,6 +115,150 @@ describe('replaying a Starred or Recent entry', () => {
         tick();
 
         expect(get<string | null>(LIST_SELECTED_ID)).toBe(SNAPSHOT.id);
+    });
+});
+
+/**
+ * The bug the two specs above could not see, because they never ran the
+ * router: `applyRoute()` stops playback on every route change, and a replay
+ * navigates *after* starting its channel — so the tab switch it triggered
+ * tore down the stream it was sent to show.
+ */
+describe('replaying across the router', () => {
+    beforeAll(() => {
+        location.hash = '#/favorites';
+        initRouter();
+    });
+
+    afterEach(() => {
+        resetVirtualListForTests();
+        resetState();
+    });
+
+    /** jsdom queues `hashchange` as a task, same as a browser. */
+    async function settleNavigation(): Promise<void> {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        tick();
+    }
+
+    async function goTo(hash: string): Promise<void> {
+        location.hash = hash;
+        await settleNavigation();
+    }
+
+    it('keeps the channel playing through the tab switch it triggers', async () => {
+        await goTo('#/favorites');
+        setValue(FAVORITES_ROWS, [favorite()]);
+        tick();
+
+        playFavorite(SNAPSHOT.id);
+        await settleNavigation();
+
+        expect(location.hash).toBe('#/live');
+        expect(get<ActiveChannelSnapshot>(PLAYER_ACTIVE)?.streamUrl).toBe(SNAPSHOT.streamUrl);
+    });
+
+    it('keeps a recent channel playing through it too', async () => {
+        await goTo('#/recent');
+        setValue(PLAYER_ZAP_HISTORY, [SNAPSHOT]);
+        tick();
+
+        playFromHistory(SNAPSHOT.id);
+        await settleNavigation();
+
+        expect(get<ActiveChannelSnapshot>(PLAYER_ACTIVE)?.streamUrl).toBe(SNAPSHOT.streamUrl);
+    });
+
+    /** The exemption is one-shot: an ordinary tab switch still stops the stream. */
+    it('still stops playback on a tab switch the viewer made', async () => {
+        await goTo('#/favorites');
+        setValue(FAVORITES_ROWS, [favorite()]);
+        tick();
+
+        playFavorite(SNAPSHOT.id);
+        await settleNavigation();
+        await goTo('#/sources');
+
+        expect(get<ActiveChannelSnapshot | null>(PLAYER_ACTIVE)).toBeNull();
+    });
+});
+
+/**
+ * A highlight nobody can see is indistinguishable from no highlight: the
+ * Live list runs to thousands of rows and the target view's republish puts
+ * the scroll back at the top.
+ */
+describe('scrolling the replayed channel into view', () => {
+    afterEach(() => {
+        resetVirtualListForTests();
+        resetState();
+    });
+
+    const LONG = Array.from({ length: 400 }, (_, i) => listRow(`src-1:${i}`));
+
+    function seedFavorite(id: string): void {
+        setValue(PLAYLIST_ACTIVE_SOURCE_ID, 'src-1');
+        setValue(FAVORITES_ROWS, [favorite({ id, streamUrl: `http://example.test/${id}.m3u8` })]);
+        tick();
+        setDisplayedRows(LONG);
+        tick();
+        setViewportHeight(10 * getRowHeight());
+    }
+
+    it('scrolls to the row when the target view publishes its rows', () => {
+        seedFavorite('src-1:300');
+
+        playFavorite('src-1:300');
+        tick();
+        setDisplayedRows(LONG); // the target view's republish on arrival
+        tick();
+
+        // Two rows of lead-in above it, and firmly off the top of the list.
+        expect(getScrollTop()).toBe(298 * getRowHeight());
+    });
+
+    it('leaves the scroll alone when the row is already on screen', () => {
+        seedFavorite('src-1:3');
+
+        playFavorite('src-1:3');
+        tick();
+        setDisplayedRows(LONG);
+        tick();
+
+        expect(getScrollTop()).toBe(0);
+    });
+});
+
+/**
+ * Live shows one row per channel, keyed on whichever feed sorts best
+ * (`toDisplayRows()`), so a starred entry captured from Categories — or from
+ * a feed that is no longer the primary — names a row that no longer exists
+ * under that id. It is still that channel's row.
+ */
+describe('replaying an entry the target view collapsed into a variant', () => {
+    afterEach(() => {
+        resetVirtualListForTests();
+        resetState();
+    });
+
+    function variant(id: string): ChannelVariant {
+        return { id, url: `http://example.test/${id}.m3u8`, label: 'HD', quality: null, isRecording: false, provider: null, tier: 0 };
+    }
+
+    it('puts the cursor on the grouped row that carries it', () => {
+        setValue(PLAYLIST_ACTIVE_SOURCE_ID, 'src-1');
+        setValue(FAVORITES_ROWS, [favorite({ id: 'src-1:sd' })]);
+        tick();
+
+        playFavorite('src-1:sd');
+        tick();
+        setDisplayedRows([
+            listRow('src-1:1'),
+            { ...listRow('src-1:hd'), variants: [variant('src-1:hd'), variant('src-1:sd')] },
+        ]);
+        tick();
+
+        expect(get<string | null>(LIST_SELECTED_ID)).toBe('src-1:hd');
     });
 });
 

@@ -82,6 +82,36 @@ export function registerPlayerActions(): void {
     });
 }
 
+/**
+ * The route a replay has just navigated to on purpose, armed for exactly one
+ * `applyRoute()` and read only by the router.
+ *
+ * `router.ts` stops playback on every real route change — switching tabs must
+ * not leave the previous tab's stream running underneath. Replaying a Starred
+ * or Recent entry is the one navigation that happens *because* something just
+ * started playing: it sets the channel and then sends the viewer to the view
+ * that shows it, and the router's rule tore that channel straight back down.
+ * Which is what "it switches to that tab but nothing is activated" actually
+ * was — playback had already been stopped by the time the tab painted.
+ *
+ * Armed with the destination rather than a bare flag so an arming that is
+ * never consumed (a replay into the view the viewer is already on fires no
+ * `hashchange`) cannot leak the exemption into their next real tab switch.
+ */
+let playbackHandoffRoute: string | null = null;
+
+/** Exempts the next navigation to `route` from the router's stop-on-tab-switch. */
+export function keepPlaybackThroughRoute(route: string): void {
+    playbackHandoffRoute = route;
+}
+
+/** Router-only: true when this route change is the one a replay armed. Consumes the arming either way. @internal */
+export function isPlaybackHandoff(route: string): boolean {
+    const armed = playbackHandoffRoute;
+    playbackHandoffRoute = null;
+    return armed !== null && armed === route;
+}
+
 /** True while the visualizer pane stands in for the picture — see `player.ts`'s `isAudioVisual()`. */
 export function audioVisualActive(): boolean {
     return isAudioVisual(get<string | null>(UI_ACTIVE_VIEW), get<boolean>(PLAYER_AUDIO_MODE) ?? false);
