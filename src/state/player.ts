@@ -7,6 +7,15 @@ export const PLAYER_ACTIVE = 'player.active';
 export const PLAYER_ZAP_HISTORY = 'player.zapHistory';
 /** Transient, session-only: the last fatal playback failure's technical detail, rendered in the player bar so a phone user can report *why* a stream died without devtools. */
 export const PLAYER_PLAYBACK_ERROR = 'player.playbackError';
+/**
+ * Transient, session-only: a stream that *plays* but is missing something —
+ * today only "the picture is running and no audio is being decoded", which
+ * `src/player/audio-output.ts` detects from the element's own decoder
+ * counters. Deliberately not `playbackError`: nothing failed, the title is
+ * watchable, and a red "Playback failed:" over a perfectly good picture
+ * would be a lie. Cleared on every new attach/stop like its neighbour.
+ */
+export const PLAYER_PLAYBACK_NOTICE = 'player.playbackNotice';
 /** Transient: live stream quality ('good' | 'fair' | 'poor'), from stall frequency — the player-bar signal indicator. Null when nothing is playing. */
 export const PLAYER_STREAM_HEALTH = 'player.streamHealth';
 /**
@@ -72,6 +81,7 @@ export interface PlayerState {
     active: ActiveChannelSnapshot | null;
     zapHistory: ActiveChannelSnapshot[];
     playbackError: string | null;
+    playbackNotice: string | null;
     streamHealth: string | null;
     variants: ChannelVariant[];
     activeVariantId: string | null;
@@ -85,6 +95,7 @@ export const PLAYER_DEFAULTS: PlayerState = {
     active: null,
     zapHistory: [],
     playbackError: null,
+    playbackNotice: null,
     streamHealth: null,
     variants: [],
     activeVariantId: null,
@@ -99,6 +110,7 @@ export function initPlayerState(): void {
     setValue(PLAYER_ACTIVE, PLAYER_DEFAULTS.active);
     setValue(PLAYER_ZAP_HISTORY, PLAYER_DEFAULTS.zapHistory);
     setValue(PLAYER_PLAYBACK_ERROR, PLAYER_DEFAULTS.playbackError);
+    setValue(PLAYER_PLAYBACK_NOTICE, PLAYER_DEFAULTS.playbackNotice);
     setValue(PLAYER_STREAM_HEALTH, PLAYER_DEFAULTS.streamHealth);
     setValue(PLAYER_VARIANTS, PLAYER_DEFAULTS.variants);
     setValue(PLAYER_ACTIVE_VARIANT_ID, PLAYER_DEFAULTS.activeVariantId);

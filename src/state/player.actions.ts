@@ -11,6 +11,7 @@ import {
     PLAYER_AUDIO_MODE,
     PLAYER_PAUSED,
     PLAYER_PLAYBACK_ERROR,
+    PLAYER_PLAYBACK_NOTICE,
     PLAYER_STREAM_HEALTH,
     PLAYER_VARIANTS,
     PLAYER_VISUALIZER_PAUSED,
@@ -215,6 +216,7 @@ export function stopPlayback(): void {
     if (currentFullscreenElement()) exitFullscreen();
     setValue(PLAYER_ACTIVE, null);
     setValue(PLAYER_PLAYBACK_ERROR, null);
+    setValue(PLAYER_PLAYBACK_NOTICE, null);
     setValue(PLAYER_STREAM_HEALTH, null);
     setValue(PLAYER_ACTIVE_VARIANT_ID, null);
     setValue(PLAYER_PAUSED, false);
@@ -262,6 +264,17 @@ export function reportPlaybackError(detail: string | null): void {
     setValue(PLAYER_PLAYBACK_ERROR, detail);
 }
 
+/**
+ * Called by `src/player/audio-output.ts` once a stream has proven it is
+ * decoding pictures and no audio at all — the browser has no decoder for
+ * what the file carries (AC-3/E-AC-3/DTS on a movie, most often), and the
+ * only alternative to saying so is a viewer hunting for a mute button that
+ * was never the problem. `null` clears it on the next attach.
+ */
+export function reportPlaybackNotice(detail: string | null): void {
+    setValue(PLAYER_PLAYBACK_NOTICE, detail);
+}
+
 /** Called by `src/player/stream-health.ts` as stalls come and go — drives the player-bar signal indicator. */
 export function reportStreamHealth(health: string | null): void {
     setValue(PLAYER_STREAM_HEALTH, health);
@@ -276,6 +289,7 @@ export function setVisualizerPreset(preference: string): void {
 export function setActiveChannel(channel: ActiveChannelSnapshot): void {
     setValue(PLAYER_ACTIVE, channel);
     setValue(PLAYER_PLAYBACK_ERROR, null);
+    setValue(PLAYER_PLAYBACK_NOTICE, null);
     setValue(PLAYER_PAUSED, false);
     const zapHistory = getPathObj<ActiveChannelSnapshot[]>(appState, PLAYER_ZAP_HISTORY) ?? [];
     // Array-bearing write — routed through the typed `set()` (Feature

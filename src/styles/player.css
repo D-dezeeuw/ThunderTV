@@ -195,6 +195,14 @@
     color: var(--color-danger);
 }
 
+/* A stream that plays but is missing something (no decodable audio) — the
+   dimmed text colour is the point: nothing failed, so nothing goes red. */
+.player-shell__notice {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+}
+
 /* Stream-quality bars: three rising bars, lit according to
    `player.streamHealth` (good = 3, fair = 2, poor = 1). Token colours
    only, no transitions — the state changes are meaningful, not decorative. */

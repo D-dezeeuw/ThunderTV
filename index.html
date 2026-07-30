@@ -1889,6 +1889,12 @@
                                     <p class="player-shell__error" data-if="player.playbackError" data-testid="player-error">
                                         {{ strings.list.playerErrorPrefix }} {{ player.playbackError }}
                                     </p>
+                                    <!-- Not an error, and deliberately not styled like one: the
+                                         stream is playing, it is just missing something this
+                                         device cannot supply (src/player/audio-output.ts). -->
+                                    <p class="player-shell__notice" data-if="player.playbackNotice" data-testid="player-notice">
+                                        {{ player.playbackNotice }}
+                                    </p>
                                 </div>
                                 <div class="empty-state now-playing__empty" data-if="!player.active" data-testid="now-playing-empty">
                                     <p class="empty-state__message">{{ strings.list.nowPlayingEmpty }}</p>

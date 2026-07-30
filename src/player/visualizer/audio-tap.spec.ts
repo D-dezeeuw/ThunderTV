@@ -12,7 +12,10 @@ class FakeTrack {}
 
 class FakeStream {
     private readonly listeners: Record<string, (() => void)[]> = {};
-    constructor(private audio: FakeTrack[] = []) {}
+    private audio: FakeTrack[];
+    constructor(audio: FakeTrack[] = []) {
+        this.audio = audio;
+    }
     getAudioTracks(): FakeTrack[] {
         return this.audio;
     }

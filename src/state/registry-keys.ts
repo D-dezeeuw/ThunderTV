@@ -15,8 +15,6 @@ import { UI_ACTIVE_GROUP, UI_LIST_STATE, UI_VIEW_MODE } from './list-state';
 import {
     PLAYER_ACTIVE,
     PLAYER_ACTIVE_VARIANT_ID,
-    PLAYER_PLAYBACK_ERROR,
-    PLAYER_STREAM_HEALTH,
     PLAYER_VARIANTS,
     PLAYER_VISUALIZER_PAUSED,
     PLAYER_VISUALIZER_PRESET,
@@ -56,6 +54,7 @@ import {
 } from './ui';
 import { UI_SETUP_COMPLETE, UI_WIZARD_OPEN, UI_WIZARD_STEP } from './wizard';
 import { OVERFLOW_REGISTRY_ENTRIES } from './registry-overflow';
+import { PLAYER_REGISTRY_ENTRIES } from './registry-player';
 /**
  * One source of truth for every Spektrum key's persistence class and owner
  * (Feature 05.1.7) — the persistence bridge (05.3) and the generated
@@ -203,11 +202,6 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         persisted: true,
         description: 'Denormalized last-watched channel snapshot — the §6.4 instant-restore row.',
     },
-    [PLAYER_STREAM_HEALTH]: {
-        owner: 'player',
-        persisted: false,
-        description: 'Live stream quality (good/fair/poor) derived from stall frequency — the player-bar signal indicator; null when idle.',
-    },
     [PLAYER_VARIANTS]: {
         owner: 'player',
         persisted: false,
@@ -218,11 +212,6 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         owner: 'player',
         persisted: false,
         description: 'Which variant is currently playing, so the dock strip can mark one chip active. Derived alongside player.variants.',
-    },
-    [PLAYER_PLAYBACK_ERROR]: {
-        owner: 'player',
-        persisted: false,
-        description: 'Transient diagnostics: the last fatal playback failure (hls.js fatal kind or MediaError label), rendered in the player bar — cleared on every new attach/stop.',
     },
     [PLAYER_ZAP_HISTORY]: {
         owner: 'player',
@@ -397,4 +386,5 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         description: 'Whether first-run setup has already been dealt with on this install (saved, skipped, or a source found at boot) — the one wizard key that must survive a reload, since it is what stops a configured user from being asked again (wizard.actions.ts\'s markSetupComplete()).',
     },
     ...OVERFLOW_REGISTRY_ENTRIES,
+    ...PLAYER_REGISTRY_ENTRIES,
 };
