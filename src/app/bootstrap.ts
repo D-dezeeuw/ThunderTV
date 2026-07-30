@@ -17,6 +17,7 @@ import {
     initAppearance,
     initState,
     loadDefaultEpg,
+    loadXtreamGuide,
     loadFavorites,
     loadGuideChannels,
     loadPlaylistSources,
@@ -116,7 +117,13 @@ export async function bootstrap(): Promise<void> {
     // inside the window makes zero upstream requests — and non-blocking,
     // because a followed Codex whose host is down must not delay boot.
     void refreshCodexLibraryOnBoot();
-    void loadDefaultEpg();
+    // The provider's own guide first: it is keyed by the `epg_channel_id`
+    // every channel row already carries, so it needs no matching and covers
+    // exactly the subscription's channels. `loadDefaultEpg()`'s national
+    // catalog runs after it as the fallback for sources that serve no EPG of
+    // their own (and it is still what populates the country catalog Live's
+    // "EPG-verified" filter reads).
+    void loadXtreamGuide().then(() => loadDefaultEpg());
     registerImportDropzoneDragover();
     registerDebugShortcut();
     registerListBindings();

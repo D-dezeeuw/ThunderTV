@@ -1,5 +1,27 @@
 # EPG (`src/epg/`)
 
+> **Read this first.** There are now **two** EPG pipelines, and the one
+> described below is the *fallback*.
+>
+> - **`src/state/xtream-epg-load.ts` — the provider's own guide.** For an
+>   Xtream source this is what fills the Guide. It reads the panel's
+>   `xmltv.php` (whole subscription) and `get_short_epg` (one channel, on
+>   demand), both keyed by `epg_channel_id` — the same id
+>   `src/xtream/client.ts` already writes onto every row as `tvgId`. There
+>   is no catalog, no matcher and no country registry on that path: a
+>   channel and its programmes are joined by string equality.
+> - **The country-catalog pipeline below** runs after it, for sources that
+>   serve no EPG of their own, and is still what populates the country
+>   catalog Live's "EPG-verified" filter reads.
+>
+> Two things worth knowing about the fallback before relying on it. Its
+> upstream (`globetvapp/epg`) has not been updated since **October 2025** —
+> every programme it serves is deleted by `prune.ts`'s 24h horizon, so it
+> currently produces an empty grid, which is why `EPG_FEED_THROUGH` exists
+> to say so on screen. And its matching is lossy by nature: on the demo
+> playlist it bound 139 of 15,243 grouped channels.
+
+
 Where a channel's programme data comes from, and how a raw XMLTV feed
 becomes both a **country catalog** (identity — is this a real, known
 channel?) and the **Guide** timetable's stored data. Built across Phase 16

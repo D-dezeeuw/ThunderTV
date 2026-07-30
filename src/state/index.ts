@@ -79,6 +79,7 @@ export { loadActiveSource } from './list-load';
 export { registerViewRowsWatch } from './live.actions';
 export { loadGuideChannels } from './guide-load';
 export { loadDefaultEpg, primeEpgMapping } from './epg-load';
+export { fetchChannelEpgOnDemand, loadXtreamGuide } from './xtream-epg-load';
 export { openWizard, openWizardIfNoSources } from './wizard.actions';
 export { shouldOpenWizard } from './wizard';
 export { openVodCatalog, republishVodRows } from './vod.actions';

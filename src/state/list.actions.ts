@@ -1,6 +1,7 @@
 import { defineFn, setValue } from 'spektrum';
 import { wasJustLongPressed } from '../ui/long-press';
 import { ensureIndexVisible, findRowById, indexOfRow, rowAt, rowCount } from '../ui/virtual-list';
+import { ensureChannelEpg } from './xtream-epg-load';
 import { toggleFavoriteById } from './favorites.actions';
 import { LIST_SELECTED_ID } from './list';
 import { saveListState } from './list-state-sync';
@@ -152,6 +153,11 @@ export function playChannelById(id: string): void {
         group: row.group,
         radio: row.radio,
     });
+    // If the bulk guide didn't cover this channel, ask the panel about just
+    // this one. Fire-and-forget on purpose: playback must never wait on a
+    // guide, and a panel with nothing to say is the common case rather than
+    // an error (src/state/xtream-epg-load.ts).
+    void ensureChannelEpg(row);
 }
 
 function toggleFavoriteSelected(): void {
