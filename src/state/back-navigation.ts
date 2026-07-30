@@ -23,14 +23,14 @@ import { UI_WIZARD_OPEN } from './wizard';
  * a webOS certification failure as well as bad manners.
  */
 export function closeTopmostOverlay(): boolean {
-    // The audio/subtitle track menu is the most transient overlay — a
-    // popover tied directly to a still-visible player control — so it
+    // The audio/subtitle/visualizer dock menu is the most transient overlay
+    // — a popover tied directly to a still-visible player control — so it
     // unwinds before the app-level panels below. Its own local keydown
     // handler (player-tracks.actions.ts) only reacts to a literal Escape
     // key, which no TV remote sends; this is what actually makes Back close
     // it on webOS/Tizen hardware.
     const trackMenu = get<TrackMenu>(PLAYER_TRACK_MENU);
-    if (trackMenu === 'audio' || trackMenu === 'subtitles') {
+    if (trackMenu !== undefined && trackMenu !== 'none') {
         setValue(PLAYER_TRACK_MENU, 'none');
         return true;
     }

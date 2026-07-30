@@ -16,9 +16,9 @@ import { SpectrumPreset } from './spectrum-preset';
  * across a session. Order is the auto-cycle order and the "Next visual"
  * order: the four abstract presets first, then the six genre presets a
  * listener can pin to directly from the visualizer-preset picker
- * (`index.html`'s `#radio-visualizer-select`, `state/player.actions.ts`'s
- * `player/setVisualizerPreset`) — no audio analysis picks these, the
- * listener does.
+ * (`state/player.selectors.ts`'s `VISUALIZER_PICKER_OPTIONS`,
+ * `state/player.actions.ts`'s `player/setVisualizerPreset`) — no audio
+ * analysis picks these, the listener does.
  */
 export function createRadioVisualizerPresets(): VisualizerPreset[] {
     return [

@@ -70,6 +70,9 @@ export function registerPlayerTrackActions(): void {
     defineFn('player/toggleSubtitleMenu', () => {
         toggleSubtitleMenu();
     });
+    defineFn('player/toggleVisualizerMenu', () => {
+        toggleVisualizerMenu();
+    });
     defineFn('player/closeTrackMenu', () => {
         closeTrackMenu();
     });
@@ -108,14 +111,19 @@ export function toggleSubtitleMenu(): void {
     toggleMenu('subtitles');
 }
 
-/** Each menu closes the other; opening either re-reads `getPlayerTracks()` so a menu opened once, closed, and reopened later never shows a stale snapshot. */
-function toggleMenu(menu: 'audio' | 'subtitles'): void {
+/** Radio's visualizer-preset picker — the same dock popup, minus the `publishTrackLists()` step (its options are a fixed catalog, not an engine snapshot). */
+export function toggleVisualizerMenu(): void {
+    toggleMenu('visualizer');
+}
+
+/** Each menu closes the others; opening a track menu re-reads `getPlayerTracks()` so a menu opened once, closed, and reopened later never shows a stale snapshot. */
+function toggleMenu(menu: Exclude<TrackMenu, 'none'>): void {
     const isOpen = get<TrackMenu>(PLAYER_TRACK_MENU) === menu;
     if (isOpen) {
         set(PLAYER_TRACK_MENU, 'none');
         return;
     }
-    publishTrackLists();
+    if (menu !== 'visualizer') publishTrackLists();
     set(PLAYER_TRACK_MENU, menu);
     // Move focus into the dialog once it's mounted — the trigger button's
     // own click handler hasn't returned yet, so `data-if`'s DOM insert
@@ -128,12 +136,18 @@ export function closeTrackMenu(): void {
     set(PLAYER_TRACK_MENU, 'none');
 }
 
-function trackMenuRef(menu: 'audio' | 'subtitles'): HTMLElement | undefined {
-    const ref = refs[menu === 'audio' ? 'audioTrackMenu' : 'subtitleTrackMenu'];
+const MENU_REFS: Record<Exclude<TrackMenu, 'none'>, string> = {
+    audio: 'audioTrackMenu',
+    subtitles: 'subtitleTrackMenu',
+    visualizer: 'visualizerPresetMenu',
+};
+
+function trackMenuRef(menu: Exclude<TrackMenu, 'none'>): HTMLElement | undefined {
+    const ref = refs[MENU_REFS[menu]];
     return ref instanceof HTMLElement ? ref : undefined;
 }
 
-function focusTrackMenuDialog(menu: 'audio' | 'subtitles'): void {
+function focusTrackMenuDialog(menu: Exclude<TrackMenu, 'none'>): void {
     const dialog = trackMenuRef(menu);
     if (!dialog) return;
     const firstItem = dialog.querySelector<HTMLElement>('.track-menu__item');
@@ -150,7 +164,7 @@ function focusTrackMenuDialog(menu: 'audio' | 'subtitles'): void {
 function handleTrackMenuKeydown(event: KeyboardEvent | undefined): void {
     if (!event) return;
     const menu = get<TrackMenu>(PLAYER_TRACK_MENU);
-    if (menu !== 'audio' && menu !== 'subtitles') return;
+    if (menu === undefined || menu === 'none') return;
 
     if (event.key === 'Escape') {
         event.preventDefault();

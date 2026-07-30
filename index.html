@@ -1546,30 +1546,80 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <select
-                                            class="btn"
-                                            data-if="visualizerActive"
-                                            data-action="change"
-                                            data-fn="player/setVisualizerPreset"
-                                            :aria-label="strings.list.visualizerPickerLabel"
-                                            data-testid="radio-visualizer-select"
-                                        >
-                                            <option value="auto" :selected="player.visualizerPreset === 'auto'">{{ strings.list.visualizerAuto }}</option>
-                                            <optgroup :label="strings.list.visualizerGenreGroup">
-                                                <option value="edm" :selected="player.visualizerPreset === 'edm'">{{ strings.list.visualizerEdm }}</option>
-                                                <option value="jazz" :selected="player.visualizerPreset === 'jazz'">{{ strings.list.visualizerJazz }}</option>
-                                                <option value="blues" :selected="player.visualizerPreset === 'blues'">{{ strings.list.visualizerBlues }}</option>
-                                                <option value="rock" :selected="player.visualizerPreset === 'rock'">{{ strings.list.visualizerRock }}</option>
-                                                <option value="metal" :selected="player.visualizerPreset === 'metal'">{{ strings.list.visualizerMetal }}</option>
-                                                <option value="classical" :selected="player.visualizerPreset === 'classical'">{{ strings.list.visualizerClassical }}</option>
-                                            </optgroup>
-                                            <optgroup :label="strings.list.visualizerAbstractGroup">
-                                                <option value="spectrum" :selected="player.visualizerPreset === 'spectrum'">{{ strings.list.visualizerSpectrum }}</option>
-                                                <option value="particles" :selected="player.visualizerPreset === 'particles'">{{ strings.list.visualizerParticles }}</option>
-                                                <option value="kaleidoscope" :selected="player.visualizerPreset === 'kaleidoscope'">{{ strings.list.visualizerKaleidoscope }}</option>
-                                                <option value="fractal-tunnel" :selected="player.visualizerPreset === 'fractal-tunnel'">{{ strings.list.visualizerFractalTunnel }}</option>
-                                            </optgroup>
-                                        </select>
+                                        <!-- Radio's visualizer-preset picker. Deliberately NOT a
+                                             native <select>: on webOS the dropdown a <select> opens
+                                             is a browser-level widget that lives outside the page,
+                                             so the remote's key events (which the LG simulator
+                                             injects into the *page*) never reach it — the popup can
+                                             be opened but never navigated or dismissed, and every
+                                             further OK press re-triggers the still-focused <select>,
+                                             which is the endless self-reactivating dropdown seen in
+                                             the simulator. This is the same track-menu pattern as
+                                             the audio/subtitle popups above: ordinary focusable DOM
+                                             that spatial navigation, Enter/OK and the Back button
+                                             (state/back-navigation.ts) all already understand.
+                                             Rows come from one `data-each` over
+                                             `visualizerPresetOptions` rather than eleven
+                                             hand-authored entries — state/player.selectors.ts's
+                                             VISUALIZER_PICKER_OPTIONS is the source of truth, and
+                                             visualizer-picker.markup.spec.ts checks it against the
+                                             real preset list. -->
+                                        <div class="track-menu-anchor" data-if="visualizerActive">
+                                            <button
+                                                type="button"
+                                                class="btn"
+                                                aria-haspopup="listbox"
+                                                :aria-label="strings.list.visualizerPickerLabel"
+                                                :title="strings.list.visualizerPickerLabel"
+                                                :aria-expanded="player.trackMenu === 'visualizer'"
+                                                data-action="click"
+                                                data-fn="player/toggleVisualizerMenu"
+                                                data-testid="radio-visualizer-btn"
+                                            >
+                                                {{ visualizerPresetLabel }}
+                                            </button>
+                                            <div
+                                                class="track-menu-backdrop"
+                                                data-if="player.trackMenu === 'visualizer'"
+                                                data-action="click"
+                                                data-fn="player/closeTrackMenu"
+                                                data-testid="visualizer-preset-backdrop"
+                                            >
+                                                <div
+                                                    class="track-menu"
+                                                    role="dialog"
+                                                    aria-modal="true"
+                                                    tabindex="-1"
+                                                    data-ref="visualizerPresetMenu"
+                                                    :aria-label="strings.list.visualizerPickerLabel"
+                                                    data-action="keydown"
+                                                    data-fn="player/handleTrackMenuKeydown"
+                                                    data-testid="visualizer-preset-menu"
+                                                >
+                                                    <!-- One wrapper per row because `data-each` clones a single
+                                                         element child: the optgroup heading has to travel with
+                                                         the row that opens its group. -->
+                                                    <div class="track-menu__list" role="listbox" :aria-label="strings.list.visualizerPickerLabel" data-each="visualizerPresetOptions">
+                                                        <div class="track-menu__row">
+                                                            <p class="track-menu__group" data-if="item.groupLabel">{{ item.groupLabel }}</p>
+                                                            <button
+                                                                type="button"
+                                                                class="track-menu__item"
+                                                                :class="{ 'track-menu__item--active': item.active }"
+                                                                role="option"
+                                                                :aria-selected="item.active"
+                                                                data-action="click"
+                                                                data-fn="player/setVisualizerPreset"
+                                                                :data-value="item.id"
+                                                                data-testid="visualizer-preset-item"
+                                                            >
+                                                                <span class="track-menu__label truncate">{{ item.label }}</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                         <button
                                             type="button"
                                             class="icon-btn"

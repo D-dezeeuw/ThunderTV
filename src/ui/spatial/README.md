@@ -46,6 +46,24 @@ The handler binds on `document` in the **capture** phase, so it sees a press
 before per-container handlers and can decide to defer — rather than having
 to undo something already done.
 
+## Don't put a `<select>` on a D-pad path
+
+Rule 1 defers to a `<select>` because a `<select>` handles arrows itself —
+on desktop. On webOS it doesn't handle *anything* the remote sends: the
+dropdown a `<select>` opens is a browser-level widget outside the page, and
+the LG simulator injects remote keys into the page. The popup opens and
+then cannot be navigated or dismissed, while every further OK press
+re-triggers the still-focused `<select>` underneath it — a dropdown that
+reactivates itself forever, with no way out.
+
+So a picker a viewer reaches with a remote is built from ordinary focusable
+DOM. Radio's visualizer picker (`index.html`'s `radio-visualizer-btn`) was
+converted to the `.track-menu` pattern for exactly this reason: a button, a
+`role="dialog"` popup, and `<button role="option">` rows, which this module
+and `state/back-navigation.ts` already understand. The `<select>`s that
+remain are all inside Settings; they carry the same defect and should get
+the same treatment before Settings is called TV-ready.
+
 ## Remotes lie about being keyboards
 
 `KeyboardEvent.key` is well-behaved on desktop and inconsistent on TV

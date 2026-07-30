@@ -1,9 +1,19 @@
 name: CI
 
+# Automatic runs are DISABLED — Actions minutes were the single biggest cost
+# on this repo, and `npm run verify` is the same command a developer already
+# runs locally before pushing (that equivalence is the whole point of the
+# one-step job below), so the hosted run was buying very little.
+#
+# The job is kept, not deleted, so it can still be run on demand from the
+# Actions tab ("Run workflow"). To put it back on every push/PR, restore:
+#
+#   on:
+#     push:
+#       branches: [main]
+#     pull_request:
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   verify:
