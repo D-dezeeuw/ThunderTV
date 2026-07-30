@@ -1,5 +1,6 @@
 import { setValue } from 'spektrum';
 import type { XtreamVodStream } from '../xtream/types';
+import type { CategoryRailRow } from './catalog-category-tree';
 import type { WarmStatus } from './catalog-warm';
 
 /**
@@ -40,11 +41,15 @@ export interface VodItem extends XtreamVodStream {
     searchKey: string;
 }
 
-/** The compact row `vod.categories` actually publishes — id/name only, never the full `XtreamCategory` (nothing else is needed for a picker). */
-export interface VodCategoryRow {
-    id: string;
-    name: string;
-}
+/**
+ * The compact row `vod.categories` actually publishes — never the full
+ * `XtreamCategory` (nothing else is needed for a picker). Providers ship the
+ * same service a dozen times over (`| NL | NETFLIX`, `| FR | NETFLIX`,
+ * `NETFLIX KIDS`…), so the published list is the *accordion's* rows: one
+ * head per service, plus the variants of whichever heads are open — see
+ * `catalog-category-tree.ts`.
+ */
+export type VodCategoryRow = CategoryRailRow;
 
 /** Denormalized snapshot for the one currently-open movie — `VodItem` fields plus whatever `get_vod_info` added, once fetched. */
 export interface VodDetail {

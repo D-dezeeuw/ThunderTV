@@ -12,6 +12,7 @@ export const nlCatalog = {
         play: 'Afspelen',
         retry: 'Opnieuw proberen',
         offline: 'Opgeslagen gegevens — de provider was niet bereikbaar. Gedownloade titels spelen gewoon af.',
+        variantsToggle: 'Andere versies van deze categorie',
     },
 
     movies: {

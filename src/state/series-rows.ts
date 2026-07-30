@@ -1,13 +1,11 @@
 import type { ChannelRow } from '../m3u/types';
 import { normalizeForSearch } from '../search/normalize';
 import type { XtreamSeries, XtreamSeriesInfo, XtreamSource } from '../xtream/types';
+import { createCategoryRail } from './catalog-category-tree';
 import { cleanCatalogDisplayName } from './catalog-clean-name';
 import { createCatalogMemory } from './catalog-memory';
-import { get } from './typed';
 import {
-    SERIES_CATEGORIES,
     SERIES_DETAIL_EPISODES_CAP,
-    type SeriesCategoryRow,
     type SeriesDetail,
     type SeriesDetailRow,
     type SeriesItem,
@@ -15,6 +13,9 @@ import {
 
 /** Memory + row/detail mapping for the series catalog — see `vod-rows.ts`'s header for why this is split from `series.actions.ts`. */
 export const seriesMemory = createCatalogMemory<SeriesItem, XtreamSeriesInfo>((item) => item.seriesId);
+
+/** Same role as `vod-rows.ts`'s `vodCategoryRail` — the TV Shows category accordion. */
+export const seriesCategoryRail = createCategoryRail();
 
 /** Same role as `vod-rows.ts`'s `cachedVodSource()` — see its doc. */
 let cachedSource: XtreamSource | null = null;
@@ -35,8 +36,9 @@ export function seriesHasUnfetchedCategories(): boolean {
     return seriesMemory.hasUnfetchedCategories();
 }
 
+/** Same contract and same "read the rail, not the published rows" reasoning as `vod-rows.ts`'s `vodCategoryName()`. */
 export function seriesCategoryName(categoryId: string): string | null {
-    return get<SeriesCategoryRow[]>(SERIES_CATEGORIES)?.find((c) => c.id === categoryId)?.name ?? null;
+    return seriesCategoryRail.displayName(categoryId);
 }
 
 export function toSeriesItem(series: XtreamSeries): SeriesItem {
@@ -134,5 +136,6 @@ export function toSeriesDetail(item: SeriesItem, categoryName: string | null, in
 /** Test-only / source-switch reset. */
 export function resetSeriesMemoryForTests(): void {
     seriesMemory.reset();
+    seriesCategoryRail.reset();
     cachedSource = null;
 }

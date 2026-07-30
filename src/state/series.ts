@@ -1,5 +1,6 @@
 import { setValue } from 'spektrum';
 import type { XtreamSeries } from '../xtream/types';
+import type { CategoryRailRow } from './catalog-category-tree';
 import type { WarmStatus } from './catalog-warm';
 
 /**
@@ -55,10 +56,8 @@ export interface SeriesItem extends XtreamSeries {
     searchKey: string;
 }
 
-export interface SeriesCategoryRow {
-    id: string;
-    name: string;
-}
+/** Same shape and accordion role as `vod.ts`'s `VodCategoryRow` — see it and `catalog-category-tree.ts`. */
+export type SeriesCategoryRow = CategoryRailRow;
 
 /**
  * One flattened row of `series.detail.rows` — either a season header or one

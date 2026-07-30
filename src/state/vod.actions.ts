@@ -1,7 +1,5 @@
 import { defineFn } from 'spektrum';
-import { cleanCatalogDisplayName } from './catalog-clean-name';
 import { setDisplayedRows } from './list-rows';
-import { sortCategoriesCountryFirst } from './catalog-sort';
 import { loadStoredCategories, loadStoredDetail, loadStoredItems, saveStoredCategories, saveStoredDetail, saveStoredItems } from './catalog-storage';
 import { setActiveChannel } from './player.actions';
 import { createSequenceToken } from './sequence-token';
@@ -13,6 +11,7 @@ import {
     toVodDetail,
     toVodItem,
     vodCategoryName,
+    vodCategoryRail,
     vodItemToRow,
     vodMemory,
     setCachedVodSource,
@@ -49,6 +48,10 @@ export function registerVodActions(): void {
     defineFn('vod/selectCategory', (el) => {
         const id = el.dataset['categoryId'];
         if (id) void selectVodCategory(id);
+    });
+    defineFn('vod/toggleCategory', (el) => {
+        const id = el.dataset['categoryId'];
+        if (id && vodCategoryRail.toggle(id)) publishVodCategories();
     });
     defineFn('vod/openDetail', (el) => {
         const id = parseStreamId(el.dataset['streamId']);
@@ -144,11 +147,8 @@ export async function openVodCatalog(): Promise<void> {
             set(VOD_STALE, false);
         }
 
-        const sorted = sortCategoriesCountryFirst(categories, get<string>(SETTINGS_LIVE_COUNTRY) ?? '');
-        const rows: VodCategoryRow[] = sorted
-            .slice(0, VOD_CATEGORIES_CAP)
-            .map((c) => ({ id: c.id, name: cleanCatalogDisplayName(c.name) }));
-        set(VOD_CATEGORIES, rows);
+        vodCategoryRail.setCategories(categories, get<string>(SETTINGS_LIVE_COUNTRY) ?? '', VOD_CATEGORIES_CAP);
+        const rows = publishVodCategories();
 
         const first = rows[0];
         if (first) {
@@ -161,11 +161,27 @@ export async function openVodCatalog(): Promise<void> {
     }
 }
 
+/**
+ * The accordion's visible rows (`catalog-category-tree.ts`) — every service
+ * head, plus the variants of whichever heads are open. Returned as well as
+ * published so the auto-select below can take the first one without
+ * re-reading the key it just wrote.
+ */
+function publishVodCategories(): VodCategoryRow[] {
+    const rows = vodCategoryRail.rows();
+    set(VOD_CATEGORIES, rows);
+    return rows;
+}
+
 /** Lazily fetches (or reuses a fresh cache of) one category's items, then publishes them as rows through the shared virtual-list pipeline — see `README.md`'s row-publication table. */
 export async function selectVodCategory(categoryId: string): Promise<void> {
     const token = categorySelection.begin();
     set(VOD_ACTIVE_CATEGORY_ID, categoryId);
     set(VOD_STATUS, 'loading');
+    // A variant reached from anywhere but its own rail row (a restored
+    // selection, a search result) would otherwise sit selected inside a
+    // collapsed group, with nothing on screen showing what is open.
+    if (vodCategoryRail.reveal(categoryId)) publishVodCategories();
 
     const account = await resolveActiveXtreamSource();
     if (!account) {

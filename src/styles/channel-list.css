@@ -248,6 +248,65 @@
     min-width: 0;
 }
 
+/* ---- Category accordion (Movies/TV Shows rails only) ----
+   A provider ships the same service a dozen times over, so those rails
+   render one head row per service with its variants folded behind a
+   triangle (src/state/catalog-category-tree.ts). The head and its toggle
+   are two separate controls — a nested <button> is invalid, and one
+   combined control could not collapse without also re-selecting — so they
+   share a row wrapper that carries the row border for both halves. The
+   channel-groups panel has no toggles and renders its items directly in
+   .groups-panel__list, unchanged. */
+.groups-panel__row {
+    display: flex;
+    align-items: stretch;
+}
+
+.groups-panel__row .groups-panel__item {
+    flex: 1;
+    min-width: 0;
+}
+
+.groups-panel__item--variant {
+    padding-left: var(--space-5);
+    color: var(--color-text-dim);
+}
+
+.groups-panel__item--variant.groups-panel__item--active {
+    color: var(--color-accent);
+}
+
+.groups-panel__toggle {
+    flex: none;
+    display: flex;
+    align-items: center;
+    padding-inline: var(--space-2);
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text-dim);
+    cursor: pointer;
+    transition:
+        background var(--dur-1) var(--ease-swift),
+        color var(--dur-1) var(--ease-swift);
+}
+
+.groups-panel__toggle:hover,
+.groups-panel__toggle:focus-visible {
+    background: var(--surface-hover);
+    color: var(--color-text);
+}
+
+/* One glyph, two states — the open group points its chevron back up at the
+   head it belongs to. */
+.groups-panel__toggle .icon {
+    transition: transform var(--dur-1) var(--ease-swift);
+}
+
+.groups-panel__toggle--open .icon {
+    transform: rotate(180deg);
+}
+
 .groups-panel__count {
     flex: none;
     color: var(--color-text-dim);

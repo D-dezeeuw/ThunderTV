@@ -66,14 +66,45 @@ describe('handleGroupsPanelKeydown() (Feature 08.5.8)', () => {
         document.body.innerHTML = '';
     });
 
+    /**
+     * The real rail's own classes, not bare siblings: ↑/↓ walk
+     * `.groups-panel__item` inside a `.groups-panel` now, because the
+     * catalog rails wrap each row (see `handleCategoryRailKeydown()`), and a
+     * fixture that skipped them would prove the handler works on markup the
+     * app never renders.
+     */
     function makePanel(): { first: HTMLElement; second: HTMLElement } {
         const container = document.createElement('div');
+        container.className = 'groups-panel';
         const first = document.createElement('button');
         const second = document.createElement('button');
+        first.className = 'groups-panel__item';
+        second.className = 'groups-panel__item';
         container.append(first, second);
         document.body.append(container);
         first.focus();
         return { first, second };
+    }
+
+    /** One catalog rail row: the category button plus the expand triangle beside it. */
+    function makeAccordionPanel(): { item: HTMLElement; toggle: HTMLButtonElement } {
+        const panel = document.createElement('div');
+        panel.className = 'groups-panel';
+        const row = document.createElement('div');
+        row.className = 'groups-panel__row';
+        const item = document.createElement('button');
+        item.className = 'groups-panel__item';
+        const toggle = document.createElement('button');
+        toggle.className = 'groups-panel__toggle';
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.addEventListener('click', () => {
+            toggle.setAttribute('aria-expanded', toggle.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+        });
+        row.append(item, toggle);
+        panel.append(row);
+        document.body.append(panel);
+        item.focus();
+        return { item, toggle };
     }
 
     it('ignores an undefined event', () => {
@@ -132,6 +163,28 @@ describe('handleGroupsPanelKeydown() (Feature 08.5.8)', () => {
             first.focus();
             expect(handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'Enter' }))).toBe(true);
             expect(clickSpy).toHaveBeenCalledOnce();
+        });
+
+        it('→/← open and close the focused category’s variants, and stop there', () => {
+            const { item, toggle } = makeAccordionPanel();
+
+            expect(handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'ArrowRight' }))).toBe(true);
+            expect(toggle.getAttribute('aria-expanded')).toBe('true');
+            expect(document.activeElement).toBe(item);
+
+            // Already open: → is not ours, so focus can still travel out of
+            // the rail rather than being swallowed.
+            expect(handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'ArrowRight' }))).toBe(false);
+
+            expect(handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))).toBe(true);
+            expect(toggle.getAttribute('aria-expanded')).toBe('false');
+            expect(handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))).toBe(false);
+        });
+
+        it('leaves ← to the groups panel on a rail row with no variants', () => {
+            const { first } = makePanel();
+            first.focus();
+            expect(handleCategoryRailKeydown(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))).toBe(false);
         });
 
         it('leaves Backspace alone instead of republishing the channel list', () => {

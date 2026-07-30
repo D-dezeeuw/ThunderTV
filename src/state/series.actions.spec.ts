@@ -104,7 +104,9 @@ describe('series.actions', () => {
             tick();
 
             const categories = get<SeriesCategoryRow[]>(SERIES_CATEGORIES);
-            expect(categories).toEqual([{ id: '1', name: 'WK 2026' }]);
+            expect(categories).toEqual([
+                { id: '1', name: 'WK 2026', hasVariants: false, expanded: false, variant: false },
+            ]);
         });
     });
 

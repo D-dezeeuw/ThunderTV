@@ -63,6 +63,72 @@ describe('Movies/Series catalog markup (Phase 21, DOM-bound)', () => {
         });
     });
 
+    /**
+     * The accordion row is the first markup in the app to put a `data-if`
+     * element *beside* the row button inside a `data-each` — and `data-each`
+     * binds by cloning the container's first element child, the same
+     * mechanic that silently broke the series detail's nested `data-each`
+     * (`src/state/README.md`). So this asserts the clone really is bound
+     * per row: the triangle appears only on the head that has variants, and
+     * clicking it dispatches that row's own id.
+     */
+    it('shows the expand triangle only on a category with variants, and toggles that one', () => {
+        const mounted = mountTemplate(`
+            <div class="groups-panel__list" data-each="vod.categories">
+                <div class="groups-panel__row" role="presentation">
+                    <button
+                        type="button"
+                        class="groups-panel__item"
+                        :class="{ 'groups-panel__item--active': item.id === vod.activeCategoryId, 'groups-panel__item--variant': item.variant }"
+                        data-testid="chip"
+                    ><span>{{ item.name }}</span></button>
+                    <button
+                        type="button"
+                        class="groups-panel__toggle"
+                        :class="{ 'groups-panel__toggle--open': item.expanded }"
+                        data-if="item.hasVariants"
+                        :aria-expanded="item.expanded"
+                        :data-category-id="item.id"
+                        data-testid="toggle"
+                    ></button>
+                </div>
+            </div>
+        `);
+        setValue('vod.categories', [
+            { id: '1', name: 'NETFLIX', hasVariants: true, expanded: false, variant: false },
+            { id: '2', name: 'DOCUMENTAIRES', hasVariants: false, expanded: false, variant: false },
+        ]);
+        tick();
+
+        const toggles = mounted.queryAll('[data-testid="toggle"]');
+        expect(toggles).toHaveLength(2);
+        expect(toggles[0]?.style.display).not.toBe('none');
+        expect(toggles[1]?.style.display).toBe('none'); // no variants — no triangle
+        expect(toggles[0]?.dataset['categoryId']).toBe('1');
+        expect(toggles[0]?.getAttribute('aria-expanded')).toBe('false');
+
+        // What `vod/toggleCategory` republishes: the head, now open, with
+        // its variant behind it.
+        setValue('vod.categories', [
+            { id: '1', name: 'NETFLIX', hasVariants: true, expanded: true, variant: false },
+            { id: '3', name: 'FR', hasVariants: false, expanded: false, variant: true },
+            { id: '2', name: 'DOCUMENTAIRES', hasVariants: false, expanded: false, variant: false },
+        ]);
+        tick();
+
+        expect(mounted.queryAll('[data-testid="chip"]').map((el) => el.textContent)).toEqual([
+            'NETFLIX',
+            'FR',
+            'DOCUMENTAIRES',
+        ]);
+        const reboundToggles = mounted.queryAll('[data-testid="toggle"]');
+        expect(reboundToggles[0]?.getAttribute('aria-expanded')).toBe('true');
+        expect(reboundToggles[0]?.classList.contains('groups-panel__toggle--open')).toBe(true);
+        expect(mounted.queryAll('[data-testid="chip"]')[1]?.classList.contains('groups-panel__item--variant')).toBe(true);
+
+        mounted.cleanup();
+    });
+
     it('renders the detail panel from a seeded vod.detail snapshot', () => {
         const mounted = mountTemplate(`
             <div data-if="vod.detailId" data-testid="detail-panel">

@@ -65,25 +65,73 @@ export function resetGroupsForSourceSwitch(): void {
 }
 
 /**
- * Feature 08.5.8: ↑/↓ moves native DOM focus between sibling rail buttons
- * (no new Spektrum state needed — the browser's own focus is the cursor),
- * Enter activates the focused button's own click binding. This half is
- * about the *rail component*, not about channel groups, so the Movies/
- * Series category rails share it verbatim. Returns true when it consumed
- * the key.
+ * The rail's own rows, in render order. ↑/↓ walk *these* rather than DOM
+ * siblings: the Movies/TV Shows rails wrap each row in a
+ * `.groups-panel__row` (an expandable category needs its triangle beside
+ * the row button, and a nested `<button>` is invalid), so "the next
+ * sibling" stopped being "the next category" there. The channel-groups
+ * panel has no wrapper and lands on the same list either way.
+ */
+function railItems(from: HTMLElement | null): HTMLElement[] {
+    const panel = from?.closest('.groups-panel');
+    return Array.from(panel?.querySelectorAll<HTMLElement>('.groups-panel__item') ?? []);
+}
+
+/** The focused row's own button — the row itself, or the row the focused expand triangle belongs to. */
+function focusedItem(active: HTMLElement | null): HTMLElement | null {
+    if (!active) return null;
+    if (active.classList.contains('groups-panel__item')) return active;
+    return active.closest('.groups-panel__row')?.querySelector<HTMLElement>('.groups-panel__item') ?? null;
+}
+
+/**
+ * The expand triangle beside `item`, when it has one. `data-if` leaves the
+ * button in the document with `display: none` for a row with no variants,
+ * so presence alone is not the question.
+ */
+function expandToggle(item: HTMLElement | null): HTMLElement | null {
+    const toggle = item?.closest('.groups-panel__row')?.querySelector<HTMLElement>('.groups-panel__toggle');
+    return toggle && toggle.style.display !== 'none' ? toggle : null;
+}
+
+/**
+ * Feature 08.5.8: ↑/↓ moves native DOM focus between rail rows (no new
+ * Spektrum state needed — the browser's own focus is the cursor), Enter
+ * activates the focused button's own click binding. This half is about the
+ * *rail component*, not about channel groups, so the Movies/Series category
+ * rails share it verbatim.
+ *
+ * →/← open and close a category's variants, the standard tree keys and the
+ * only ones a D-pad has to spare. They are claimed **only** when the
+ * focused row actually has a triangle, which is what leaves the channel-
+ * groups panel's own ← ("back to All channels", `handleGroupsPanelKeydown`)
+ * intact — that rail never renders one.
+ *
+ * Returns true when it consumed the key.
  */
 export function handleCategoryRailKeydown(event: KeyboardEvent | undefined): boolean {
     if (!event) return false;
     const active = document.activeElement as HTMLElement | null;
     switch (event.key) {
-        case 'ArrowDown': {
-            event.preventDefault();
-            (active?.nextElementSibling as HTMLElement | null)?.focus();
-            return true;
-        }
+        case 'ArrowDown':
         case 'ArrowUp': {
             event.preventDefault();
-            (active?.previousElementSibling as HTMLElement | null)?.focus();
+            const items = railItems(active);
+            const index = items.indexOf(focusedItem(active) as HTMLElement);
+            if (index < 0) return true;
+            items[index + (event.key === 'ArrowDown' ? 1 : -1)]?.focus();
+            return true;
+        }
+        case 'ArrowRight':
+        case 'ArrowLeft': {
+            const item = focusedItem(active);
+            const toggle = expandToggle(item);
+            if (!toggle) return false;
+            const open = toggle.getAttribute('aria-expanded') === 'true';
+            if (open === (event.key === 'ArrowRight')) return false;
+            event.preventDefault();
+            toggle.click();
+            item?.focus();
             return true;
         }
         case 'Enter':

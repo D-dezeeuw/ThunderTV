@@ -65,7 +65,7 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'vod',
         persisted: false,
         maxItems: VOD_CATEGORIES_CAP,
-        description: 'Compact {id,name} list from get_vod_categories, country-first sorted (catalog-sort.ts) — module memory (vod-rows.ts) holds the full XtreamCategory[]/items; this is only the picker\'s row set.',
+        description: 'The Movies category accordion\'s VISIBLE rows (catalog-category-tree.ts): one head per streaming service, popularity/country sorted (catalog-sort.ts), plus the variants of whichever heads are open. Module memory (vod-rows.ts) holds the full XtreamCategory[]/items and the rail\'s own grouping; this is only what the picker draws, so a collapsed variant is absent from it and an expanded one carries a shortened label — read a category\'s full name via vodCategoryName(), never back out of here.',
     },
     [VOD_ACTIVE_CATEGORY_ID]: {
         owner: 'vod',
@@ -108,7 +108,7 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'series',
         persisted: false,
         maxItems: SERIES_CATEGORIES_CAP,
-        description: 'Same shape/role as vod.categories, for get_series_categories.',
+        description: 'Same shape/role as vod.categories, including the service accordion, for get_series_categories.',
     },
     [SERIES_ACTIVE_CATEGORY_ID]: {
         owner: 'series',
