@@ -1,6 +1,8 @@
 import { computed, type State } from 'spektrum';
 import { parseHash, ROUTE_VALUES, type Route } from '../app/router';
+import { strings } from '../app/strings';
 import {
+    SETTINGS_LOCALE,
     SETTINGS_NAV_CATEGORIES,
     SETTINGS_NAV_GUIDE,
     SETTINGS_NAV_MOVIES,
@@ -34,6 +36,26 @@ function registerChannelListViewComputed(): void {
     computed('view.channelList.active', [UI_ACTIVE_VIEW], (state: State) => {
         const active = (state as { ui?: { activeView?: Route } }).ui?.activeView;
         return active === 'live' || active === 'radio' || active === 'categories';
+    });
+
+    /**
+     * The heading above the shared channel list. It used to be
+     * `activeSource.name`, which for a URL-imported playlist is the provider
+     * URL — not something a viewer has any use for while browsing channels,
+     * and the same string on all three tabs regardless of which one they were
+     * on. Now it names the tab, so the three presentations of this one list
+     * are told apart by the one label on screen.
+     *
+     * Resolved from `strings.views` rather than hardcoded, so renaming a tab
+     * (or switching language) moves this with it. `SETTINGS_LOCALE` is a dep
+     * for the same reason `streamHealthLabel` needs one: `strings` is a
+     * reassigned singleton, not a Spektrum key.
+     */
+    computed('channelListTitle', [UI_ACTIVE_VIEW, SETTINGS_LOCALE], (state: State) => {
+        const active = (state as { ui?: { activeView?: Route } }).ui?.activeView;
+        if (active === 'radio') return strings.views.radio.heading;
+        if (active === 'categories') return strings.views.categories.heading;
+        return strings.views.live.heading;
     });
 }
 
