@@ -122,10 +122,7 @@ export const en = {
             heading: 'Nothing watched yet',
             message: 'Channels you play will show up here.',
         },
-        guide: {
-            heading: 'No EPG data yet',
-            message: 'Still fetching the program guide, or nothing matched your channels yet — check back shortly.',
-        },
+        guide: enEpg.guideEmptyState,
         error: {
             heading: 'Something went wrong',
             retry: 'Retry',

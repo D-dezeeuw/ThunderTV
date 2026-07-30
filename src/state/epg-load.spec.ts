@@ -4,7 +4,7 @@ import { withFakePlatform } from '../core/platform/fake-platform';
 import type { ChannelRecord, EpgCatalogRecord } from '../core/storage';
 import { findCountry, plainFeedUrls } from '../epg/countries';
 import { loadMapping } from '../epg/match';
-import { loadDefaultEpg } from './epg-load';
+import { loadDefaultEpg, resetEpgLoadForTests } from './epg-load';
 import { initGuideState } from './guide';
 import { GUIDE_CHANNELS, type GuideChannel } from './guide';
 import { SETTINGS_LIVE_COUNTRY } from './settings';
@@ -40,11 +40,16 @@ const CHANNEL: ChannelRecord = {
 beforeEach(() => {
     vi.stubGlobal('DecompressionStream', undefined);
     setValue(SETTINGS_LIVE_COUNTRY, 'NL');
+    // `loadDefaultEpg()` skips re-matching when its (country, row count,
+    // catalog size) signature is unchanged — module memory, so without this
+    // one test's signature would make the next one's match a no-op.
+    resetEpgLoadForTests();
 });
 
 afterEach(() => {
     resetState();
     vi.unstubAllGlobals();
+    resetEpgLoadForTests();
 });
 
 describe('state/epg-load', () => {

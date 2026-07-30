@@ -1943,12 +1943,23 @@
                 >
                     <h1 class="view__heading">{{ strings.views.guide.heading }}</h1>
 
+                    <!-- Two distinct empty states, deliberately. "Nothing yet"
+                         and "the upstream feed stopped being updated on <date>"
+                         look identical on screen but need completely different
+                         responses from the viewer, and the generic message made
+                         a dead feed read as an app bug. `staleThroughLabel` is
+                         non-empty only when the newest programme the feed
+                         carries is already in the past — see
+                         state/epg-settings.ts's EPG_FEED_THROUGH. -->
                     <div class="empty-state" data-if="!guide.view.hasData" data-testid="guide-empty">
                         <svg class="icon icon--empty" aria-hidden="true">
                             <use href="#icon-guide"></use>
                         </svg>
                         <p class="empty-state__heading">{{ strings.emptyStates.guide.heading }}</p>
-                        <p class="empty-state__message">{{ strings.emptyStates.guide.message }}</p>
+                        <p class="empty-state__message" data-if="!guide.view.staleThroughLabel">{{ strings.emptyStates.guide.message }}</p>
+                        <p class="empty-state__message" data-if="guide.view.staleThroughLabel" data-testid="guide-stale-message">
+                            {{ strings.emptyStates.guide.staleMessage.replace('{date}', guide.view.staleThroughLabel) }}
+                        </p>
                     </div>
 
                     <div class="guide" data-if="guide.view.hasData" data-testid="guide-grid">

@@ -7,6 +7,14 @@
  * there, so this only adds to them rather than replacing them.
  */
 export const enEpg = {
+    /** The Guide view's own empty state — lives here rather than in `strings.en.ts`'s `emptyStates` block, which is at its file-size cap. */
+    guideEmptyState: {
+        heading: 'No EPG data yet',
+        message: 'Still fetching the program guide, or nothing matched your channels yet — check back shortly.',
+        /** Shown instead of `message` when the upstream XMLTV feed has stopped being updated — `{date}` is the last day it covers. Naming the date is the whole point: it separates "the source is dead" from "the app is broken". */
+        staleMessage:
+            'The guide source has not been updated since {date}, so there is nothing current to show. This is a problem with the upstream feed, not your channels.',
+    },
     live: {
         /** Same never-empty-screen fallback as `strictFellBack`, for "EPG-verified channels only" — the catalog hasn't matched anything yet, not every channel genuinely lacking guide data. */
         epgFellBack:

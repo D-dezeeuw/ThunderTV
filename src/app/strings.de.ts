@@ -126,6 +126,7 @@ export const de = {
         guide: {
             heading: 'Noch keine EPG-Daten',
             message: 'Der Programmführer wird noch abgerufen, oder es wurde noch nichts Ihren Sendern zugeordnet — schauen Sie später noch einmal vorbei.',
+            staleMessage: 'Die Programmführer-Quelle wurde seit {date} nicht mehr aktualisiert, daher gibt es nichts Aktuelles zu zeigen. Das liegt an der externen Quelle, nicht an Ihren Sendern.',
         },
         error: {
             heading: 'Etwas ist schiefgelaufen',

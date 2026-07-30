@@ -126,6 +126,7 @@ export const nl = {
         guide: {
             heading: 'Nog geen EPG-gegevens',
             message: 'De programmagids wordt nog opgehaald, of er is nog niets gekoppeld aan uw zenders — kijk zo weer even.',
+            staleMessage: 'De gidsbron is sinds {date} niet meer bijgewerkt, dus er is niets actueels te tonen. Dit ligt aan de externe gidsbron, niet aan uw zenders.',
         },
         error: {
             heading: 'Er is iets misgegaan',

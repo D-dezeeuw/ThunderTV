@@ -76,9 +76,28 @@ export function isProgramNow(nowMs: number, start: number, stop: number): boolea
     return nowMs >= start && nowMs < stop;
 }
 
-/** Local-timezone `HH:mm`. No `timeZone` option — resolves the browser's local zone for `ms`'s instant, correct across a DST transition without any manual adjustment. */
+/**
+ * Local-timezone `HH:mm`, always on a 24-hour clock.
+ *
+ * Two deliberate choices, both bugs before:
+ *
+ * - **`hourCycle: 'h23'`.** Without it, `{hour, minute}` renders whatever
+ *   the *resolved* locale prefers — `en-US` gives `"02:30 PM"`. In a guide
+ *   cell narrow enough to clip the suffix that reads as 2:30 when the
+ *   programme is at 14:30, which is precisely the "time is wrong" report.
+ *   A timetable grid is 24-hour everywhere this app ships; pinning it means
+ *   the label can't depend on which locale the TV happens to boot in.
+ * - **An explicit `locale`.** Passing `undefined` resolves the *runtime's*
+ *   locale, not the app's `settings.locale` — so a viewer who set Dutch
+ *   still got the webview's default. Callers pass the app locale
+ *   (`guide.selectors.ts` binds `SETTINGS_LOCALE` as a dep for exactly
+ *   this).
+ *
+ * Still no `timeZone` option: the local zone for `ms`'s instant is correct
+ * across a DST transition with no manual adjustment.
+ */
 export function formatClockTime(ms: number, locale?: string): string {
-    return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
+    return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(ms));
 }
 
 export function formatTimeRange(startMs: number, stopMs: number, locale?: string): string {

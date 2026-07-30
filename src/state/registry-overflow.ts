@@ -6,6 +6,7 @@ import {
     SETTINGS_SUBTITLE_LANGUAGE,
 } from './settings';
 import { FAVORITES_ROWS } from './favorites';
+import { EPG_REGISTRY_ENTRIES } from './registry-epg';
 import { PLAYER_AUDIO_TRACKS, PLAYER_SUBTITLE_TRACKS, PLAYER_TRACK_MENU, TRACK_LIST_CAP } from './player-tracks';
 import { SEARCH_ACTIVE, SEARCH_LOADED_ONLY, SEARCH_QUERY, SEARCH_RESULT_COUNTS, SEARCH_SCOPE } from './search';
 import {
@@ -58,6 +59,7 @@ import type { KeyMeta } from './registry';
  * changes *how* it gets built, not what it is.
  */
 export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
+    ...EPG_REGISTRY_ENTRIES,
     // --- vod (Phase 21 Movies catalog) ---
     [VOD_CATEGORIES]: {
         owner: 'vod',
@@ -375,6 +377,7 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         persisted: true,
         description: 'Live view strict mode — show only channels the Phase 31 EPG country catalog matched. Off by default; a not-yet-matched channel is far more often a catalog gap than an absent channel.',
     },
+
 
     // --- ui: appearance (Phase 22 theme refresh) ---
     [UI_THEME]: {
