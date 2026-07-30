@@ -144,8 +144,42 @@
 .player-shell__bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    /* `flex-start`, not `space-between`: the two groups below place
+       themselves now (`__actions` pushes itself to the end), and
+       `space-between` would fight that by also spreading everything before
+       it — leaving the visualizer box floating mid-bar instead of sitting
+       with the controls it belongs to. */
+    justify-content: flex-start;
+    flex-wrap: wrap;
     gap: var(--space-3);
+}
+
+/* The visualizer controls, boxed off from the playback controls. A hairline
+   and a barely-there fill are enough to group them — anything heavier reads
+   as a panel rather than a related set of buttons.
+
+   `--surface-hover` rather than a literal translucent white: it is already
+   the app's faintest fill and it flips with the theme, so the box stays a
+   whisper on dark *and* on light. A fixed white would vanish entirely against
+   the light theme's own white panel. */
+.player-shell__group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-l);
+    background: var(--surface-hover);
+}
+
+/* Fullscreen and stop/start act on the channel rather than the visualizer,
+   so they sit at the far end of the bar. `auto` rather than a spacer element
+   keeps them last however many controls the current view happens to show. */
+.player-shell__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-left: auto;
 }
 
 .player-shell__name {

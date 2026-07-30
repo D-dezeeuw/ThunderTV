@@ -1586,108 +1586,114 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <!-- Radio's visualizer-preset picker. Deliberately NOT a
-                                             native <select>: on webOS the dropdown a <select> opens
-                                             is a browser-level widget that lives outside the page,
-                                             so the remote's key events (which the LG simulator
-                                             injects into the *page*) never reach it — the popup can
-                                             be opened but never navigated or dismissed, and every
-                                             further OK press re-triggers the still-focused <select>,
-                                             which is the endless self-reactivating dropdown seen in
-                                             the simulator. This is the same track-menu pattern as
-                                             the audio/subtitle popups above: ordinary focusable DOM
-                                             that spatial navigation, Enter/OK and the Back button
-                                             (state/back-navigation.ts) all already understand.
-                                             Rows come from one `data-each` over
-                                             `visualizerPresetOptions` rather than eleven
-                                             hand-authored entries — state/player.selectors.ts's
-                                             VISUALIZER_PICKER_OPTIONS is the source of truth, and
-                                             visualizer-picker.markup.spec.ts checks it against the
-                                             real preset list. -->
-                                        <div class="track-menu-anchor" data-if="visualizerActive">
-                                            <button
-                                                type="button"
-                                                class="btn"
-                                                aria-haspopup="listbox"
-                                                :aria-label="strings.list.visualizerPickerLabel"
-                                                :title="strings.list.visualizerPickerLabel"
-                                                :aria-expanded="player.trackMenu === 'visualizer'"
-                                                data-action="click"
-                                                data-fn="player/toggleVisualizerMenu"
-                                                data-testid="radio-visualizer-btn"
-                                            >
-                                                {{ visualizerPresetLabel }}
-                                            </button>
-                                            <div
-                                                class="track-menu-backdrop"
-                                                data-if="player.trackMenu === 'visualizer'"
-                                                data-action="click"
-                                                data-fn="player/closeTrackMenu"
-                                                data-testid="visualizer-preset-backdrop"
-                                            >
-                                                <div
-                                                    class="track-menu"
-                                                    role="dialog"
-                                                    aria-modal="true"
-                                                    tabindex="-1"
-                                                    data-ref="visualizerPresetMenu"
+                                        <!-- The three visualizer controls read as one thing, so they
+                                             sit in one box: a light hairline and a barely-there
+                                             fill separate "how the visualizer looks" from the
+                                             playback controls to their right, which act on the
+                                             channel itself. The group carries the visibility for
+                                             all three — the buttons no longer repeat data-if. -->
+                                        <div class="player-shell__group" data-if="visualizerActive" data-testid="visualizer-controls">
+                                            <!-- Radio's visualizer-preset picker. Deliberately NOT a
+                                                 native <select>: on webOS the dropdown a <select> opens
+                                                 is a browser-level widget that lives outside the page,
+                                                 so the remote's key events (which the LG simulator
+                                                 injects into the *page*) never reach it — the popup can
+                                                 be opened but never navigated or dismissed, and every
+                                                 further OK press re-triggers the still-focused <select>,
+                                                 which is the endless self-reactivating dropdown seen in
+                                                 the simulator. This is the same track-menu pattern as
+                                                 the audio/subtitle popups above: ordinary focusable DOM
+                                                 that spatial navigation, Enter/OK and the Back button
+                                                 (state/back-navigation.ts) all already understand.
+                                                 Rows come from one `data-each` over
+                                                 `visualizerPresetOptions` rather than eleven
+                                                 hand-authored entries — state/player.selectors.ts's
+                                                 VISUALIZER_PICKER_OPTIONS is the source of truth, and
+                                                 visualizer-picker.markup.spec.ts checks it against the
+                                                 real preset list. -->
+                                            <div class="track-menu-anchor">
+                                                <button
+                                                    type="button"
+                                                    class="btn"
+                                                    aria-haspopup="listbox"
                                                     :aria-label="strings.list.visualizerPickerLabel"
-                                                    data-action="keydown"
-                                                    data-fn="player/handleTrackMenuKeydown"
-                                                    data-testid="visualizer-preset-menu"
+                                                    :title="strings.list.visualizerPickerLabel"
+                                                    :aria-expanded="player.trackMenu === 'visualizer'"
+                                                    data-action="click"
+                                                    data-fn="player/toggleVisualizerMenu"
+                                                    data-testid="radio-visualizer-btn"
                                                 >
-                                                    <!-- One wrapper per row because `data-each` clones a single
-                                                         element child: the optgroup heading has to travel with
-                                                         the row that opens its group. -->
-                                                    <div class="track-menu__list" role="listbox" :aria-label="strings.list.visualizerPickerLabel" data-each="visualizerPresetOptions">
-                                                        <div class="track-menu__row">
-                                                            <p class="track-menu__group" data-if="item.groupLabel">{{ item.groupLabel }}</p>
-                                                            <button
-                                                                type="button"
-                                                                class="track-menu__item"
-                                                                :class="{ 'track-menu__item--active': item.active }"
-                                                                role="option"
-                                                                :aria-selected="item.active"
-                                                                data-action="click"
-                                                                data-fn="player/setVisualizerPreset"
-                                                                :data-value="item.id"
-                                                                data-testid="visualizer-preset-item"
-                                                            >
-                                                                <span class="track-menu__label truncate">{{ item.label }}</span>
-                                                            </button>
+                                                    {{ visualizerPresetLabel }}
+                                                </button>
+                                                <div
+                                                    class="track-menu-backdrop"
+                                                    data-if="player.trackMenu === 'visualizer'"
+                                                    data-action="click"
+                                                    data-fn="player/closeTrackMenu"
+                                                    data-testid="visualizer-preset-backdrop"
+                                                >
+                                                    <div
+                                                        class="track-menu"
+                                                        role="dialog"
+                                                        aria-modal="true"
+                                                        tabindex="-1"
+                                                        data-ref="visualizerPresetMenu"
+                                                        :aria-label="strings.list.visualizerPickerLabel"
+                                                        data-action="keydown"
+                                                        data-fn="player/handleTrackMenuKeydown"
+                                                        data-testid="visualizer-preset-menu"
+                                                    >
+                                                        <!-- One wrapper per row because `data-each` clones a single
+                                                             element child: the optgroup heading has to travel with
+                                                             the row that opens its group. -->
+                                                        <div class="track-menu__list" role="listbox" :aria-label="strings.list.visualizerPickerLabel" data-each="visualizerPresetOptions">
+                                                            <div class="track-menu__row">
+                                                                <p class="track-menu__group" data-if="item.groupLabel">{{ item.groupLabel }}</p>
+                                                                <button
+                                                                    type="button"
+                                                                    class="track-menu__item"
+                                                                    :class="{ 'track-menu__item--active': item.active }"
+                                                                    role="option"
+                                                                    :aria-selected="item.active"
+                                                                    data-action="click"
+                                                                    data-fn="player/setVisualizerPreset"
+                                                                    :data-value="item.id"
+                                                                    data-testid="visualizer-preset-item"
+                                                                >
+                                                                    <span class="track-menu__label truncate">{{ item.label }}</span>
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
+                                            <button
+                                                type="button"
+                                                class="icon-btn"
+                                                :aria-pressed="player.visualizerPaused"
+                                                :aria-label="player.visualizerPaused ? strings.list.playerResumeVisual : strings.list.playerPauseVisual"
+                                                :title="player.visualizerPaused ? strings.list.playerResumeVisual : strings.list.playerPauseVisual"
+                                                data-action="click"
+                                                data-fn="player/toggleVisualizerPause"
+                                                data-testid="player-pause-visual-btn"
+                                            >
+                                                <svg class="icon icon--s" aria-hidden="true">
+                                                    <use data-if="player.visualizerPaused" href="#icon-play"></use>
+                                                    <use data-if="!player.visualizerPaused" href="#icon-pause"></use>
+                                                </svg>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="icon-btn"
+                                                :aria-label="strings.list.playerNextVisual"
+                                                :title="strings.list.playerNextVisual"
+                                                data-action="click"
+                                                data-fn="player/nextVisualizerPreset"
+                                                data-testid="player-next-visual-btn"
+                                            >
+                                                <svg class="icon icon--s" aria-hidden="true"><use href="#icon-skip-next"></use></svg>
+                                            </button>
                                         </div>
-                                        <button
-                                            type="button"
-                                            class="icon-btn"
-                                            data-if="visualizerActive"
-                                            :aria-pressed="player.visualizerPaused"
-                                            :aria-label="player.visualizerPaused ? strings.list.playerResumeVisual : strings.list.playerPauseVisual"
-                                            :title="player.visualizerPaused ? strings.list.playerResumeVisual : strings.list.playerPauseVisual"
-                                            data-action="click"
-                                            data-fn="player/toggleVisualizerPause"
-                                            data-testid="player-pause-visual-btn"
-                                        >
-                                            <svg class="icon icon--s" aria-hidden="true">
-                                                <use data-if="player.visualizerPaused" href="#icon-play"></use>
-                                                <use data-if="!player.visualizerPaused" href="#icon-pause"></use>
-                                            </svg>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            class="icon-btn"
-                                            data-if="visualizerActive"
-                                            :aria-label="strings.list.playerNextVisual"
-                                            :title="strings.list.playerNextVisual"
-                                            data-action="click"
-                                            data-fn="player/nextVisualizerPreset"
-                                            data-testid="player-next-visual-btn"
-                                        >
-                                            <svg class="icon icon--s" aria-hidden="true"><use href="#icon-skip-next"></use></svg>
-                                        </button>
                                         <!-- Watch a TV channel like a radio station: the
                                              picture collapses, the visualizer takes the
                                              pane. Not offered in Radio, which has no
@@ -1706,52 +1712,58 @@
                                         >
                                             <svg class="icon icon--s" aria-hidden="true"><use href="#icon-headphones"></use></svg>
                                         </button>
-                                        <!-- No data-if: this whole shell only renders while
-                                             something is playing, and everything that plays
-                                             — Live, Radio, Categories, Movies, TV Shows —
-                                             can be fullscreened (state/player.actions.ts
-                                             picks the right element per view). -->
-                                        <button type="button" class="btn" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
-                                            {{ strings.list.playerFullscreen }}
-                                        </button>
-                                        <!-- Stop/Play toggle: pauses the media element in
-                                             place (state/player.actions.ts's togglePlayback())
-                                             rather than closing the channel, so the row/
-                                             episode highlight and player.active both survive
-                                             a press — press again to resume. -->
-                                        <button
-                                            type="button"
-                                            class="icon-btn"
-                                            :aria-pressed="player.paused"
-                                            :aria-label="player.paused ? strings.list.playerResume : strings.list.playerStop"
-                                            :title="player.paused ? strings.list.playerResume : strings.list.playerStop"
-                                            data-action="click"
-                                            data-fn="player/togglePlayback"
-                                            data-testid="player-stop-btn"
-                                        >
-                                            <svg class="icon icon--s" aria-hidden="true">
-                                                <use data-if="player.paused" href="#icon-play"></use>
-                                                <use data-if="!player.paused" href="#icon-stop"></use>
-                                            </svg>
-                                        </button>
-                                        <!-- Handoff (Phase 38, stone 9). The link is shown
-                                             as well as copied: most TV webviews have no
-                                             clipboard at all, and a button that silently
-                                             does nothing there is worse than one that just
-                                             puts the address on screen to be typed. Hidden
-                                             by default (Settings → Playback's
-                                             `showHandoffButton` toggle) — most viewers never
-                                             use it. -->
-                                        <button
-                                            type="button"
-                                            class="btn"
-                                            data-if="settings.showHandoffButton"
-                                            data-action="click"
-                                            data-fn="handoff/offer"
-                                            data-testid="handoff-offer-btn"
-                                        >
-                                            {{ strings.handoff.button }}
-                                        </button>
+                                        <!-- Fullscreen and stop/start act on the channel, not on
+                                             the visualizer, so they are pushed to the far end of
+                                             the bar (margin-left: auto on this group) rather than
+                                             sitting flush against the visualizer box. -->
+                                        <div class="player-shell__actions">
+                                            <!-- No data-if: this whole shell only renders while
+                                                 something is playing, and everything that plays
+                                                 — Live, Radio, Categories, Movies, TV Shows —
+                                                 can be fullscreened (state/player.actions.ts
+                                                 picks the right element per view). -->
+                                            <button type="button" class="btn" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
+                                                {{ strings.list.playerFullscreen }}
+                                            </button>
+                                            <!-- Stop/Play toggle: pauses the media element in
+                                                 place (state/player.actions.ts's togglePlayback())
+                                                 rather than closing the channel, so the row/
+                                                 episode highlight and player.active both survive
+                                                 a press — press again to resume. -->
+                                            <button
+                                                type="button"
+                                                class="icon-btn"
+                                                :aria-pressed="player.paused"
+                                                :aria-label="player.paused ? strings.list.playerResume : strings.list.playerStop"
+                                                :title="player.paused ? strings.list.playerResume : strings.list.playerStop"
+                                                data-action="click"
+                                                data-fn="player/togglePlayback"
+                                                data-testid="player-stop-btn"
+                                            >
+                                                <svg class="icon icon--s" aria-hidden="true">
+                                                    <use data-if="player.paused" href="#icon-play"></use>
+                                                    <use data-if="!player.paused" href="#icon-stop"></use>
+                                                </svg>
+                                            </button>
+                                            <!-- Handoff (Phase 38, stone 9). The link is shown
+                                                 as well as copied: most TV webviews have no
+                                                 clipboard at all, and a button that silently
+                                                 does nothing there is worse than one that just
+                                                 puts the address on screen to be typed. Hidden
+                                                 by default (Settings → Playback's
+                                                 `showHandoffButton` toggle) — most viewers never
+                                                 use it. -->
+                                            <button
+                                                type="button"
+                                                class="btn"
+                                                data-if="settings.showHandoffButton"
+                                                data-action="click"
+                                                data-fn="handoff/offer"
+                                                data-testid="handoff-offer-btn"
+                                            >
+                                                {{ strings.handoff.button }}
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="handoff" data-if="player.handoffState !== 'idle'" data-testid="handoff-panel">
                                         <p class="handoff__message">{{ player.handoffMessage }}</p>
