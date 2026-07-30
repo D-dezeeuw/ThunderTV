@@ -6,6 +6,7 @@ import { get } from '../state/typed';
 import { appendStreamProbe, describeMediaError } from './engine-report';
 import { attemptChain, hlsFormOf, preferredEngine, tsFormOf } from './engine-select';
 import { createHlsTrackEngine } from './hls-tracks';
+import { clearExternalSubtitles } from './external-subs';
 import { attachMpegts, detachMpegts } from './mpegts-engine';
 import { createNativeTrackEngine } from './native-tracks';
 import type { PlayerEngine } from './player-engine';
@@ -22,9 +23,8 @@ import type { TrackSnapshot } from './tracks';
  * Fatal failures report through `reportPlaybackError()` (rendered in the
  * player bar) with a probe of what the provider actually sent — on a phone
  * there is no devtools console, so a dead stream must say why on screen.
- */
-/**
- * Bumped by every `attachAndPlay()`/`detach()`. Attaching is asynchronous
+ *
+ * `attachToken` below is bumped by every `attachAndPlay()`/`detach()`. Attaching is asynchronous
  * (`import('mpegts.js')`, `import('hls.js')`, `video.play()`) while all the
  * state below it — plus the single shared `<video>` — is module-global, so
  * switching channels mid-attach left the *previous* attempt's continuations
@@ -70,14 +70,15 @@ let activeTrackEngineDispose: (() => void) | null = null;
 /** The (single) external subscriber registered via `onTracksChanged()` below — re-applied to each new `activeTrackEngine` so it survives a chain fallback or a channel switch. */
 let tracksChangedListener: (() => void) | null = null;
 
-/** mpegts.js has no track-switching API — an explicit empty snapshot so callers can tell "attached, nothing to offer" from "nothing attached yet". */
-const MPEGTS_TRACK_ENGINE: PlayerEngine = {
-    getTracks: (): TrackSnapshot => ({ audio: [], subtitles: [] }),
-};
-
 /** True once a newer `attachAndPlay()`/`detach()` has superseded the attach that took `token`. */
 function isStale(token: number): boolean {
     return token !== attachToken;
+}
+
+/** The element's own tracks — the native attempts' engine, and mpegts.js's too (it has no track API and adds nothing to `video.textTracks`, but a subtitle file the viewer loaded is a real `<track>` on that element and belongs in the menu whatever is feeding it — `external-subs.ts`). */
+function attachElementTracks(video: HTMLVideoElement): void {
+    const native = createNativeTrackEngine(video);
+    setActiveTrackEngine(native.engine, native.dispose);
 }
 
 function setActiveTrackEngine(engine: PlayerEngine | null, dispose: (() => void) | null = null): void {
@@ -207,15 +208,14 @@ async function runCurrentAttempt(video: HTMLVideoElement, token: number): Promis
         });
         if (isStale(token)) return;
         if (!result.ok) await advanceChain(video, result.reason ?? 'mpegts unavailable', token);
-        else setActiveTrackEngine(MPEGTS_TRACK_ENGINE);
+        else attachElementTracks(video);
         return;
     }
 
     if (engine === 'native') {
         lastStreamUrl = base;
         video.src = base;
-        const native = createNativeTrackEngine(video);
-        setActiveTrackEngine(native.engine, native.dispose);
+        attachElementTracks(video);
         await video.play().catch(() => undefined);
         return;
     }
@@ -224,8 +224,7 @@ async function runCurrentAttempt(video: HTMLVideoElement, token: number): Promis
     lastStreamUrl = url;
     if (supportsNativeHls(video)) {
         video.src = url;
-        const native = createNativeTrackEngine(video);
-        setActiveTrackEngine(native.engine, native.dispose);
+        attachElementTracks(video);
         await video.play().catch(() => undefined);
         return;
     }
@@ -335,6 +334,7 @@ export function onTracksChanged(cb: () => void): void {
  * is what leaves the old pipeline half-torn-down.
  */
 function stopVideoElement(video: HTMLVideoElement): void {
+    clearExternalSubtitles();
     try {
         video.pause();
     } catch {

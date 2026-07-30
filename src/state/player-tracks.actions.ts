@@ -1,13 +1,18 @@
 import { defineFn, refs, watch } from 'spektrum';
+import { strings } from '../app/strings';
+import { getPlatform } from '../core/platform';
 import {
     getPlayerTracks as engineGetPlayerTracks,
     onTracksChanged as engineOnTracksChanged,
     setAudioTrack as engineSetAudioTrack,
     setSubtitleTrack as engineSetSubtitleTrack,
 } from '../player/engine';
+import { addExternalSubtitle } from '../player/external-subs';
+import { subtitleLabel, subtitleLang } from '../player/subtitle-text';
 import { pickDefaultAudioTrack, pickDefaultSubtitleTrack } from '../player/track-prefs';
 import type { TrackSnapshot } from '../player/tracks';
 import { PLAYER_ACTIVE } from './player';
+import { reportPlaybackNotice } from './player.actions';
 import { PLAYER_AUDIO_TRACKS, PLAYER_SUBTITLE_TRACKS, PLAYER_TRACK_MENU, TRACK_LIST_CAP, type TrackMenu } from './player-tracks';
 import type { ActiveChannelSnapshot } from './records';
 import { SETTINGS_AUDIO_LANGUAGE, SETTINGS_LIVE_COUNTRY, SETTINGS_SUBTITLE_LANGUAGE } from './settings';
@@ -93,6 +98,43 @@ export function registerPlayerTrackActions(): void {
         const id = trackIdFromValue(value);
         if (id !== null) setSubtitleTrack(id);
     });
+    defineFn('player/loadSubtitleFile', () => {
+        void loadSubtitleFile();
+    });
+}
+
+/** `.srt` and `.vtt` are what a subtitle download actually is; `.txt` is here because Windows and a few sites rename SubRip on the way out, and the parse decides the truth either way. */
+const SUBTITLE_ACCEPT = '.srt,.vtt,.txt,text/vtt';
+
+/**
+ * The subtitle menu's "Load subtitle file…" row: pick a file, hand its text
+ * to `external-subs.ts`, republish so the new track appears in the list it
+ * was loaded from. The picker call stays first and unawaited-before —
+ * browsers only honour a file dialog opened straight out of the click.
+ *
+ * Failures land in `player.playbackNotice` rather than a dialog of their
+ * own: the player bar is already where this view says what playback is or
+ * isn't doing, and a subtitle that never appeared needs a reason more than
+ * it needs a modal.
+ */
+async function loadSubtitleFile(): Promise<void> {
+    const picked = await getPlatform().files.pickFile(SUBTITLE_ACCEPT);
+    if (!picked) return;
+    const video = refs['playerVideo'];
+    if (!(video instanceof HTMLVideoElement)) return;
+
+    const read = await getPlatform().files.readText(picked.file);
+    const ok =
+        read.kind === 'ok' &&
+        addExternalSubtitle(video, {
+            label: subtitleLabel(picked.name),
+            lang: subtitleLang(picked.name),
+            text: read.text,
+        });
+    reportPlaybackNotice(ok ? null : strings.list.subtitlesLoadFailed);
+    if (!ok) return;
+    publishTrackLists();
+    set(PLAYER_TRACK_MENU, 'none');
 }
 
 /** Narrows a `data-fn` dispatch's coerced `value` (string/number/boolean — Spektrum's own coercion never produces anything else) to a track id string, or `null` for anything not carrying one. */

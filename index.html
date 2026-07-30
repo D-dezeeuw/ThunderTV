@@ -1633,6 +1633,20 @@
                                                         <span class="track-menu__empty-dash" aria-hidden="true">—</span>
                                                         <p class="track-menu__empty-message">{{ strings.list.noSubtitles }}</p>
                                                     </div>
+                                                    <!-- Always offered, not just when the list is empty: a
+                                                         movie's own subtitles live inside its container and no
+                                                         browser exposes them (src/player/external-subs.ts), so
+                                                         a file from disk is the only subtitle route Movies/TV
+                                                         Shows ever has. -->
+                                                    <button
+                                                        type="button"
+                                                        class="track-menu__item track-menu__item--action"
+                                                        data-action="click"
+                                                        data-fn="player/loadSubtitleFile"
+                                                        data-testid="subtitle-load-file"
+                                                    >
+                                                        <span class="track-menu__label">{{ strings.list.subtitlesLoadFile }}</span>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>

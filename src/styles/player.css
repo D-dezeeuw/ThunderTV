@@ -475,6 +475,13 @@
     color: var(--color-accent);
 }
 
+/* "Load subtitle file…" — a command, not one of the tracks above it, so it
+   sits under a hairline rather than in the list's rhythm. */
+.track-menu__item--action {
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-dim);
+}
+
 .track-menu__label {
     min-width: 0;
 }

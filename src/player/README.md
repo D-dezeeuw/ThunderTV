@@ -100,11 +100,46 @@ false`); native (`native-tracks.ts`) is feature-detected — audio only where
 the browser exposes Safari's non-standard `video.audioTracks`, subtitles via
 the standard `video.textTracks` (`kind` `subtitles`/`captions`; off = every
 track's `mode` set to `'disabled'`) — both APIs absent means an empty,
-correct-and-expected snapshot; mpegts.js has no track-switching API at all,
-so its `PlayerEngine` only implements `getTracks()` (always empty) and skips
-the setters/`onTracksChanged` entirely. `track-prefs.ts` is the pure
-preference resolver (`normalizeLangCode`, `pickDefaultAudioTrack`,
-`pickDefaultSubtitleTrack`), engine/Spektrum-free by design.
+correct-and-expected snapshot. mpegts.js has no track API of its own, so it
+gets the same element-level engine (`attachElementTracks()`): it adds
+nothing to `video.textTracks`, but a subtitle file the viewer loaded is a
+real `<track>` on that element and belongs in the menu whatever is feeding
+it. `track-prefs.ts` is the pure preference resolver (`normalizeLangCode`,
+`pickDefaultAudioTrack`, `pickDefaultSubtitleTrack`), engine/Spektrum-free
+by design.
+
+### Subtitles the viewer brings (`external-subs.ts`, `subtitle-text.ts`)
+
+A movie's own subtitles are, in practice, unreachable: Xtream VOD is a
+progressive file played natively, its subtitle streams live inside the
+container (MKV's SRT/PGS, an `.mp4`'s tx3g), and no browser exposes those to
+`video.textTracks` — Chromium does not even demux them. So for the whole
+Movies/TV Shows catalog the subtitle menu was correctly, permanently empty,
+which reads as a broken feature rather than an absent one. The menu's
+"Load subtitle file…" row (`player/loadSubtitleFile`, `player-tracks.
+actions.ts`) is the route that always works: pick a `.srt`/`.vtt` through
+`getPlatform().files`, `toVtt()` it (SubRip differs by a header and a
+decimal comma), and attach it as a `<track>` with a blob URL. From there
+nothing is special-cased — the browser renders and positions it, the
+element lists it, `native-tracks.ts` maps it like any other track, and the
+menu's existing "Off" row turns it off. `clearExternalSubtitles()` runs in
+the engine's `stopVideoElement()`, so a file loaded for one film never
+follows the viewer into the next one with silently wrong timings.
+
+### No decodable audio (`audio-output.ts`)
+
+A browser that meets an audio codec it has no decoder for does not fail the
+load: it plays the video track, drops the audio one, and leaves
+`video.error` null. AC-3/E-AC-3/DTS are all over movie files (and a fair few
+`.ts` channels), Chromium's ffmpeg decodes none of them, and mpegts.js only
+demuxes AAC/MP3 regardless — so "perfect picture, no sound, no reason
+given" was the single most confusing thing playback could do. The element's
+own decoder counters answer it for every engine at once: three samples over
+the first half-minute, and video climbing while `webkitAudioDecodedByteCount`
+stays at zero (or Firefox's `mozHasAudio === false`) publishes
+`player.playbackNotice`. Anything less positive stays `'unknown'` and says
+nothing — a false "no sound" over a stream that has sound is worse than
+silence about it.
 
 The state/UI stage this section used to describe as "later" is
 `src/state/player-tracks.ts`/`player-tracks.actions.ts` (`state/README.md`'s
