@@ -31,7 +31,13 @@ const SCROLL_SETTLE_MS = 300;
  * `data-ref`-inside-`data-if` usage), so this wiring survives every later
  * show/hide.
  */
-export function registerListBindings(): () => void {
+/**
+ * `onInitialLoad`, if given, fires once the same initial `loadActiveSource()`
+ * `consumeHandoff()` already waits for settles — the boot splash's only
+ * "the Live list has real rows now" signal (`src/state/boot.ts`'s
+ * `markChannelDataReady()`), independent of whether a handoff was pending.
+ */
+export function registerListBindings(onInitialLoad?: () => void): () => void {
     const cleanups: Array<() => void> = [];
 
     cleanups.push(
@@ -87,7 +93,10 @@ export function registerListBindings(): () => void {
     // An arriving handoff (stone 9) resolves against loaded rows, so it has
     // to wait for the boot load rather than race it — this is the one place
     // that knows when those rows exist.
-    void loadActiveSource().then(() => consumeHandoff());
+    void loadActiveSource().then(() => {
+        void consumeHandoff();
+        onInitialLoad?.();
+    });
     cleanups.push(registerActiveSourceWatch());
     // Live and Categories share this one virtual list, so moving between
     // them — or changing a Live filter setting — republishes a different

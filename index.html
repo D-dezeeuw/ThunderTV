@@ -18,6 +18,7 @@
         <title>ThunderTV</title>
         <link rel="stylesheet" href="/src/styles/tokens.css" />
         <link rel="stylesheet" href="/src/styles/base.css" />
+        <link rel="stylesheet" href="/src/styles/boot-overlay.css" />
         <link rel="stylesheet" href="/src/styles/shell.css" />
         <link rel="stylesheet" href="/src/styles/import-card.css" />
         <link rel="stylesheet" href="/src/styles/channel-list.css" />
@@ -48,6 +49,22 @@
         </script>
     </head>
     <body>
+        <!-- Boot splash (src/state/boot.ts) — sits above #app until the
+             first Live load (or, on an unconfigured install, the wizard)
+             is ready, then fades out. Kept as a sibling of #app, not inside
+             it, so it can be removed via data-if without touching the
+             shell's own layout. -->
+        <div
+            class="boot-overlay"
+            data-if="ui.bootPhase !== 'done'"
+            :class="{ 'boot-overlay--exiting': ui.bootPhase === 'exiting' }"
+            role="status"
+            :aria-label="strings.catalog.loading"
+            data-testid="boot-overlay"
+        >
+            <div class="boot-overlay__wallpaper"></div>
+        </div>
+
         <!--
           Feature 02.9 inline SVG icon sprite. Hand-drawn 24x24 stroke-based
           paths (stroke-width 2, no copied icon-font glyphs) referenced via
@@ -1607,13 +1624,15 @@
                                              popup opens as a centered, keyboard-navigable modal dialog
                                              (`.track-menu` below) rather than an anchored popup — the old
                                              anchored popup could clip off the left edge of the viewport.
-                                             Hidden entirely in Radio (`!view.radio.active`): a radio stream
-                                             has no video tracks or subtitles to pick. Otherwise always
-                                             rendered regardless of track count: an empty track list still
-                                             opens the dialog and explains itself (see .track-menu__empty
-                                             below) rather than hiding the button, so a viewer never wonders
-                                             whether the feature is broken or just absent for this stream. -->
-                                        <div class="track-menu-anchor" data-if="!view.radio.active">
+                                             Shown only for Movies/Series (`view.movies.active ||
+                                             view.series.active`) — a Live channel or radio station has no
+                                             per-title track list to pick, and only the catalog video
+                                             previews carry one. Rendered regardless of track count within
+                                             those two views: an empty track list still opens the dialog and
+                                             explains itself (see .track-menu__empty below) rather than
+                                             hiding the button, so a viewer never wonders whether the feature
+                                             is broken or just absent for this stream. -->
+                                        <div class="track-menu-anchor" data-if="view.movies.active || view.series.active">
                                             <button
                                                 type="button"
                                                 class="icon-btn"
@@ -1667,7 +1686,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="track-menu-anchor" data-if="!view.radio.active">
+                                        <div class="track-menu-anchor" data-if="view.movies.active || view.series.active">
                                             <button
                                                 type="button"
                                                 class="icon-btn"

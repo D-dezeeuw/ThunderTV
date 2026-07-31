@@ -23,6 +23,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `handoff.ts`         | `player.handoffLink`, `player.handoffState`, `player.handoffMessage`                                                  | No — the link outlives its usefulness within hours (Phase 38), and is published rather than hidden only so it can be read off screen where no clipboard exists |
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.theme`, `ui.fontSize`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.theme`/`ui.fontSize`/`ui.storageNoticeDismissed` yes; the rest no |
 | `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`, `ui.setupComplete`                                                                 | `ui.setupComplete` yes — it is what stops a configured install from being asked again; `wizardOpen`/`wizardStep` no (transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen`) |
+| `boot.ts`             | `ui.bootPhase`                                                                                                        | No — the wallpaper splash's `'loading' \| 'exiting' \| 'done'` lifecycle, recomputed fresh (always starts at `'loading'`) every boot |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
 | `list-layout.ts`      | `ui.listLayout`                                                                                                      | Yes — the per-view list/grid choice for the shared virtual list, keyed by the three views that offer the switch (live/movies/series). A browsing preference, not session state, so asking once is enough; a scope missing from a stored value falls back to the list layout. Radio/Categories share the list but show no switch and therefore stay on rows — a mode with no visible control is a mode nobody can turn off |
 | `list-state.ts`       | `ui.listState`, `ui.activeGroup`, `ui.viewMode`                                                                      | `ui.listState` yes (Feature 08.6, LRU-capped at 20 sources); the two live mirrors restore from it on source entry but aren't separately persisted |
@@ -142,7 +143,10 @@ recording once rather than re-discovering per call site:
   `KEY_REGISTRY` itself is still the one object every consumer
   (`persist.ts`, `bulk-policy.ts`, `index.ts`'s `rehydrateState()`) reads —
   this only changes how it's assembled. `KeyMeta.owner`'s union gained
-  `'vod' | 'series' | 'search'`.
+  `'vod' | 'series' | 'search'`. The boot splash's `ui.bootPhase` (`boot.ts`)
+  is the example this pattern was built for: it landed in `registry-ui.ts`
+  (the `ui`-owned leaf file), not a new one — check whether an existing leaf
+  already owns your key's subject before adding another.
 - **Catalog payload persistence** (`catalog-storage.ts`): no bulk table in
   `src/core/storage/records.ts`'s `TableName` union fits a VOD/series
   catalog, and adding one means editing `src/core/storage/**`, outside this

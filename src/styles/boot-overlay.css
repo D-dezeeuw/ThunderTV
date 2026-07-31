@@ -1,0 +1,38 @@
+/*
+ * The boot splash (src/state/boot.ts's ui.bootPhase). Sits above the whole
+ * shell (#app tops out at z-index 60 for the wizard/debug panels) on the
+ * app's own ambient gradient (--gradient-app, same tokens html already
+ * paints in base.css) so there is zero gap between "nothing has rendered
+ * yet" and this overlay — it never needs to paint its own background color,
+ * only the wallpaper image fading in on top of what's already there.
+ */
+.boot-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: var(--color-bg);
+    background-image: var(--gradient-app);
+    transition: opacity var(--dur-3) var(--ease-swift);
+}
+
+.boot-overlay--exiting {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.boot-overlay__wallpaper {
+    position: absolute;
+    inset: 0;
+    background: url('./boot-wallpaper.png') center / cover no-repeat;
+    opacity: 0;
+    animation: boot-wallpaper-in var(--dur-3) var(--ease-swift) 150ms both;
+}
+
+@keyframes boot-wallpaper-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}

@@ -1,3 +1,4 @@
+import { UI_BOOT_PHASE } from './boot';
 import { UI_LIST_LAYOUT } from './list-layout';
 import { UI_FONT_SIZE, UI_THEME } from './ui';
 import type { KeyMeta } from './registry';
@@ -29,5 +30,11 @@ export const UI_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         persisted: true,
         description:
             'Per-view list/grid choice for the shared virtual list, keyed by the three views that offer the toggle (live/movies/series). Persisted because it is a browsing preference, not session state; a scope missing from the stored value falls back to the list layout (src/state/list-layout.ts).',
+    },
+    [UI_BOOT_PHASE]: {
+        owner: 'ui',
+        persisted: false,
+        description:
+            "'loading' | 'exiting' | 'done' — the boot.ts wallpaper splash shown until the first Live load (or, on an unconfigured install, the wizard) is ready. Always starts at 'loading'; recomputed fresh every boot, never persisted.",
     },
 };
