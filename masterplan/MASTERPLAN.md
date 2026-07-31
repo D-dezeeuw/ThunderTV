@@ -43,7 +43,8 @@ Core principles:
 - **Bookmarkable subscriptions.** A hash-fragment connect URL
   (`#/connect?type=xtream&url=…&user=…&pass=…`) fully configures a device in
   one visit — fragments never reach a server, and the address bar is scrubbed
-  after import.
+  after import. **Designed, not built** — Phase 14 is the one unstarted item
+  on the 1.0 road; `src/core/connect/` holds only the dedup key today.
 
 Sources: M3U/M3U8 (file, paste, URL) and Xtream Codes; XMLTV EPG. Playback:
 hls.js / mpegts.js / native `<video>`, lazy-loaded per stream type.
@@ -65,6 +66,7 @@ Every phase file follows the same template:
 
 > Epic goal: one or two sentences.
 > Verification: what "done and verified" means for this phase.
+> **Status:** `shipped` · tracker: `current` — what actually shipped.
 
 Intro paragraph: what exists before this phase, what exists after.
 
@@ -76,12 +78,39 @@ One–two sentence description of the story and why it matters.
 - [ ] … (10 tasks)
 ```
 
-The checkboxes are the tracker — check them off in the feature branch as you
-go. The phase file is merged with all boxes checked.
+Boxes have three states: `[ ]` open, `[x]` done, and `[~]` **closed with a
+documented divergence** — deferred on purpose, or built under a different
+name, with the reason on the line itself. Reach for `[~]` rather than
+silently ticking something you built differently; that note is the only
+record of why, and §4's table counts it separately from `[x]`.
+
+**The `> **Status:**` line is the phase's real verdict**, and the one thing
+that must stay true. Its grammar is fixed, because
+`scripts/gen-phase-status.mjs` parses it:
+
+```
+> **Status:** `<shipped|partial|not-started|superseded>` · tracker: `<current|not-maintained>` — <prose>
+```
+
+`tracker: current` promises the boxes below match the code. Set
+`not-maintained` the moment that stops being true — an honest "not tracked"
+in the summary is worth more than a stale count, and §4 explains what
+happened when 22 phases claimed the opposite.
 
 ---
 
 ## 3. Way of working
+
+> **This section describes phase-sized work, which is no longer how most
+> changes arrive.** The project is past its build-out: work now lands as
+> scoped changes against a shipped app, and
+> [`.claude/AGENTS.md`](../.claude/AGENTS.md) is the authority on branching,
+> testing depth and landing — including that you merge to `main` yourself
+> rather than parking a draft PR. The `feature/phase-NN-<slug>` convention
+> below was abandoned after Phase 08; branches are named for the change now.
+> What still holds from this section is the **autonomy rule** and the
+> **standing verification checklist**, which `npm run verify` now enforces
+> as one command.
 
 The loop, per phase (epic):
 
@@ -105,86 +134,111 @@ pick the recommended solution, note the decision in the phase file next to the
 relevant task, and keep moving. Only a genuine product decision (not a
 technical one) is worth stopping for.
 
-**Standing verification checklist (every phase):**
+**Standing verification checklist — now one command: `npm run verify`.**
 
-- `npm run build` succeeds; `npx tsc --noEmit` clean; ESLint clean
-  (max-lines ≤ 400 enforced, target ≤ 300).
-- Unit tests for the phase's code pass (`npm test`); no previously green test
-  broken.
-- Performance budgets hold: initial JS ≤ ~60 KB gz app code (+ ~6 KB
-  Spektrum), cold start < 1 s with a cached playlist, 100 k-channel import
-  < 5 s, scroll ≤ ~40 DOM rows, search < 50 ms.
-- Manual smoke on the built `dist/` (not just the dev server): import a
+Most of this list is machine-enforced, which is the point: AUDIT §5 found that
+every rule enforced by a script held and every rule enforced by a README
+drifted. `verify` runs typecheck, ESLint (max-lines ≤ 400, target ≤ 300), the
+CSS/file-access/import-map/reachability fences, the full test suite, a
+production build, and `check-dist` — which fails on an entry chunk over
+200 kB raw or 60 kB gzipped. CI is `workflow_dispatch`-only on purpose, so
+`verify` is not *a* definition of green, it is *the* definition.
+
+What a machine still cannot check, and you must:
+
+- **Manual smoke on the built `dist/`** (not just the dev server): import a
   playlist, scroll, search, play a channel, reload (session restore), on the
-  storage tier(s) the phase touches.
-- No credentials in logs, no query-string credentials, no new CSS
-  transitions/animations, no direct `fetch`/`indexedDB`/`localStorage` use
-  outside `src/core/`.
+  storage tier(s) the change touches.
+- **The budgets with no script yet:** cold start < 1 s with a cached
+  playlist, 100 k-channel import < 5 s, scroll ≤ ~40 DOM rows, search
+  < 50 ms. Phase 26 owns closing that gap.
+- **Credential hygiene:** none in logs, none in query strings, none in
+  exception messages.
+- **The docs that describe what you changed** — the module README from
+  `CLAUDE.md`'s table, `src/state/README.md`'s ownership table for a new key,
+  and the phase's `> **Status:**` line if the change moves it. Regenerate
+  derived docs with `node scripts/gen-state-keys.mjs` and
+  `node scripts/gen-phase-status.mjs`; both have a `--check` mode that
+  `verify` runs, so drift fails the build rather than accumulating.
 
-**Definition of done for a phase:** all 100 boxes checked, verification green,
-branch merged to `main`, pushed, and (when user-visible) deployed.
+**Definition of done:** verification green, docs updated, merged to `main`,
+pushed, and (when user-visible) deployed.
 
 ---
 
 ## 4. The 30-phase vision
 
-| #   | Phase (epic)                                                                                | Focus                                                                                  |
-| --- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| 01  | [Foundation & Tooling](./phases/phase-01-foundation-and-tooling.md)                         | Repo, Vite+TS, ESLint, Spektrum import map + vendored fallback, gh-pages deploy proven |
-| 02  | [App Shell & Design System](./phases/phase-02-app-shell-and-design-system.md)               | tokens.css, dark theme, icon rail, hash router, empty states, density                  |
-| 03  | [Platform Adapter Layer](./phases/phase-03-platform-adapter-layer.md)                       | `PlatformAdapter`, capability flags, http wrapper, lint fences                         |
-| 04  | [Tiered Storage Engine](./phases/phase-04-tiered-storage-engine.md)                         | Boot probe, IDB / localStorage / memory tiers, demotion, chunked writes                |
-| 05  | [Spektrum State Architecture](./phases/phase-05-spektrum-state-architecture.md)             | Store modules, persistence bridge, session restore, channel-state cache                |
-| 06  | [M3U Parsing Engine](./phases/phase-06-m3u-parsing-engine.md)                               | Worker, ported m3u-utils, chunked protocol, 100 k benchmark                            |
-| 07  | [Playlist Import Flows](./phases/phase-07-playlist-import-flows.md)                         | File/paste/URL import, CORS-classified errors, progress UI                             |
-| 08  | [Channel List & Virtual Scrolling](./phases/phase-08-channel-list-virtual-scrolling.md)     | Windowing controller, `data-each` slice, groups, lazy logos                            |
-| 09  | [Search & Filtering](./phases/phase-09-search-and-filtering.md)                             | Debounced incremental search, normalization, group filter                              |
-| 10  | [Playback Foundation](./phases/phase-10-playback-foundation.md)                             | Player host, engine interface/selection, lazy loading, teardown discipline             |
-| 11  | [HLS & MPEG-TS Engines](./phases/phase-11-hls-and-mpegts-engines.md)                        | hls.js + recovery, mpegts.js, native Safari, fallback chain                            |
-| 12  | [Player UI: Dock & Theater](./phases/phase-12-player-ui-dock-and-theater.md)                | Dock, theater mode, transport, zapping, fullscreen                                     |
-| 13  | [Favorites & Recent](./phases/phase-13-favorites-and-recent.md)                             | Denormalized snapshots, views, cross-tier survival, fast boot path                     |
-| 14  | [Connect Bookmark URLs](./phases/phase-14-connect-bookmark-urls.md)                         | Fragment schema, upsert, scrub, link generator, warnings                               |
-| 15  | [Multi-Playlist Management](./phases/phase-15-multi-playlist-management.md)                 | Sources view, refresh with conditional GET, staleness policy                           |
-| 16  | [EPG Ingestion](./phases/phase-16-epg-ingestion.md)                                         | XMLTV worker, gzip, program store, pruning                                             |
-| 17  | [EPG Display](./phases/phase-17-epg-display.md)                                             | EnrichedChannel, global tick, now/next rows, inline detail                             |
-| 18  | [EPG Guide & Mapping](./phases/phase-18-epg-guide-and-mapping.md)                           | Favorites guide grid, tvg-id matching, manual mapping, offsets                         |
-| 19  | [Xtream API Client](./phases/phase-19-xtream-api-client.md)                                 | Credentials, endpoint map, URL construction, error taxonomy                            |
-| 20  | [Xtream Live](./phases/phase-20-xtream-live.md)                                             | Categories, streams in the same list UI, short EPG, caching                            |
-| 21  | [Xtream VOD & Series](./phases/phase-21-xtream-vod-and-series.md)                           | Poster grid, inline detail, episodes, resume positions                                 |
-| 22  | [Settings & Personalization](./phases/phase-22-settings-and-personalization.md)             | Full settings panel, import/export, strings module                                     |
-| 23  | [Resilience & Error Surfaces](./phases/phase-23-resilience-and-error-surfaces.md)           | Retry flows, engine fallback, demotion notices, redacting diagnostics                  |
-| 24  | [PWA & Offline Shell](./phases/phase-24-pwa-and-offline-shell.md)                           | Manifest, SW for shell + pinned Spektrum, update flow, kill-switch                     |
-| 25  | [Accessibility & Input](./phases/phase-25-accessibility-and-input.md)                       | Roving focus, keyboard map, ARIA, TV-remote = keyboard                                 |
-| 26  | [Performance Hardening](./phases/phase-26-performance-hardening.md)                         | Budgets codified, stress fixtures, memory/startup profiling                            |
-| 27  | [Testing Infrastructure](./phases/phase-27-testing-infrastructure.md)                       | Vitest conventions, fixtures, storage matrix, Playwright smoke                         |
-| 28  | [Electron Shell](./phases/phase-28-electron-shell.md)                                       | Main process, preload bridge, CORS-free HTTP, `file://` loading                        |
-| 29  | [Desktop Packaging & Distribution](./phases/phase-29-desktop-packaging-and-distribution.md) | electron-builder, import-map swap, per-OS QA, versioning                               |
-| 30  | [webOS Target & 1.0 Release](./phases/phase-30-webos-target-and-release.md)                 | ares packaging, TV validation, docs, security audit, v1.0 tag                          |
-
 Rough arc: **01–05** foundations → **06–09** M3U browsing → **10–12** playback
 → **13–15** daily driver → **16–18** EPG → **19–21** Xtream → **22–27**
-product hardening → **28–30** desktop and TV.
+product hardening → **28–30** desktop and TV. Phases past 30 are not part of
+the 1.0 road; they execute [`VISION-3.0.md`](./VISION-3.0.md)'s stepping
+stones with the same phase template.
 
-### Beyond 1.0 — Vision 3.0 stepping-stone phases
+**Read the Status column, not the checkboxes.** Per-task boxes were kept
+current through Phase 08 and again in Phase 31; across 09–30 the habit was
+abandoned while the code shipped anyway, so those boxes report a phase as
+unstarted when it is done — the inversion AUDIT §3.2 named. Rather than
+retro-tick ~2 000 boxes nobody verified, each phase file now carries a
+`> **Status:**` line stating what actually shipped, what did not, and where
+the divergences are; `tracker: not-maintained` marks the files whose boxes
+are stale, and the table below reports their task count as *not tracked*
+rather than as a number. **For any phase, the live reference is the module
+README named in `CLAUDE.md`'s table** — the phase file is history plus this
+status line.
 
-Phases past 30 are not part of the 1.0 road; they execute
-[`VISION-3.0.md`](./VISION-3.0.md)'s stepping stones with the same phase
-template and way of working.
+<!-- BEGIN generated: phase-status (node scripts/gen-phase-status.mjs) -->
+
+> Generated by `node scripts/gen-phase-status.mjs` from each phase file's `> **Status:**` line.
+> Do not hand-edit this table — edit the phase file and regenerate.
+
+| #   | Phase | Status | Tasks |
+| --- | ----- | ------ | ----- |
+| 01 | [Foundation & Tooling](./phases/phase-01-foundation-and-tooling.md) | `shipped` | 100/100 |
+| 02 | [App Shell & Design System](./phases/phase-02-app-shell-and-design-system.md) | `shipped` | 99/100 |
+| 03 | [Platform Adapter Layer](./phases/phase-03-platform-adapter-layer.md) | `shipped` | 100/100 |
+| 04 | [Tiered Storage Engine](./phases/phase-04-tiered-storage-engine.md) | `shipped` | 100/100 |
+| 05 | [Spektrum State Architecture](./phases/phase-05-spektrum-state-architecture.md) | `shipped` | 100/100 |
+| 06 | [M3U Parsing Engine](./phases/phase-06-m3u-parsing-engine.md) | `shipped` | 100/100 |
+| 07 | [Playlist Import Flows](./phases/phase-07-playlist-import-flows.md) | `shipped` | 98/100 · 6 noted |
+| 08 | [Channel List & Virtual Scrolling](./phases/phase-08-channel-list-virtual-scrolling.md) | `shipped` | 100/100 |
+| 09 | [Search & Filtering](./phases/phase-09-search-and-filtering.md) | `partial` | not tracked |
+| 10 | [Playback Foundation](./phases/phase-10-playback-foundation.md) | `shipped` | not tracked |
+| 11 | [HLS & MPEG-TS Engines](./phases/phase-11-hls-and-mpegts-engines.md) | `shipped` | not tracked |
+| 12 | [Player UI: Dock & Theater](./phases/phase-12-player-ui-dock-and-theater.md) | `partial` | not tracked |
+| 13 | [Favorites & Recent](./phases/phase-13-favorites-and-recent.md) | `partial` | not tracked |
+| 14 | [Connect Bookmark URLs](./phases/phase-14-connect-bookmark-urls.md) | `not-started` | not tracked |
+| 15 | [Multi-Playlist Management](./phases/phase-15-multi-playlist-management.md) | `partial` | not tracked |
+| 16 | [EPG Ingestion](./phases/phase-16-epg-ingestion.md) | `superseded` | not tracked |
+| 17 | [EPG Display](./phases/phase-17-epg-display.md) | `superseded` | not tracked |
+| 18 | [EPG Guide & Mapping](./phases/phase-18-epg-guide-and-mapping.md) | `superseded` | not tracked |
+| 19 | [Xtream API Client](./phases/phase-19-xtream-api-client.md) | `shipped` | not tracked |
+| 20 | [Xtream Live](./phases/phase-20-xtream-live.md) | `shipped` | not tracked |
+| 21 | [Xtream VOD & Series](./phases/phase-21-xtream-vod-and-series.md) | `shipped` | not tracked |
+| 22 | [Settings & Personalization](./phases/phase-22-settings-and-personalization.md) | `shipped` | not tracked |
+| 23 | [Resilience & Error Surfaces](./phases/phase-23-resilience-and-error-surfaces.md) | `partial` | not tracked |
+| 24 | [PWA & Offline Shell](./phases/phase-24-pwa-and-offline-shell.md) | `not-started` | not tracked |
+| 25 | [Accessibility & Input](./phases/phase-25-accessibility-and-input.md) | `partial` | not tracked |
+| 26 | [Performance Hardening](./phases/phase-26-performance-hardening.md) | `partial` | not tracked |
+| 27 | [Testing Infrastructure](./phases/phase-27-testing-infrastructure.md) | `partial` | not tracked |
+| 28 | [Electron Shell](./phases/phase-28-electron-shell.md) | `shipped` | not tracked |
+| 29 | [Desktop Packaging & Distribution](./phases/phase-29-desktop-packaging-and-distribution.md) | `shipped` | not tracked |
+| 30 | [webOS Target & 1.0 Release](./phases/phase-30-webos-target-and-release.md) | `partial` | not tracked |
+| 31 | [EPG Country Catalog (Vision 3.0 stepping stone)](./phases/phase-31-epg-country-catalog.md) | `partial` | 78/100 |
+| 32 | EPG Display & Timeline — see [`src/epg/README.md`](../src/epg/README.md) | `shipped` | Now/next on Live rows and the Guide timeline, superseding Phase 17. |
+| 33 | Passive Health Signals — see [`src/health/README.md`](../src/health/README.md) | `shipped` | Decaying per-feed score from real playback outcomes; dead feeds never render. |
+| 34 | Codex v0 — Export & Import — see [`src/codex/README.md`](../src/codex/README.md) | `shipped` | The signed, portable knowledge file the user owns. |
+| 35 | Spatial Navigation — see [`src/ui/spatial/README.md`](../src/ui/spatial/README.md) | `shipped` | Geometry-based D-pad focus — the input model Phase 25 left unbuilt and Phase 30 needs. |
+| 36 | Codex Merge (CRDT) — see [`src/codex/README.md`](../src/codex/README.md) | `shipped` | A grow-only join, so convergence needs no sync server. |
+| 37 | Community Codex — see [`src/codex/README.md`](../src/codex/README.md) | `partial` | Discover, merge and prune ship, bounded by `trust.ts`'s ingest clamp. **Publish is deliberately not implemented** — it would mean operating the service this pillar exists to avoid. |
+| 38 | Handoff — see [`src/handoff/README.md`](../src/handoff/README.md) | `partial` | The link-based handoff ships. **The LAN transport is deliberately not built** — it needs a host that can listen, which means the Electron main process. |
+
+**Totals:** 21 shipped · 12 partial · 2 not started · 3 superseded.
+
+<!-- END generated: phase-status -->
 
 Phase 31 has a full phase file. Phases 32 onward are documented in the
 module README each one created or owns — that is where a change to them
 starts, so a separate phase file would be a second copy to keep honest.
-
-| #   | Phase                                                                        | Stones served                                        | Reference |
-| --- | ---------------------------------------------------------------------------- | ---------------------------------------------------- | --------- |
-| 31  | [EPG Country Catalog](./phases/phase-31-epg-country-catalog.md)              | 1 (entity seam), 2 (knowledge store), 5 (resolver v0); groundwork for 4 and 7 | phase file |
-| 32  | EPG Display & Timeline                                                       | 7 (now/next on rows, guide time travel)              | `src/epg/README.md` |
-| 33  | Passive Health Signals                                                       | 3 (which feeds actually play)                        | `src/health/README.md` |
-| 34  | Codex v0 — Export & Import                                                   | 4 (the signed file the user owns)                    | `src/codex/README.md` |
-| 35  | Spatial Navigation                                                           | 8 (D-pad as a first-class input model)               | `src/ui/README.md` |
-| 36  | Codex Merge (CRDT)                                                           | 6 (convergence with no sync server)                  | `src/codex/README.md` |
-| 37  | Community Codex                                                              | 10 (follow, refresh, prune; the trust model)         | `src/codex/README.md` |
-| 38  | Handoff                                                                      | 9 (session continuity; LAN transport *not* built — see the README) | `src/handoff/README.md` |
 
 ---
 

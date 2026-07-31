@@ -2,6 +2,7 @@
 
 > **Epic goal:** A worker-based M3U parsing engine that turns any real-world playlist — clean or broken — into structured channel rows, streamed back in chunks with progress, at 100 k-channel scale within the < 5 s import budget.
 > **Verification:** `npm test` green including all four ported m3u-utils spec files and the malformed-corpus suite; `npm run bench:m3u` shows a full worker round-trip (parse + map + chunk) of the generated 100 k fixture in < 5 s on the dev machine, with a genuine, real-browser-verified main-thread-health number recorded (not just asserted) for the 50 ms longtask bar; `npx tsc --noEmit` proves the worker protocol is exhaustively typed on both sides.
+> **Status:** `shipped` · tracker: `current` — Worker, chunked protocol and the 100 k benchmark all still hold — `src/m3u/README.md` is the live reference.
 
 Before this phase the app has a shell, platform adapters, tiered storage, and Spektrum state modules (Phases 01–05) but cannot understand a single playlist. After it, `src/m3u/` contains the ported thunder-tv utilities, the patched `iptv-playlist-parser` fork wrapped behind one module, a Vite module worker speaking the typed chunked protocol from MASTERPLAN.md §6.9, and a benchmark harness that pins the 100 k budget — everything Phase 07's import flows will drive, with no UI of its own yet.
 

@@ -20,6 +20,8 @@
         "lint:importmap": "node scripts/check-importmap.mjs",
         "lint:reachability": "node scripts/check-reachability.mjs",
         "lint:dist": "node scripts/check-dist.mjs",
+        "lint:state-keys": "node scripts/gen-state-keys.mjs --check",
+        "lint:phase-status": "node scripts/gen-phase-status.mjs --check",
         "format": "prettier --write .",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
@@ -27,7 +29,7 @@
         "bench:list": "vitest run --config vitest.bench.config.ts src/ui/virtual-list.bench.ts",
         "gen:m3u-fixture": "node scripts/gen-m3u-fixture.mjs",
         "gen:epg-countries": "node scripts/generate-epg-countries.mjs",
-        "verify": "npm run typecheck && npm run lint && npm run lint:css && npm run lint:file-access && npm run lint:importmap && npm run lint:reachability && npm test && npm run build && npm run lint:dist"
+        "verify": "npm run typecheck && npm run lint && npm run lint:css && npm run lint:file-access && npm run lint:importmap && npm run lint:reachability && npm run lint:state-keys && npm run lint:phase-status && npm test && npm run build && npm run lint:dist"
     },
     "devDependencies": {
         "@eslint/js": "10.0.1",
