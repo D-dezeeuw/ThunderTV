@@ -9,8 +9,9 @@ import {
     isProgramNow,
     percentInRange,
 } from './guide-time';
+import type { GroupedChannel } from '../channels/grouping';
 import { GUIDE_CHANNELS, GUIDE_OFFSET_MS, GUIDE_SELECTED_KEY, guideProgramKey, type GuideChannel } from './guide';
-import { selectGuideChannelsForLive } from './guide-live-join';
+import { bindGuideChannelsToLive, type GuideRowBinding } from './guide-live-join';
 import { EPG_FEED_THROUGH } from './epg-settings';
 import { SETTINGS_LOCALE } from './settings';
 import { LIVE_STATS } from './live';
@@ -25,6 +26,8 @@ interface GuideShapedState extends State {
 export interface GuideProgramView {
     key: string;
     title: string;
+    /** The guide channel this block belongs to — carried onto the block so clicking a programme can go to that channel, not just select the block. */
+    channelId: string;
     /** Index into `GuideView.channels` — which row's grid track this block belongs to. A flat, sibling `data-each` (not nested inside the channel rows' own `data-each`) needs this to place each block, since Spektrum's `data-each` does not reliably (re)bind when nested inside another `data-each`'s per-item template — see `src/state/README.md`'s "Two Spektrum gotchas" note, the same reason `series.detail.rows` flattened seasons/episodes into one list. */
     channelIndex: number;
     leftPercent: number;
@@ -88,6 +91,12 @@ export interface GuideView {
  * through the same ladder, so what the grid shows and what a click plays
  * cannot drift apart.
  *
+ * It also returns the Live channel each row bound to, which is where the
+ * row's **name** comes from — never the feed's own `<display-name>`. A
+ * provider's XMLTV spells a channel however it likes, and the Guide showing
+ * one name while the TV list shows another is a bug however good the
+ * feed's spelling happens to be.
+ *
  * **Empty until Live propagates, deliberately.** This used to hand back the
  * whole feed whenever the join produced nothing, on the theory that a
  * populated grid beats a blank one. It doesn't: with an Xtream source that
@@ -96,8 +105,8 @@ export interface GuideView {
  * show. Waiting is the honest answer, and the wait is short — the view
  * depends on `live.stats`, which changes the moment those rows are built.
  */
-function channelsShownInLiveOrder(channels: readonly GuideChannel[]): GuideChannel[] {
-    return selectGuideChannelsForLive(channels, liveChannels());
+function rowsShownInLiveOrder(channels: readonly GuideChannel[]): GuideRowBinding<GuideChannel, GroupedChannel>[] {
+    return bindGuideChannelsToLive(channels, liveChannels());
 }
 
 /**
@@ -119,7 +128,7 @@ export function registerGuideSelectors(): void {
         const shaped = state as GuideShapedState;
         // The app's own locale, not the webview's — see `formatClockTime`.
         const locale = shaped.settings?.locale;
-        const channels = channelsShownInLiveOrder(shaped.guide?.channels ?? []);
+        const rows = rowsShownInLiveOrder(shaped.guide?.channels ?? []);
         const selectedKey = shaped.guide?.selectedKey ?? null;
         const nowMs = shaped.epg?.tick ?? Date.now();
         const offsetMs = shaped.guide?.offsetMs ?? 0;
@@ -131,9 +140,12 @@ export function registerGuideSelectors(): void {
 
         let selected: GuideSelectedView | null = null;
 
-        const channelViews: GuideChannelView[] = channels.map((channel) => ({
+        // `live.name`, not `channel.displayName`: the row is labelled with
+        // the name the TV list shows for it. The feed's own spelling is only
+        // ever a second opinion about a channel this app has already named.
+        const channelViews: GuideChannelView[] = rows.map(({ channel, live }) => ({
             id: channel.id,
-            displayName: channel.displayName,
+            displayName: live.name,
             icon: channel.icon,
         }));
 
@@ -141,7 +153,7 @@ export function registerGuideSelectors(): void {
         // carries its own `channelIndex` (see `GuideProgramView`'s doc) so the
         // markup can render it as a sibling `data-each`, placed onto the right
         // grid row/track by index rather than by DOM nesting.
-        const programViews: GuideProgramView[] = channels.flatMap((channel, channelIndex) =>
+        const programViews: GuideProgramView[] = rows.flatMap(({ channel, live }, channelIndex) =>
             channel.programs
                 .filter((program) => program.stop > range.start && program.start < range.end)
                 .map((program): GuideProgramView => {
@@ -152,13 +164,14 @@ export function registerGuideSelectors(): void {
                         selected = {
                             title: program.title,
                             description: program.description ?? '',
-                            channelName: channel.displayName,
+                            channelName: live.name,
                             timeLabel: formatTimeRange(program.start, program.stop, locale),
                         };
                     }
                     return {
                         key,
                         title: program.title,
+                        channelId: channel.id,
                         channelIndex,
                         leftPercent: layout.leftPercent,
                         widthPercent: layout.widthPercent,
@@ -172,7 +185,7 @@ export function registerGuideSelectors(): void {
         return {
             channels: channelViews,
             programs: programViews,
-            hasData: channels.length > 0,
+            hasData: rows.length > 0,
             nowPercent: nowInWindow ? percentInRange(nowMs, range.start, range.end) : -1,
             rangeStartLabel: formatClockTime(range.start, locale),
             rangeEndLabel: formatClockTime(range.end, locale),

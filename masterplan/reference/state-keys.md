@@ -45,13 +45,11 @@ repeated here, to avoid the two drifting apart.
 | `player.handoffLink` | player | no | — | v1 | The generated handoff address, shown so it can be read off screen where no clipboard exists. Session-only — a link outlives its usefulness within hours. |
 | `player.handoffMessage` | player | no | — | v1 | Human-readable handoff outcome — what is continuing, or exactly why it could not. |
 | `player.handoffState` | player | no | — | v1 | idle/offered/arrived/failed for the handoff panel. |
-| `player.playbackError` | player | no | — | v1 | Transient diagnostics: the last fatal playback failure (hls.js fatal kind or MediaError label), rendered in the player bar — cleared on every new attach/stop. |
-| `player.streamHealth` | player | no | — | v1 | Live stream quality (good/fair/poor) derived from stall frequency — the player-bar signal indicator; null when idle. |
 | `player.subtitleTracks` | player | no | 50 | v1 | Same role/lifecycle as player.audioTracks, for the subtitle-track popup. |
 | `player.trackMenu` | player | no | — | v1 | 'none' | 'audio' | 'subtitles' | 'visualizer' — which dock popup (if any) is open. 'visualizer' is Radio's preset picker, which shares this key so two popups can never be open at once (it publishes no track list of its own). Reset to 'none' on every player.active change (state/player-tracks.actions.ts's registerTrackSync()). |
 | `player.variants` | player | no | 12 | v1 | The playing channel\'s alternate feeds (other qualities, a provider bundle\'s copy, catch-up) — rebuilt from the loaded catalog on every channel change, so never persisted: a stale copy would offer stream ids the provider may already have rotated. |
 | `player.visualizerPaused` | player | no | — | v1 | Whether the listener paused the Radio visualizer render loop — transient, always false on a fresh Radio visit. |
-| `player.visualizerPreset` | player | yes | — | v1 | Radio visualizer preference — \'auto\' (cycle every preset) or a specific preset id (a genre preset stays pinned). Defaults to \'classical\'. Chosen by the listener, never inferred from the audio. |
+| `player.visualizerPreset` | player | yes | — | v1 | Radio visualizer preference — \'auto\' (cycle every preset) or a specific preset id (a genre preset stays pinned). Chosen by the listener, never inferred from the audio. |
 | `player.zapHistory` | player | yes | 20 | v1 | Capped, deduped list of recently played channel snapshots. |
 | `playlist.activeSourceId` | playlist | yes | — | v1 | The source the user last navigated into (Feature 05.6.2, persisted starting Feature 08.10.6) — a reload lands back in the same channel list instead of a source picker, matching Feature 08.6\'s "never left" framing. |
 | `playlist.demoRows` | playlist | no | — | v1 | Phase 02 density-preview fixture rows — never real data, never persisted. |
@@ -108,6 +106,7 @@ repeated here, to avoid the two drifting apart.
 | `storage.tier` | ui | no | — | v1 | Set from the real boot-time probe (Phase 04) every session — persisting a stale tier would be actively wrong. |
 | `ui.activeGroup` | ui | no | — | v1 | The currently-open source\'s active group filter, if any (Feature 08.5.7) — restored from ui.listState on source entry, written live on every group toggle. |
 | `ui.activeView` | ui | no | — | v1 | Current route — driven by the URL hash, which is its own persistence mechanism. |
+| `ui.bootPhase` | ui | no | — | v1 | 'loading' | 'exiting' | 'done' — the boot.ts wallpaper splash shown until the first Live load (or, on an unconfigured install, the wizard) is ready. Always starts at 'loading'; recomputed fresh every boot, never persisted. |
 | `ui.density` | ui | yes | — | v1 | Channel-list row density preference. |
 | `ui.fontSize` | ui | yes | — | v1 | Text size step (small/default/large/xlarge) — Settings → Appearance. Retargets only tokens.css's --text-* via <html data-font-size>; row geometry never moves (that stays ui.density's alone, src/ui/density.ts). |
 | `ui.listLayout` | ui | yes | — | v1 | Per-view list/grid choice for the shared virtual list, keyed by the three views that offer the toggle (live/movies/series). Persisted because it is a browsing preference, not session state; a scope missing from the stored value falls back to the list layout (src/state/list-layout.ts). |

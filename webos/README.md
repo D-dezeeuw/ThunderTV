@@ -3,10 +3,10 @@
 The LG webOS TV target — no shell code, unlike `desktop/`. A packaged
 webOS build is just the web app itself (`WebPlatform`, no new platform
 adapter — see `src/core/platform/create-platform.ts`'s header comment)
-plus this directory's `appinfo.json`/icons and two build-time swaps applied
-to the built output: the vendored Spektrum copy (network-independent) and
-an `es-module-shims` polyfill for TV engines under Chromium 89, which
-predates native `<script type="importmap">` support. See
+plus this directory's `appinfo.json`/icons and two build-time transforms:
+bare Spektrum imports become relative references to the vendored,
+network-independent copy, and TV-specific CSS is added. Rewriting the
+imports avoids an import-map polyfill on Chromium 87. See
 `masterplan/phases/phase-30-webos-target-and-release.md` for the full
 epic this is one slice of.
 

@@ -46,6 +46,20 @@ Two rules the ladder exists to keep: **an empty Live list means wait**, not
 screen), and **at most one guide row per Live row**, since a feed routinely
 carries `NPO 1` and `NPO 1 HD` as separate entries.
 
+The join returns the *pair* — feed entry plus Live channel — because a grid
+row's **name comes from the Live channel, never the feed's own
+`<display-name>`**. A provider spells its XMLTV however it likes (the report
+that prompted this had every entry reading `Canal+`), and there is no case
+where the Guide should call a channel something other than what the TV list
+calls it. The feed still supplies the logo and, of course, the programmes.
+
+Clicking anywhere on a row — logo, name, or any programme block — plays that
+channel and lands on the TV tab with the row selected and scrolled into
+view. That goes through `recent.actions.ts`'s `showReplayedChannel()`, the
+same helper Starred and Recents use, because a bare `location.hash` write is
+a route change and **the router stops playback on one**: the old code
+started a stream and then had it killed by its own navigation.
+
 The same resolution answers "which programmes belong to this channel row"
 for the list's now/next line — `src/state/epg-index.ts`'s
 `epgChannelIdForRow()`, which prefers `tvgId` over `epgId` for the same

@@ -1,5 +1,6 @@
 import { appState, getPathObj, setValue } from 'spektrum';
 import { applyLocale, isLocale, strings } from '../app/strings';
+import { initBootState } from './boot';
 import { SETTINGS_LOCALE } from './settings';
 import { getPlatform } from '../core/platform';
 import { initEpgState } from './epg';
@@ -84,6 +85,7 @@ export { loadDefaultEpg, primeEpgMapping } from './epg-load';
 export { fetchChannelEpgOnDemand, loadXtreamGuide } from './xtream-epg-load';
 export { openWizard, openWizardIfNoSources } from './wizard.actions';
 export { shouldOpenWizard } from './wizard';
+export { manageBootOverlay, markChannelDataReady } from './boot';
 export { openVodCatalog, republishVodRows } from './vod.actions';
 export { openSeriesCatalog, republishSeriesRows } from './series.actions';
 export { warmVodCatalog } from './vod-warm';
@@ -100,6 +102,7 @@ export function initState(): void {
     // consumer — including the bindDOM test harness, which does not call
     // seedStrings() — can resolve it before the first bind.
     seedBlankImage();
+    initBootState();
     initPlaylistState();
     initImportState();
     initPlayerState();

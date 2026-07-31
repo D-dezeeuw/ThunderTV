@@ -15,9 +15,21 @@
              resolved theme's surface color at boot and on every switch. -->
         <meta name="theme-color" content="#171128" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!--
+          Script execution is strict-CSP compatible: Spektrum expressions
+          are precompiled into a same-origin classic script at build time, so
+          the framework never reaches its new Function fallback. Inline style
+          remains allowed because Spektrum deliberately applies visibility,
+          sizing, and theme values through element.style.
+        -->
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'self'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; script-src 'self' 'sha256-mtA3tdtHIJeeY3gzK7VPhmmeCZ2VAo22LB+2pT6vWo4='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; media-src 'self' blob: http: https:; connect-src 'self' blob: http: https:; font-src 'self' data:; worker-src 'self' blob:; manifest-src 'self'"
+        />
         <title>ThunderTV</title>
         <link rel="stylesheet" href="/src/styles/tokens.css" />
         <link rel="stylesheet" href="/src/styles/base.css" />
+        <link rel="stylesheet" href="/src/styles/boot-overlay.css" />
         <link rel="stylesheet" href="/src/styles/shell.css" />
         <link rel="stylesheet" href="/src/styles/import-card.css" />
         <link rel="stylesheet" href="/src/styles/channel-list.css" />
@@ -30,24 +42,36 @@
           through this import map instead of being bundled by Vite — see
           vite.config.ts's `build.rollupOptions.external`.
 
-          Web (this file, as committed): pinned CDN URL, exact version, no
-          `@latest` and no semver range (masterplan §2, §6.10).
-
-          Packaged targets (Electron, webOS) rewrite the "spektrum" entry
-          below to "./vendor/spektrum.min.js" — scripts/package-target.mjs
-          does this with a regex that depends on this exact JSON shape
-          (one "imports" object, one "spektrum" key, double-quoted). Do not
-          reformat this block without updating that script.
+          Every target uses the pinned, integrity-checked local copy. This
+          removes a runtime CDN dependency from the web build too. Packaged
+          targets rewrite the built JS imports to a relative file and remove
+          this import map, avoiding an import-map shim on Chromium 87.
 
           scripts/spektrum-version.json is the single source of truth for
           the pinned version + its SHA-384 — scripts/check-importmap.mjs
-          fails the build if this URL drifts from that file.
+          fails the build if the vendored bytes drift from that file.
         -->
-        <script type="importmap">
-            { "imports": { "spektrum": "https://unpkg.com/spektrum@1.1.0/spektrum.min.js" } }
-        </script>
+        <script type="importmap">{ "imports": { "spektrum": "./vendor/spektrum.min.js" } }</script>
+        <!-- The classic script is intentionally copied verbatim. -->
+        <script vite-ignore src="./vendor/spektrum-precompiled.js"></script>
     </head>
     <body>
+        <!-- Boot splash (src/state/boot.ts) — sits above #app until the
+             first Live load (or, on an unconfigured install, the wizard)
+             is ready, then fades out. Kept as a sibling of #app, not inside
+             it, so it can be removed via data-if without touching the
+             shell's own layout. -->
+        <div
+            class="boot-overlay"
+            data-if="ui.bootPhase !== 'done'"
+            :class="{ 'boot-overlay--exiting': ui.bootPhase === 'exiting' }"
+            role="status"
+            :aria-label="strings.catalog.loading"
+            data-testid="boot-overlay"
+        >
+            <div class="boot-overlay__wallpaper"></div>
+        </div>
+
         <!--
           Feature 02.9 inline SVG icon sprite. Hand-drawn 24x24 stroke-based
           paths (stroke-width 2, no copied icon-font glyphs) referenced via
@@ -370,6 +394,7 @@
                                     data-ref="pasteTextarea"
                                     class="import-card__textarea"
                                     :placeholder="strings.emptyStates.firstRun.pastePlaceholder"
+                                    :aria-label="strings.emptyStates.firstRun.pastePlaceholder"
                                     data-testid="paste-textarea"
                                     data-action="keydown.enter"
                                     data-fn="playlist/handlePasteKeydown"
@@ -389,6 +414,7 @@
                                         data-ref="urlInput"
                                         class="import-card__input"
                                         :placeholder="strings.emptyStates.firstRun.urlPlaceholder"
+                                        :aria-label="strings.emptyStates.firstRun.urlPlaceholder"
                                         data-testid="url-input"
                                     />
                                     <button type="button" class="btn" data-action="click" data-fn="playlist/importUrl" data-testid="url-submit-btn">
@@ -410,6 +436,7 @@
                                         data-ref="xtreamUrlInput"
                                         class="import-card__input"
                                         :placeholder="strings.emptyStates.firstRun.xtreamUrlPlaceholder"
+                                        :aria-label="strings.emptyStates.firstRun.xtreamUrlPlaceholder"
                                         data-testid="xtream-url-input"
                                     />
                                 </div>
@@ -419,6 +446,7 @@
                                         data-ref="xtreamUserInput"
                                         class="import-card__input"
                                         :placeholder="strings.emptyStates.firstRun.xtreamUserPlaceholder"
+                                        :aria-label="strings.emptyStates.firstRun.xtreamUserPlaceholder"
                                         data-testid="xtream-user-input"
                                     />
                                 </div>
@@ -428,6 +456,7 @@
                                         data-ref="xtreamPassInput"
                                         class="import-card__input"
                                         :placeholder="strings.emptyStates.firstRun.xtreamPassPlaceholder"
+                                        :aria-label="strings.emptyStates.firstRun.xtreamPassPlaceholder"
                                         data-testid="xtream-pass-input"
                                     />
                                     <button type="button" class="btn" data-action="click" data-fn="xtream/import" data-testid="xtream-submit-btn">
@@ -1607,13 +1636,15 @@
                                              popup opens as a centered, keyboard-navigable modal dialog
                                              (`.track-menu` below) rather than an anchored popup — the old
                                              anchored popup could clip off the left edge of the viewport.
-                                             Hidden entirely in Radio (`!view.radio.active`): a radio stream
-                                             has no video tracks or subtitles to pick. Otherwise always
-                                             rendered regardless of track count: an empty track list still
-                                             opens the dialog and explains itself (see .track-menu__empty
-                                             below) rather than hiding the button, so a viewer never wonders
-                                             whether the feature is broken or just absent for this stream. -->
-                                        <div class="track-menu-anchor" data-if="!view.radio.active">
+                                             Shown only for Movies/Series (`view.movies.active ||
+                                             view.series.active`) — a Live channel or radio station has no
+                                             per-title track list to pick, and only the catalog video
+                                             previews carry one. Rendered regardless of track count within
+                                             those two views: an empty track list still opens the dialog and
+                                             explains itself (see .track-menu__empty below) rather than
+                                             hiding the button, so a viewer never wonders whether the feature
+                                             is broken or just absent for this stream. -->
+                                        <div class="track-menu-anchor" data-if="view.movies.active || view.series.active">
                                             <button
                                                 type="button"
                                                 class="icon-btn"
@@ -1667,7 +1698,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="track-menu-anchor" data-if="!view.radio.active">
+                                        <div class="track-menu-anchor" data-if="view.movies.active || view.series.active">
                                             <button
                                                 type="button"
                                                 class="icon-btn"
@@ -2288,9 +2319,10 @@
                                     :class="{ 'guide__program--now': program.isNow, 'guide__program--selected': program.isSelected }"
                                     :style="'grid-row:' + (program.channelIndex + 1) + '; margin-left:' + program.leftPercent + '%; width:' + program.widthPercent + '%'"
                                     :data-program-key="program.key"
+                                    :data-epg-id="program.channelId"
                                     :title="program.title"
                                     data-action="click"
-                                    data-fn="guide/selectProgram"
+                                    data-fn="guide/openProgram"
                                     data-testid="guide-program"
                                 >
                                     <span class="guide__program-title truncate">{{ program.title }}</span>
@@ -2315,9 +2347,9 @@
                     data-testid="view-connect"
                 >
                     <h1 class="view__heading">{{ strings.views.connect.heading }}</h1>
-                    <!-- TODO(phase-14): this stub never reads or renders connect params —
-                         only whether any were present. Phase 14 consumes-and-scrubs the
-                         real fragment before any request. -->
+                    <!-- Phase 14 is deliberately de-scoped from v1. This
+                         route detects old/planned links but never reads or
+                         persists their credential-bearing parameters. -->
                     <p data-if="connect.detected">{{ strings.connect.detected }}</p>
                 </section>
             </main>

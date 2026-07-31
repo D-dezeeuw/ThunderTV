@@ -8,7 +8,7 @@ import { set } from './typed';
  * `registerSettingsActions()`'s `defineFn`s, which just `void` these.
  */
 
-const APP_VERSION = '0.0.0';
+const APP_VERSION = '1.0.0';
 
 /** Filename stamp shared by every export, so a set of three files sorts together. */
 function stamp(iso: string): string {

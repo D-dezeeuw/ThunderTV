@@ -31,14 +31,26 @@ real caller wires it up.
 `applyProxy`/`isValidProxyTemplate` (`proxy.ts`) implement the optional
 user-configured proxy from the architecture plan (masterplan §8, item 3): a
 `{url}`-substitution template applied to playlist/EPG/Xtream calls, empty by
-default. `WebHttpAdapter` takes a `getProxyTemplate` getter at construction —
-today nothing supplies one (no proxy configured yet); Phase 22's Settings →
-Streaming section will back it with real Spektrum state.
+default. `WebHttpAdapter` takes a `getProxyTemplate` getter at construction;
+`src/app/bootstrap.ts` supplies a real one reading `settings.proxyTemplate`,
+which Settings → Streaming writes.
 
-**Caveat:** hls.js/mpegts.js fetch video *segments* directly — those bypass
-this adapter and remain CORS-bound on the web regardless of a configured
-proxy. That expectation belongs to the player phases (masterplan §8.3), not
-here.
+**Segments too, but not through this adapter.** hls.js/mpegts.js fetch video
+segments themselves, so they never reach `classifiedFetch`. They are still
+proxied, by two other means: `src/player/bindings.ts` runs the stream URL
+through `applyProxy` before handing it to the engine, and the proxy rewrites
+HLS manifests so every variant/segment/key URI points back at itself
+(`scripts/cloudflare-cors-proxy.mjs`'s `rewriteManifest`). A configured proxy
+therefore covers playback on the web — the older "segments remain CORS-bound
+regardless" caveat predates both and is no longer true.
+
+**What a proxy does not fix:** a provider that blocks the proxy's own egress
+IP. Many panels serve their API to anything but reject stream endpoints from
+datacenter ranges — often as a 404 rather than a 403 — which is why
+`scripts/home-proxy.mjs` exists to run the same worker from a residential
+connection. A CORS failure never carries a status code at all (it lands in
+`cors-or-network` above), so a real 403/404 means the request arrived and was
+refused.
 
 ## Testing
 

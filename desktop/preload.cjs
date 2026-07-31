@@ -43,7 +43,7 @@ ipcRenderer.on(IPC_WINDOW_FULLSCREEN_STATE, (_event, value) => {
 if (proxyOriginArg) {
     contextBridge.exposeInMainWorld('electron', {
         proxyOrigin: proxyOriginArg.slice(PROXY_ORIGIN_PREFIX.length),
-        appVersion: appVersionArg ? appVersionArg.slice(APP_VERSION_PREFIX.length) : '0.0.0',
+        appVersion: appVersionArg ? appVersionArg.slice(APP_VERSION_PREFIX.length) : '1.0.0',
         isWindowFullscreen: () => windowFullscreen,
         setWindowFullscreen: (next) => {
             const value = Boolean(next);
@@ -56,8 +56,8 @@ if (proxyOriginArg) {
         getDefaultConfig: () => ipcRenderer.invoke(IPC_GET_DEFAULT_CONFIG),
         downloads: {
             prepare: (filename) => ipcRenderer.invoke(IPC_DOWNLOAD_PREPARE, String(filename)),
-            start: (id, url, filePath) => {
-                ipcRenderer.send(IPC_DOWNLOAD_START, String(id), String(url), String(filePath));
+            start: (id, url, targetToken) => {
+                ipcRenderer.send(IPC_DOWNLOAD_START, String(id), String(url), String(targetToken));
             },
             cancel: (id) => {
                 ipcRenderer.send(IPC_DOWNLOAD_CANCEL, String(id));

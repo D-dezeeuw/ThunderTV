@@ -1,0 +1,43 @@
+# ThunderTV home proxy, on the Nginx Proxy Manager network.
+#
+#   cp .env.example .env   # fill both values in — neither has a safe default
+#   docker compose up -d --build
+#
+# NPM reaches this container by name on the shared network, so no port is
+# published to the host. See README.md for the NPM proxy-host settings, which
+# are not optional — the defaults break live streams.
+# Without this the project takes its name from the directory — "docker".
+name: thundertv-proxy
+
+services:
+    thundertv-proxy:
+        build:
+            context: ..
+            dockerfile: docker/Dockerfile
+        image: thundertv-proxy:latest
+        container_name: thundertv-proxy
+        restart: unless-stopped
+        environment:
+            PORT: 8899
+            # Both are `:?` rather than defaulted, on purpose. An unset
+            # ALLOWED_HOSTS silently makes this an open proxy on a
+            # publicly-resolvable hostname; an unset PUBLIC_ORIGIN silently
+            # points every rewritten HLS segment URI at 127.0.0.1, so the
+            # channel list loads and playback 404s. Both failures are quiet
+            # and slow to diagnose, so neither is allowed to start.
+            ALLOWED_HOSTS: ${ALLOWED_HOSTS:?set ALLOWED_HOSTS in .env — the provider host(s) this proxy may reach}
+            PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN in .env — the public https:// URL NPM serves this on}
+        networks:
+            - nginx-proxy-manager_default
+        # Uncomment to reach the proxy directly from this machine's browser,
+        # bypassing NPM — `http://localhost:8899/{url}` as the proxy template.
+        # localhost is exempt from mixed-content blocking, so this works from
+        # the deployed HTTPS app without a certificate.
+        # ports:
+        #     - '8899:8899'
+
+networks:
+    # Created by the Nginx Proxy Manager stack, not by this file — `external`
+    # means "attach to it, never manage it".
+    nginx-proxy-manager_default:
+        external: true

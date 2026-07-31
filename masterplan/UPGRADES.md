@@ -6,9 +6,10 @@
 > Ordered by **leverage**, not by effort. U1–U4 are the ones that stop the
 > bleeding; everything after is compounding improvement.
 >
-> **Status:** U1, U2, U3, U4 and U7 have landed. What they actually cost and
-> what they bought is recorded inline below, so the next person can judge the
-> remaining items against real numbers rather than my estimates.
+> **Status:** U1, U2, U3, U4, U5 and U7 have landed; U14, U15 and U16 are
+> partly closed by work that arrived for other reasons. What they actually
+> cost and what they bought is recorded inline below, so the next person can
+> judge the remaining items against real numbers rather than my estimates.
 
 **Guiding rule for this plan:** prefer a *machine-enforced gate* over a
 documented convention. Every finding in the audit that stayed fixed was
@@ -108,6 +109,47 @@ It did **not** have to land failing, as this plan assumed — the optimization
 work below got under both budgets first. Final: **135.7 kB raw / 46.0 kB gz**
 against 200 kB / 60 kB, down from 213.8 kB / 72.5 kB.
 
+> #### ⚠️ The fence has a hole — found while landing U5, not yet fixed
+>
+> `check-dist.mjs` measures **the entry chunk only**. The built page
+> modulepreloads three more chunks, all of them on the critical path:
+>
+> ```
+> index-*.js            33.7 kB gz   ← the only one measured
+> platform-*.js         38.9 kB gz
+> hidden-sources-*.js    4.4 kB gz
+> rolldown-runtime-*.js  0.4 kB gz
+> ────────────────────────────────
+> first-load JS         77.3 kB gz   vs. the masterplan's ≤ 60 kB
+> ```
+>
+> So the real first-load payload is **29% over the budget**, and `verify`
+> reports OK — because the number it checks is not the number the masterplan
+> states. `platform-*.js` alone is larger than the chunk being policed.
+>
+> This is the same defect class as U3 (a guard that existed but did not run),
+> one level in: a guard that runs, but measures the wrong thing. It is
+> arguably worse, because a passing check is read as evidence.
+>
+> **And it does not weigh non-JS assets at all.** The boot splash that landed
+> in `cf1596c` ships `boot-wallpaper.png` at **1.85 MB** — about 24× the whole
+> first-load JS payload — fetched eagerly, because `.boot-overlay` is in the
+> initial DOM with `ui.bootPhase` starting at `'loading'` and the wallpaper is
+> a CSS `background: url(…)`. It is therefore competing for bandwidth with the
+> app's own boot, on exactly the slow connection where a splash is supposed to
+> help. Whether that trade is worth it is a design call and not this
+> document's to make; that it is *unmeasured* is squarely §5's first row, and
+> a budget covering images would have made it a decision instead of a
+> side effect.
+>
+> **The fix is small — sum every `<script>`/`modulepreload` chunk in
+> `dist/index.html` instead of picking the entry — but it lands `verify`
+> red at 77.3/60**, so it is a deliberate call, not a drive-by: either
+> take the failing gate now with a recorded TODO (this document's own
+> advice, above) or split `platform-*.js` first and land the fence green.
+> Flagging rather than choosing, since it blocks every `verify` until the
+> gap closes.
+
 Extend `check-dist.mjs` with gzipped-size assertions read from a committed
 `scripts/perf-budget.json`:
 
@@ -139,23 +181,42 @@ all three languages to every user.
 ## Tier 1 — Restore truth
 
 ### U5. Reconcile the masterplan with reality
-**Closes §3.2.**
+**Closes §3.2. — ✅ LANDED**
 
-The tracker reports 0/100 for 22 phases that largely ship. Two changes:
+Every phase file now carries a machine-parsed status line:
 
-1. **One reconciliation pass.** Walk phases 09–30, check the boxes that are
-   genuinely done, and mark the rest honestly. Where a phase shipped in a form
-   the plan did not anticipate (Xtream VOD's ad-hoc persistence, §4.6), record
-   *what was actually built* next to the task rather than silently ticking it.
-2. **Add a `> Status:` line** to each phase file (`not-started` / `partial` /
-   `shipped` / `superseded`) and generate a summary table into
-   `MASTERPLAN.md` via a script, the same way `masterplan/reference/state-keys.md`
-   is already generated. A derived table cannot rot in one direction while the
-   source rots in the other.
+```
+> **Status:** `<shipped|partial|not-started|superseded>` · tracker: `<current|not-maintained>` — <prose>
+```
 
-Also update `CLAUDE.md`: it currently tells agents the phase files are the
-build-order source of truth. Until U5 lands, that instruction is actively
-harmful and should carry a warning.
+`scripts/gen-phase-status.mjs` renders those into MASTERPLAN §4's table and
+runs in `--check` mode as `npm run lint:phase-status`, inside `verify` — so
+the summary can no longer rot in one direction while the phase files rot in
+the other. `gen-state-keys.mjs --check` got wired into `verify` at the same
+time; it was **already failing**, which is the second time in this document
+that a written-but-unrun guard turned out to be guarding nothing.
+
+The reconciliation found more than a stale tracker. Six phases are not what
+the plan says they are: **09, 12, 13, 15, 23, 26** shipped partially, with
+named gaps (no `/` shortcut or match highlighting; no theater mode or volume
+control; no favorites ordering or orphan reconciliation; no conditional GET
+on playlist refresh; no global error boundary; no startup instrumentation).
+**16, 17 and 18 were superseded** by Phases 31/32 rather than completed —
+`src/epg/README.md` had recorded that at the point of use, and the masterplan
+never heard about it. **14 and 24 are genuinely unstarted.**
+
+**The one judgment call:** the plan said "check the boxes that are genuinely
+done." I did not retro-tick ~2 000 boxes across 22 phases, because verifying
+them individually is not something this pass could honestly claim to have
+done, and a wrong tick is indistinguishable from a right one afterwards. The
+phase-level status line is verified and the box counts for those files are
+reported as *not tracked* rather than as a number nobody stands behind.
+Trading false precision for stated ignorance is the whole point of the
+exercise; if per-task fidelity is wanted for a specific phase, reconcile that
+one file and flip its tracker back to `current`.
+
+`CLAUDE.md` now points at the status table and says plainly that the module
+README, not the phase file, is the live reference.
 
 ### U6. Map the shadow state layer
 **Closes §4.4, and is a precondition for U7.**
@@ -215,7 +276,26 @@ U6's reset hook closes the residual class.
 ## Tier 2 — Close the architectural scars
 
 ### U8. Break up `index.html`
-**Closes §4.8.**
+**Closes §4.8. — OPEN, and now the worst-trending item in this document.**
+
+Re-measured while landing U5:
+
+| | At the audit | Now | Change |
+| --- | --- | --- | --- |
+| Lines | 2,366 | **3,560** | +50% |
+| Shipped `dist/index.html` gz | 21.79 kB | **32.5 kB** | +49% |
+| Entry chunk gz | 71.75 kB | 46.0 → **33.7 kB** | −53% |
+
+The contrast is the finding. The entry chunk got *better* by half, because U4
+put a fence around it and `verify` fails when it is breached. `index.html`
+grew by half over the same period, because nothing measures it — it is now
+**larger, gzipped, than the entry chunk it sits next to**, and every byte is
+on the critical path. This is §5's "nothing is measured, so nothing holds"
+running its course a second time, in the one place the first round of fences
+did not reach.
+
+Step 3 below is therefore the load-bearing part, not the cleanup at the end:
+land the fence first, even at today's size, so the number can only go down.
 
 1. Extract the SVG sprite to `public/icons.svg` and reference it externally —
    removes ~6 KB from the critical path immediately, cached separately.
@@ -292,43 +372,70 @@ static and pinned — precisely the easy case. Include the kill-switch and updat
 flow Phase 24 already specifies.
 
 ### U14. Build the input model the TV target requires
-**Closes §4.11 (a11y), unblocks Phase 30.**
+**Closes §4.11 (a11y), unblocks Phase 30. — 🟡 MOSTLY LANDED, as Phase 35**
 
-webOS is a stated 1.0 target and there is currently no spatial navigation, so
-the TV target has no viable input story at all. This is the largest *unstarted*
-gap in the plan and should be sequenced before, not after, packaging work:
-global roving tabindex, a documented D-pad key map, focus containment in the
-settings/wizard dialogs, and `aria-selected` / `aria-pressed` coverage across
-the list and rail.
+The core of this item shipped, and in a better form than proposed here.
+`src/ui/spatial/` decides focus by **geometry** — "which element is actually
+to the right of this one" — rather than by the global roving tabindex
+suggested below. That matters because a tab ring is one ordered list authored
+into the markup, which has to be hand-maintained per screen and still sends
+the cursor somewhere unrelated on a 10-foot layout; geometry stays correct
+however the layout reflows, with no per-screen authoring. `keys.ts` covers
+the documented D-pad map across desktop and TV webviews, including the Back
+button.
+
+**Still open:** focus containment in the settings/wizard dialogs, and
+`aria-selected`/`aria-pressed` coverage across the list and rail — §4.11's
+count of 1 `aria-pressed` and 2 `aria-selected` app-wide has not meaningfully
+moved.
 
 ### U15. Runtime i18n fallback
-**Closes §4.11 (i18n).**
+**Closes §4.11 (i18n). — 🟡 PARTLY LANDED**
 
-`strings.spec.ts` guarantees key parity at build time; a `Proxy`-based
-`getStrings()` that falls through to `en` on a missing leaf guarantees the user
-never sees `undefined` if that guarantee is ever bypassed. ~15 lines.
+The *locale* fallback exists: `nl`/`de` now load as their own chunks (a
+by-product of U4's budget work, which found all three dictionaries were
+~44 kB of the entry chunk), and a failed import falls back to `en` rather
+than rejecting, so a language switch can never blank the UI.
+
+**Still open — the actual finding.** That covers a failed *dictionary*, not a
+missing *leaf*. There is no `Proxy` in `strings.ts`, so a key present in `en`
+and absent from `nl` still renders `undefined` at runtime; `strings.spec.ts`'s
+build-time parity assertion remains the only thing preventing it. ~15 lines,
+unchanged.
 
 ### U16. Decide the visualizer's place deliberately
-**Closes §4.10.**
+**Closes §4.10. — 🟡 HALF LANDED**
 
-The 2,042-LOC visualizer is off-plan, not bad. Two actions:
-- **Lazy-load it** behind the Radio view (feeds U4's budget directly — it is
-  dead weight for every user who never opens Radio).
-- **Give it a phase file.** It is a real feature with real scope; leaving the
-  largest single module in the app absent from the plan is how §3.2 happens
-  again. Retroactive documentation is cheap; an unmapped 2,000-LOC subsystem is
-  not.
+- **Lazy-loading: done.** `src/player/visualizer-lazy.ts` defers the whole
+  subsystem behind the Radio view, and it is part of why U4's budget closed.
+- **A phase file: still missing.** The visualizer appears in zero phase files
+  and zero module READMEs' ownership lines. It remains the largest single
+  subsystem the plan does not mention — and now that §4 has a status table,
+  it is the one thing that table cannot see. Same failure mode as §3.2, one
+  subsystem instead of 22 phases.
 
 ---
 
 ## Sequencing
 
-| Wave | Items | Outcome |
-| --- | --- | --- |
-| **1 — this week** | U1, U3, U7 (interim), U5 | Green CI means something. The map matches the territory. |
-| **2 — next** | U2, U4, U6, U8 | The app has no unreachable features and no unmapped state. Budget enforced. |
-| **3** | U9, U10, U11, U12 | Architectural scars closed; hazards gated instead of remembered. |
-| **4** | U13, U14, U15, U16 | Product whole enough that Phase 30's TV target is actually reachable. |
+| Wave | Items | Outcome | State |
+| --- | --- | --- | --- |
+| **1** | U1, U3, U7, U5 | Green CI means something. The map matches the territory. | ✅ done |
+| **2** | U2, U4, U6, U8 | The app has no unreachable features and no unmapped state. Budget enforced. | U2, U4 done; **U6, U8 open** |
+| **3** | U9, U10, U11, U12 | Architectural scars closed; hazards gated instead of remembered. | all open |
+| **4** | U13, U14, U15, U16 | Product whole enough that Phase 30's TV target is actually reachable. | U14/U15/U16 partly done; **U13 untouched** |
 
-**The one-line version:** U1 and U3 are ~2 hours of work combined and would have
-prevented the two critical findings in this audit outright. Do those first.
+**Where this stands now.** Wave 1 is closed and the two critical findings are
+gated rather than remembered. What remains splits cleanly in two:
+
+- **U6 and U8 are the ones still costing something daily.** The shadow state
+  layer has no reset hook (which is why §4.3's flake class is suppressed
+  rather than eliminated) and `index.html` has grown from 2,366 to **3,560
+  lines** since the audit — 50% larger, still unlinted, still uncapped. It is
+  the only major artifact in the repo with no size fence, and it is behaving
+  exactly as that predicts.
+- **U13 is the largest product gap left**, and it is the one item here nobody
+  has touched at all: Phase 24 remains a manifest with no service worker.
+
+**The one-line version:** U8 first, because it is the one actively getting
+worse; then U6, because it makes the test suite honest; then U13.

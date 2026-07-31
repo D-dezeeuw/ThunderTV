@@ -2,6 +2,7 @@
 
 > **Epic goal:** Every way a playlist enters the app — file upload, paste-as-text, URL fetch — works end-to-end through the Phase 06 worker with progress, honest CORS-classified errors, idempotent upserts, and clean cancellation, on every storage tier.
 > **Verification:** On the built `dist/`, all three import paths take a fixture playlist to a browsable stored source with live progress; a cross-origin URL without CORS headers shows the specific CORS explanation with working alternatives (not a generic error); importing the same URL twice yields one source; cancelling mid-import leaves storage with no partial source; the storage-matrix suite passes on memory, localStorage, and fake-IndexedDB tiers.
+> **Status:** `shipped` · tracker: `current` — Two boxes open: **07.5.10** and **07.10.7** both wait on `@playwright/test`, which Phase 27 has still not added. The manual real-browser pass in 07.5.9 substitutes for now.
 
 Before this phase the parsing engine exists but nothing feeds it — the app still opens to an empty shell. After it, the first-run import card is the front door: file, paste, and URL imports run through one shared pipeline (`fetch/read → decode → worker → chunked storage writes → source meta commit`), the CORS reality of MASTERPLAN.md §5.2/§8 is designed into the URL path, and Phase 08 has real stored channels to render.
 

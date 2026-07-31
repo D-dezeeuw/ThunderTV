@@ -104,11 +104,10 @@ export default defineConfig(({ mode }) => ({
         // pick up the webOS-swapped output by accident.
         outDir: mode === 'webos' ? 'dist-webos' : 'dist',
         // webOS TVs from the confirmed compatibility floor (webOS 6+,
-        // ~2021+) ship Chromium 87+. That's still short of Chromium 89,
-        // where native `<script type="importmap">` support landed — see
-        // scripts/package-target.mjs's es-module-shims injection for that
-        // gap — but otherwise close enough to evergreen that no aggressive
-        // syntax down-leveling is needed. Other modes keep esbuild's
+        // ~2021+) ship Chromium 87+. Packaged JS imports are rewritten to
+        // the relative vendored Spektrum file, so native import-map support
+        // is not required. The engine is otherwise close enough to evergreen
+        // that no aggressive syntax down-leveling is needed. Other modes keep esbuild's
         // default (evergreen) target — `exactOptionalPropertyTypes` forbids
         // setting `target: undefined` explicitly, so it's omitted via
         // spread instead.

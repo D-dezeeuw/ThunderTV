@@ -2,6 +2,7 @@
 
 > **Epic goal:** The exact same `dist/` becomes a desktop app: a minimal main process, a typed preload bridge, and CORS-free main-process HTTP behind the existing `PlatformAdapter` — with zero UI changes.
 > **Verification:** `npm run electron:preview` (build + import-map swap + launch) shows the working app under `file://`; a URL import that fails on the web succeeds in Electron; `contextIsolation` is on, `nodeIntegration` is off, and the Playwright `_electron` smoke passes including the full-IDB storage-tier check.
+> **Status:** `shipped` · tracker: `not-maintained` — `desktop/main.mjs`, `preload.cjs` and `src/core/platform/electron-platform.ts` carry the main process, the typed bridge and the adapter; main-process HTTP runs through a proxy bound to 127.0.0.1, and the security defaults are hardened (`contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`).
 
 Before this phase ThunderTV is a web app with an `ElectronPlatformAdapter`-shaped hole reserved by the Phase 03 adapter layer (`window.electron` detection, `capabilities.corsUnrestricted`). After this phase an `electron/` folder holds a deliberately dumb main process and a typed `contextBridge` preload; the renderer is the unchanged built `dist/` loaded via `file://` with the vendored-Spektrum import map; HTTP runs CORS-free in the main process; native file dialogs replace `<input type=file>`; and the whole thing is covered by a Playwright `_electron` smoke. Packaging and installers are Phase 29's job — this phase ends at "runs correctly from a local build".
 

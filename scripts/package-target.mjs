@@ -1,20 +1,15 @@
 #!/usr/bin/env node
-// Rewrites a built dist/index.html for a packaged target (Electron, webOS)
-// so it never depends on the Spektrum CDN. webOS additionally gets an
-// es-module-shims polyfill for TV engines under Chromium 89, which predates
-// native `<script type="importmap">` support, and src/styles/tv-mode.css's
-// LG-App-Self-Checklist button/text-size overrides. Run after `vite build`,
-// before packaging.
-//
-// The Spektrum swap depends on the exact import-map JSON shape documented
-// in index.html's comment block: one "imports" object, one "spektrum" key,
-// double-quoted.
+// Rewrites built bare Spektrum imports to the pinned local file and removes
+// the import map. This lets Electron/webOS load without a network dependency
+// or an import-map shim (Chromium 87 has native ESM, just not import maps).
+// webOS additionally gets src/styles/tv-mode.css's LG-App-Self-Checklist
+// overrides. Run after `vite build`, before packaging.
 //
 // Usage:
 //   node scripts/package-target.mjs <electron|webos> [--dist <path>] [--check]
 //
 // --check   dry-run: report what would change, change nothing.
-import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -32,50 +27,46 @@ const defaultDistDir = target === 'webos' ? `${repoRoot}dist-webos` : `${repoRoo
 const distDir = distFlagIndex === -1 ? defaultDistDir : args[distFlagIndex + 1];
 const indexHtmlPath = `${distDir}/index.html`;
 
-const importMapPattern = /("spektrum"\s*:\s*)"[^"]+"/;
-const vendoredSpektrumEntry = '"./vendor/spektrum.min.js"';
-const shimScriptTag = '<script async src="./vendor/es-module-shims.js"></script>';
-const importMapTagPattern = /(\s*)(<script type="importmap">)/;
+const importMapTagPattern = /\s*<script type="importmap">[\s\S]*?<\/script>/;
+const assetsDir = `${distDir}/assets`;
 
 let html = readFileSync(indexHtmlPath, 'utf8');
 let changed = false;
 
-const spektrumMatch = html.match(importMapPattern);
-if (!spektrumMatch) {
-    console.error(`package-target: no "spektrum" import-map key found in ${indexHtmlPath}`);
-    process.exit(1);
+let rewrittenImports = 0;
+for (const name of readdirSync(assetsDir).filter((entry) => entry.endsWith('.js'))) {
+    const assetPath = `${assetsDir}/${name}`;
+    const source = readFileSync(assetPath, 'utf8');
+    const output = source.replace(/(["'])spektrum\1/g, (_match, quote) => {
+        rewrittenImports += 1;
+        return `${quote}../vendor/spektrum.min.js${quote}`;
+    });
+    if (!checkOnly && output !== source) writeFileSync(assetPath, output);
 }
 
-const spektrumAlreadySwapped = spektrumMatch[0].includes(vendoredSpektrumEntry);
-if (spektrumAlreadySwapped) {
-    console.log(`package-target: ${indexHtmlPath} already points spektrum at the vendored copy`);
-} else if (checkOnly) {
+const hasImportMap = importMapTagPattern.test(html);
+if (rewrittenImports === 0 && hasImportMap) {
+    console.error(`package-target: no bare Spektrum imports found under ${assetsDir}`);
+    process.exit(1);
+}
+if (rewrittenImports > 0) {
     console.log(
-        `package-target: --check — would rewrite "${spektrumMatch[0]}" to "${spektrumMatch[1]}${vendoredSpektrumEntry}" in ${indexHtmlPath}`,
+        `package-target: ${checkOnly ? '--check — would rewrite' : 'rewrote'} ${String(rewrittenImports)} Spektrum import(s) to the local runtime`,
     );
-} else {
-    html = html.replace(importMapPattern, `$1${vendoredSpektrumEntry}`);
-    changed = true;
-    console.log(`package-target: rewrote ${indexHtmlPath} to load spektrum from ${vendoredSpektrumEntry}`);
+}
+if (hasImportMap) {
+    if (checkOnly) {
+        console.log(`package-target: --check — would remove the import map from ${indexHtmlPath}`);
+    } else {
+        html = html.replace(importMapTagPattern, '');
+        changed = true;
+        console.log(`package-target: removed the now-unneeded import map from ${indexHtmlPath}`);
+    }
+} else if (rewrittenImports === 0) {
+    console.log(`package-target: ${distDir} is already transformed`);
 }
 
 if (target === 'webos') {
-    const shimAlreadyPresent = html.includes(shimScriptTag);
-    if (shimAlreadyPresent) {
-        console.log(`package-target: ${indexHtmlPath} already has the es-module-shims script tag`);
-    } else if (checkOnly) {
-        console.log(`package-target: --check — would inject "${shimScriptTag}" before the import map in ${indexHtmlPath}`);
-    } else {
-        const importMapTagMatch = html.match(importMapTagPattern);
-        if (!importMapTagMatch) {
-            console.error(`package-target: no <script type="importmap"> tag found in ${indexHtmlPath}`);
-            process.exit(1);
-        }
-        html = html.replace(importMapTagPattern, `$1${shimScriptTag}$1$2`);
-        changed = true;
-        console.log(`package-target: injected the es-module-shims script tag before the import map in ${indexHtmlPath}`);
-    }
-
     // LG App Self Checklist button/text-size overrides — a plain file copy
     // (not something Vite bundles, since the source index.html never
     // references it) plus a <link> injected after every other stylesheet so

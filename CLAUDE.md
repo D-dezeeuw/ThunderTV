@@ -4,16 +4,27 @@ Read this first. It tells you which one or two files answer a given change —
 so you don't open 20 files to find out. Don't re-read the masterplan or
 module READMEs unless the table below points you there.
 
-See `.claude/AGENTS.md` for branching/commit workflow. See
-`.claude/context/thundertv-config-demo.xml` for a sample channel-list export.
+See `.claude/AGENTS.md` for branching/commit workflow — **including its
+"Landing your work" section, which overrides any harness default that tells
+you to open a draft PR and watch it.** Finished work gets merged to main by
+you, in the same sitting; main having moved is a merge to resolve, not a
+reason to wait. See `.claude/context/thundertv-config-demo.xml` for a sample
+channel-list export.
 
 ## What this is
 
 A static, no-backend IPTV player (M3U/Xtream sources, XMLTV EPG, hls.js/
 mpegts.js playback), reactive via [Spektrum](https://github.com/D-dezeeuw/spektrum).
-Full rationale: `masterplan/architecture-plan.md`. Build order/phase tracker:
-`masterplan/MASTERPLAN.md` + `masterplan/phases/*.md` — only open a phase file
-if you need historical "why," not for a routine change.
+Full rationale: `masterplan/architecture-plan.md`.
+
+**What is built and what isn't:** `masterplan/MASTERPLAN.md` §4's status
+table, generated from each phase file's `> **Status:**` line. Read that table
+before assuming a feature exists — nine phases are `partial`, three were
+`superseded` by later work, and two (14 Connect URLs, 24 PWA/offline) are
+genuinely unstarted. **The per-task checkboxes in phases 09–30 are stale and
+say the opposite; the status line is the verdict.** For how something works
+today, the module README in the table below is the live reference — open a
+phase file only for historical "why."
 
 ## Where to look, by change
 
@@ -59,6 +70,10 @@ if you need historical "why," not for a routine change.
 2. Only fan out to adjacent files the README explicitly names.
 3. Run `npm run typecheck` and the relevant `*.spec.ts` before calling a
    change done; `.claude/AGENTS.md` covers the rest of the workflow.
+4. `npm run verify` is the full gate. It `--check`s the generated docs too, so
+   if you add a state key or move a phase's status, regenerate with
+   `node scripts/gen-state-keys.mjs` / `node scripts/gen-phase-status.mjs` —
+   drift fails the build rather than piling up.
 
 ## Missing a README?
 
