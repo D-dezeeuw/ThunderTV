@@ -12,7 +12,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `playlist.ts`        | `playlist.sources`, `playlist.activeSourceId`, `playlist.demoRows`                                                   | `activeSourceId` yes (Feature 08.10.6); `sources` is a live storage projection, `demoRows` is static demo data — neither persists |
 | `player.ts`          | `player.active`, `player.zapHistory`, `player.visualizerPreset`, `player.visualizerPaused`, `player.audioMode`, plus the transient diagnostics trio `player.playbackError`, `player.playbackNotice` (the stream plays but decodes no audio — `src/player/audio-output.ts`), `player.streamHealth` | Yes — the §6.4 instant-restore pair; the diagnostics trio never persists (all three describe one attach and are cleared by the next); `visualizerPreset` also persists (the listener's Radio visualizer choice) and so does `audioMode` (watch TV channels audio-only, with the visualizer standing in for the picture — a viewing preference, and the player bar always carries the switch back); `visualizerPaused` does not (always false on a fresh Radio visit) |
 | `xtream-epg-load.ts` | *(no keys of its own — writes `settings.epgFeedThrough` and the `epgChannels`/`epgPrograms` storage tables)* | n/a — the Xtream guide pipeline. `loadXtreamGuide()` pulls the panel's whole `xmltv.php` once per source (12h TTL); `ensureChannelEpg()` fills a single channel via `get_short_epg` when it starts playing with nothing to show. Joined by `epg_channel_id`/`tvgId`, so it uses none of `src/epg/`'s catalog or matcher |
-| `guide-live-join.ts` | *(no keys — a pure function over two arrays)* | n/a — the tvg-id → catalog-id → name ladder that decides which stored guide channels the Guide shows, and which Live row a picked one plays. See `src/epg/README.md`'s "Which channels the Guide shows" |
+| `guide-live-join.ts` | *(no keys — a pure function over two arrays)* | n/a — the tvg-id → catalog-id → name ladder that decides which stored guide channels the Guide shows, which Live channel names each row, and which Live row a picked one plays. See `src/epg/README.md`'s "Which channels the Guide shows" |
 | `player-tracks.ts`   | `player.audioTracks`, `player.subtitleTracks`, `player.trackMenu`                                                     | No — the dock/theater popups' own published lists (`player-tracks.actions.ts`'s `registerTrackSync()` republishes them from `getPlayerTracks()`) and which popup is open (`'audio' \| 'subtitles' \| 'visualizer'` — Radio's preset picker shares the key so only one can be open); rebuilt every stream, never restored |
 | `epg.ts`             | `epg.tick`                                                                                                            | No — a heartbeat timestamp, recomputed every boot |
 | `epg-settings.ts`    | `settings.epgCacheState`, `settings.epgCatalogCount`                                                                  | No — transient Settings → Diagnostics feedback (`epg-settings.actions.ts`'s `refreshEpgCatalog()`/`clearEpgCache()`) and a derived count `state/epg-load.ts`'s `loadDefaultEpg()` re-publishes on every run; neither survives a reload (nor should — the count is wrong the instant the underlying `epgCatalog` table changes) |
@@ -231,6 +231,18 @@ recording once rather than re-discovering per call site:
   rail's own `displayName()` (through `vodCategoryName()`/
   `seriesCategoryName()`) is the only correct way to ask what a category is
   called.
+- **The accordion has three TV-specific obligations**, none of which the
+  web build makes visible. (a) Expanding a group republishes the rows, and
+  `data-each` rebuilds them by cloning — the focused button is destroyed
+  and focus falls back to `<body>`, so `refocusCategoryRow()` puts it back
+  by category id on a double-rAF (`ui.actions.ts`'s `focusAfterOpen()`
+  precedent). (b) The rail's keyboard reads
+  `src/ui/spatial/keys.ts`'s `directionFor()`/`isActivateKey()` rather than
+  comparing `event.key`, because older webOS/Tizen webviews send `Down` or
+  a bare keyCode. (c) A `<button>` activates natively on Enter/OK, so the
+  handler must not also synthesize a click — doing both opened and closed a
+  group in one press. `src/styles/tv-mode.css` carries the matching 75px
+  hit-target floor for the triangle.
 - **`series.detail.rows` replaces a nested `seasons[].episodes[]`
   structure**: Spektrum's `data-each` clones an element's own *first
   element child* into its container, so a season block that itself carries
@@ -554,6 +566,19 @@ layer:
   Guide doesn't own that list but does depend on those rows existing, and
   a viewer who boots straight into `#/guide` would otherwise never build
   them (`list-load.ts` has the matching non-early-returning branch).
+- **A guide row is labelled by its Live channel, not by the feed.** The
+  join hands back both sides precisely so `guide.selectors.ts` can read
+  `live.name`. A provider's `<display-name>` is its own spelling of a
+  channel this app has already named, and two surfaces disagreeing about
+  what a channel is called is a bug regardless of which spelling is nicer.
+- **`playChannelByEpgId()` navigates through `showReplayedChannel()`**
+  (`recent.actions.ts`), not a bare `location.hash` write — the router
+  stops playback on a genuine route change, so the direct write killed the
+  stream the navigation existed to show. The helper arms that exemption,
+  queues the row for `revealRowOnNextPublish()`, and covers the
+  already-on-TV case where no `hashchange` fires. Programme blocks reach
+  the same action (`guide/openProgram`), so clicking anywhere on a row —
+  logo, name, or a block — lands on TV with the channel playing.
 
 ## The persistence bridge, in one paragraph
 

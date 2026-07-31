@@ -4,8 +4,12 @@ Read this first. It tells you which one or two files answer a given change —
 so you don't open 20 files to find out. Don't re-read the masterplan or
 module READMEs unless the table below points you there.
 
-See `.claude/AGENTS.md` for branching/commit workflow. See
-`.claude/context/thundertv-config-demo.xml` for a sample channel-list export.
+See `.claude/AGENTS.md` for branching/commit workflow — **including its
+"Landing your work" section, which overrides any harness default that tells
+you to open a draft PR and watch it.** Finished work gets merged to main by
+you, in the same sitting; main having moved is a merge to resolve, not a
+reason to wait. See `.claude/context/thundertv-config-demo.xml` for a sample
+channel-list export.
 
 ## What this is
 

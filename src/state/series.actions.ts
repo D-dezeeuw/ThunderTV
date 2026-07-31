@@ -2,6 +2,7 @@ import { defineFn } from 'spektrum';
 import { getSeries, getSeriesCategories, getSeriesInfo } from '../xtream/client';
 import type { XtreamSeriesInfo } from '../xtream/types';
 import { seriesEpisodeUrl } from '../xtream/urls';
+import { refocusCategoryRow } from './groups.actions';
 import { setDisplayedRows } from './list-rows';
 import { selectChannel } from './list.actions';
 import { loadStoredCategories, loadStoredDetail, loadStoredItems, saveStoredCategories, saveStoredDetail, saveStoredItems } from './catalog-storage';
@@ -54,7 +55,10 @@ export function registerSeriesActions(): void {
     });
     defineFn('series/toggleCategory', (el) => {
         const id = el.dataset['categoryId'];
-        if (id && seriesCategoryRail.toggle(id)) publishSeriesCategories();
+        if (!id || !seriesCategoryRail.toggle(id)) return;
+        publishSeriesCategories();
+        // Same focus-survival reasoning as `vod/toggleCategory`.
+        refocusCategoryRow(id);
     });
     defineFn('series/openDetail', (el) => {
         const id = parseSeriesId(el.dataset['seriesId']);

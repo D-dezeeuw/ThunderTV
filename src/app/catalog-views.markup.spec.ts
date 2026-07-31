@@ -2,6 +2,7 @@ import { setValue, tick } from 'spektrum';
 import { describe, expect, it } from 'vitest';
 import { withFakePlatform } from '../core/platform/fake-platform';
 import { mountTemplate } from '../shared/testing/bind-dom';
+import { refocusCategoryRow } from '../state/groups.actions';
 import { get } from '../state/typed';
 import { VOD_ACTIVE_CATEGORY_ID } from '../state/vod';
 
@@ -125,6 +126,56 @@ describe('Movies/Series catalog markup (Phase 21, DOM-bound)', () => {
         expect(reboundToggles[0]?.getAttribute('aria-expanded')).toBe('true');
         expect(reboundToggles[0]?.classList.contains('groups-panel__toggle--open')).toBe(true);
         expect(mounted.queryAll('[data-testid="chip"]')[1]?.classList.contains('groups-panel__item--variant')).toBe(true);
+
+        mounted.cleanup();
+    });
+
+    /**
+     * Expanding a group rewrites `vod.categories`, and `data-each` rebuilds
+     * its rows by cloning — the focused button is removed from the document
+     * and focus falls back to `<body>`. Invisible with a mouse; with a
+     * remote the cursor simply disappears the moment you open a group.
+     * `refocusCategoryRow()` puts it back on the same *category*, which is
+     * not the same index: expanding inserts rows below the head.
+     */
+    it('puts the focus ring back on the same category after a rows republish', async () => {
+        const mounted = mountTemplate(`
+            <div class="groups-panel" data-testid="rail">
+                <div class="groups-panel__list" data-each="vod.categories">
+                    <div class="groups-panel__row">
+                        <button type="button" class="groups-panel__item" :data-category-id="item.id" data-testid="chip">{{ item.name }}</button>
+                    </div>
+                </div>
+            </div>
+        `);
+        setValue('vod.categories', [
+            { id: '1', name: 'NETFLIX', hasVariants: true, expanded: false, variant: false },
+            { id: '2', name: 'DOCS', hasVariants: false, expanded: false, variant: false },
+        ]);
+        tick();
+
+        const head = mounted.queryAll('[data-testid="chip"]')[0] as HTMLElement;
+        head.focus();
+        expect(document.activeElement).toBe(head);
+
+        refocusCategoryRow('1');
+        setValue('vod.categories', [
+            { id: '1', name: 'NETFLIX', hasVariants: true, expanded: true, variant: false },
+            { id: '3', name: 'FR', hasVariants: false, expanded: false, variant: true },
+            { id: '2', name: 'DOCS', hasVariants: false, expanded: false, variant: false },
+        ]);
+        tick();
+
+        // The original node really is gone — this is not a no-op assertion.
+        expect(document.contains(head)).toBe(false);
+
+        await new Promise((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve(null)));
+        });
+
+        const focused = document.activeElement as HTMLElement | null;
+        expect(focused?.dataset['categoryId']).toBe('1');
+        expect(focused?.textContent).toBe('NETFLIX');
 
         mounted.cleanup();
     });

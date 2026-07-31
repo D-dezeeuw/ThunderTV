@@ -6,13 +6,15 @@ import { mountTemplate } from '../shared/testing/bind-dom';
 import { setRows as setMemoryRows } from '../m3u/channel-memory';
 import type { ChannelRow } from '../m3u/types';
 import { EPG_TICK } from './epg';
-import { GUIDE_CHANNELS, GUIDE_OFFSET_MS, type GuideChannel } from './guide';
+import { GUIDE_CHANNELS, GUIDE_OFFSET_MS, GUIDE_SELECTED_KEY, type GuideChannel } from './guide';
 import { playChannelByEpgId, shiftGuide } from './guide.actions';
 import { registerGuideSelectors, type GuideView } from './guide.selectors';
 import { GUIDE_MAX_OFFSET_MS, GUIDE_MIN_OFFSET_MS, GUIDE_SHIFT_MS } from './guide-time';
+import { LIST_SELECTED_ID } from './list';
 import { invalidateLiveRows } from './live-rows';
-import { refreshLiveRows } from './live.actions';
+import { publishRowsForCurrentView, refreshLiveRows } from './live.actions';
 import { PLAYER_ACTIVE } from './player';
+import { isPlaybackHandoff } from './player.actions';
 import type { ActiveChannelSnapshot } from './records';
 import { get } from './typed';
 import { UI_ACTIVE_VIEW } from './ui';
@@ -107,6 +109,56 @@ describe('playChannelByEpgId', () => {
             expect(active?.name).toBe('NPO 1');
             expect(active?.streamUrl).toBe('http://x/1.ts');
             expect(location.hash).toBe('#/live');
+
+            mounted.cleanup();
+            resetMappingCacheForTests();
+        });
+    });
+
+    it('lands TV on that channel without the route change killing the stream it just started', async () => {
+        await withFakePlatform({}, async () => {
+            const mounted = mountTemplate('<div></div>');
+            await publishRowWithEpgId();
+            // Clicked from the Guide, so this is a real route change.
+            location.hash = '#/guide';
+
+            expect(playChannelByEpgId('NPO 1.nl')).toBe(true);
+            tick();
+
+            expect(location.hash).toBe('#/live');
+            // The router stops playback on any genuine route change. Without
+            // the exemption this navigation kills the very stream it exists
+            // to show — which is what a bare `location.hash` write did here.
+            expect(isPlaybackHandoff('live')).toBe(true);
+
+            // Arriving at TV republishes its rows, which is what consumes the
+            // queued reveal — the same path a Starred/Recent pick takes.
+            publishRowsForCurrentView();
+            tick();
+            expect(get<string | null>(LIST_SELECTED_ID)).toBe('1');
+
+            mounted.cleanup();
+            resetMappingCacheForTests();
+        });
+    });
+
+    it('opens the channel a programme block belongs to, and still marks the block selected', async () => {
+        await withFakePlatform({}, async () => {
+            const mounted = mountTemplate(`
+                <button
+                    data-program-key="NPO 1.nl|123"
+                    data-epg-id="NPO 1.nl"
+                    data-action="click"
+                    data-fn="guide/openProgram"
+                ></button>
+            `);
+            await publishRowWithEpgId();
+
+            mounted.dispatch('guide/openProgram');
+            tick();
+
+            expect(get<string | null>(GUIDE_SELECTED_KEY)).toBe('NPO 1.nl|123');
+            expect(get<ActiveChannelSnapshot | null>(PLAYER_ACTIVE)?.name).toBe('NPO 1');
 
             mounted.cleanup();
             resetMappingCacheForTests();

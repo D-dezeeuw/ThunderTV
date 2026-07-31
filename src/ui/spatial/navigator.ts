@@ -35,10 +35,24 @@ const FOCUSABLE_SELECTOR = [
 const SELF_HANDLING = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
 
 /**
- * The channel list already implements its own row cursor
- * (`src/state/list.actions.ts`'s `handleListKeydown`). Vertical presses
- * inside it belong to that cursor; horizontal ones are how you get *out*
- * of the list, which nothing else provides.
+ * Containers that run their own vertical cursor: the channel list
+ * (`src/state/list.actions.ts`'s `handleListKeydown`) and the group/category
+ * rail beside it (`src/state/groups.actions.ts`'s
+ * `handleCategoryRailKeydown`). Vertical presses inside these belong to that
+ * cursor; horizontal ones are how you get *out*, which nothing else
+ * provides.
+ *
+ * The rail was missing here, and both handlers ran on one press: this one
+ * moved focus a row (capture phase, `document`), then the rail's own
+ * bubble-phase handler moved it a second row from there. One press, two
+ * rows — every other row silently unreachable on a remote.
+ */
+const SELF_CURSOR_SELECTOR = '.list, .groups-panel';
+
+/**
+ * The channel list alone. Horizontal presses are the *list's* to claim when
+ * its grid layout is on (`listHandlesHorizontal`) — walking tiles along a
+ * line. The rail has no such claim: horizontal is the only way out of it.
  */
 const LIST_CONTAINER_SELECTOR = '.list';
 
@@ -88,8 +102,11 @@ function collectCandidates(root: ParentNode, exclude: Element | null): Candidate
 function shouldDefer(active: HTMLElement, direction: Direction, options: SpatialNavigationOptions): boolean {
     if (SELF_HANDLING.has(active.tagName)) return true;
     if (active.isContentEditable) return true;
-    if (active.closest(LIST_CONTAINER_SELECTOR) === null) return false;
+    if (active.closest(SELF_CURSOR_SELECTOR) === null) return false;
     if (direction === 'up' || direction === 'down') return true;
+    // Horizontal past this point is the grid layout's line-walking only, so
+    // it is asked for inside the list and nowhere else.
+    if (active.closest(LIST_CONTAINER_SELECTOR) === null) return false;
     return options.listHandlesHorizontal?.(direction) ?? false;
 }
 

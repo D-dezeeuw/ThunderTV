@@ -2305,9 +2305,10 @@
                                     :class="{ 'guide__program--now': program.isNow, 'guide__program--selected': program.isSelected }"
                                     :style="'grid-row:' + (program.channelIndex + 1) + '; margin-left:' + program.leftPercent + '%; width:' + program.widthPercent + '%'"
                                     :data-program-key="program.key"
+                                    :data-epg-id="program.channelId"
                                     :title="program.title"
                                     data-action="click"
-                                    data-fn="guide/selectProgram"
+                                    data-fn="guide/openProgram"
                                     data-testid="guide-program"
                                 >
                                     <span class="guide__program-title truncate">{{ program.title }}</span>

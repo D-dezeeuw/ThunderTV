@@ -1,4 +1,5 @@
 import { defineFn } from 'spektrum';
+import { refocusCategoryRow } from './groups.actions';
 import { setDisplayedRows } from './list-rows';
 import { loadStoredCategories, loadStoredDetail, loadStoredItems, saveStoredCategories, saveStoredDetail, saveStoredItems } from './catalog-storage';
 import { setActiveChannel } from './player.actions';
@@ -51,7 +52,13 @@ export function registerVodActions(): void {
     });
     defineFn('vod/toggleCategory', (el) => {
         const id = el.dataset['categoryId'];
-        if (id && vodCategoryRail.toggle(id)) publishVodCategories();
+        if (!id || !vodCategoryRail.toggle(id)) return;
+        publishVodCategories();
+        // The republish above discards the very button this was pressed on
+        // (Spektrum re-clones `data-each` rows), taking the focus ring with
+        // it — see `refocusCategoryRow()`. Covers the pointer and Enter/OK
+        // paths alike, since both arrive here as a click.
+        refocusCategoryRow(id);
     });
     defineFn('vod/openDetail', (el) => {
         const id = parseStreamId(el.dataset['streamId']);

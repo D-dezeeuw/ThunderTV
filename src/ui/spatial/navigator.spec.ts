@@ -98,6 +98,35 @@ describe('spatial navigation', () => {
         expect(document.activeElement).toBe(side);
     });
 
+    /**
+     * The group/category rail runs its own row cursor
+     * (`src/state/groups.actions.ts`), bound on the rail element itself and
+     * therefore in the bubble phase — *after* this handler, which binds on
+     * `document` in the capture phase. With no carve-out both fired on one
+     * press: this one moved focus a row, the rail's handler moved it a
+     * second row from there, and every other row was unreachable by remote.
+     */
+    it("leaves vertical presses inside the group rail to the rail's own cursor", () => {
+        document.body.innerHTML =
+            '<nav class="groups-panel"><button id="g1">One</button><button id="g2">Two</button></nav><button id="side">Side</button>';
+        const g1 = document.getElementById('g1') as HTMLButtonElement;
+        const g2 = document.getElementById('g2') as HTMLButtonElement;
+        const side = document.getElementById('side') as HTMLButtonElement;
+        layout(g1, 0, 0);
+        layout(g2, 0, 40);
+        layout(side, 200, 0);
+
+        cleanup = registerSpatialNavigation();
+        g1.focus();
+
+        expect(press('ArrowDown').defaultPrevented).toBe(false);
+        expect(document.activeElement).toBe(g1);
+
+        // Horizontal is still how you leave the rail.
+        expect(press('ArrowRight').defaultPrevented).toBe(true);
+        expect(document.activeElement).toBe(side);
+    });
+
     it('ignores modified presses, so desktop shortcuts keep working', () => {
         document.body.innerHTML = '<button id="a">A</button><button id="b">B</button>';
         const a = document.getElementById('a') as HTMLButtonElement;
