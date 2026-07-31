@@ -122,9 +122,23 @@ export function matchGuideChannel(
     return null;
 }
 
+/** One grid row: the feed entry that supplies its programmes, and the Live channel it belongs to. */
+export interface GuideRowBinding<G, L> {
+    channel: G;
+    /** The Live row this guide entry resolved to — the source of the row's *name*, so the Guide and the TV list can never disagree about what a channel is called. */
+    live: L;
+}
+
 /**
- * The Guide's channel list: the guide channels this subscription can
- * actually tune, at most one per Live row, in Live's order.
+ * The Guide's rows: the guide channels this subscription can actually tune,
+ * at most one per Live row, in Live's order, each paired with its Live
+ * channel.
+ *
+ * Returning the pair rather than the feed entry alone is what lets the grid
+ * label a row with the name the TV list uses. A feed's own `<display-name>`
+ * is the provider's spelling of a channel — sometimes a different one per
+ * entry, sometimes plain wrong — and there is no reason for the Guide to
+ * show anything but the name the viewer already reads in the list.
  *
  * An empty `live` returns nothing rather than the whole feed. That is the
  * deliberate part — the Guide waits for the channel list to propagate
@@ -132,10 +146,10 @@ export function matchGuideChannel(
  * view re-runs the moment those rows exist (`guide.selectors.ts` depends on
  * `live.stats` for exactly that).
  */
-export function selectGuideChannelsForLive<G extends GuideChannelRef>(
+export function bindGuideChannelsToLive<G extends GuideChannelRef, L extends LiveChannelRef>(
     guide: readonly G[],
-    live: readonly LiveChannelRef[],
-): G[] {
+    live: readonly L[],
+): GuideRowBinding<G, L>[] {
     if (live.length === 0 || guide.length === 0) return [];
 
     const index = buildLiveEpgIndex(live);
@@ -153,7 +167,12 @@ export function selectGuideChannelsForLive<G extends GuideChannelRef>(
         }
     }
 
-    return [...best.entries()].sort((a, b) => a[0] - b[0]).map(([, held]) => held.channel);
+    return [...best.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .flatMap(([liveIndex, held]) => {
+            const row = live[liveIndex];
+            return row ? [{ channel: held.channel, live: row }] : [];
+        });
 }
 
 /** Strongest rung wins, then the entry with more programmes (an empty duplicate never displaces a full one), then the lexicographically first id — never input order, which a re-derive could shuffle. */

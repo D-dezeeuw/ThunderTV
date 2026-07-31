@@ -93,6 +93,28 @@ describe('the Guide follows the Live channel list', () => {
         mounted.cleanup();
     });
 
+    it('labels each row with the TV list\'s name for it, never the feed\'s own', () => {
+        const mounted = mountTemplate('<div></div>');
+        registerGuideSelectors();
+        // A panel that spells its guide entries however it likes — including,
+        // as the report had it, the same name on every one of them.
+        setValue(GUIDE_CHANNELS, [
+            { ...guideChannel('npo1.nl', 'Canal+'), id: 'npo1.nl' },
+            { ...guideChannel('rtl4.nl', 'Canal+'), id: 'rtl4.nl' },
+        ]);
+        setValue(EPG_TICK, NOW);
+        setValue(UI_ACTIVE_VIEW, 'live');
+        tick();
+
+        setMemoryRows([row('1', '| NL | NPO 1 HD', 'npo1.nl'), row('2', '| NL | RTL 4 FHD', 'rtl4.nl')]);
+        refreshLiveRows();
+        tick();
+
+        expect(view().channels.map((c) => c.displayName)).toEqual(['NPO 1', 'RTL 4']);
+
+        mounted.cleanup();
+    });
+
     it('builds the Live rows for a viewer who opened the Guide without ever visiting TV', () => {
         const mounted = mountTemplate('<div></div>');
         registerGuideSelectors();
