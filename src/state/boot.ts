@@ -1,10 +1,7 @@
 import { setValue } from 'spektrum';
-import { LIST_VISIBLE_ROWS } from './list';
-import { selectChannel } from './list.actions';
-import { PLAYLIST_ACTIVE_SOURCE_ID, PLAYLIST_SOURCES } from './playlist';
+import { PLAYLIST_SOURCES } from './playlist';
 import type { PlaylistSourceSummary } from './playlist';
 import { get } from './typed';
-import { UI_ACTIVE_VIEW } from './ui';
 
 /**
  * The boot splash overlay (the wallpaper art shown while the first Live
@@ -73,39 +70,31 @@ function delay(ms: number): Promise<void> {
  * `channelDataReady` — the Live list's first real paint — before exiting;
  * an unconfigured one has nothing to wait for, since there is no channel
  * data ever coming this boot until the wizard is used.
+ *
+ * `onExitComplete`, if given, runs once the fade-out animation finishes
+ * (`bootstrap.ts` wires in `list.actions.ts`'s `preselectFirstLiveChannel`)
+ * — deliberately a callback rather than a direct import: `list.actions.ts`
+ * pulls in a large amount of catalog code that would otherwise ride along
+ * into this module's *reachability* from `registry-keys.ts` (`ui.bootPhase`'s
+ * `KEY_REGISTRY` entry, always eager) and defeat its code-splitting, even
+ * though nothing here ever *calls* it before boot's own, already-eager path
+ * does. Verified directly against a production build — see this commit's
+ * message.
  */
-export async function manageBootOverlay(sourcesLoaded: Promise<void>): Promise<void> {
+export async function manageBootOverlay(sourcesLoaded: Promise<void>, onExitComplete?: () => void): Promise<void> {
     const readiness = sourcesLoaded.then(async () => {
         const sources = get<PlaylistSourceSummary[]>(PLAYLIST_SOURCES) ?? [];
         if (sources.length > 0) await channelDataReady;
     });
 
     await Promise.all([readiness, delay(MIN_VISIBLE_MS)]);
-    beginBootExit();
+    beginBootExit(onExitComplete);
 }
 
-function beginBootExit(): void {
+function beginBootExit(onExitComplete?: () => void): void {
     setValue(UI_BOOT_PHASE, 'exiting' satisfies BootPhase);
     setTimeout(() => {
         setValue(UI_BOOT_PHASE, 'done' satisfies BootPhase);
-        preselectFirstLiveChannel();
+        onExitComplete?.();
     }, EXIT_ANIMATION_MS);
-}
-
-/**
- * The one-time "land on a ready Live tab" behavior: if boot is ending on
- * the default Live route (never overriding an explicit deep link — e.g.
- * `#/movies` or a `#/handoff` in flight) and a source is actually active,
- * highlights the first row so a remote's Up/Down starts somewhere real and
- * OK/Enter plays it immediately. Deliberately selects rather than plays —
- * autoplaying a channel the user never chose is a surprise, not a
- * convenience.
- */
-function preselectFirstLiveChannel(): void {
-    if (get<string>(UI_ACTIVE_VIEW) !== 'live') return;
-    if (!get<string | null>(PLAYLIST_ACTIVE_SOURCE_ID)) return;
-
-    const rows = get<{ id: string }[]>(LIST_VISIBLE_ROWS) ?? [];
-    const first = rows[0];
-    if (first) selectChannel(first.id);
 }

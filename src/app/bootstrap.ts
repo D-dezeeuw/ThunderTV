@@ -8,7 +8,7 @@ import { sweepOrphanedPlaylistRows } from '../m3u/import-sweep';
 import { registerListBindings } from '../ui/list-bindings';
 import { registerSpatialNavigation } from '../ui/spatial/navigator';
 import { closeTopmostOverlay } from '../state/back-navigation';
-import { listHandlesHorizontal } from '../state/list.actions';
+import { listHandlesHorizontal, preselectFirstLiveChannel } from '../state/list.actions';
 import { registerPlayerBindings } from '../player/bindings';
 import { installDebugCapture } from '../state/debug';
 import { registerDebugShortcut } from '../state/debug.actions';
@@ -100,7 +100,7 @@ export async function bootstrap(): Promise<void> {
     // The boot splash's own lifetime (src/state/boot.ts) — waits on the same
     // sources load below, plus (once a source turns out to exist) the first
     // real Live paint, before fading out.
-    void manageBootOverlay(sourcesLoaded);
+    void manageBootOverlay(sourcesLoaded, preselectFirstLiveChannel);
     void loadXtreamAccountPrefill();
     void loadFavorites();
     // Paint whatever EPG data already survived from a previous session
