@@ -1,4 +1,4 @@
-import { bindDOM, run } from 'spektrum';
+import { bindDOM, run, tick } from 'spektrum';
 import { createPlatform, setPlatform } from '../core/platform';
 import { primeHealthCache } from '../health/store';
 import { publishCodexAuthorId } from '../state/codex.actions';
@@ -186,9 +186,23 @@ function registerImportDropzoneDragover(): void {
  * needing to be dismissed (state/README.md's "First-run setup wizard"
  * section).
  */
-async function sweepAndLoadPlaylistSources(): Promise<void> {
+// Exported for bootstrap.spec.ts's direct regression coverage of the
+// tick() race documented above — everything else in this file is
+// orchestration too heavy (real DOM bind, rAF loop) to unit test directly.
+export async function sweepAndLoadPlaylistSources(): Promise<void> {
     await sweepOrphanedPlaylistRows();
     await loadPlaylistSources();
+    // Spektrum's setValue()/set() queue a write into a delta that only
+    // lands in appState on the next tick (run()'s rAF loop, ordinarily —
+    // see typed.ts's replace() and list.actions.ts's handleRowTap() for the
+    // same pitfall elsewhere). applyDefaultConfigIfFirstRun() and
+    // openWizardIfNoSources() below both read playlist.sources right after
+    // loadPlaylistSources() writes it; without forcing a tick here, a fast
+    // (dev-config-less) applyDefaultConfigIfFirstRun() can resolve before
+    // the next rAF fires, so both reads race the write and see the stale,
+    // pre-load empty array — wrongly opening the first-run wizard for an
+    // install that already has a source configured.
+    tick();
     await applyDefaultConfigIfFirstRun();
     openWizardIfNoSources();
 }
