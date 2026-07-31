@@ -13,6 +13,7 @@
  * runtime in a distributed build.
  */
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -24,6 +25,7 @@ const IPC_DOWNLOAD_CANCEL = 'thundertv:download-cancel';
 const IPC_DOWNLOAD_EVENT = 'thundertv:download-event';
 /** Progress is coalesced to this cadence — a 4 GB file otherwise fires an IPC message per network chunk for a bar that redraws 60x/s at most. */
 const DOWNLOAD_PROGRESS_INTERVAL_MS = 250;
+const PREPARED_TARGET_TTL_MS = 15 * 60 * 1000;
 
 /**
  * Saving a movie to disk, in the main process. An Xtream VOD URL is a
@@ -46,6 +48,8 @@ const DOWNLOAD_PROGRESS_INTERVAL_MS = 250;
  * off that message and would stall forever without it.
  */
 const activeDownloads = new Map();
+/** One-use save-dialog grants. Absolute paths never cross into the renderer. */
+const preparedTargets = new Map();
 
 export function registerDownloadHandlers() {
     ipcMain.handle(IPC_DOWNLOAD_PREPARE, async (event, filename) => {
@@ -54,11 +58,30 @@ export function registerDownloadHandlers() {
         const result = await dialog.showSaveDialog(win, {
             defaultPath: path.join(app.getPath('downloads'), sanitizeSaveName(filename)),
         });
-        return result.canceled || !result.filePath ? null : result.filePath;
+        if (result.canceled || !result.filePath) return null;
+        prunePreparedTargets();
+        const token = randomUUID();
+        preparedTargets.set(token, {
+            filePath: result.filePath,
+            senderId: event.sender.id,
+            expiresAt: Date.now() + PREPARED_TARGET_TTL_MS,
+        });
+        return token;
     });
 
-    ipcMain.on(IPC_DOWNLOAD_START, (event, id, url, filePath) => {
-        void runDownload(event.sender, String(id), String(url), String(filePath));
+    ipcMain.on(IPC_DOWNLOAD_START, (event, id, url, targetToken) => {
+        const downloadId = String(id);
+        const target = consumePreparedTarget(String(targetToken), event.sender.id);
+        const safeUrl = parseDownloadUrl(url);
+        if (!target || !safeUrl) {
+            event.sender.send(IPC_DOWNLOAD_EVENT, {
+                id: downloadId,
+                kind: 'error',
+                reason: target ? 'network' : 'disk',
+            });
+            return;
+        }
+        void runDownload(event.sender, downloadId, safeUrl, target.filePath);
     });
 
     ipcMain.on(IPC_DOWNLOAD_CANCEL, (_event, id) => {
@@ -66,6 +89,29 @@ export function registerDownloadHandlers() {
         // the renderer's cancel can always race a natural completion.
         activeDownloads.get(String(id))?.abort();
     });
+}
+
+function prunePreparedTargets() {
+    const now = Date.now();
+    for (const [token, target] of preparedTargets) {
+        if (target.expiresAt <= now) preparedTargets.delete(token);
+    }
+}
+
+function consumePreparedTarget(token, senderId) {
+    const target = preparedTargets.get(token);
+    preparedTargets.delete(token);
+    if (!target || target.senderId !== senderId || target.expiresAt <= Date.now()) return null;
+    return target;
+}
+
+function parseDownloadUrl(value) {
+    try {
+        const url = new URL(String(value));
+        return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+    } catch {
+        return null;
+    }
 }
 
 /** Belt-and-braces against a renderer-supplied name reaching into another directory — `defaultPath` is a real filesystem path, not a display string. */
@@ -76,7 +122,12 @@ function sanitizeSaveName(filename) {
 
 async function runDownload(sender, id, url, filePath) {
     const controller = new AbortController();
+    if (activeDownloads.has(id)) {
+        sender.send(IPC_DOWNLOAD_EVENT, { id, kind: 'error', reason: 'disk' });
+        return;
+    }
     activeDownloads.set(id, controller);
+    const partialPath = path.join(path.dirname(filePath), `.${path.basename(filePath)}.${randomUUID()}.part`);
 
     let settled = false;
     const send = (payload) => {
@@ -100,7 +151,7 @@ async function runDownload(sender, id, url, filePath) {
         const header = Number(response.headers.get('content-length'));
         const totalBytes = Number.isFinite(header) && header > 0 ? header : null;
 
-        handle = await fs.promises.open(filePath, 'w');
+        handle = await fs.promises.open(partialPath, 'wx');
         const stream = handle.createWriteStream();
         let receivedBytes = 0;
         let lastReport = 0;
@@ -129,10 +180,13 @@ async function runDownload(sender, id, url, filePath) {
         });
 
         if (controller.signal.aborted) {
-            await fs.promises.rm(filePath, { force: true });
+            await fs.promises.rm(partialPath, { force: true });
             finish({ id, kind: 'error', reason: 'cancelled' });
             return;
         }
+        await handle.close();
+        handle = null;
+        await commitDownload(partialPath, filePath);
         // One last progress event so the bar lands on 100% rather than
         // stopping wherever the throttle happened to leave it.
         send({ id, kind: 'progress', receivedBytes, totalBytes });
@@ -142,15 +196,48 @@ async function runDownload(sender, id, url, filePath) {
         // viewer stopped it" from "it broke" — an abort surfaces as a
         // rejected fetch too.
         if (controller.signal.aborted) {
-            await fs.promises.rm(filePath, { force: true }).catch(() => undefined);
+            await fs.promises.rm(partialPath, { force: true }).catch(() => undefined);
             finish({ id, kind: 'error', reason: 'cancelled' });
             return;
         }
         console.error('[ThunderTV] download failed:', err);
+        await fs.promises.rm(partialPath, { force: true }).catch(() => undefined);
         finish({ id, kind: 'error', reason: isDiskError(err) ? 'disk' : 'network' });
     } finally {
         await handle?.close().catch(() => undefined);
         activeDownloads.delete(id);
+    }
+}
+
+/**
+ * POSIX rename replaces atomically. Windows refuses to rename over an
+ * existing file, so preserve the old destination under a private sibling
+ * until the new file has landed; if that second rename fails, restore it.
+ */
+async function commitDownload(partialPath, filePath) {
+    try {
+        await fs.promises.rename(partialPath, filePath);
+        return;
+    } catch (err) {
+        const code = err && typeof err === 'object' ? err.code : undefined;
+        if (process.platform !== 'win32' || (code !== 'EEXIST' && code !== 'EPERM')) throw err;
+    }
+
+    const backupPath = path.join(path.dirname(filePath), `.${path.basename(filePath)}.${randomUUID()}.backup`);
+    let hasBackup = false;
+    try {
+        try {
+            await fs.promises.rename(filePath, backupPath);
+            hasBackup = true;
+        } catch (err) {
+            const code = err && typeof err === 'object' ? err.code : undefined;
+            if (code !== 'ENOENT') throw err;
+        }
+        await fs.promises.rename(partialPath, filePath);
+        if (hasBackup) await fs.promises.rm(backupPath, { force: true });
+    } catch (err) {
+        if (hasBackup) await fs.promises.rename(backupPath, filePath).catch(() => undefined);
+        throw err;
     }
 }
 

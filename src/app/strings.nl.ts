@@ -99,7 +99,7 @@ export const nl = {
     emptyStates: {
         firstRun: {
             heading: 'Voeg een bron toe om te beginnen',
-            note: 'Of open een verbindingslink om dit apparaat in één keer te configureren.',
+            note: 'U kunt bronnen later toevoegen, vervangen of vernieuwen via Bronnen.',
             file: 'M3U-bestand uploaden',
             urlPlaceholder: 'https://provider.voorbeeld/playlist.m3u',
             urlSubmit: 'Importeren via URL',
@@ -135,7 +135,7 @@ export const nl = {
     },
 
     connect: {
-        detected: 'Verbindingslink gedetecteerd — dit apparaat wordt zo geconfigureerd.',
+        detected: 'Verbindingsbladwijzers zijn niet ingeschakeld in deze versie. Voeg de bron handmatig toe onder Bronnen.',
     },
 
     ...nlEpg.topLevel,

@@ -98,7 +98,7 @@ export const en = {
     emptyStates: {
         firstRun: {
             heading: 'Add a source to get started',
-            note: 'Or open a connect bookmark link to configure this device in one visit.',
+            note: 'You can add, replace, or refresh sources later from Sources.',
             file: 'Upload M3U file',
             urlPlaceholder: 'https://provider.example/playlist.m3u',
             urlSubmit: 'Import from URL',
@@ -130,7 +130,7 @@ export const en = {
     },
 
     connect: {
-        detected: 'Connect link detected — this device will be configured shortly.',
+        detected: 'Connect bookmarks are not enabled in this release. Add the source manually under Sources.',
     },
 
     ...enEpg.topLevel,

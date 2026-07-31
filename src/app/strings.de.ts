@@ -99,7 +99,7 @@ export const de = {
     emptyStates: {
         firstRun: {
             heading: 'Fügen Sie eine Quelle hinzu, um loszulegen',
-            note: 'Oder öffnen Sie einen Verbindungslink, um dieses Gerät in einem Schritt zu konfigurieren.',
+            note: 'Sie können Quellen später unter Quellen hinzufügen, ersetzen oder aktualisieren.',
             file: 'M3U-Datei hochladen',
             urlPlaceholder: 'https://anbieter.beispiel/playlist.m3u',
             urlSubmit: 'Von URL importieren',
@@ -135,7 +135,7 @@ export const de = {
     },
 
     connect: {
-        detected: 'Verbindungslink erkannt — dieses Gerät wird in Kürze konfiguriert.',
+        detected: 'Verbindungslesezeichen sind in dieser Version nicht aktiviert. Fügen Sie die Quelle unter Quellen manuell hinzu.',
     },
 
     ...deEpg.topLevel,

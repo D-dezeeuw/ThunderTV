@@ -5,17 +5,18 @@ Performing and minimalistic IPTV client without any distractions.
 Four constraints drive every decision in this codebase:
 
 1. **Compact and easy to distribute** — a static GitHub Pages web app,
-   deployed with a single local command, **no GitHub Actions**.
+   deployed with a single local command; hosted verification is deliberate
+   (manual or release-tag only), not charged on every small push.
 2. **Portable** — the same bundle runs unchanged in Electron
    (Windows/macOS/Linux) and stays viable on constrained browsers like LG
    webOS TVs.
-3. **Performance first** — heavy caching, no transitions/effects, minimal
+3. **Performance first** — heavy caching, restrained/reduced-motion-aware effects, minimal
    live DOM (windowed lists, lazy loading, adaptive updates), and CPU-heavy
    work (playlist/EPG parsing) offloaded to Web Workers so the main thread
    and the UI never stall.
-4. **Zero-friction onboarding** — a bookmarkable URL can carry a user's
-   subscription (M3U URL or Xtream credentials) so one visit configures a
-   device.
+4. **Straightforward onboarding** — M3U files, pasted playlists, remote M3U
+   URLs, and Xtream credentials all enter through one first-run surface.
+   Credential-bearing connect bookmarks remain roadmap work, not a v1 claim.
 
 The full architecture rationale lives in
 [`masterplan/architecture-plan.md`](./masterplan/architecture-plan.md); the
@@ -137,12 +138,13 @@ Tailscale Funnel or Cloudflare Tunnel — setup steps in its header comment.
   scrolling and input at all times. `vite.config.ts`'s `worker.format: 'es'`
   plus `new Worker(new URL(...), { type: 'module' })` is the required
   pattern so this keeps working under `base: './'`.
-- **Credentials are fragment-only.** Connect bookmark URLs (Phase 14) carry
-  credentials in the URL hash, never the query string, and the address bar
-  is scrubbed immediately after import.
-- **Spektrum is the only UI/state framework**, resolved at runtime via the
-  pinned CDN import map in `index.html` — never bundled by Vite. See
-  "Spektrum: CDN vs. vendored" below.
+- **Credential-bearing links are not a v1 surface.** Phase 14's reserved
+  connect route is deliberately de-scoped until its parse/scrub/persistence
+  guarantees are implemented together.
+- **Spektrum is the only UI/state framework**, loaded from the pinned,
+  integrity-checked same-origin copy. Its template expressions are
+  precompiled for a strict script CSP. See "Spektrum: pinned, local, and
+  CSP-safe" below.
 - **The page is a fixed, full-viewport app shell, not a scrolling document.**
   `html`/`body`/`#app` are sized to exactly 100% of the viewport, and
   `touch-action: manipulation` is set globally to suppress the mobile
@@ -151,25 +153,22 @@ Tailscale Funnel or Cloudflare Tunnel — setup steps in its header comment.
   legitimate pinch-zoom and fail WCAG 1.4.10 (Reflow). Double-tap is the
   only zoom trigger disabled; pinch-zoom still works.
 
-## Spektrum: CDN vs. vendored
+## Spektrum: pinned, local, and CSP-safe
 
-[Spektrum](https://github.com/D-dezeeuw/spektrum) is loaded two different
-ways depending on target, both pointing at the exact same pinned version
-(currently `1.1.0`, tracked in `scripts/spektrum-version.json`):
+[Spektrum](https://github.com/D-dezeeuw/spektrum) is pinned to `1.1.0`
+(`scripts/spektrum-version.json`) and loaded from the integrity-checked
+copy at `public/vendor/spektrum.min.js` on every target:
 
-- **Web (committed default):** `index.html`'s import map points at the
-  pinned unpkg CDN URL. No download, no vendoring step — this is what
-  `npm run dev`, `npm run build`, and the deployed Pages site use as-is.
-- **Packaged targets (Electron, webOS):** `scripts/package-target.mjs`
-  rewrites a _built_ `dist/index.html`'s import map to
-  `./vendor/spektrum.min.js`, so the packaged app never depends on the CDN
-  being reachable. The vendored copy lives at `public/vendor/spektrum.min.js`
-  and is kept in sync (and hash-verified) by
-  `scripts/sync-vendor-spektrum.mjs` and `scripts/check-importmap.mjs`.
-- **Older TV browsers** (pre-Chromium-89, where import maps aren't
-  supported) are expected to need an `es-module-shims` polyfill layered on
-  top of the vendored path — that's a webOS-target concern, not something
-  the web build carries.
+- **Web:** `index.html` resolves the local file through an import map.
+- **Electron/webOS:** `scripts/package-target.mjs` rewrites built bare
+  imports to the relative local file and removes the import map. This works
+  on Chromium 87 without carrying an import-map shim.
+- **Strict CSP:** `scripts/spektrum-csp.mjs` precompiles every template
+  expression into a static classic script before `bindDOM()`, so the
+  runtime never reaches Spektrum's `new Function` fallback.
+
+The vendored runtime is kept in sync (and hash-verified) by
+`scripts/sync-vendor-spektrum.mjs` and `scripts/check-importmap.mjs`.
 
 ## Who lives where
 
