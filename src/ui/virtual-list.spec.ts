@@ -17,6 +17,7 @@ import {
     setDensity,
     setRows,
     setViewportHeight,
+    viewerHasScrolled,
 } from './virtual-list';
 
 function makeRows(count: number): ChannelRow[] {
@@ -82,6 +83,57 @@ describe('virtual-list controller (Feature 08.1)', () => {
         setViewportHeight(400);
         setRows(makeRows(1000), { scrollTop: 440 });
         expect(getScrollTop()).toBe(440);
+    });
+
+    it('setRows({ preserveScroll }) leaves the viewer where they are when the row set grows', () => {
+        setViewportHeight(440);
+        setRows(makeRows(5_000));
+        scrollToIndex(2_000);
+        const before = getScrollTop();
+
+        // Three more chunked pages, exactly as streamChannelsFor() publishes them.
+        for (const total of [10_000, 15_000, 20_000]) {
+            setRows(makeRows(total), { preserveScroll: true });
+            expect(getScrollTop()).toBe(before);
+        }
+        expect(rowCount()).toBe(20_000);
+    });
+
+    it('preserveScroll still clamps — a grown set that is somehow shorter cannot leave the position past the end', () => {
+        setViewportHeight(440);
+        setRows(makeRows(1_000));
+        scrollToIndex(900);
+        setRows(makeRows(20), { preserveScroll: true });
+        expect(getScrollTop()).toBeLessThanOrEqual(20 * 44);
+    });
+
+    it("viewerHasScrolled() tells a real gesture apart from this controller's own scrolling", () => {
+        setRows(makeRows(1_000));
+        const container = document.createElement('div');
+        Object.defineProperty(container, 'clientHeight', { value: 440, configurable: true });
+        Object.defineProperty(container, 'scrollTop', { value: 0, writable: true, configurable: true });
+        document.body.appendChild(container);
+        const cleanup = attachContainer(container);
+
+        // scrollToIndex() writes the container's scrollTop itself, so the
+        // event it triggers reports a position already held here.
+        scrollToIndex(100);
+        container.dispatchEvent(new Event('scroll'));
+        expect(viewerHasScrolled()).toBe(false);
+
+        // A gesture moves the container first — that is what disagrees.
+        (container as unknown as { scrollTop: number }).scrollTop = 9_999;
+        container.dispatchEvent(new Event('scroll'));
+        expect(viewerHasScrolled()).toBe(true);
+
+        // A growth publish must not forget it; replacing the set does.
+        setRows(makeRows(2_000), { preserveScroll: true });
+        expect(viewerHasScrolled()).toBe(true);
+        setRows(makeRows(2_000));
+        expect(viewerHasScrolled()).toBe(false);
+
+        cleanup();
+        container.remove();
     });
 
     it('clamps a restored scrollTop against a shrunk list (Feature 08.6.5)', () => {

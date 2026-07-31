@@ -11,12 +11,21 @@
 > original measurement and what actually shipped, because the *systemic* cause
 > is unchanged and the fix arrived by luck of timing rather than by a gate.
 >
-> **Remediation status.** §3.1, §4.1, §4.2 and §4.3 are now closed in code —
-> see [`UPGRADES.md`](./UPGRADES.md) for what landed. The findings are kept
-> here as written rather than deleted: the measurements are the evidence for
-> why the gates exist, and a gate with no recorded failure it prevents is the
-> first thing someone deletes. Everything not marked closed there is still
-> open.
+> **Remediation status.** §3.1, §3.2, §4.1, §4.2 and §4.3 are now closed in
+> code — see [`UPGRADES.md`](./UPGRADES.md) for what landed. The findings are
+> kept here as written rather than deleted: the measurements are the evidence
+> for why the gates exist, and a gate with no recorded failure it prevents is
+> the first thing someone deletes. Everything not marked closed there is
+> still open.
+>
+> Three things are worth naming here rather than only in the upgrade plan.
+> `index.html` has grown from 2,366 to **3,560 lines** (§4.8, the one major
+> artifact with no size fence). §4.11's PWA gap is untouched — still a
+> manifest with no service worker. And **§4.1 is not as closed as the ✅
+> below suggests**: the budget gate measures the entry chunk alone, while
+> three more chunks are modulepreloaded, so the true first-load payload is
+> 77.3 kB gz against a 60 kB budget that reports green. UPGRADES U4 carries
+> the numbers and the choice.
 
 ---
 
@@ -37,6 +46,7 @@ Three facts define the current state:
 2. **The masterplan tracker reports 0/100 for phases 09–30**, while the code
    for phases 09–13, 16–22 and 28–29 demonstrably ships. The project's own
    navigation document is now actively misleading. **Unchanged by the merge.**
+   *(Closed — see §3.2.)*
 3. **The performance budget is drifting away, not toward, its target.** The
    breach widened from 12% over to **20% over** across two merges, because
    nothing measures it.
@@ -50,9 +60,9 @@ Three facts define the current state:
 | CSS fence / file-access fence | ✅ Clean | both custom guards pass |
 | Tests | ✅ 1,125 pass (133 files) | flake fixed — 11 consecutive clean runs (§4.3) |
 | Build | ✅ Succeeds | 616 ms |
-| Perf budget | ✅ **Under, and enforced** | 46.0 kB gz / 135.7 kB raw vs. 60 kB / 200 kB |
+| Perf budget | ⚠️ **Enforced, but measuring the wrong number** | entry chunk 33.7 kB gz passes; true first-load is **77.3 kB gz vs. 60 kB** — see UPGRADES U4 |
 | Feature reachability | ✅ **Gated in CI** | 77 registered, 73 bound, 4 allowlisted, 0 dead clicks |
-| Plan ↔ code fidelity | ❌ **Detached** | phases 09–30 report 0% while shipping |
+| Plan ↔ code fidelity | ✅ **Reconciled and gated** | every phase carries a verified `> **Status:**` line; §4's table is generated and `--check`ed in `verify` |
 | Security posture | ✅ Strong | with two gaps (§4.7) |
 
 ---
@@ -140,7 +150,15 @@ Related: the app has **zero `data-model` bindings**, despite `data-model` being
 named as one of the four core Spektrum bindings in the masterplan. Every input
 is read imperatively via refs.
 
-### 3.2 The masterplan tracker no longer describes the codebase
+### 3.2 The masterplan tracker no longer describes the codebase — ✅ CLOSED
+
+> **Closed by UPGRADES U5.** Every phase file now carries a verified
+> `> **Status:**` line, and MASTERPLAN §4's table is generated from those
+> lines by `scripts/gen-phase-status.mjs`, `--check`ed inside `npm run
+> verify`. The reconciliation turned up more than staleness: phases 16, 17
+> and 18 were **superseded** by Phases 31/32 rather than completed, and six
+> more shipped only partially. The finding below stands as written — it is
+> the evidence for why the gate exists.
 
 Checkbox completion per phase file:
 

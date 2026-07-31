@@ -1,4 +1,4 @@
-import { bindDOM, run } from 'spektrum';
+import { bindDOM, run, tick } from 'spektrum';
 import { createPlatform, setPlatform } from '../core/platform';
 import { primeHealthCache } from '../health/store';
 import { publishCodexAuthorId } from '../state/codex.actions';
@@ -8,7 +8,7 @@ import { sweepOrphanedPlaylistRows } from '../m3u/import-sweep';
 import { registerListBindings } from '../ui/list-bindings';
 import { registerSpatialNavigation } from '../ui/spatial/navigator';
 import { closeTopmostOverlay } from '../state/back-navigation';
-import { listHandlesHorizontal } from '../state/list.actions';
+import { listHandlesHorizontal, preselectFirstLiveChannel } from '../state/list.actions';
 import { registerPlayerBindings } from '../player/bindings';
 import { installDebugCapture } from '../state/debug';
 import { registerDebugShortcut } from '../state/debug.actions';
@@ -22,6 +22,8 @@ import {
     loadFavorites,
     loadGuideChannels,
     loadPlaylistSources,
+    manageBootOverlay,
+    markChannelDataReady,
     openWizardIfNoSources,
     primeEpgMapping,
     registerActions,
@@ -94,7 +96,11 @@ export async function bootstrap(): Promise<void> {
     registerPersistOnHide();
     if (import.meta.env.DEV) installDevtools();
 
-    void sweepAndLoadPlaylistSources();
+    const sourcesLoaded = sweepAndLoadPlaylistSources();
+    // The boot splash's own lifetime (src/state/boot.ts) — waits on the same
+    // sources load below, plus (once a source turns out to exist) the first
+    // real Live paint, before fading out.
+    void manageBootOverlay(sourcesLoaded, preselectFirstLiveChannel);
     void loadXtreamAccountPrefill();
     void loadFavorites();
     // Paint whatever EPG data already survived from a previous session
@@ -127,7 +133,7 @@ export async function bootstrap(): Promise<void> {
     void loadXtreamGuide().then(() => loadDefaultEpg());
     registerImportDropzoneDragover();
     registerDebugShortcut();
-    registerListBindings();
+    registerListBindings(markChannelDataReady);
     // Spatial D-pad navigation (stone 8). Registered for every platform, not
     // just TV: it only ever acts on an unmodified arrow press that the
     // focused control does not already handle, so desktop keyboard
@@ -180,9 +186,23 @@ function registerImportDropzoneDragover(): void {
  * needing to be dismissed (state/README.md's "First-run setup wizard"
  * section).
  */
-async function sweepAndLoadPlaylistSources(): Promise<void> {
+// Exported for bootstrap.spec.ts's direct regression coverage of the
+// tick() race documented above — everything else in this file is
+// orchestration too heavy (real DOM bind, rAF loop) to unit test directly.
+export async function sweepAndLoadPlaylistSources(): Promise<void> {
     await sweepOrphanedPlaylistRows();
     await loadPlaylistSources();
+    // Spektrum's setValue()/set() queue a write into a delta that only
+    // lands in appState on the next tick (run()'s rAF loop, ordinarily —
+    // see typed.ts's replace() and list.actions.ts's handleRowTap() for the
+    // same pitfall elsewhere). applyDefaultConfigIfFirstRun() and
+    // openWizardIfNoSources() below both read playlist.sources right after
+    // loadPlaylistSources() writes it; without forcing a tick here, a fast
+    // (dev-config-less) applyDefaultConfigIfFirstRun() can resolve before
+    // the next rAF fires, so both reads race the write and see the stale,
+    // pre-load empty array — wrongly opening the first-run wizard for an
+    // install that already has a source configured.
+    tick();
     await applyDefaultConfigIfFirstRun();
     openWizardIfNoSources();
 }

@@ -2,6 +2,7 @@
 
 > **Epic goal:** Turn an empty repository into a deployable Vite + TypeScript skeleton with Spektrum wired via a pinned CDN import map and a proven, Actions-free gh-pages deploy.
 > **Verification:** `npm run build` and `npx tsc --noEmit` are clean, ESLint passes with `max-lines` enforced, `npm run deploy` publishes `dist/` to the `gh-pages` branch, and the live `https://<user>.github.io/thundertv/` page renders a working Spektrum `{{expr}}` binding (checked in the browser, not just locally). **Met**, with one honest caveat on the "checked in the browser" clause — see "Completion notes."
+> **Status:** `shipped` · tracker: `current` — Verified at the time and never contradicted since.
 
 Before this phase there is nothing but an empty `thundertv` repository. After it, the repo contains a strict-TS Vite scaffold with the agreed folder skeleton (`src/core/`, `src/ui/`, `src/app/`, `src/styles/`, `scripts/`), Spektrum resolving through a version-pinned import map with a vendored fallback in `public/vendor/`, lint/format tooling that enforces the ≤300/400-line rule, and a one-command local deploy that has been exercised end to end against a real GitHub Pages URL.
 

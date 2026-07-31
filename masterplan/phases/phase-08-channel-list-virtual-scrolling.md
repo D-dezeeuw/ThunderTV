@@ -2,6 +2,7 @@
 
 > **Epic goal:** The core browsing surface — a windowed virtual list over 90 000+ channels that keeps ≤ ~40 rows in the DOM at all times, with group navigation, lazy logos, selection, and context actions, all fed from plain module memory per the MASTERPLAN.md §5.4 contract.
 > **Verification:** On the built `dist/` with the generated 90 k fixture, scripted scrolling from top to bottom records zero long tasks > 50 ms and never more than ~40 row elements in the DOM; jump-to-group lands on the right row instantly; a reload restores scroll position; `npm run bench:list` passes and its numbers are recorded in this file.
+> **Status:** `shipped` · tracker: `current` — Windowing, group filtering and lazy logos all still hold — `src/ui/README.md` is the live reference.
 
 Before this phase, imported playlists sit in storage with nothing to render them — the app can ingest 100 k channels but shows none. After it, `src/ui/` contains the hand-rolled windowing controller (~190 lines per plan §6), the `data-each` slice binding from §6.1, the channel row template with its reserved EPG area, group views driven by the Phase 06 `GroupMeta`, and a validated 90 k scroll performance baseline — the surface Phases 09 (search) and 10 (playback) plug into.
 

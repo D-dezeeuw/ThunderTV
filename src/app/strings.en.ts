@@ -244,7 +244,7 @@ export const en = {
             proxyLabel: 'Proxy URL template',
             proxyPlaceholder: 'https://my-proxy.example/{url}',
             proxyHelp:
-                'Optional. Applied to playlist, EPG, and API requests when set. No public proxy is provided or promised — video segments are fetched separately by the player and remain CORS-bound on the web regardless.',
+                'Optional. Applied to playlist, EPG, API and stream requests when set, and to channel logos a secure page would otherwise block. No public proxy is provided or promised — run your own (see scripts/home-proxy.mjs). If streams fail with 403/404 while the channel list loads fine, the proxy is probably on a datacenter IP the provider blocks; run it from your home connection instead.',
             proxySave: 'Save',
             proxyInvalid: 'Must be a valid https:// URL (or http://localhost for local testing).',
             proxySaved: 'Saved.',

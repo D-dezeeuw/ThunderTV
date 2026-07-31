@@ -3,11 +3,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChannelRow } from '../m3u/types';
 import { resetVirtualListForTests, setRows, setViewportHeight } from '../ui/virtual-list';
 import { LIST_SELECTED_ID } from './list';
-import { handleListKeydown, handleRowTap, moveSelection, playSelected, selectChannel } from './list.actions';
+import { handleListKeydown, handleRowTap, moveSelection, playSelected, preselectFirstLiveChannel, selectChannel } from './list.actions';
 import { resetPersistForTests } from './persist';
 import { PLAYER_ACTIVE } from './player';
 import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
 import { get } from './typed';
+import { UI_ACTIVE_VIEW } from './ui';
 import type { ActiveChannelSnapshot } from './records';
 import { SERIES_DETAIL_ID, type SeriesItem } from './series';
 import { makeSeriesRowId, resetSeriesMemoryForTests, seriesMemory } from './series-rows';
@@ -84,6 +85,52 @@ describe('list.actions.ts selection (Feature 08.7)', () => {
         moveSelection(1);
         tick();
         expect(get<string | null>(LIST_SELECTED_ID)).toBe('b');
+    });
+
+    it('preselectFirstLiveChannel() selects the first row when on Live with an active source', () => {
+        setValue(UI_ACTIVE_VIEW, 'live');
+        setValue(PLAYLIST_ACTIVE_SOURCE_ID, 's1');
+        setRows([row('a'), row('b')]);
+        tick();
+
+        preselectFirstLiveChannel();
+        tick();
+
+        expect(get<string | null>(LIST_SELECTED_ID)).toBe('a');
+    });
+
+    it('preselectFirstLiveChannel() does nothing off the Live view (never overrides a deep link)', () => {
+        setValue(UI_ACTIVE_VIEW, 'movies');
+        setValue(PLAYLIST_ACTIVE_SOURCE_ID, 's1');
+        setRows([row('a')]);
+        tick();
+
+        preselectFirstLiveChannel();
+        tick();
+
+        expect(get<string | null>(LIST_SELECTED_ID)).toBeUndefined();
+    });
+
+    it('preselectFirstLiveChannel() does nothing without an active source', () => {
+        setValue(UI_ACTIVE_VIEW, 'live');
+        setRows([row('a')]);
+        tick();
+
+        preselectFirstLiveChannel();
+        tick();
+
+        expect(get<string | null>(LIST_SELECTED_ID)).toBeUndefined();
+    });
+
+    it('preselectFirstLiveChannel() is a safe no-op on an empty row set', () => {
+        setValue(UI_ACTIVE_VIEW, 'live');
+        setValue(PLAYLIST_ACTIVE_SOURCE_ID, 's1');
+        tick();
+
+        preselectFirstLiveChannel();
+        tick();
+
+        expect(get<string | null>(LIST_SELECTED_ID)).toBeUndefined();
     });
 
     it('playSelected() is a safe no-op with no active source (no id to attribute the snapshot to)', () => {

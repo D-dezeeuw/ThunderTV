@@ -195,7 +195,6 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         persisted: false,
         description: 'Live id -> true lookup for O(1) row-badge derivation (Feature 08.8.4) — a projection of the real `favorites` storage table, rebuilt at boot and on every toggle; the table (denormalized snapshots), not this map, is the source of truth and what actually persists.',
     },
-
     // --- player ---
     [PLAYER_ACTIVE]: {
         owner: 'player',
@@ -368,7 +367,6 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         persisted: false,
         description: 'Set from the real boot-time probe (Phase 04) every session — persisting a stale tier would be actively wrong.',
     },
-
     // --- ui: first-run setup wizard ---
     [UI_WIZARD_OPEN]: {
         owner: 'ui',

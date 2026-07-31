@@ -2,6 +2,7 @@
 
 > **Epic goal:** Put every platform-specific capability (HTTP, files, storage handles, capability flags) behind one `PlatformAdapter` interface injected once at bootstrap, so the later Electron and webOS targets are adapter swaps, not rewrites.
 > **Verification:** The app boots exclusively through `createPlatform()`; `WebPlatform` is the only code touching `fetch` and file inputs; ESLint fails any `fetch`/`indexedDB`/`localStorage` reference outside `src/core/` (proven with a deliberate violation); `classifiedFetch` unit tests cover ok/http/timeout/cors-or-network; and the full adapter suite plus `FakePlatform` passes under `npm test`.
+> **Status:** `shipped` · tracker: `current` — The adapter, capability flags and lint fences all still hold — `src/core/platform/README.md` is the live reference.
 
 Before this phase the shell from Phase 02 runs with no network, file, or platform access at all. After it, `src/core/platform/` defines the `PlatformAdapter` contract from the plan (§4) — `storage`, `http`, `files`, `capabilities` — with a complete `WebPlatform` implementation: an `HttpAdapter` with timeout/abort and CORS-classified failures (MASTERPLAN.md §5.2), proxy URL template support, a `FileAdapter` over `input[type=file]`, and the `window.electron` detection bootstrap. ESLint fences make the adapter boundary mechanical, and a `FakePlatform` gives every downstream phase a deterministic test double. The `storage` slot is typed against the `StorageAdapter` interface but bound to a temporary in-memory stub until Phase 04 delivers the tiers.
 

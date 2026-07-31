@@ -16,7 +16,7 @@
 // Vitest alias — not in plain Node. Same source-text-parsing convention as
 // scripts/check-css.mjs and scripts/check-importmap.mjs elsewhere in this
 // repo, applied to TypeScript instead of CSS/HTML.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -24,34 +24,17 @@ const stateDir = `${repoRoot}src/state`;
 const outPath = `${repoRoot}masterplan/reference/state-keys.md`;
 const checkOnly = process.argv.includes('--check');
 
-const MODULE_FILES = [
-    'playlist.ts',
-    'import.ts',
-    'player.ts',
-    'player-tracks.ts',
-    'epg.ts',
-    'epg-settings.ts',
-    'settings.ts',
-    'ui.ts',
-    'list.ts',
-    'list-layout.ts',
-    'list-state.ts',
-    'list-groups.ts',
-    'live.ts',
-    'favorites.ts',
-    'wizard.ts',
-    'vod.ts',
-    'series.ts',
-    'search.ts',
-    'downloads.ts',
-    'guide.ts',
-    'codex.ts',
-    'codex-library.ts',
-    'handoff.ts',
-    'health.ts',
-];
+// Every state module, discovered rather than listed. This was a hand-kept
+// array until `boot.ts` arrived carrying UI_BOOT_PHASE and the generator
+// failed on a key it could not see — the list is exactly the kind of
+// "remember to update me" convention this repo keeps learning not to trust.
+// Order is irrelevant (the result is a name -> value Map) and a stray file
+// costs one wasted read, so scanning the directory is strictly safer.
+const MODULE_FILES = readdirSync(stateDir)
+    .filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'))
+    .sort();
 
-/** Every top-level `export const NAME = <value>;` across the five module files — key-string constants and the odd numeric one (e.g. ZAP_HISTORY_CAP) that registry.ts references for `maxItems`. */
+/** Every top-level `export const NAME = <value>;` across the state modules — key-string constants and the odd numeric one (e.g. ZAP_HISTORY_CAP) that registry.ts references for `maxItems`. */
 function collectConstants() {
     const consts = new Map();
     const pattern = /export const ([A-Z][A-Z0-9_]*)\s*=\s*(?:'([^']*)'|(\d[\d_]*))/g;
@@ -94,7 +77,7 @@ function parseRegistry(consts) {
     const entries = [];
     for (const [, keyConst, fields] of body.matchAll(entryPattern)) {
         const key = consts.get(keyConst);
-        if (!key) throw new Error(`gen-state-keys: unresolved key constant "${keyConst}" — is it exported from one of ${MODULE_FILES.join(', ')}?`);
+        if (!key) throw new Error(`gen-state-keys: unresolved key constant "${keyConst}" — every registry key must be an \`export const\` in a non-spec src/state/*.ts module.`);
 
         const owner = /owner:\s*'([a-z]+)'/.exec(fields)?.[1];
         const description = /description:\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")/.exec(fields);

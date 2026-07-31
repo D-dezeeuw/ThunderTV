@@ -2,6 +2,7 @@
 
 > **Epic goal:** Turn the working Electron shell into installable, portable desktop artifacts for Windows, macOS, and Linux — built entirely locally, reproducible, size-disciplined, and documented down to the unsigned-app caveats.
 > **Verification:** `npm run package` produces `thundertv-<version>-<os>-<arch>` artifacts on the locally-buildable targets with the vendored-Spektrum swap verified inside the packaged `app.asar`; each artifact passes the per-OS manual QA checklist; a rehearsal 0.x GitHub release with artifacts, checksums, and changelog exists — created with zero GitHub Actions.
+> **Status:** `shipped` · tracker: `not-maintained` — `electron-builder.yml` plus per-OS `package:*` scripts and `package-target.mjs`'s import-map swap. Code signing and an auto-update story are deliberately absent rather than missed: `publish: null` and the file's own header record the "built and uploaded by a human, never auto-published" decision, per this phase's zero-Actions rule.
 
 Before this phase the Electron shell runs from a local build directory (Phase 28) but nothing is installable and nothing is published. After this phase electron-builder produces Windows portable+NSIS, macOS DMG, and Linux AppImage artifacts through a pipeline that bakes in the `scripts/package-target.mjs` import-map swap; icons, metadata, size budgets, a documented (deliberately unsigned) signing posture, a manual update story, a no-telemetry diagnostics posture, per-OS QA, and a rehearsed manual release procedure are all in place — leaving Phase 30 to add the TV target and cut 1.0.
 

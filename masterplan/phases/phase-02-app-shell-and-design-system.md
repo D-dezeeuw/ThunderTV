@@ -2,6 +2,7 @@
 
 > **Epic goal:** Build the visual and navigational skeleton — design tokens, dark theme, the 56 px icon rail, a hand-rolled hash router, view switching, empty states, and density modes — with zero CSS transitions or animations anywhere.
 > **Verification:** On the built `dist/` (preview and deployed Pages URL), every rail icon switches views instantly via hash routes, `#/connect` resolves to its stub, first-run/empty/error states render, both density modes flip row-height tokens live, `grep -ri "transition\|animation\|@keyframes" src/styles/ src/ui/` returns nothing, and build/typecheck/lint stay green. **Met, with one correction to this line's own literal wording** — see "Completion notes."
+> **Status:** `shipped` · tracker: `current` — One box open: **02.10.9** (Firefox/Safari smoke) is deferred, not missed — it needs a machine with those browsers installed.
 
 Before this phase the repo is the Phase 01 skeleton: a deployable Vite + Spektrum smoke page with empty `src/app/`, `src/ui/`, and `src/styles/` folders. After it, the app has its permanent chrome: `tokens.css` and `base.css` define the dark-first design language, the icon rail navigates between Sources, Favorites, Recent, Guide, and Settings, the ~50-line hash router owns `location.hash` (including the `/connect` stub that Phase 14 will fill), each view renders inside one container with honest empty states, the settings panel shell overlays the rail, and compact/comfortable density is a one-variable switch — all instant, all animation-free, on desktop widths and a 1080p TV canvas alike.
 

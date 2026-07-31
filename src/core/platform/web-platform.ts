@@ -1,3 +1,4 @@
+import { isValidProxyTemplate } from '../http/proxy';
 import { WebHttpAdapter } from '../http/web-http-adapter';
 import { createStorage } from '../storage';
 import type { TierControllerOptions } from '../storage/tier-controller';
@@ -55,7 +56,11 @@ export async function createWebPlatform(options: CreateWebPlatformOptions = {}):
         files: new WebFileAdapter(),
         downloads: new WebDownloadAdapter(),
         get capabilities() {
-            return createWebCapabilities(storage.tier);
+            // Live, like `durableStorage` below it — the proxy is set from
+            // Settings mid-session, so a snapshot taken at construction would
+            // report the state of the app before the user fixed it.
+            const template = options.getProxyTemplate?.();
+            return createWebCapabilities(storage.tier, Boolean(template) && isValidProxyTemplate(template ?? ''));
         },
     };
 }

@@ -32,16 +32,28 @@ Two details in `geometry.ts` carry most of the quality:
 ## Two rules that keep it from fighting the app
 
 1. **Never take a press a control already handles.** `<select>`, text
-   inputs, `contenteditable`, and the channel list's own up/down row cursor
-   (`src/state/list.actions.ts`) all use arrow keys meaningfully. The
-   handler defers on those, so desktop behaviour is completely unchanged —
-   which is why this ships enabled on every platform rather than behind a
-   TV-only flag. Horizontal presses inside the list are still handled,
-   because that is the only way *out* of it — with one narrow exception: in
-   the list's grid layout, a Left/Right press that has another tile on the
-   same line to move to belongs to the grid cursor. The `listHandlesHorizontal`
-   option is how the list says so, and it deliberately answers `false` at a
-   line edge so the way out never closes.
+   inputs, `contenteditable`, and the two containers that run their own
+   up/down cursor — the channel list (`src/state/list.actions.ts`) and the
+   group/category rail beside it (`src/state/groups.actions.ts`) — all use
+   arrow keys meaningfully. The handler defers on those, so desktop
+   behaviour is completely unchanged — which is why this ships enabled on
+   every platform rather than behind a TV-only flag. Horizontal presses
+   inside them are still handled, because that is the only way *out* —
+   with one narrow exception: in the list's grid layout, a Left/Right press
+   that has another tile on the same line to move to belongs to the grid
+   cursor. The `listHandlesHorizontal` option is how the list says so, and
+   it deliberately answers `false` at a line edge so the way out never
+   closes. That exception is the *list's* alone; the rail never claims a
+   horizontal press.
+
+   **A container with its own arrow handling MUST be added to
+   `SELF_CURSOR_SELECTOR`.** Forgetting is not a no-op: because this
+   handler runs in the capture phase and the container's runs on bubble,
+   *both* fire on one press. The rail was missing for a release — one
+   ArrowDown moved the cursor two rows, so every other category was
+   unreachable by remote, and nothing failed because jsdom reports every
+   element as 0x0 and this handler goes inert without hand-supplied layout
+   (see `navigator.spec.ts`'s `layout()`).
 2. **Never wrap around.** A press with nothing in that direction does
    nothing. Focus silently teleporting from the top of a TV screen to the
    bottom is far more disorienting than a press that no-ops.

@@ -15,6 +15,7 @@
 > changes nothing on reboot (catalog and matches serve from storage);
 > `npm run verify` (typecheck, ESLint, tests incl. the storage matrix over
 > the new store, reachability gate, budget gate) is green.
+> **Status:** `partial` · tracker: `current` — 78/100. Open: lazy data and chunking (31.1.7, 31.9.1), the binary http surface and its failure taxonomy (31.2.1, 31.2.9), most of the Settings country-picker UI (31.7), migration cleanliness (31.8.9) and the whole 31.9 performance-measurement feature.
 
 Before this phase, EPG knowledge is two hardcoded Netherlands URLs
 (`src/epg/xmltv.ts`) matched by exact tvg-id/name equality, consumed only by
