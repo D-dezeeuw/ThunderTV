@@ -72,15 +72,64 @@ just `npm run preview`, which serves from the root) to catch any
 root-absolute asset reference before it reaches Pages — see
 `scripts/check-dist.mjs`.
 
-**Reaching http:// / CORS-blocking providers from the HTTPS site:** GitHub
-Pages is static-only and `github.io` is HSTS-preloaded, so the deployed app
-can never talk to an `http://` IPTV provider directly (mixed content), and
-most providers block cross-origin browser requests anyway (CORS). The
-cheapest fix is a free Cloudflare Worker: deploy
-`scripts/cloudflare-cors-proxy.mjs` (setup steps in its header comment) and
-set `https://<name>.<account>.workers.dev/{url}` as the proxy template in
-Settings → Streaming. The worker adds CORS headers, bridges http→https, and
-rewrites HLS manifests so video segments flow through it too.
+### Reaching your provider from the deployed site
+
+GitHub Pages is static-only and `github.io` is HSTS-preloaded, so the deployed
+app can never talk to an `http://` IPTV provider directly (mixed content), and
+most providers block cross-origin browser requests anyway (CORS). Both are
+fixed by setting a proxy template in **Settings → Streaming** — it covers the
+API, the playlist, the EPG, the stream URL, channel logos, and (through
+manifest rewriting) HLS segments.
+
+**Which proxy you need depends on why yours is failing**, and the two look
+nothing alike:
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Import/playback fails with no status code — a generic network error | CORS or mixed content | Cloudflare Worker is enough |
+| Channel list loads, but streams fail **403/404** | provider blocks the proxy's datacenter IP | proxy must run at home |
+| 403 everywhere, from every IP and client | account expired, or connection limit spent | provider-side |
+
+A **CORS failure never carries a status code** — the browser withholds the
+response entirely, and the app reports it as a network error. So a real
+403/404 means the request arrived and was refused, which is a different
+problem with a different fix. Confirm which by running the same request from
+home and from any cloud host:
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' -A 'VLC/3.0.20 LibVLC/3.0.20' \
+  'http://PANEL:PORT/player_api.php?username=U&password=P'      # the API
+curl -sS -o /dev/null -w '%{http_code}\n' -A 'VLC/3.0.20 LibVLC/3.0.20' \
+  'http://PANEL:PORT/live/U/P/STREAM_ID.ts'                     # a stream
+```
+
+API fine from both but the stream only 404ing from the cloud host is the
+datacenter block, and no amount of proxy tuning fixes it — only egress does.
+
+**Option 1 — Cloudflare Worker (5 minutes, no hardware).** Deploy
+`scripts/cloudflare-cors-proxy.mjs` (setup steps in its header comment) and set
+`https://<name>.<account>.workers.dev/{url}` as the proxy template. Adds CORS
+headers, bridges http→https, sends a VLC User-Agent (many panels 403 anything
+else), and rewrites HLS manifests. **Cloudflare's egress is a datacenter IP**,
+so if the table above points at a datacenter block this fixes the API and the
+logos but not playback — which is itself a useful confirmation.
+
+**Option 2 — the same proxy, at home (residential IP).** Many panels serve
+their API to anything but 404 all stream endpoints for cloud IPs as
+anti-restream protection. `scripts/home-proxy.mjs` (Node 20+) wraps the worker
+script unchanged on a NAS/Pi/always-on PC:
+
+```bash
+PORT=8899 ALLOWED_HOSTS=provider.example:8080 node scripts/home-proxy.mjs
+```
+
+Set `ALLOWED_HOSTS` — without it this is an open proxy. The deployed HTTPS app
+needs an `https://` proxy URL, so expose it with Tailscale Funnel or Cloudflare
+Tunnel and start it with `PUBLIC_ORIGIN` set to that URL — that is what
+rewritten HLS manifest URIs point back at, and a wrong value means the manifest
+loads while every segment 404s. Full steps in the script's header comment.
+(`http://localhost:8899/{url}` works without any tunnel for same-machine
+testing — localhost is exempt from mixed-content blocking.)
 
 **Desktop app (macOS/Windows/Linux, no browser):** `desktop/` wraps the
 built web app in an Electron window with the proxy embedded on 127.0.0.1 —
@@ -108,13 +157,6 @@ cross-compile toolchain) — cut a `v*` tag to build all three in CI
 (`.github/workflows/desktop-build.yml`). Artifacts are unsigned (no
 code-signing certificate for a local-build project); expect a Gatekeeper/
 SmartScreen warning on first run.
-
-**When the provider blocks datacenter IPs:** many panels serve their API to
-anything but 404 all stream endpoints for cloud IPs (Cloudflare included) as
-anti-restream protection — streams then need a residential IP. Run the same
-proxy at home instead: `scripts/home-proxy.mjs` (Node 20+, wraps the worker
-script unchanged) on a NAS/Pi/always-on PC, exposed over HTTPS with
-Tailscale Funnel or Cloudflare Tunnel — setup steps in its header comment.
 
 ## Standing conventions
 

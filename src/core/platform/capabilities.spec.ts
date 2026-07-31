@@ -2,9 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { createWebCapabilities } from './capabilities';
 
 describe('createWebCapabilities', () => {
-    it('fixes corsUnrestricted and externalPlayers to false on the web', () => {
+    it('reports no CORS freedom on a bare web platform, and never external players', () => {
         const capabilities = createWebCapabilities('full');
         expect(capabilities.corsUnrestricted).toBe(false);
+        expect(capabilities.externalPlayers).toBe(false);
+    });
+
+    // A configured proxy covers the API, the stream URL, logos and (via
+    // manifest rewriting) segments — so the browser really is CORS-free, and
+    // the warning surface gated on this flag must stop firing.
+    it('reports CORS freedom once a proxy is configured, without touching externalPlayers', () => {
+        const capabilities = createWebCapabilities('full', true);
+        expect(capabilities.corsUnrestricted).toBe(true);
         expect(capabilities.externalPlayers).toBe(false);
     });
 

@@ -32,16 +32,33 @@ export interface Capabilities {
 }
 
 /**
- * Fixed web values: `corsUnrestricted` and `externalPlayers` are always
- * false in a browser — no consumer should ever need to override them for
- * this platform. `durableStorage` is the only dynamic field; it comes from
- * the Phase 04 boot-time storage probe (a temporary stub reports `'none'`
- * until then, per Feature 03.2.3, so nothing can assume persistence that
- * doesn't exist yet).
+ * Web values. `externalPlayers` is always false in a browser.
+ * `durableStorage` comes from the Phase 04 boot-time storage probe (a
+ * temporary stub reports `'none'` until then, per Feature 03.2.3, so nothing
+ * can assume persistence that doesn't exist yet).
+ *
+ * `corsUnrestricted` used to be hardcoded false here, commented "no consumer
+ * should ever need to override them for this platform". That stopped being
+ * true once every cross-origin path learned to route through the configured
+ * proxy: the HTTP adapter (`web-http-adapter.ts`), the stream URL handed to
+ * the player (`src/player/bindings.ts`), channel logos
+ * (`src/state/list-publish.ts`), and — via the manifest rewriting in
+ * `scripts/cloudflare-cors-proxy.mjs` — the HLS segments too. With a proxy
+ * set, a browser is in exactly the position `createElectronCapabilities()`
+ * already reports `true` for, and for the same reason: the mechanism differs,
+ * the honest capability does not. Leaving it false made the app warn about a
+ * limitation the user had already paid to remove.
+ *
+ * `proxyConfigured` defaults to false, so a caller that knows nothing about
+ * the proxy still gets the old, safe answer — this is a new narrow input, not
+ * a widened meaning of an existing field.
  */
-export function createWebCapabilities(durableStorage: Capabilities['durableStorage']): Capabilities {
+export function createWebCapabilities(
+    durableStorage: Capabilities['durableStorage'],
+    proxyConfigured = false,
+): Capabilities {
     return Object.freeze({
-        corsUnrestricted: false,
+        corsUnrestricted: proxyConfigured,
         externalPlayers: false,
         durableStorage,
         // Feature-detected, not assumed: `webDownloadSupport()` reports
