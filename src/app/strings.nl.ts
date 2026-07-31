@@ -248,7 +248,7 @@ export const nl = {
             proxyLabel: 'Proxy-URL-sjabloon',
             proxyPlaceholder: 'https://mijn-proxy.voorbeeld/{url}',
             proxyHelp:
-                'Optioneel. Wordt toegepast op playlist-, EPG- en API-verzoeken indien ingesteld. Er wordt geen publieke proxy aangeboden of beloofd — videosegmenten worden apart door de speler opgehaald en blijven op het web sowieso aan CORS gebonden.',
+                'Optioneel. Wordt toegepast op playlist-, EPG-, API- en streamverzoeken indien ingesteld, en op zenderlogo’s die een beveiligde pagina anders blokkeert. Er wordt geen publieke proxy aangeboden of beloofd — draai er zelf een (zie scripts/home-proxy.mjs). Als streams falen met 403/404 terwijl de zenderlijst wel laadt, draait de proxy waarschijnlijk op een datacenter-IP dat de aanbieder blokkeert; draai hem dan via je thuisverbinding.',
             proxySave: 'Opslaan',
             proxyInvalid: 'Moet een geldige https://-URL zijn (of http://localhost voor lokaal testen).',
             proxySaved: 'Opgeslagen.',
