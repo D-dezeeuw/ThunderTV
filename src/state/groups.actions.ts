@@ -1,6 +1,7 @@
 import { defineFn, setValue } from 'spektrum';
 import { getRows } from '../m3u/channel-memory';
 import { resetGroupCache, rowsForGroup } from '../ui/groups';
+import { directionFor, isActivateKey } from '../ui/spatial/keys';
 import { setDisplayedRows } from './list-rows';
 import { UI_ACTIVE_GROUP, UI_VIEW_MODE } from './list-state';
 import { saveListState } from './list-state-sync';
@@ -95,11 +96,46 @@ function expandToggle(item: HTMLElement | null): HTMLElement | null {
 }
 
 /**
+ * Re-focuses one rail row by its category id, after the row array has been
+ * republished.
+ *
+ * Expanding a group rewrites `vod.categories`/`series.categories`, and
+ * Spektrum's `data-each` rebuilds its rows by *cloning* — the button that
+ * was focused is removed from the document outright, so focus falls back to
+ * `<body>`. With a mouse that is invisible; with a remote it means the
+ * cursor vanishes the moment you open a group, which is a defect in its own
+ * right on a 10-foot screen (LG's App Self Checklist item 4: every
+ * selectable object must show a selection effect).
+ *
+ * Found by id rather than by index, because expanding *inserts* rows and
+ * every index below the head moves. Double-rAF for the same reason
+ * `ui.actions.ts`'s `focusAfterOpen()` uses one: the republish lands on
+ * Spektrum's next rAF-driven tick, so one frame is not reliably enough.
+ */
+export function refocusCategoryRow(categoryId: string): void {
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            // Matched by reading `dataset`, not by building an attribute
+            // selector: a category id is a provider-supplied string, and
+            // `CSS.escape` is the only safe way to embed one in a selector —
+            // which webOS's older webviews don't all ship.
+            const rows = document.querySelectorAll<HTMLElement>('.groups-panel__item');
+            for (const row of rows) {
+                if (row.dataset['categoryId'] === categoryId) {
+                    row.focus();
+                    return;
+                }
+            }
+        });
+    });
+}
+
+/**
  * Feature 08.5.8: ↑/↓ moves native DOM focus between rail rows (no new
- * Spektrum state needed — the browser's own focus is the cursor), Enter
- * activates the focused button's own click binding. This half is about the
- * *rail component*, not about channel groups, so the Movies/Series category
- * rails share it verbatim.
+ * Spektrum state needed — the browser's own focus is the cursor), Enter/OK
+ * activates the focused row. This half is about the *rail component*, not
+ * about channel groups, so the Movies/Series category rails share it
+ * verbatim.
  *
  * →/← open and close a category's variants, the standard tree keys and the
  * only ones a D-pad has to spare. They are claimed **only** when the
@@ -107,36 +143,57 @@ function expandToggle(item: HTMLElement | null): HTMLElement | null {
  * groups panel's own ← ("back to All channels", `handleGroupsPanelKeydown`)
  * intact — that rail never renders one.
  *
+ * Keys are read through `src/ui/spatial/keys.ts` rather than compared
+ * against `event.key` directly: that module is where the app already keeps
+ * the knowledge that older webOS/Tizen webviews report `Up`/`Down` (not
+ * `ArrowUp`/`ArrowDown`) or nothing but a numeric `keyCode`. Matching the
+ * modern names alone left this whole handler dead on exactly the TVs it
+ * exists for.
+ *
  * Returns true when it consumed the key.
  */
 export function handleCategoryRailKeydown(event: KeyboardEvent | undefined): boolean {
     if (!event) return false;
     const active = document.activeElement as HTMLElement | null;
-    switch (event.key) {
-        case 'ArrowDown':
-        case 'ArrowUp': {
+
+    if (isActivateKey(event)) {
+        // A <button> already activates on Enter/OK natively, so clicking it
+        // here as well fires *twice* — harmless on a row (selecting the same
+        // category again), but on the expand triangle it opened and closed
+        // the group in one press, i.e. OK on the triangle did nothing at
+        // all. Same carve-out, same reason, as `navigator.ts`'s own
+        // activate branch.
+        if (active && active.tagName !== 'BUTTON' && active.tagName !== 'A') active.click();
+        return true;
+    }
+
+    switch (directionFor(event)) {
+        case 'down':
+        case 'up': {
             event.preventDefault();
             const items = railItems(active);
             const index = items.indexOf(focusedItem(active) as HTMLElement);
             if (index < 0) return true;
-            items[index + (event.key === 'ArrowDown' ? 1 : -1)]?.focus();
+            items[index + (directionFor(event) === 'down' ? 1 : -1)]?.focus();
             return true;
         }
-        case 'ArrowRight':
-        case 'ArrowLeft': {
+        case 'right':
+        case 'left': {
             const item = focusedItem(active);
             const toggle = expandToggle(item);
             if (!toggle) return false;
             const open = toggle.getAttribute('aria-expanded') === 'true';
-            if (open === (event.key === 'ArrowRight')) return false;
+            if (open === (directionFor(event) === 'right')) return false;
             event.preventDefault();
             toggle.click();
-            item?.focus();
+            // The row this was pressed on is about to be replaced by the
+            // republish `toggle.click()` just triggered — see
+            // `refocusCategoryRow()`. Focusing it now would only put the
+            // cursor on a node that is seconds from being discarded.
+            const categoryId = item?.dataset['categoryId'];
+            if (categoryId) refocusCategoryRow(categoryId);
             return true;
         }
-        case 'Enter':
-            active?.click();
-            return true;
         default:
             return false;
     }
@@ -146,7 +203,7 @@ export function handleCategoryRailKeydown(event: KeyboardEvent | undefined): boo
 export function handleGroupsPanelKeydown(event: KeyboardEvent | undefined): void {
     if (!event) return;
     if (handleCategoryRailKeydown(event)) return;
-    if (event.key === 'Backspace' || event.key === 'ArrowLeft') {
+    if (event.key === 'Backspace' || directionFor(event) === 'left') {
         event.preventDefault();
         showAllChannels();
     }

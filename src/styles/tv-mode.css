@@ -30,3 +30,18 @@
     width: 75px;
     height: 75px;
 }
+
+/* The category accordion's expand triangle is an icon-only button — exactly
+   the shape the 75px floor is written for, and at web sizing it is about
+   32px wide. Giving it the floor also stretches its row (the wrapper is
+   `align-items: stretch`), so the category button beside it grows to match;
+   `min-height` on the row button itself covers the channel-groups rail,
+   which has no triangle to stretch it. Both rails end up on the same floor
+   rather than one of them alone. */
+.groups-panel__toggle {
+    min-width: 75px;
+}
+
+.groups-panel__item {
+    min-height: 75px;
+}
