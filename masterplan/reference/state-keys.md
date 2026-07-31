@@ -106,6 +106,7 @@ repeated here, to avoid the two drifting apart.
 | `storage.tier` | ui | no | — | v1 | Set from the real boot-time probe (Phase 04) every session — persisting a stale tier would be actively wrong. |
 | `ui.activeGroup` | ui | no | — | v1 | The currently-open source\'s active group filter, if any (Feature 08.5.7) — restored from ui.listState on source entry, written live on every group toggle. |
 | `ui.activeView` | ui | no | — | v1 | Current route — driven by the URL hash, which is its own persistence mechanism. |
+| `ui.bootPhase` | ui | no | — | v1 | 'loading' | 'exiting' | 'done' — the boot.ts wallpaper splash shown until the first Live load (or, on an unconfigured install, the wizard) is ready. Always starts at 'loading'; recomputed fresh every boot, never persisted. |
 | `ui.density` | ui | yes | — | v1 | Channel-list row density preference. |
 | `ui.fontSize` | ui | yes | — | v1 | Text size step (small/default/large/xlarge) — Settings → Appearance. Retargets only tokens.css's --text-* via <html data-font-size>; row geometry never moves (that stays ui.density's alone, src/ui/density.ts). |
 | `ui.listLayout` | ui | yes | — | v1 | Per-view list/grid choice for the shared virtual list, keyed by the three views that offer the toggle (live/movies/series). Persisted because it is a browsing preference, not session state; a scope missing from the stored value falls back to the list layout (src/state/list-layout.ts). |

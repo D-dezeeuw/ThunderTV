@@ -131,6 +131,17 @@ against 200 kB / 60 kB, down from 213.8 kB / 72.5 kB.
 > one level in: a guard that runs, but measures the wrong thing. It is
 > arguably worse, because a passing check is read as evidence.
 >
+> **And it does not weigh non-JS assets at all.** The boot splash that landed
+> in `cf1596c` ships `boot-wallpaper.png` at **1.85 MB** — about 24× the whole
+> first-load JS payload — fetched eagerly, because `.boot-overlay` is in the
+> initial DOM with `ui.bootPhase` starting at `'loading'` and the wallpaper is
+> a CSS `background: url(…)`. It is therefore competing for bandwidth with the
+> app's own boot, on exactly the slow connection where a splash is supposed to
+> help. Whether that trade is worth it is a design call and not this
+> document's to make; that it is *unmeasured* is squarely §5's first row, and
+> a budget covering images would have made it a decision instead of a
+> side effect.
+>
 > **The fix is small — sum every `<script>`/`modulepreload` chunk in
 > `dist/index.html` instead of picking the entry — but it lands `verify`
 > red at 77.3/60**, so it is a deliberate call, not a drive-by: either

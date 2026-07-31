@@ -21,10 +21,14 @@ Core principles:
 - **Minimalistic by default, all information on demand.** A 56 px icon rail, a
   channel list, a player dock. Detail (EPG, metadata, settings) appears only
   when asked for.
-- **Performance is the feature.** No CSS transitions or animations. At most
-  ~40 channel rows in the DOM at any time (windowed virtual list over 90 000+
-  channels). One global 30 s tick for all progress bars. Heavy caching: parse
-  once in a worker, boot from structured storage, never re-parse.
+- **Performance is the feature.** At most ~40 channel rows in the DOM at any
+  time (windowed virtual list over 90 000+ channels). One global 30 s tick for
+  all progress bars. Heavy caching: parse once in a worker, boot from
+  structured storage, never re-parse. *(This principle originally read "no CSS
+  transitions or animations." That ban was **retired** with the theme refresh —
+  motion is part of the design language now, gated by `prefers-reduced-motion`
+  in `base.css` rather than forbidden, and `check-css.mjs` records the
+  decision where the guard used to live.)*
 - **Reactivity via [Spektrum](https://github.com/D-dezeeuw/spektrum)** (npm
   `spektrum`, ~13 KB min, zero deps), loaded from a pinned CDN import map with
   a vendored fallback for packaged targets. Spektrum is both the binding layer
@@ -154,6 +158,11 @@ What a machine still cannot check, and you must:
   < 50 ms. Phase 26 owns closing that gap.
 - **Credential hygiene:** none in logs, none in query strings, none in
   exception messages.
+- **Asset weight.** `check-dist` polices JavaScript and nothing else. Images,
+  fonts and CSS are unmeasured, and the boot wallpaper is currently **1.85 MB**
+  — roughly 24× the entire first-load JS payload, fetched eagerly because the
+  splash is in the initial DOM. Weigh anything you add to the boot path
+  yourself; no script will.
 - **The docs that describe what you changed** — the module README from
   `CLAUDE.md`'s table, `src/state/README.md`'s ownership table for a new key,
   and the phase's `> **Status:**` line if the change moves it. Regenerate
@@ -656,7 +665,11 @@ package only — the web build assumes evergreen browsers.
 
 - **TypeScript files ≤ 300 lines** (hard max 400, ESLint-enforced). Split
   before you exceed, not after.
-- **No CSS transitions/animations.** State changes are instant.
+- **Motion is allowed, and gated.** The original "no CSS transitions or
+  animations" ban is retired; use motion where it carries meaning, always
+  behind `prefers-reduced-motion` (`base.css`). What has *not* changed is the
+  reason the ban existed: never animate anything on the channel-list scroll
+  path.
 - **No direct platform APIs outside `src/core/`** (`fetch`, `indexedDB`,
   `localStorage`, file inputs) — ESLint `no-restricted-globals` fences.
 - **Workers parse; the main thread queries memory; storage persists.** Never
