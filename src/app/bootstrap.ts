@@ -100,37 +100,37 @@ export async function bootstrap(): Promise<void> {
     // The boot splash's own lifetime (src/state/boot.ts) — waits on the same
     // sources load below, plus (once a source turns out to exist) the first
     // real Live paint, before fading out.
-    void manageBootOverlay(sourcesLoaded, preselectFirstLiveChannel);
-    void loadXtreamAccountPrefill();
-    void loadFavorites();
+    supervise('boot-overlay', () => manageBootOverlay(sourcesLoaded, preselectFirstLiveChannel));
+    supervise('xtream-account-prefill', loadXtreamAccountPrefill);
+    supervise('favorites', loadFavorites);
     // Paint whatever EPG data already survived from a previous session
     // immediately, then kick off the (TTL-guarded) bulk XMLTV fetch —
     // loadDefaultEpg() itself republishes guide.channels once it writes
     // anything new (src/state/epg-load.ts). primeEpgMapping() restores the
     // Phase 31 match cache live-rows.ts reads synchronously, so a channel
     // matched in a previous session shows as verified before any fetch.
-    void loadGuideChannels();
-    void primeEpgMapping();
+    supervise('guide-channels', loadGuideChannels);
+    supervise('epg-mapping', primeEpgMapping);
     // Passive stream health (stone 3): restores the synchronous cache the
     // channel list ranks rows against. Non-blocking like every other
     // background load — an unprimed cache simply means no row is annotated
     // yet, never a wrong annotation.
-    void primeHealthCache();
+    supervise('health-cache', primeHealthCache);
     // Codex (stone 4): surfaces this device's author fingerprint in Settings,
     // creating a keypair on first run. Background — nothing blocks on it.
-    void publishCodexAuthorId();
+    supervise('codex-author-id', publishCodexAuthorId);
     // Shared Codexes (stone 10): publishes the subscription list, and
     // re-fetches anything past its TTL. Polite by construction — a reload
     // inside the window makes zero upstream requests — and non-blocking,
     // because a followed Codex whose host is down must not delay boot.
-    void refreshCodexLibraryOnBoot();
+    supervise('codex-library', refreshCodexLibraryOnBoot);
     // The provider's own guide first: it is keyed by the `epg_channel_id`
     // every channel row already carries, so it needs no matching and covers
     // exactly the subscription's channels. `loadDefaultEpg()`'s national
     // catalog runs after it as the fallback for sources that serve no EPG of
     // their own (and it is still what populates the country catalog Live's
     // "EPG-verified" filter reads).
-    void loadXtreamGuide().then(() => loadDefaultEpg());
+    supervise('xtream-guide', () => loadXtreamGuide().then(() => loadDefaultEpg()));
     registerImportDropzoneDragover();
     registerDebugShortcut();
     registerListBindings(markChannelDataReady);
@@ -144,7 +144,7 @@ export async function bootstrap(): Promise<void> {
     registerTrackSync();
     // Xtream catalogs rot (panels renumber stream ids) — silently re-import
     // the active source when its snapshot is older than the 6h TTL.
-    void refreshActiveXtreamSource();
+    supervise('xtream-refresh', refreshActiveXtreamSource);
 }
 
 /**
@@ -186,6 +186,33 @@ function registerImportDropzoneDragover(): void {
  * needing to be dismissed (state/README.md's "First-run setup wizard"
  * section).
  */
+/**
+ * Runs one fire-and-forget boot task under a name.
+ *
+ * Everything below `run()` is deliberately not awaited — none of it may
+ * delay first paint, and one slow provider must not hold up the other nine.
+ * But `void promise` also discards the rejection, so before this the only
+ * trace of a failed boot task was an `unhandledrejection` line whose stack
+ * named a bundled chunk rather than the task. Naming them costs one string
+ * each and turns "the guide is empty and I don't know why" into a log line
+ * that says which task died — and `console.warn` is what `state/debug.ts`
+ * captures, so it reaches the on-screen panel on a TV with no devtools.
+ *
+ * Takes a factory rather than a promise so it also catches a synchronous
+ * throw, and so start order stays the call order.
+ *
+ * Exported for bootstrap.spec.ts.
+ */
+export function supervise(name: string, task: () => Promise<unknown>): void {
+    try {
+        void task().catch((error: unknown) => {
+            console.warn(`[ThunderTV] boot task "${name}" failed`, error);
+        });
+    } catch (error) {
+        console.warn(`[ThunderTV] boot task "${name}" failed`, error);
+    }
+}
+
 // Exported for bootstrap.spec.ts's direct regression coverage of the
 // tick() race documented above — everything else in this file is
 // orchestration too heavy (real DOM bind, rAF loop) to unit test directly.

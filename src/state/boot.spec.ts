@@ -106,6 +106,28 @@ describe('boot.ts — the wallpaper splash lifecycle', () => {
         expect(get<string>(UI_BOOT_PHASE)).toBe('done');
     });
 
+    it('exits the splash even when the source load rejects', async () => {
+        // The failure mode this closes: a rejected sourcesLoaded left
+        // `readiness` pending forever, so the overlay never unmounted and
+        // sat on top of a working app — including on top of every surface
+        // that could explain the failure.
+        initPlaylistState();
+        initBootState();
+        set(PLAYLIST_SOURCES, []);
+        tick();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const overlay = manageBootOverlay(Promise.reject(new Error('IndexedDB is gone')));
+        await vi.advanceTimersByTimeAsync(1000);
+        await expect(overlay).resolves.toBeUndefined();
+        await vi.advanceTimersByTimeAsync(EXIT_ANIMATION_MS);
+        tick();
+
+        expect(get<string>(UI_BOOT_PHASE)).toBe('done');
+        expect(logged).toHaveBeenCalledTimes(1);
+        logged.mockRestore();
+    });
+
     it('is safe to call without onExitComplete', async () => {
         initPlaylistState();
         initBootState();

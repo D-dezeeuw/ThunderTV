@@ -1,5 +1,5 @@
 import { resetState, tick } from 'spektrum';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { withFakePlatform } from '../core/platform/fake-platform';
 import { makePlaylistRecord } from '../core/storage/fixtures';
 import { initListState } from '../state/list';
@@ -7,7 +7,7 @@ import { initPlaylistState, PLAYLIST_SOURCES, type PlaylistSourceSummary } from 
 import { initSettingsState } from '../state/settings';
 import { get } from '../state/typed';
 import { initWizardState, UI_WIZARD_OPEN } from '../state/wizard';
-import { sweepAndLoadPlaylistSources } from './bootstrap';
+import { supervise, sweepAndLoadPlaylistSources } from './bootstrap';
 
 /**
  * Regression coverage for the tick() race `sweepAndLoadPlaylistSources()`
@@ -55,5 +55,52 @@ describe('sweepAndLoadPlaylistSources() (boot-order tick() race)', () => {
             expect(get<PlaylistSourceSummary[]>(PLAYLIST_SOURCES)).toHaveLength(0);
             expect(get<boolean>(UI_WIZARD_OPEN)).toBe(true);
         });
+    });
+});
+
+/**
+ * The ten boot tasks below `run()` are deliberately not awaited — none may
+ * delay first paint. `supervise()` is what keeps "not awaited" from also
+ * meaning "failure is invisible": before it, a rejected task surfaced only
+ * as an `unhandledrejection` naming a bundled chunk.
+ */
+describe('supervise() (boot task failures)', () => {
+    it('reports a rejected task by name without throwing', async () => {
+        const warned = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        expect(() => {
+            supervise('epg-mapping', () => Promise.reject(new Error('storage closed')));
+        }).not.toThrow();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(warned).toHaveBeenCalledTimes(1);
+        expect(String(warned.mock.calls[0]?.[0])).toContain('epg-mapping');
+        warned.mockRestore();
+    });
+
+    it('catches a task that throws synchronously, before it ever returns a promise', async () => {
+        const warned = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        expect(() => {
+            supervise('health-cache', () => {
+                throw new Error('bad import');
+            });
+        }).not.toThrow();
+        await Promise.resolve();
+
+        expect(warned).toHaveBeenCalledTimes(1);
+        warned.mockRestore();
+    });
+
+    it('stays quiet when the task succeeds', async () => {
+        const warned = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        supervise('favorites', () => Promise.resolve());
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(warned).not.toHaveBeenCalled();
+        warned.mockRestore();
     });
 });

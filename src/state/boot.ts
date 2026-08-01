@@ -82,10 +82,21 @@ function delay(ms: number): Promise<void> {
  * message.
  */
 export async function manageBootOverlay(sourcesLoaded: Promise<void>, onExitComplete?: () => void): Promise<void> {
-    const readiness = sourcesLoaded.then(async () => {
-        const sources = get<PlaylistSourceSummary[]>(PLAYLIST_SOURCES) ?? [];
-        if (sources.length > 0) await channelDataReady;
-    });
+    const readiness = sourcesLoaded
+        .then(async () => {
+            const sources = get<PlaylistSourceSummary[]>(PLAYLIST_SOURCES) ?? [];
+            if (sources.length > 0) await channelDataReady;
+        })
+        // The splash exits on failure too, and this is the whole reason the
+        // catch exists: without it a rejected source load left `readiness`
+        // pending forever, so `beginBootExit()` never ran and the overlay —
+        // which is `data-if`'d on this phase — stayed up over a working app
+        // with no way past it. A boot that failed still has to show the user
+        // the failure, and every surface that would explain it (Sources, the
+        // debug panel) is behind this overlay.
+        .catch((error: unknown) => {
+            console.error('[ThunderTV] boot: loading playlist sources failed — exiting the splash anyway', error);
+        });
 
     await Promise.all([readiness, delay(MIN_VISIBLE_MS)]);
     beginBootExit(onExitComplete);
