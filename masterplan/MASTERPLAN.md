@@ -243,7 +243,7 @@ performed as written."
 | 18 | [EPG Guide & Mapping](./phases/phase-18-epg-guide-and-mapping.md) | `superseded` | not tracked |
 | 19 | [Xtream API Client](./phases/phase-19-xtream-api-client.md) | `shipped` | not tracked |
 | 20 | [Xtream Live](./phases/phase-20-xtream-live.md) | `shipped` | not tracked |
-| 21 | [Xtream VOD & Series](./phases/phase-21-xtream-vod-and-series.md) | `shipped` | not tracked |
+| 21 | [Xtream VOD & Series](./phases/phase-21-xtream-vod-and-series.md) | `partial` | not tracked |
 | 22 | [Settings & Personalization](./phases/phase-22-settings-and-personalization.md) | `shipped` | not tracked |
 | 23 | [Resilience & Error Surfaces](./phases/phase-23-resilience-and-error-surfaces.md) | `partial` | not tracked |
 | 24 | [PWA & Offline Shell](./phases/phase-24-pwa-and-offline-shell.md) | `not-started` | not tracked |
@@ -262,7 +262,7 @@ performed as written."
 | 37 | Community Codex — see [`src/codex/README.md`](../src/codex/README.md) | `partial` | Discover, merge and prune ship, bounded by `trust.ts`'s ingest clamp. **Publish is deliberately not implemented** — it would mean operating the service this pillar exists to avoid. |
 | 38 | Handoff — see [`src/handoff/README.md`](../src/handoff/README.md) | `partial` | The link-based handoff ships. **The LAN transport is deliberately not built** — it needs a host that can listen, which means the Electron main process. |
 
-**Totals:** 21 shipped · 12 partial · 2 not started · 3 superseded.
+**Totals:** 20 shipped · 13 partial · 2 not started · 3 superseded.
 
 <!-- END generated: phase-status -->
 
