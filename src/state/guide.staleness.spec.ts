@@ -24,16 +24,16 @@ import { get } from './typed';
  */
 describe('Guide clock formatting', () => {
     it('is 24-hour regardless of the locale the webview happens to boot in', () => {
-        // 14:30 UTC. Formatted in en-US, which is exactly the runtime default
+        // 14:30 local time. Formatted in en-US, which is exactly the runtime default
         // that produced the "02:30" report.
-        const afternoon = Date.UTC(2026, 0, 15, 14, 30);
+        const afternoon = new Date(2026, 0, 15, 14, 30).getTime();
         const label = formatClockTime(afternoon, 'en-US');
         expect(label).not.toMatch(/[ap]\.?m\.?/i);
         expect(label).toMatch(/^\d{2}:\d{2}$/);
     });
 
     it('formats midnight as 00:xx, not 12:xx', () => {
-        expect(formatClockTime(Date.UTC(2026, 0, 15, 0, 5), 'en-US')).toMatch(/^00:/);
+        expect(formatClockTime(new Date(2026, 0, 15, 0, 5).getTime(), 'en-US')).toMatch(/^00:/);
     });
 });
 

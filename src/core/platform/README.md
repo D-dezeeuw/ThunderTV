@@ -107,6 +107,13 @@ if (!getPlatform().capabilities.corsUnrestricted) {
 New capabilities are added as new fields with safe defaults, never by
 widening an existing one's meaning.
 
+`corsUnrestricted` is no longer web-false/desktop-true. It is true wherever a
+proxy actually covers the cross-origin paths — the embedded one on desktop, or
+a user-configured template on the web (`createWebCapabilities`'s second
+argument, fed live from `settings.proxyTemplate`). Same honest-capability
+argument as the desktop entry above; see `src/core/http/README.md` for which
+paths the proxy covers, and which failure a proxy can't fix.
+
 ## `windowFullscreen` — the one optional adapter member
 
 `PlatformAdapter.windowFullscreen` is present only where the host owns a

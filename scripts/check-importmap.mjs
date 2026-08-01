@@ -1,16 +1,10 @@
 #!/usr/bin/env node
 // Guards the pinned-Spektrum contract against silent drift:
 //   1. index.html's "spektrum" import-map key disappearing (typo, accidental
-//      edit), or resolving to something other than an exact-pinned CDN URL;
-//   2. that URL no longer matching scripts/spektrum-version.json (the single
-//      source of truth bumped by scripts/sync-vendor-spektrum.mjs); and
-//   3. the vendored public/vendor/spektrum.min.js (Feature 01.5) silently
+//      edit), or resolving to something other than the local vendored copy;
+//   2. the vendored public/vendor/spektrum.min.js (Feature 01.5) silently
 //      diverging from the pinned build's recorded SHA-384 — a corrupted or
 //      hand-edited vendor copy fails this check.
-//
-// scripts/package-target.mjs rewrites index.html's import map for packaged
-// builds — this check runs against the *source* index.html, so it always
-// validates the CDN-pinned, pre-swap state.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -42,18 +36,11 @@ if (!spektrumUrl) {
     process.exit(1);
 }
 
-if (spektrumUrl !== version.cdnUrl) {
+const expectedLocalUrl = `./${version.vendoredPath.replace(/^public\//, '')}`;
+if (spektrumUrl !== expectedLocalUrl) {
     console.error(
         `check-importmap: index.html points spektrum at "${spektrumUrl}" but ` +
-            `scripts/spektrum-version.json pins "${version.cdnUrl}" — bump both together ` +
-            `via scripts/sync-vendor-spektrum.mjs.`,
-    );
-    process.exit(1);
-}
-
-if (/@latest|\^|~|>=|<=/.test(spektrumUrl)) {
-    console.error(
-        `check-importmap: "${spektrumUrl}" is not an exact pin (found a range/latest marker)`,
+            `the offline runtime must use "${expectedLocalUrl}".`,
     );
     process.exit(1);
 }
@@ -78,4 +65,4 @@ if (vendoredSha384 !== version.sha384) {
     process.exit(1);
 }
 
-console.log(`check-importmap: OK — spektrum pinned to ${spektrumUrl}, vendored copy verified`);
+console.log(`check-importmap: OK — Spektrum ${version.version} is local and its vendored copy is verified`);

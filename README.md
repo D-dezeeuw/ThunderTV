@@ -5,17 +5,18 @@ Performing and minimalistic IPTV client without any distractions.
 Four constraints drive every decision in this codebase:
 
 1. **Compact and easy to distribute** — a static GitHub Pages web app,
-   deployed with a single local command, **no GitHub Actions**.
+   deployed with a single local command; hosted verification is deliberate
+   (manual or release-tag only), not charged on every small push.
 2. **Portable** — the same bundle runs unchanged in Electron
    (Windows/macOS/Linux) and stays viable on constrained browsers like LG
    webOS TVs.
-3. **Performance first** — heavy caching, no transitions/effects, minimal
+3. **Performance first** — heavy caching, restrained/reduced-motion-aware effects, minimal
    live DOM (windowed lists, lazy loading, adaptive updates), and CPU-heavy
    work (playlist/EPG parsing) offloaded to Web Workers so the main thread
    and the UI never stall.
-4. **Zero-friction onboarding** — a bookmarkable URL can carry a user's
-   subscription (M3U URL or Xtream credentials) so one visit configures a
-   device.
+4. **Straightforward onboarding** — M3U files, pasted playlists, remote M3U
+   URLs, and Xtream credentials all enter through one first-run surface.
+   Credential-bearing connect bookmarks remain roadmap work, not a v1 claim.
 
 The full architecture rationale lives in
 [`masterplan/architecture-plan.md`](./masterplan/architecture-plan.md); the
@@ -72,15 +73,64 @@ just `npm run preview`, which serves from the root) to catch any
 root-absolute asset reference before it reaches Pages — see
 `scripts/check-dist.mjs`.
 
-**Reaching http:// / CORS-blocking providers from the HTTPS site:** GitHub
-Pages is static-only and `github.io` is HSTS-preloaded, so the deployed app
-can never talk to an `http://` IPTV provider directly (mixed content), and
-most providers block cross-origin browser requests anyway (CORS). The
-cheapest fix is a free Cloudflare Worker: deploy
-`scripts/cloudflare-cors-proxy.mjs` (setup steps in its header comment) and
-set `https://<name>.<account>.workers.dev/{url}` as the proxy template in
-Settings → Streaming. The worker adds CORS headers, bridges http→https, and
-rewrites HLS manifests so video segments flow through it too.
+### Reaching your provider from the deployed site
+
+GitHub Pages is static-only and `github.io` is HSTS-preloaded, so the deployed
+app can never talk to an `http://` IPTV provider directly (mixed content), and
+most providers block cross-origin browser requests anyway (CORS). Both are
+fixed by setting a proxy template in **Settings → Streaming** — it covers the
+API, the playlist, the EPG, the stream URL, channel logos, and (through
+manifest rewriting) HLS segments.
+
+**Which proxy you need depends on why yours is failing**, and the two look
+nothing alike:
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Import/playback fails with no status code — a generic network error | CORS or mixed content | Cloudflare Worker is enough |
+| Channel list loads, but streams fail **403/404** | provider blocks the proxy's datacenter IP | proxy must run at home |
+| 403 everywhere, from every IP and client | account expired, or connection limit spent | provider-side |
+
+A **CORS failure never carries a status code** — the browser withholds the
+response entirely, and the app reports it as a network error. So a real
+403/404 means the request arrived and was refused, which is a different
+problem with a different fix. Confirm which by running the same request from
+home and from any cloud host:
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' -A 'VLC/3.0.20 LibVLC/3.0.20' \
+  'http://PANEL:PORT/player_api.php?username=U&password=P'      # the API
+curl -sS -o /dev/null -w '%{http_code}\n' -A 'VLC/3.0.20 LibVLC/3.0.20' \
+  'http://PANEL:PORT/live/U/P/STREAM_ID.ts'                     # a stream
+```
+
+API fine from both but the stream only 404ing from the cloud host is the
+datacenter block, and no amount of proxy tuning fixes it — only egress does.
+
+**Option 1 — Cloudflare Worker (5 minutes, no hardware).** Deploy
+`scripts/cloudflare-cors-proxy.mjs` (setup steps in its header comment) and set
+`https://<name>.<account>.workers.dev/{url}` as the proxy template. Adds CORS
+headers, bridges http→https, sends a VLC User-Agent (many panels 403 anything
+else), and rewrites HLS manifests. **Cloudflare's egress is a datacenter IP**,
+so if the table above points at a datacenter block this fixes the API and the
+logos but not playback — which is itself a useful confirmation.
+
+**Option 2 — the same proxy, at home (residential IP).** Many panels serve
+their API to anything but 404 all stream endpoints for cloud IPs as
+anti-restream protection. `scripts/home-proxy.mjs` (Node 20+) wraps the worker
+script unchanged on a NAS/Pi/always-on PC:
+
+```bash
+PORT=8899 ALLOWED_HOSTS=provider.example:8080 node scripts/home-proxy.mjs
+```
+
+Set `ALLOWED_HOSTS` — without it this is an open proxy. The deployed HTTPS app
+needs an `https://` proxy URL, so expose it with Tailscale Funnel or Cloudflare
+Tunnel and start it with `PUBLIC_ORIGIN` set to that URL — that is what
+rewritten HLS manifest URIs point back at, and a wrong value means the manifest
+loads while every segment 404s. Full steps in the script's header comment.
+(`http://localhost:8899/{url}` works without any tunnel for same-machine
+testing — localhost is exempt from mixed-content blocking.)
 
 **Desktop app (macOS/Windows/Linux, no browser):** `desktop/` wraps the
 built web app in an Electron window with the proxy embedded on 127.0.0.1 —
@@ -109,13 +159,6 @@ cross-compile toolchain) — cut a `v*` tag to build all three in CI
 code-signing certificate for a local-build project); expect a Gatekeeper/
 SmartScreen warning on first run.
 
-**When the provider blocks datacenter IPs:** many panels serve their API to
-anything but 404 all stream endpoints for cloud IPs (Cloudflare included) as
-anti-restream protection — streams then need a residential IP. Run the same
-proxy at home instead: `scripts/home-proxy.mjs` (Node 20+, wraps the worker
-script unchanged) on a NAS/Pi/always-on PC, exposed over HTTPS with
-Tailscale Funnel or Cloudflare Tunnel — setup steps in its header comment.
-
 ## Standing conventions
 
 - **TypeScript files stay ≤300 lines**, hard ceiling 400
@@ -137,12 +180,13 @@ Tailscale Funnel or Cloudflare Tunnel — setup steps in its header comment.
   scrolling and input at all times. `vite.config.ts`'s `worker.format: 'es'`
   plus `new Worker(new URL(...), { type: 'module' })` is the required
   pattern so this keeps working under `base: './'`.
-- **Credentials are fragment-only.** Connect bookmark URLs (Phase 14) carry
-  credentials in the URL hash, never the query string, and the address bar
-  is scrubbed immediately after import.
-- **Spektrum is the only UI/state framework**, resolved at runtime via the
-  pinned CDN import map in `index.html` — never bundled by Vite. See
-  "Spektrum: CDN vs. vendored" below.
+- **Credential-bearing links are not a v1 surface.** Phase 14's reserved
+  connect route is deliberately de-scoped until its parse/scrub/persistence
+  guarantees are implemented together.
+- **Spektrum is the only UI/state framework**, loaded from the pinned,
+  integrity-checked same-origin copy. Its template expressions are
+  precompiled for a strict script CSP. See "Spektrum: pinned, local, and
+  CSP-safe" below.
 - **The page is a fixed, full-viewport app shell, not a scrolling document.**
   `html`/`body`/`#app` are sized to exactly 100% of the viewport, and
   `touch-action: manipulation` is set globally to suppress the mobile
@@ -151,25 +195,22 @@ Tailscale Funnel or Cloudflare Tunnel — setup steps in its header comment.
   legitimate pinch-zoom and fail WCAG 1.4.10 (Reflow). Double-tap is the
   only zoom trigger disabled; pinch-zoom still works.
 
-## Spektrum: CDN vs. vendored
+## Spektrum: pinned, local, and CSP-safe
 
-[Spektrum](https://github.com/D-dezeeuw/spektrum) is loaded two different
-ways depending on target, both pointing at the exact same pinned version
-(currently `1.1.0`, tracked in `scripts/spektrum-version.json`):
+[Spektrum](https://github.com/D-dezeeuw/spektrum) is pinned to `1.1.0`
+(`scripts/spektrum-version.json`) and loaded from the integrity-checked
+copy at `public/vendor/spektrum.min.js` on every target:
 
-- **Web (committed default):** `index.html`'s import map points at the
-  pinned unpkg CDN URL. No download, no vendoring step — this is what
-  `npm run dev`, `npm run build`, and the deployed Pages site use as-is.
-- **Packaged targets (Electron, webOS):** `scripts/package-target.mjs`
-  rewrites a _built_ `dist/index.html`'s import map to
-  `./vendor/spektrum.min.js`, so the packaged app never depends on the CDN
-  being reachable. The vendored copy lives at `public/vendor/spektrum.min.js`
-  and is kept in sync (and hash-verified) by
-  `scripts/sync-vendor-spektrum.mjs` and `scripts/check-importmap.mjs`.
-- **Older TV browsers** (pre-Chromium-89, where import maps aren't
-  supported) are expected to need an `es-module-shims` polyfill layered on
-  top of the vendored path — that's a webOS-target concern, not something
-  the web build carries.
+- **Web:** `index.html` resolves the local file through an import map.
+- **Electron/webOS:** `scripts/package-target.mjs` rewrites built bare
+  imports to the relative local file and removes the import map. This works
+  on Chromium 87 without carrying an import-map shim.
+- **Strict CSP:** `scripts/spektrum-csp.mjs` precompiles every template
+  expression into a static classic script before `bindDOM()`, so the
+  runtime never reaches Spektrum's `new Function` fallback.
+
+The vendored runtime is kept in sync (and hash-verified) by
+`scripts/sync-vendor-spektrum.mjs` and `scripts/check-importmap.mjs`.
 
 ## Who lives where
 

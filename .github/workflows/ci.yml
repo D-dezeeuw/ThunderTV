@@ -1,24 +1,19 @@
 name: CI
 
-# Automatic runs are DISABLED — Actions minutes were the single biggest cost
-# on this repo, and `npm run verify` is the same command a developer already
-# runs locally before pushing (that equivalence is the whole point of the
-# one-step job below), so the hosted run was buying very little.
-#
-# The job is kept, not deleted, so it can still be run on demand from the
-# Actions tab ("Run workflow"). To put it back on every push/PR, restore:
-#
-#   on:
-#     push:
-#       branches: [main]
-#     pull_request:
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
     name: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -27,7 +22,11 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      # The lockfile is the vulnerability/source-of-truth gate. Suppress npm's
+      # install-time audit/funding network calls here; they add time and can
+      # fail independently of the deterministic build. Run dependency review
+      # deliberately when dependencies change.
+      - run: npm ci --no-audit --no-fund
 
       # One step, deliberately: `npm run verify` is the single definition of
       # "green", so what CI enforces and what a developer runs locally cannot

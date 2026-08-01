@@ -99,7 +99,7 @@ export const nl = {
     emptyStates: {
         firstRun: {
             heading: 'Voeg een bron toe om te beginnen',
-            note: 'Of open een verbindingslink om dit apparaat in één keer te configureren.',
+            note: 'U kunt bronnen later toevoegen, vervangen of vernieuwen via Bronnen.',
             file: 'M3U-bestand uploaden',
             urlPlaceholder: 'https://provider.voorbeeld/playlist.m3u',
             urlSubmit: 'Importeren via URL',
@@ -135,7 +135,7 @@ export const nl = {
     },
 
     connect: {
-        detected: 'Verbindingslink gedetecteerd — dit apparaat wordt zo geconfigureerd.',
+        detected: 'Verbindingsbladwijzers zijn niet ingeschakeld in deze versie. Voeg de bron handmatig toe onder Bronnen.',
     },
 
     ...nlEpg.topLevel,
@@ -248,7 +248,7 @@ export const nl = {
             proxyLabel: 'Proxy-URL-sjabloon',
             proxyPlaceholder: 'https://mijn-proxy.voorbeeld/{url}',
             proxyHelp:
-                'Optioneel. Wordt toegepast op playlist-, EPG- en API-verzoeken indien ingesteld. Er wordt geen publieke proxy aangeboden of beloofd — videosegmenten worden apart door de speler opgehaald en blijven op het web sowieso aan CORS gebonden.',
+                'Optioneel. Wordt toegepast op playlist-, EPG-, API- en streamverzoeken indien ingesteld, en op zenderlogo’s die een beveiligde pagina anders blokkeert. Er wordt geen publieke proxy aangeboden of beloofd — draai er zelf een (zie scripts/home-proxy.mjs). Als streams falen met 403/404 terwijl de zenderlijst wel laadt, draait de proxy waarschijnlijk op een datacenter-IP dat de aanbieder blokkeert; draai hem dan via je thuisverbinding.',
             proxySave: 'Opslaan',
             proxyInvalid: 'Moet een geldige https://-URL zijn (of http://localhost voor lokaal testen).',
             proxySaved: 'Opgeslagen.',

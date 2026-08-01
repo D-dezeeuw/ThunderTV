@@ -99,7 +99,7 @@ export const de = {
     emptyStates: {
         firstRun: {
             heading: 'Fügen Sie eine Quelle hinzu, um loszulegen',
-            note: 'Oder öffnen Sie einen Verbindungslink, um dieses Gerät in einem Schritt zu konfigurieren.',
+            note: 'Sie können Quellen später unter Quellen hinzufügen, ersetzen oder aktualisieren.',
             file: 'M3U-Datei hochladen',
             urlPlaceholder: 'https://anbieter.beispiel/playlist.m3u',
             urlSubmit: 'Von URL importieren',
@@ -135,7 +135,7 @@ export const de = {
     },
 
     connect: {
-        detected: 'Verbindungslink erkannt — dieses Gerät wird in Kürze konfiguriert.',
+        detected: 'Verbindungslesezeichen sind in dieser Version nicht aktiviert. Fügen Sie die Quelle unter Quellen manuell hinzu.',
     },
 
     ...deEpg.topLevel,
@@ -248,7 +248,7 @@ export const de = {
             proxyLabel: 'Proxy-URL-Vorlage',
             proxyPlaceholder: 'https://mein-proxy.beispiel/{url}',
             proxyHelp:
-                'Optional. Wird bei Playlist-, EPG- und API-Anfragen angewendet, wenn festgelegt. Es wird kein öffentlicher Proxy bereitgestellt oder zugesichert — Videosegmente werden separat vom Player abgerufen und bleiben im Web ohnehin an CORS gebunden.',
+                'Optional. Wird bei Playlist-, EPG-, API- und Stream-Anfragen angewendet, wenn festgelegt, sowie bei Senderlogos, die eine sichere Seite sonst blockiert. Es wird kein öffentlicher Proxy bereitgestellt oder zugesichert — betreiben Sie einen eigenen (siehe scripts/home-proxy.mjs). Wenn Streams mit 403/404 fehlschlagen, während die Senderliste lädt, läuft der Proxy vermutlich auf einer Rechenzentrums-IP, die der Anbieter blockiert; betreiben Sie ihn stattdessen über Ihren Heimanschluss.',
             proxySave: 'Speichern',
             proxyInvalid: 'Muss eine gültige https://-URL sein (oder http://localhost zum lokalen Testen).',
             proxySaved: 'Gespeichert.',

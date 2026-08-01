@@ -1,6 +1,6 @@
 {
     "id": "dev.thundertv.app",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "vendor": "ThunderTV contributors",
     "type": "web",
     "main": "index.html",

@@ -64,10 +64,10 @@ export interface ElectronBridge {
 }
 
 export interface ElectronDownloadBridge {
-    /** Native save dialog. Resolves the chosen absolute path, or `null` when the viewer dismisses it. */
+    /** Native save dialog. Resolves an opaque, one-use target grant, or `null` when the viewer dismisses it. */
     prepare(filename: string): Promise<string | null>;
     /** Fire-and-forget: every outcome, progress included, comes back on `onEvent` keyed by `id`. */
-    start(id: string, url: string, filePath: string): void;
+    start(id: string, url: string, targetToken: string): void;
     /** Idempotent — cancelling an id that already finished is a no-op in the main process, not an error. */
     cancel(id: string): void;
     /** Returns its own unsubscribe, matching every other listener contract in the app. */

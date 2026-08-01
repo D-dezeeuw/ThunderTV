@@ -2,18 +2,6 @@ name: Desktop build
 
 # Catches electron-builder packaging regressions.
 #
-# Automatic runs are DISABLED — packaging is by far the most expensive thing
-# this repo asks of hosted runners (a full `npm ci` in two workspaces plus an
-# AppImage/nsis/dmg build), and Phase 29's posture is that installers are
-# built and uploaded by hand anyway. Run it from the Actions tab
-# ("Run workflow") when a release is actually being cut. To put it back on
-# pushes and tags, restore:
-#
-#   on:
-#     push:
-#       branches: [main]
-#       tags: ['v*']
-#     pull_request:
 on:
   workflow_dispatch:
     inputs:

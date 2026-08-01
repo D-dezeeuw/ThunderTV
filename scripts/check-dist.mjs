@@ -11,6 +11,7 @@
 // dead-code elimination keeps it out today, so this is the regression guard
 // for that.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
@@ -87,69 +88,102 @@ if (devtoolsLeaks.length > 0) {
 
 console.log(`check-dist: OK — no devtools symbols found in ${jsFiles.length} built JS asset(s)`);
 
-// The entry chunk is what every visitor downloads before anything renders,
-// so it is the only size worth guarding. The player engines are big
-// (hls.js ~509 kB, mpegts.js ~269 kB) and are deliberately behind
-// `await import()` in src/player/ — if either ever lands in the entry
-// chunk, the browse UI starts paying for a decoder it may never use. That
-// is the regression Rollup's generic chunk-size warning cannot distinguish
-// from a lazily-loaded chunk simply being large, which is why
-// vite.config.ts raises that threshold and this check exists instead.
-// Deliberately a size budget rather than a search for library symbols: the
-// entry chunk legitimately contains the *specifier* strings ("hls.js",
-// "mpegts.js") from its own `await import()` calls, so grepping for those
-// can only produce false positives. Size cannot be faked — either engine
-// landing in the entry chunk would multiply it several times over.
-const ENTRY_BUDGET_BYTES = 200 * 1024;
+// LG publishes no universal JS or package-size ceiling. These are ThunderTV
+// SLOs for the webOS 6 / Chromium 87 support floor: raw bytes approximate
+// parse pressure on the TV, gzip approximates web transfer, and the install
+// footprint protects storage. See webos/PERFORMANCE-BUDGET.md.
+const BUDGETS = {
+    startupJsRaw: 400 * 1024,
+    startupJsGzip: 100 * 1024,
+    htmlRaw: 300 * 1024,
+    htmlGzip: 60 * 1024,
+    cssRaw: 100 * 1024,
+    cssGzip: 25 * 1024,
+    shellTextRaw: 800 * 1024,
+    shellTextGzip: 175 * 1024,
+    installRaw: 10 * 1024 * 1024,
+};
 
-const entryNames = [...html.matchAll(/<script[^>]+src="([^"]+\.js)"/g)].map((m) => m[1].split('/').pop());
+const normalizeRef = (ref) => ref.replace(/^\.\//, '').split(/[?#]/, 1)[0];
+const startupJs = new Set(
+    [
+        ...[...html.matchAll(/<script[^>]+src="([^"]+\.js)"/g)].map((match) => match[1]),
+        ...[...html.matchAll(/<link[^>]+rel="modulepreload"[^>]+href="([^"]+\.js)"/g)].map((match) => match[1]),
+    ].map(normalizeRef),
+);
+const importMapText = /<script type="importmap">([\s\S]*?)<\/script>/.exec(html)?.[1];
+if (importMapText) {
+    const imports = JSON.parse(importMapText).imports ?? {};
+    for (const ref of Object.values(imports)) {
+        if (typeof ref === 'string' && ref.startsWith('.') && ref.endsWith('.js')) startupJs.add(normalizeRef(ref));
+    }
+}
+// Packaged targets remove the import map after rewriting asset imports.
+if (
+    jsFiles.some((name) => readFileSync(`${assetsDir}/${name}`, 'utf8').includes('../vendor/spektrum.min.js'))
+) {
+    startupJs.add('vendor/spektrum.min.js');
+}
 
-if (entryNames.length === 0) {
-    console.error('check-dist: no entry <script src> found in dist/index.html — cannot check the startup budget');
+if (startupJs.size === 0) {
+    console.error('check-dist: no eager scripts found in dist/index.html — cannot check the startup budget');
     process.exit(1);
 }
 
-// The masterplan's standing checklist states the budget in *transfer* terms
-// ("initial JS ≤ ~60 KB gz app code"), which is what a user on a slow link
-// actually pays. The raw ceiling above catches an engine landing in the entry
-// chunk; this one catches the slower rot — text (locale dictionaries, registry
-// descriptions, markup) accreting until first paint costs measurably more.
-// AUDIT.md §4.1 recorded that drifting 12% → 20% over budget across two merges
-// with CI green throughout, because nothing measured it.
-const ENTRY_BUDGET_GZIP_BYTES = 60 * 1024;
+const total = (refs) => {
+    let raw = 0;
+    let gzip = 0;
+    for (const ref of refs) {
+        const bytes = readFileSync(path.join(distDir, ref));
+        raw += bytes.length;
+        gzip += gzipSync(bytes).length;
+    }
+    return { raw, gzip };
+};
+const cssRefs = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+\.css)"/g)].map((match) =>
+    normalizeRef(match[1]),
+);
+const jsSize = total(startupJs);
+const cssSize = total(cssRefs);
+const htmlBytes = Buffer.from(html);
+const htmlSize = { raw: htmlBytes.length, gzip: gzipSync(htmlBytes).length };
+const shellSize = {
+    raw: jsSize.raw + cssSize.raw + htmlSize.raw,
+    gzip: jsSize.gzip + cssSize.gzip + htmlSize.gzip,
+};
 
-const overages = [];
-for (const name of entryNames) {
-    const raw = statSync(`${assetsDir}/${name}`).size;
-    const gzip = gzipSync(readFileSync(`${assetsDir}/${name}`)).length;
-    if (raw > ENTRY_BUDGET_BYTES) {
-        overages.push(
-            `entry chunk ${name} is ${(raw / 1024).toFixed(1)} kB raw, over the ${String(ENTRY_BUDGET_BYTES / 1024)} kB startup budget.`,
-        );
+function directoryBytes(directory) {
+    let bytes = 0;
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const item = path.join(directory, entry.name);
+        bytes += entry.isDirectory() ? directoryBytes(item) : statSync(item).size;
     }
-    if (gzip > ENTRY_BUDGET_GZIP_BYTES) {
-        overages.push(
-            `entry chunk ${name} is ${(gzip / 1024).toFixed(1)} kB gzipped, over the ${String(ENTRY_BUDGET_GZIP_BYTES / 1024)} kB transfer budget.`,
-        );
-    }
+    return bytes;
 }
-
+const installRaw = directoryBytes(distDir);
+const checks = [
+    ['eager JS raw', jsSize.raw, BUDGETS.startupJsRaw],
+    ['eager JS gzip', jsSize.gzip, BUDGETS.startupJsGzip],
+    ['HTML raw', htmlSize.raw, BUDGETS.htmlRaw],
+    ['HTML gzip', htmlSize.gzip, BUDGETS.htmlGzip],
+    ['startup CSS raw', cssSize.raw, BUDGETS.cssRaw],
+    ['startup CSS gzip', cssSize.gzip, BUDGETS.cssGzip],
+    ['shell text raw', shellSize.raw, BUDGETS.shellTextRaw],
+    ['shell text gzip', shellSize.gzip, BUDGETS.shellTextGzip],
+    ['install footprint raw', installRaw, BUDGETS.installRaw],
+];
+const overages = checks.filter(([, actual, budget]) => actual > budget);
 if (overages.length > 0) {
-    console.error('check-dist: startup budget exceeded');
-    for (const line of overages) console.error(`  ${line}`);
-    console.error('  Either a player engine (hls.js / mpegts.js) stopped being `await import()`ed,');
-    console.error('  or something large became eager — locales, the Radio visualizer, and the');
-    console.error('  diagnostics exports are all lazily loaded precisely to stay under this.');
+    console.error('check-dist: production budget exceeded');
+    for (const [label, actual, budget] of overages) {
+        console.error(`  ${label}: ${(actual / 1024).toFixed(1)} KiB > ${(budget / 1024).toFixed(1)} KiB`);
+    }
     process.exit(1);
 }
 
-const report = entryNames
-    .map((name) => {
-        const raw = statSync(`${assetsDir}/${name}`).size;
-        const gzip = gzipSync(readFileSync(`${assetsDir}/${name}`)).length;
-        return `${name} ${(raw / 1024).toFixed(1)} kB raw / ${(gzip / 1024).toFixed(1)} kB gz`;
-    })
-    .join(', ');
 console.log(
-    `check-dist: OK — ${report} (budget ${String(ENTRY_BUDGET_BYTES / 1024)} kB raw / ${String(ENTRY_BUDGET_GZIP_BYTES / 1024)} kB gz)`,
+    `check-dist: OK — eager JS ${startupJs.size} files, ${(jsSize.raw / 1024).toFixed(1)} KiB raw / ${(jsSize.gzip / 1024).toFixed(1)} KiB gzip`,
+);
+console.log(
+    `check-dist: OK — shell text ${(shellSize.raw / 1024).toFixed(1)} KiB raw / ${(shellSize.gzip / 1024).toFixed(1)} KiB gzip; install ${(installRaw / 1024 / 1024).toFixed(2)} MiB`,
 );
