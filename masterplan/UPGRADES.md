@@ -109,38 +109,29 @@ It did **not** have to land failing, as this plan assumed — the optimization
 work below got under both budgets first. Final: **135.7 kB raw / 46.0 kB gz**
 against 200 kB / 60 kB, down from 213.8 kB / 72.5 kB.
 
-> #### ⚠️ The fence has a hole — found while landing U5, not yet fixed
+> #### The fence had a hole — found while landing U5, closed by `becff80`
 >
-> `check-dist.mjs` measures **the entry chunk only**. The built page
-> modulepreloads three more chunks, all of them on the critical path:
+> Briefly, `check-dist.mjs` measured **the entry chunk only** while the page
+> modulepreloaded three more, so the real first-load payload was 77.3 kB gz
+> against a 60 kB budget reporting green. `platform-*.js` alone was larger
+> than the chunk being policed. Same defect class as U3 (a guard that existed
+> but never ran), one level in — a guard that runs but measures the wrong
+> thing, which is worse, because a passing check is read as evidence.
 >
-> ```
-> index-*.js            33.7 kB gz   ← the only one measured
-> platform-*.js         38.9 kB gz
-> hidden-sources-*.js    4.4 kB gz
-> rolldown-runtime-*.js  0.4 kB gz
-> ────────────────────────────────
-> first-load JS         77.3 kB gz   vs. the masterplan's ≤ 60 kB
-> ```
+> The v1.0.0 pass rewrote it. `check-dist` now sums **every eager script** —
+> entry, all module preloads, Spektrum and its CSP registry — and adds HTML,
+> CSS, total-shell-text and install-footprint budgets, all re-baselined for
+> the webOS 6 / Chromium 87 floor and documented with their rationale in
+> `webos/PERFORMANCE-BUDGET.md`. Non-JS assets are covered by the install
+> budget, which is what finally weighs the 1.85 MB boot wallpaper (total
+> 4.39 MiB against 10 MiB).
 >
-> So the real first-load payload is **29% over the budget**, and `verify`
-> reports OK — because the number it checks is not the number the masterplan
-> states. `platform-*.js` alone is larger than the chunk being policed.
->
-> This is the same defect class as U3 (a guard that existed but did not run),
-> one level in: a guard that runs, but measures the wrong thing. It is
-> arguably worse, because a passing check is read as evidence.
->
-> **And it does not weigh non-JS assets at all.** The boot splash that landed
-> in `cf1596c` ships `boot-wallpaper.png` at **1.85 MB** — about 24× the whole
-> first-load JS payload — fetched eagerly, because `.boot-overlay` is in the
-> initial DOM with `ui.bootPhase` starting at `'loading'` and the wallpaper is
-> a CSS `background: url(…)`. It is therefore competing for bandwidth with the
-> app's own boot, on exactly the slow connection where a splash is supposed to
-> help. Whether that trade is worth it is a design call and not this
-> document's to make; that it is *unmeasured* is squarely §5's first row, and
-> a budget covering images would have made it a decision instead of a
-> side effect.
+> **What the budget move does and does not mean.** Eager JS is now measured
+> at 92.3 KiB gz against a 100 KiB ceiling — not 60. That is a deliberate,
+> documented re-baseline to a TV support floor, not a quiet relaxation, and
+> it is the honest number where 60 never was. But the headroom is 8%, and the
+> one structural fix that would buy real room — U8's `index.html` split — is
+> still open. Read "passing" here as "measured," not "comfortable."
 >
 > **The fix is small — sum every `<script>`/`modulepreload` chunk in
 > `dist/index.html` instead of picking the entry — but it lands `verify`
@@ -346,7 +337,27 @@ compiles-and-runs, and the next author cannot reintroduce the bug by
 forgetting a README.
 
 ### U12. Add a CSP and constrain the CDN load
-**Closes §4.7.**
+**Closes §4.7. — 🟡 MOSTLY LANDED in the v1.0.0 pass (`becff80`)**
+
+Both halves of point 2 and the web half of point 1 are done:
+
+- **The CDN is gone.** The import map resolves `spektrum` to
+  `./vendor/spektrum.min.js` on the *web* target too, not just packaged
+  builds — so the SHA-384 that `check-importmap.mjs` verifies at build time
+  now constrains what the browser actually fetches, which was the whole
+  problem. `check-importmap` reports "Spektrum 1.1.0 is local."
+- **A strict CSP ships in `index.html`**, enforced rather than report-only,
+  and it went further than this item asked: Spektrum's `{{expr}}` bindings
+  are **precompiled** at build time (`scripts/spektrum-csp.mjs` →
+  `src/app/spektrum-csp.ts`, 717 expressions) so the runtime needs no
+  `eval`/`new Function` and `script-src` can stay tight. `npm run lint:csp`
+  verifies the policy and the registry together.
+
+**Still open: the Electron half.** `desktop/main.mjs` has no
+`session.defaultSession.webRequest.onHeadersReceived` CSP header — the
+packaged app relies on its `file://` origin and hardened `webPreferences`
+alone. Lower risk than the web target was (no CDN, no remote script), but it
+is the one part of this item not yet done.
 
 1. **CSP** as a `<meta http-equiv="Content-Security-Policy">` in `index.html`
    and a `session.defaultSession.webRequest.onHeadersReceived` header in
