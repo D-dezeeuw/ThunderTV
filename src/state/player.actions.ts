@@ -22,6 +22,7 @@ import {
 import { closeTrackMenu } from './player-tracks.actions';
 import type { ActiveChannelSnapshot } from './records';
 import { SERIES_NEXT_PROMPT } from './series';
+import { announce } from './ui.actions';
 import { get, replace, set } from './typed';
 import { UI_ACTIVE_VIEW } from './ui';
 
@@ -263,6 +264,10 @@ export function reportPaused(paused: boolean): void {
 /** Called by `src/player/engine.ts` when a stream dies (hls.js fatal error or the native element's `error` event) — the one visible diagnostic a phone user can screenshot. `null` clears it on a fresh attach. Stone 3's failure evidence is recorded by the engine itself (`advanceChain()`), not here: the player layer already owns the health monitor, and hooking it here would have `src/state/` reach into `src/player/`. */
 export function reportPlaybackError(detail: string | null): void {
     setValue(PLAYER_PLAYBACK_ERROR, detail);
+    // A dead stream is the one failure a viewer is guaranteed to be waiting
+    // on, so it is the one that most needs saying out loud (Feature 25.8.5).
+    // `null` is the clear-on-fresh-attach case and announces nothing.
+    if (detail) announce(detail);
 }
 
 /**

@@ -50,6 +50,7 @@ import {
     UI_ACTIVE_VIEW,
     UI_DENSITY,
     UI_SETTINGS_OPEN,
+    UI_ANNOUNCEMENT,
     UI_STORAGE_NOTICE_DISMISSED,
 } from './ui';
 import { UI_SETUP_COMPLETE, UI_WIZARD_OPEN, UI_WIZARD_STEP } from './wizard';
@@ -356,6 +357,11 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
         owner: 'ui',
         persisted: true,
         description: 'Storage-mode notice dismissal (Feature 04.8.5) — persists on tiers that can keep it, session-only on none by construction.',
+    },
+    [UI_ANNOUNCEMENT]: {
+        owner: 'ui',
+        persisted: false,
+        description: 'The single screen-reader announcement channel (Feature 25.8.5) — an always-present aria-live region\'s text, written only via ui.actions.ts\'s announce(), which blanks and re-sets across a tick so a repeated message still announces. Assistive tech only; nothing renders it visibly. Never persisted: an announcement describes something that just happened.',
     },
     [PLATFORM_NAME]: {
         owner: 'ui',

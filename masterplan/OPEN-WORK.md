@@ -63,5 +63,5 @@ is missing is a record that anyone checked.
 | Item | State |
 | --- | --- |
 | **W1** next-episode affordance | ✅ done — `src/xtream/next-episode.ts` + `series.nextPrompt` |
-| **W2** live region | in progress |
+| **W2** live region | ✅ done — `ui.announcement` + `announce()` |
 | everything else | open |

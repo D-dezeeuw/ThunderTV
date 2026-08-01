@@ -8,6 +8,22 @@ export const UI_THEME = 'ui.theme';
 export const UI_FONT_SIZE = 'ui.fontSize';
 export const UI_SETTINGS_OPEN = 'ui.settingsOpen';
 export const UI_STORAGE_NOTICE_DISMISSED = 'ui.storageNoticeDismissed';
+/**
+ * The single screen-reader announcement channel (Feature 25.8.5).
+ *
+ * **Why a dedicated key rather than `aria-live` on each notice.** The
+ * existing notices are all `data-if`-toggled, and Spektrum's `data-if` sets
+ * `display: none` rather than detaching — so a live region on one of them is
+ * present-but-hidden at load, and whether toggling it back announces at all
+ * is inconsistent across screen readers. A region that is *always* in the
+ * accessibility tree and only ever has its text replaced is the shape that
+ * announces reliably, exactly once, everywhere.
+ *
+ * Assistive tech only. Nothing renders this visibly — the visual notices
+ * already exist and are unchanged; this is the parallel channel for people
+ * who cannot see them.
+ */
+export const UI_ANNOUNCEMENT = 'ui.announcement';
 
 /**
  * Diagnostic mirrors of the platform/storage layers (Features 03.8.6,
@@ -43,6 +59,7 @@ export interface UiState {
     fontSize: FontSize;
     settingsOpen: boolean;
     storageNoticeDismissed: boolean;
+    announcement: string;
 }
 
 export const UI_DEFAULTS: UiState = {
@@ -52,6 +69,7 @@ export const UI_DEFAULTS: UiState = {
     fontSize: 'default',
     settingsOpen: false,
     storageNoticeDismissed: false,
+    announcement: '',
 };
 
 /**
@@ -67,6 +85,7 @@ export function initUiState(): void {
     setValue(UI_FONT_SIZE, UI_DEFAULTS.fontSize);
     setValue(UI_SETTINGS_OPEN, UI_DEFAULTS.settingsOpen);
     setValue(UI_STORAGE_NOTICE_DISMISSED, UI_DEFAULTS.storageNoticeDismissed);
+    setValue(UI_ANNOUNCEMENT, UI_DEFAULTS.announcement);
 }
 
 /** Diagnostics-only seeding (Feature 03.8.6/04.2.7) — called once from `bootstrap()` right after `setPlatform()`, before `initState()`'s module defaults. */

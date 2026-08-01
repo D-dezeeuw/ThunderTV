@@ -29,12 +29,13 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url));
  * message, and the first question to answer is why the markup could not go
  * into a component instead (UPGRADES U8's split plan).
  *
- * Raised once so far: +6 lines / +962 B for the Feature 21.6 next-episode
- * offer, which is genuinely new UI and has nowhere else to live until the
- * partials split lands.
+ * Raised twice so far, both for genuinely new UI with nowhere else to live
+ * until the partials split lands: +6 lines / +962 B for the Feature 21.6
+ * next-episode offer, and +2 lines / +275 B for the Feature 25.8.5
+ * screen-reader announcement region.
  */
 const BUDGETS = [
-    { path: 'index.html', maxLines: 3597, maxBytes: 247_246 },
+    { path: 'index.html', maxLines: 3599, maxBytes: 247_521 },
 ];
 
 let failed = false;

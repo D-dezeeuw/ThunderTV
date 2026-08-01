@@ -123,6 +123,8 @@
         </svg>
 
         <div id="app">
+            <!-- Feature 25.8.5: the one screen-reader announcement channel. Always present so it announces reliably; see src/state/ui.ts's UI_ANNOUNCEMENT. -->
+            <p class="sr-only" role="status" aria-live="polite" data-testid="announcer">{{ ui.announcement }}</p>
             <nav class="rail" aria-label="Main">
                 <!-- Order is by how often a viewer reaches for each: what they
                      saved, what is on now, then the two live lists, then the
