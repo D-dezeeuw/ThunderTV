@@ -18,14 +18,12 @@
 > the first thing someone deletes. Everything not marked closed there is
 > still open.
 >
-> Three things are worth naming here rather than only in the upgrade plan.
-> `index.html` has grown from 2,366 to **3,560 lines** (§4.8, the one major
-> artifact with no size fence). §4.11's PWA gap is untouched — still a
-> manifest with no service worker. And **§4.1 is not as closed as the ✅
-> below suggests**: the budget gate measures the entry chunk alone, while
-> three more chunks are modulepreloaded, so the true first-load payload is
-> 77.3 kB gz against a 60 kB budget that reports green. UPGRADES U4 carries
-> the numbers and the choice.
+> Since then a v1.0.0 production-readiness pass (`becff80`) closed §4.7 on
+> the web target and rebuilt the §4.1 budget gate to measure every eager
+> script rather than one chunk. Two findings are still live and one is
+> getting worse: §4.8's `index.html` has grown from 2,366 to **3,560 lines**
+> and remains the only major artifact with no size fence, and §4.11's PWA gap
+> is untouched — still a manifest with no service worker.
 
 ---
 
@@ -60,10 +58,10 @@ Three facts define the current state:
 | CSS fence / file-access fence | ✅ Clean | both custom guards pass |
 | Tests | ✅ 1,125 pass (133 files) | flake fixed — 11 consecutive clean runs (§4.3) |
 | Build | ✅ Succeeds | 616 ms |
-| Perf budget | ⚠️ **Enforced, but measuring the wrong number** | entry chunk 33.7 kB gz passes; true first-load is **77.3 kB gz vs. 60 kB** — see UPGRADES U4 |
+| Perf budget | ✅ **Enforced on the right number** | all eager JS + HTML + CSS + shell text + install footprint, re-baselined to the webOS floor (`webos/PERFORMANCE-BUDGET.md`); 92.3 KiB gz eager JS vs. 100 KiB — 8% headroom |
 | Feature reachability | ✅ **Gated in CI** | 77 registered, 73 bound, 4 allowlisted, 0 dead clicks |
 | Plan ↔ code fidelity | ✅ **Reconciled and gated** | every phase carries a verified `> **Status:**` line; §4's table is generated and `--check`ed in `verify` |
-| Security posture | ✅ Strong | with two gaps (§4.7) |
+| Security posture | ✅ Strong | §4.7's two gaps closed on the web target — strict CSP with precompiled bindings, Spektrum served same-origin; Electron CSP header still missing |
 
 ---
 
@@ -319,7 +317,17 @@ Each is honestly documented, which is how they were found:
 A phase boundary is a scheduling device. When it becomes a *design* boundary,
 the scars are permanent and compound.
 
-### 4.7 Security: two gaps in an otherwise strong posture
+### 4.7 Security: two gaps in an otherwise strong posture — ✅ CLOSED on the web target
+
+> **Closed by the v1.0.0 pass (`becff80`), except for Electron.** A strict,
+> enforced CSP now ships in `index.html`, and it solved the harder half of
+> the problem the finding did not anticipate: Spektrum's `{{expr}}` bindings
+> are precompiled at build time (717 of them) so no `eval`/`new Function`
+> is needed at runtime and `script-src` can stay tight. The import map
+> resolves Spektrum to the same-origin vendored copy on the web target too,
+> so the build-time SHA-384 finally constrains what the browser fetches —
+> the exact gap the second bullet below describes. `npm run lint:csp` gates
+> both. **Still open:** no CSP header in `desktop/main.mjs` (UPGRADES U12).
 
 - **No Content-Security-Policy anywhere.** No `<meta http-equiv>` in
   `index.html`, no `session.webRequest` header in `desktop/main.mjs`. For an

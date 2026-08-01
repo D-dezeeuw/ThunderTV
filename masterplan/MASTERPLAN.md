@@ -143,10 +143,19 @@ technical one) is worth stopping for.
 Most of this list is machine-enforced, which is the point: AUDIT §5 found that
 every rule enforced by a script held and every rule enforced by a README
 drifted. `verify` runs typecheck, ESLint (max-lines ≤ 400, target ≤ 300), the
-CSS/file-access/import-map/reachability fences, the full test suite, a
-production build, and `check-dist` — which fails on an entry chunk over
-200 kB raw or 60 kB gzipped. CI is `workflow_dispatch`-only on purpose, so
-`verify` is not *a* definition of green, it is *the* definition.
+CSS / file-access / import-map / CSP / version / reachability fences, both
+generated-doc drift checks, the full test suite, a production build, and
+`check-dist`. CI is `workflow_dispatch`-only on purpose, so `verify` is not
+*a* definition of green, it is *the* definition.
+
+**The performance budgets moved, deliberately.** This document's original
+"initial JS ≤ ~60 KB gz" was a single-chunk figure that missed everything
+modulepreloaded. `check-dist` now sums **all eager JavaScript** — entry,
+every module preload, Spektrum and its CSP registry — against budgets
+re-baselined for the webOS 6 / Chromium 87 support floor, plus HTML, CSS,
+total shell text and install footprint. The table and its rationale live in
+[`webos/PERFORMANCE-BUDGET.md`](../webos/PERFORMANCE-BUDGET.md); treat that
+file as the number, not the prose here.
 
 What a machine still cannot check, and you must:
 
@@ -155,14 +164,16 @@ What a machine still cannot check, and you must:
   storage tier(s) the change touches.
 - **The budgets with no script yet:** cold start < 1 s with a cached
   playlist, 100 k-channel import < 5 s, scroll ≤ ~40 DOM rows, search
-  < 50 ms. Phase 26 owns closing that gap.
+  < 50 ms. Phase 26 owns closing that gap. Size budgets *are* scripted now —
+  see above.
 - **Credential hygiene:** none in logs, none in query strings, none in
   exception messages.
-- **Asset weight.** `check-dist` polices JavaScript and nothing else. Images,
-  fonts and CSS are unmeasured, and the boot wallpaper is currently **1.85 MB**
-  — roughly 24× the entire first-load JS payload, fetched eagerly because the
-  splash is in the initial DOM. Weigh anything you add to the boot path
-  yourself; no script will.
+- **Asset weight** is now scripted too — the install-footprint budget covers
+  images and fonts (4.39 MiB against a 10 MiB ceiling today, most of it the
+  1.85 MB boot wallpaper and the variable font). The gate catches *growth*,
+  not *judgment*: the wallpaper is fetched eagerly, since the splash is in the
+  initial DOM, so anything you add to the boot path still deserves a
+  deliberate look even when the budget has room.
 - **The docs that describe what you changed** — the module README from
   `CLAUDE.md`'s table, `src/state/README.md`'s ownership table for a new key,
   and the phase's `> **Status:**` line if the change moves it. Regenerate
