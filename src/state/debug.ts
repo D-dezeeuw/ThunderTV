@@ -1,5 +1,6 @@
 import { appState, setValue } from 'spektrum';
 import type { Route } from '../app/router';
+import { redactText } from '../core/redact';
 import { getRows } from '../m3u/channel-memory';
 import { ensureRadioRows, radioDisplayRows } from './live-rows';
 import type { PlaylistSourceSummary } from './playlist';
@@ -78,9 +79,18 @@ function stringify(args: readonly unknown[]): string {
         .slice(0, 500);
 }
 
+/**
+ * The single ingress point, and therefore the single place redaction has to
+ * happen. Every path into the log — the three console wrappers, `error`,
+ * `unhandledrejection` — lands here, and both egress paths (the panel and
+ * the copy button) render `entries`, so redacting once on the way in covers
+ * all six. A provider URL carrying `?username=…&password=…` reaches this
+ * function whenever anyone logs a failed request, and this panel is designed
+ * to be screenshotted.
+ */
 function push(level: DebugEntry['level'], text: string): void {
     if (text.length === 0) return;
-    entries = [...entries.slice(-(DEBUG_ENTRY_CAP - 1)), { at: stamp(), level, text }];
+    entries = [...entries.slice(-(DEBUG_ENTRY_CAP - 1)), { at: stamp(), level, text: redactText(text) }];
     if (level === 'error') errorCount += 1;
     // Arrays go through `replace()`: Spektrum's setValue deep-merges, which
     // would leave a longer previous array's tail behind after a clear.

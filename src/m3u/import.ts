@@ -1,6 +1,7 @@
 import { mixedContentBlocked, type FetchFailure } from '../core/http/classified-fetch';
 import { getPlatform } from '../core/platform';
 import { captureRawResponse } from '../core/raw-capture';
+import { redactUrl } from '../core/redact';
 import { findExistingByFingerprint } from './import-commit';
 import { contentFingerprint, looksLikeM3u } from './import-sniff';
 import { runImport, type ImportOutcome } from './import-run';
@@ -96,20 +97,8 @@ export interface ImportUrlOptions {
  * choose both the right copy and the right retry affordance without
  * re-deriving either from a message string.
  */
-/** Playlist URLs often carry credentials as query parameters; the raw capture records the endpoint, never the account. Exported for direct hostile-fixture testing (import.spec.ts), same rationale as `xtream/urls.ts`'s own `redactUrl`. */
-export function redactPlaylistUrl(url: string): string {
-    try {
-        const parsed = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `http://${url}`);
-        parsed.username = '';
-        parsed.password = '';
-        for (const key of ['username', 'password', 'token', 'pass', 'user']) {
-            if (parsed.searchParams.has(key)) parsed.searchParams.set(key, 'REDACTED');
-        }
-        return parsed.toString();
-    } catch {
-        return '[unparseable url redacted]';
-    }
-}
+/** Playlist URLs often carry credentials as query parameters; the raw capture records the endpoint, never the account. Kept as a named export for direct hostile-fixture testing (import.spec.ts); the implementation is `core/redact`'s. */
+export const redactPlaylistUrl = redactUrl;
 
 export async function importPlaylistUrl(url: string, options: ImportUrlOptions = {}): Promise<ImportEntryOutcome> {
     if (mixedContentBlocked(url)) {

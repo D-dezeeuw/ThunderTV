@@ -45,9 +45,14 @@ export function normalizeXtreamUrl(rawUrl: string): string {
     return url;
 }
 
-/** Masks user/pass in both path-style and query-style Xtream URLs — the only URL form permitted in logs or error messages (Feature 19.4.6, extended by 21.4.9 to the `/movie/` and `/series/` path shapes). */
-export function redactUrl(url: string): string {
-    return url
-        .replace(/([?&])(username|password)=[^&]*/gi, '$1$2=***')
-        .replace(/\/(live|movie|series)\/[^/]+\/[^/]+\//i, '/$1/***/***/');
-}
+/**
+ * Masks user/pass in both path-style and query-style Xtream URLs — the only
+ * URL form permitted in logs or error messages (Feature 19.4.6, extended by
+ * 21.4.9 to the `/movie/` and `/series/` path shapes).
+ *
+ * Re-exported from `core/redact` rather than implemented here: this used to
+ * be one of five separate redactors, and the parse-based one also catches
+ * `user:pass@` userinfo and the `token`/`auth`/`key` parameters this
+ * module's regex never knew about.
+ */
+export { redactUrl } from '../core/redact';

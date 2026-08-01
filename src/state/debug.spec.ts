@@ -89,6 +89,29 @@ describe('capture', () => {
         mounted.cleanup();
     });
 
+    it('redacts credentials before they reach the log or the copy button', () => {
+        // This panel exists to be screenshotted, and a failed request is
+        // exactly what gets logged with its URL attached.
+        const mounted = mountTemplate('<div></div>');
+        const original = console.error;
+        console.error = () => undefined;
+
+        installDebugCapture();
+        console.error('load failed', 'http://h:8080/live/bob/s3cret/42.ts?token=abc123');
+        tick();
+
+        const text = entries().at(-1)?.text ?? '';
+        expect(text).toContain('load failed');
+        expect(text).toContain('REDACTED');
+        expect(text).not.toContain('s3cret');
+        expect(text).not.toContain('abc123');
+        expect(debugReportText()).not.toContain('s3cret');
+
+        console.error = original;
+        clearDebugLog();
+        mounted.cleanup();
+    });
+
     it('installs only once, however many times bootstrap runs', () => {
         const mounted = mountTemplate('<div></div>');
         const original = console.error;

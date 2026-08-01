@@ -13,13 +13,13 @@ import type {
     XtreamVodInfo,
     XtreamVodStream,
 } from './types';
-import { apiUrl } from './urls';
+import { apiUrl, redactUrl } from './urls';
 
 export type XtreamResult<T> = { ok: true; data: T } | { ok: false; error: XtreamError };
 
 /** The API URL with credentials stripped — `apiUrl()` embeds username and password as query parameters. Exported for direct hostile-fixture testing (client.spec.ts), same rationale as `xtream/urls.ts`'s own `redactUrl`. */
 export function redactApiUrl(source: XtreamSource, action: string): string {
-    return apiUrl({ ...source, user: 'REDACTED', pass: 'REDACTED' }, action, '');
+    return redactUrl(apiUrl(source, action, ''));
 }
 
 async function callApi(source: XtreamSource, action: string, extra = ''): Promise<XtreamResult<unknown>> {

@@ -19,8 +19,17 @@
 /** Xtream's three stream shapes all place `{user}/{pass}` immediately after the kind segment. */
 const CREDENTIAL_PATH_KINDS = new Set(['live', 'movie', 'series']);
 
-/** Query parameters that carry a secret on the M3U side (`?username=…&password=…`, `?token=…`). Compared case-insensitively. */
-const CREDENTIAL_PARAMS = new Set(['username', 'user', 'password', 'pass', 'token', 'auth', 'key']);
+/**
+ * Query parameters that carry a secret on the M3U side
+ * (`?username=…&password=…`, `?token=…`). Compared case-insensitively.
+ *
+ * Shared with `core/redact`, which strips the same parameters for display.
+ * The masking below stays this module's own: `streamKey()` produces a
+ * persisted *identity*, so its `*` mask, parameter sort and scheme-dropping
+ * are storage semantics — swapping them for the display redactor's would
+ * orphan every health record already on disk.
+ */
+import { CREDENTIAL_PARAMS } from '../core/redact';
 
 const MASK = '*';
 
