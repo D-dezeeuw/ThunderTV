@@ -1,12 +1,11 @@
 import { defineFn } from 'spektrum';
+import { createCatalogActions, parseCatalogId, type CatalogActions } from './catalog-actions';
 import { refocusCategoryRow } from './groups.actions';
-import { setDisplayedRows } from './list-rows';
-import { loadStoredCategories, loadStoredDetail, loadStoredItems, saveStoredCategories, saveStoredDetail, saveStoredItems } from './catalog-storage';
+import { loadStoredDetail, saveStoredDetail } from './catalog-storage';
 import { setActiveChannel } from './player.actions';
 import { createSequenceToken } from './sequence-token';
-import { SETTINGS_LIVE_COUNTRY } from './settings';
 import { CATALOG_TTL_MS, isFresh } from './ttl';
-import { get, replace, set } from './typed';
+import { replace, set } from './typed';
 import {
     cachedVodSource,
     toVodDetail,
@@ -18,7 +17,7 @@ import {
     setCachedVodSource,
 } from './vod-rows';
 import { getVodCategories, getVodInfo, getVodStreams } from '../xtream/client';
-import type { XtreamVodInfo } from '../xtream/types';
+import type { XtreamVodInfo, XtreamVodStream } from '../xtream/types';
 import { resolveActiveXtreamSource } from './xtream-refresh';
 import {
     VOD_ACTIVE_CATEGORY_ID,
@@ -30,18 +29,68 @@ import {
     VOD_ERROR_REASON,
     VOD_STALE,
     VOD_STATUS,
-    type VodCategoryRow,
     type VodItem,
 } from './vod';
 
 /**
- * Movies (VOD) catalog actions (Phase 21): open the catalog, browse a
- * category, open/close one movie's detail, and play it. Mirrors the shape
- * `settings.actions.ts`'s Xtream account save and `live.actions.ts` already
- * establish — an in-flight guard per async flow, a "superseded mid-flight"
- * check before the final publish (`list-load.ts`'s pattern), and every
- * mutation going through `state/typed.ts`'s `set()`/`replace()`.
+ * Movies (VOD) catalog actions (Phase 21).
+ *
+ * Browsing — open, category select, republish — is
+ * `catalog-actions.ts`'s parameterized core (UPGRADES U10), shared
+ * byte-for-byte with Series. What stays here is the part that genuinely
+ * differs: a movie's detail is one flat `get_vod_info` snapshot, and a
+ * movie is directly playable where a series is a container.
+ *
+ * The catalog instance is built on first use, never at module scope:
+ * `list.actions.ts` imports this module, and the config below reads
+ * `vod-rows.ts`'s own module-level rail and memory singletons, so calling
+ * the factory during evaluation puts the whole `src/state/` import cycle on
+ * the critical path and whichever module is mid-initialization loses.
+ * Deferring to the first action means every dependency is evaluated by then.
  */
+let catalog: CatalogActions | null = null;
+
+function vodCatalog(): CatalogActions {
+    catalog ??= createCatalogActions<VodItem, XtreamVodStream>({
+        kind: 'vod',
+        keys: {
+            status: VOD_STATUS,
+            errorReason: VOD_ERROR_REASON,
+            stale: VOD_STALE,
+            categories: VOD_CATEGORIES,
+            activeCategoryId: VOD_ACTIVE_CATEGORY_ID,
+            count: VOD_COUNT,
+        },
+        categoriesCap: VOD_CATEGORIES_CAP,
+        rail: vodCategoryRail,
+        memory: vodMemory,
+        setCachedSource: setCachedVodSource,
+        cachedSource: cachedVodSource,
+        fetchCategories: (source) => getVodCategories(source),
+        fetchItems: (source, categoryId) => getVodStreams(source, categoryId),
+        toItem: toVodItem,
+        categoryName: vodCategoryName,
+        toRow: (item, source, categoryName) => vodItemToRow(item, source, categoryName),
+    });
+    return catalog;
+}
+
+export function openVodCatalog(): Promise<void> {
+    return vodCatalog().open();
+}
+
+export function selectVodCategory(categoryId: string): Promise<void> {
+    return vodCatalog().selectCategory(categoryId);
+}
+
+export function republishVodRows(): boolean {
+    return vodCatalog().republishRows();
+}
+
+function publishVodCategories(): void {
+    vodCatalog().publishCategories();
+}
+
 export function registerVodActions(): void {
     defineFn('vod/open', () => {
         void openVodCatalog();
@@ -61,222 +110,24 @@ export function registerVodActions(): void {
         refocusCategoryRow(id);
     });
     defineFn('vod/openDetail', (el) => {
-        const id = parseStreamId(el.dataset['streamId']);
+        const id = parseCatalogId(el.dataset['streamId']);
         if (id !== null) void openVodDetail(id);
     });
     defineFn('vod/closeDetail', () => {
         closeVodDetail();
     });
     defineFn('vod/play', (el) => {
-        const id = parseStreamId(el.dataset['streamId']);
+        const id = parseCatalogId(el.dataset['streamId']);
         if (id !== null) void playVod(id);
     });
 }
 
-function parseStreamId(raw: string | undefined): number | null {
-    if (!raw) return null;
-    const id = Number(raw);
-    return Number.isFinite(id) ? id : null;
-}
-
-let openInFlight = false;
 /**
- * Guards `selectVodCategory()`/`openVodDetail()`'s "did a newer call
- * supersede me" check (`sequence-token.ts`'s doc explains why re-reading
- * the Spektrum key each flow itself just wrote is not reliable here).
+ * Guards `openVodDetail()`'s "did a newer call supersede me" check
+ * (`sequence-token.ts`'s doc explains why re-reading the Spektrum key each
+ * flow itself just wrote is not reliable here).
  */
-const categorySelection = createSequenceToken();
 const detailOpen = createSequenceToken();
-
-/**
- * Resolves the active Xtream source, fetches (or reuses a fresh cache of)
- * `get_vod_categories`, sorts them country-first, and auto-selects the
- * first one — which is the first *country-matching* category whenever one
- * exists, since the sort already put it there (`catalog-sort.ts`'s doc).
- * **Decision:** no "All" pseudo-category — auto-select is simply "the first
- * category after sorting," falling back to whatever is first when no
- * country match exists. An "All" entry would need one very large,
- * unfiltered `get_vod_streams` call on every open; a real category is
- * already the cheaper, always-relevant first stop.
- */
-export async function openVodCatalog(): Promise<void> {
-    if (openInFlight) return;
-    openInFlight = true;
-    set(VOD_STATUS, 'loading');
-    set(VOD_ERROR_REASON, null);
-    try {
-        const account = await resolveActiveXtreamSource();
-        if (!account) {
-            set(VOD_STATUS, 'error');
-            set(VOD_ERROR_REASON, 'no-source');
-            return;
-        }
-        setCachedVodSource(account.source);
-
-        const now = Date.now();
-        let categories = vodMemory.categories();
-        let fetchedAt = vodMemory.categoriesFetchedAt();
-
-        if (!isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
-            const stored = await loadStoredCategories('vod');
-            // Adopted even past its TTL, which is the change that makes
-            // offline browsing work at all: the freshness check below still
-            // decides whether to go and refresh it, but if that fails there
-            // is now something real to fall back to instead of an error.
-            if (stored && (categories.length === 0 || stored.fetchedAt > (fetchedAt ?? 0))) {
-                vodMemory.setCategories(stored.categories);
-                vodMemory.setCategoriesFetchedAt(stored.fetchedAt);
-                categories = stored.categories;
-                fetchedAt = stored.fetchedAt;
-            }
-        }
-
-        if (!isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
-            const result = await getVodCategories(account.source);
-            if (result.ok) {
-                categories = result.data;
-                fetchedAt = now;
-                vodMemory.setCategories(categories);
-                vodMemory.setCategoriesFetchedAt(fetchedAt);
-                void saveStoredCategories('vod', { fetchedAt, categories });
-                set(VOD_STALE, false);
-            } else if (categories.length > 0) {
-                // Offline, or the panel is down, with a cache in hand:
-                // yesterday's catalog beats an error screen. Flagged rather
-                // than passed off as live — see `vod.stale`.
-                set(VOD_STALE, true);
-            } else {
-                set(VOD_STATUS, 'error');
-                set(VOD_ERROR_REASON, 'fetch-failed');
-                return;
-            }
-        } else {
-            set(VOD_STALE, false);
-        }
-
-        vodCategoryRail.setCategories(categories, get<string>(SETTINGS_LIVE_COUNTRY) ?? '', VOD_CATEGORIES_CAP);
-        const rows = publishVodCategories();
-
-        const first = rows[0];
-        if (first) {
-            await selectVodCategory(first.id);
-        } else {
-            set(VOD_STATUS, 'ready');
-        }
-    } finally {
-        openInFlight = false;
-    }
-}
-
-/**
- * The accordion's visible rows (`catalog-category-tree.ts`) — every service
- * head, plus the variants of whichever heads are open. Returned as well as
- * published so the auto-select below can take the first one without
- * re-reading the key it just wrote.
- */
-function publishVodCategories(): VodCategoryRow[] {
-    const rows = vodCategoryRail.rows();
-    set(VOD_CATEGORIES, rows);
-    return rows;
-}
-
-/** Lazily fetches (or reuses a fresh cache of) one category's items, then publishes them as rows through the shared virtual-list pipeline — see `README.md`'s row-publication table. */
-export async function selectVodCategory(categoryId: string): Promise<void> {
-    const token = categorySelection.begin();
-    set(VOD_ACTIVE_CATEGORY_ID, categoryId);
-    set(VOD_STATUS, 'loading');
-    // A variant reached from anywhere but its own rail row (a restored
-    // selection, a search result) would otherwise sit selected inside a
-    // collapsed group, with nothing on screen showing what is open.
-    if (vodCategoryRail.reveal(categoryId)) publishVodCategories();
-
-    const account = await resolveActiveXtreamSource();
-    if (!account) {
-        set(VOD_STATUS, 'error');
-        set(VOD_ERROR_REASON, 'no-source');
-        return;
-    }
-    setCachedVodSource(account.source);
-
-    const now = Date.now();
-    let items = vodMemory.itemsFor(categoryId);
-    let fetchedAt = vodMemory.itemsFetchedAt(categoryId);
-
-    if (!items || !isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
-        const stored = await loadStoredItems<VodItem>('vod', categoryId);
-        // Stale-but-present beats absent — same reasoning as the category
-        // list above; this is what a category opened yesterday shows today
-        // with no connection.
-        if (stored && (!items || stored.fetchedAt > (fetchedAt ?? 0))) {
-            vodMemory.setItemsFor(categoryId, stored.items, stored.fetchedAt);
-            items = stored.items;
-            fetchedAt = stored.fetchedAt;
-        }
-    }
-
-    if (!items || !isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
-        const result = await getVodStreams(account.source, categoryId);
-        if (result.ok) {
-            items = result.data.map(toVodItem);
-            fetchedAt = now;
-            vodMemory.setItemsFor(categoryId, items, fetchedAt);
-            void saveStoredItems('vod', categoryId, { items, fetchedAt });
-            set(VOD_STALE, false);
-        } else if (!items) {
-            set(VOD_STATUS, 'error');
-            set(VOD_ERROR_REASON, 'fetch-failed');
-            return;
-        } else {
-            set(VOD_STALE, true);
-        }
-    }
-
-    // Unreachable in practice (the fetch branch above always either returns
-    // on failure or assigns a real array) — kept as an explicit guard so
-    // `items` below is provably defined rather than relying on TS to prove
-    // it across the two conditional reassignments.
-    if (!items) {
-        set(VOD_STATUS, 'error');
-        set(VOD_ERROR_REASON, 'fetch-failed');
-        return;
-    }
-
-    // A rapid second selectCategory call could race this one — bail without
-    // publishing stale rows if a newer call started meanwhile.
-    if (!categorySelection.isCurrent(token)) return;
-
-    set(VOD_ERROR_REASON, null);
-    set(VOD_COUNT, items.length);
-    set(VOD_STATUS, 'ready');
-    const categoryName = vodCategoryName(categoryId);
-    setDisplayedRows(items.map((item) => vodItemToRow(item, account.source, categoryName)));
-}
-
-/**
- * Republishes the already-selected category's rows into the shared virtual
- * list, from module memory, with no fetch and no auto-select.
- *
- * This exists because the list is *shared*: Live, Categories, Movies, Series
- * and Search all publish into one row surface, so whichever view you switch
- * INTO has to (re)publish, or the previous view's rows simply stay on screen.
- * `openVodCatalog()` cannot be that call — it re-runs "auto-select the first
- * category" every time, which would throw away a viewer's drill-down on
- * every tab switch.
- *
- * @returns false when there is nothing cached to publish, so the caller can
- * fall back to a real `openVodCatalog()`.
- */
-export function republishVodRows(): boolean {
-    const categoryId = get<string | null>(VOD_ACTIVE_CATEGORY_ID);
-    if (!categoryId) return false;
-    const items = vodMemory.itemsFor(categoryId);
-    if (!items) return false;
-    const categoryName = vodCategoryName(categoryId);
-    setDisplayedRows(items.map((item) => vodItemToRow(item, cachedVodSource(), categoryName)));
-    set(VOD_COUNT, items.length);
-    set(VOD_STATUS, 'ready');
-    return true;
-}
 
 /** Publishes an immediate, partial snapshot from memory, then fills in `get_vod_info`'s fields once fetched (TTL-cached, module memory first, then the full-tier storage cache, then the network) — `replace()`, not `set()`, since two different movies' optional fields (`plot`/`genre`/`rating`/…) would otherwise bleed into each other via Spektrum's object merge (`state/README.md`'s merge-hazard finding). */
 export async function openVodDetail(streamId: number): Promise<void> {

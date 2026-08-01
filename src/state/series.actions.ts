@@ -1,11 +1,11 @@
 import { defineFn } from 'spektrum';
 import { getSeries, getSeriesCategories, getSeriesInfo } from '../xtream/client';
-import type { XtreamSeriesInfo } from '../xtream/types';
+import type { XtreamSeries, XtreamSeriesInfo } from '../xtream/types';
 import { seriesEpisodeUrl } from '../xtream/urls';
+import { createCatalogActions, parseCatalogId, type CatalogActions } from './catalog-actions';
 import { refocusCategoryRow } from './groups.actions';
-import { setDisplayedRows } from './list-rows';
 import { selectChannel } from './list.actions';
-import { loadStoredCategories, loadStoredDetail, loadStoredItems, saveStoredCategories, saveStoredDetail, saveStoredItems } from './catalog-storage';
+import { loadStoredDetail, saveStoredDetail } from './catalog-storage';
 import { setActiveChannel } from './player.actions';
 import { createSequenceToken } from './sequence-token';
 import {
@@ -20,10 +20,10 @@ import {
     SERIES_ERROR_REASON,
     SERIES_STALE,
     SERIES_STATUS,
-    type SeriesCategoryRow,
     type SeriesItem,
 } from './series';
 import {
+    cachedSeriesSource,
     makeSeriesEpisodeId,
     makeSeriesRowId,
     seriesCategoryName,
@@ -34,17 +34,67 @@ import {
     toSeriesDetail,
     toSeriesItem,
 } from './series-rows';
-import { SETTINGS_LIVE_COUNTRY } from './settings';
 import { CATALOG_TTL_MS, isFresh } from './ttl';
-import { get, replace, set } from './typed';
+import { replace, set } from './typed';
 import { resolveActiveXtreamSource, type ResolvedXtreamAccount } from './xtream-refresh';
 
 /**
- * TV Shows (series) catalog actions (Phase 21) — the exact same shape as
- * `vod.actions.ts`, with one addition (`playSeriesEpisode`) since a series
- * itself is a container, never directly playable — see `series-rows.ts`'s
- * `seriesItemToRow()` doc.
+ * TV Shows (series) catalog actions (Phase 21).
+ *
+ * Browsing is `catalog-actions.ts`'s parameterized core (UPGRADES U10),
+ * shared with Movies. What stays here is what genuinely differs: a series
+ * is a container rather than something directly playable, and its detail is
+ * a seasons/episodes tree with its own status key, its own error reason,
+ * and a fetch shared with episode playback.
+ *
+ * Built on first use, never at module scope — same import-cycle reasoning
+ * as `vod.actions.ts`'s.
  */
+let catalog: CatalogActions | null = null;
+
+function seriesCatalog(): CatalogActions {
+    catalog ??= createCatalogActions<SeriesItem, XtreamSeries>({
+        kind: 'series',
+        keys: {
+            status: SERIES_STATUS,
+            errorReason: SERIES_ERROR_REASON,
+            stale: SERIES_STALE,
+            categories: SERIES_CATEGORIES,
+            activeCategoryId: SERIES_ACTIVE_CATEGORY_ID,
+            count: SERIES_COUNT,
+        },
+        categoriesCap: SERIES_CATEGORIES_CAP,
+        rail: seriesCategoryRail,
+        memory: seriesMemory,
+        setCachedSource: setCachedSeriesSource,
+        cachedSource: cachedSeriesSource,
+        fetchCategories: (source) => getSeriesCategories(source),
+        fetchItems: (source, categoryId) => getSeries(source, categoryId),
+        toItem: toSeriesItem,
+        categoryName: seriesCategoryName,
+        // A series row's URL is built per episode, not per item, so the
+        // source the shared core threads through is unused here.
+        toRow: (item, _source, categoryName) => seriesItemToRow(item, categoryName),
+    });
+    return catalog;
+}
+
+export function openSeriesCatalog(): Promise<void> {
+    return seriesCatalog().open();
+}
+
+export function selectSeriesCategory(categoryId: string): Promise<void> {
+    return seriesCatalog().selectCategory(categoryId);
+}
+
+export function republishSeriesRows(): boolean {
+    return seriesCatalog().republishRows();
+}
+
+function publishSeriesCategories(): void {
+    seriesCatalog().publishCategories();
+}
+
 export function registerSeriesActions(): void {
     defineFn('series/open', () => {
         void openSeriesCatalog();
@@ -61,178 +111,21 @@ export function registerSeriesActions(): void {
         refocusCategoryRow(id);
     });
     defineFn('series/openDetail', (el) => {
-        const id = parseSeriesId(el.dataset['seriesId']);
+        const id = parseCatalogId(el.dataset['seriesId']);
         if (id !== null) void openSeriesDetail(id);
     });
     defineFn('series/closeDetail', () => {
         closeSeriesDetail();
     });
     defineFn('series/playEpisode', (el) => {
-        const seriesId = parseSeriesId(el.dataset['seriesId']);
+        const seriesId = parseCatalogId(el.dataset['seriesId']);
         const episodeId = el.dataset['episodeId'];
         if (seriesId !== null && episodeId) void playSeriesEpisode(seriesId, episodeId);
     });
 }
 
-function parseSeriesId(raw: string | undefined): number | null {
-    if (!raw) return null;
-    const id = Number(raw);
-    return Number.isFinite(id) ? id : null;
-}
-
-let openInFlight = false;
-/** Same "why not just re-read the key" reasoning as `vod.actions.ts`'s tokens — see `sequence-token.ts`. */
-const categorySelection = createSequenceToken();
+/** Same "why not just re-read the key" reasoning as `vod.actions.ts`'s token — see `sequence-token.ts`. */
 const detailOpen = createSequenceToken();
-
-/** Same flow/decision as `vod.actions.ts`'s `openVodCatalog()` — no "All" pseudo-category, auto-select is the first (now country-first-sorted) category. */
-export async function openSeriesCatalog(): Promise<void> {
-    if (openInFlight) return;
-    openInFlight = true;
-    set(SERIES_STATUS, 'loading');
-    set(SERIES_ERROR_REASON, null);
-    try {
-        const account = await resolveActiveXtreamSource();
-        if (!account) {
-            set(SERIES_STATUS, 'error');
-            set(SERIES_ERROR_REASON, 'no-source');
-            return;
-        }
-        setCachedSeriesSource(account.source);
-
-        const now = Date.now();
-        let categories = seriesMemory.categories();
-        let fetchedAt = seriesMemory.categoriesFetchedAt();
-
-        if (!isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
-            const stored = await loadStoredCategories('series');
-            // Adopted past its TTL — see `vod.actions.ts`'s identical branch
-            // for why: it is what turns "no connection" into "yesterday's
-            // catalog" instead of an error screen.
-            if (stored && (categories.length === 0 || stored.fetchedAt > (fetchedAt ?? 0))) {
-                seriesMemory.setCategories(stored.categories);
-                seriesMemory.setCategoriesFetchedAt(stored.fetchedAt);
-                categories = stored.categories;
-                fetchedAt = stored.fetchedAt;
-            }
-        }
-
-        if (!isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
-            const result = await getSeriesCategories(account.source);
-            if (result.ok) {
-                categories = result.data;
-                fetchedAt = now;
-                seriesMemory.setCategories(categories);
-                seriesMemory.setCategoriesFetchedAt(fetchedAt);
-                void saveStoredCategories('series', { fetchedAt, categories });
-                set(SERIES_STALE, false);
-            } else if (categories.length > 0) {
-                set(SERIES_STALE, true);
-            } else {
-                set(SERIES_STATUS, 'error');
-                set(SERIES_ERROR_REASON, 'fetch-failed');
-                return;
-            }
-        } else {
-            set(SERIES_STALE, false);
-        }
-
-        seriesCategoryRail.setCategories(categories, get<string>(SETTINGS_LIVE_COUNTRY) ?? '', SERIES_CATEGORIES_CAP);
-        const rows = publishSeriesCategories();
-
-        const first = rows[0];
-        if (first) {
-            await selectSeriesCategory(first.id);
-        } else {
-            set(SERIES_STATUS, 'ready');
-        }
-    } finally {
-        openInFlight = false;
-    }
-}
-
-/** Same role as `vod.actions.ts`'s `publishVodCategories()` — the accordion's visible rows. */
-function publishSeriesCategories(): SeriesCategoryRow[] {
-    const rows = seriesCategoryRail.rows();
-    set(SERIES_CATEGORIES, rows);
-    return rows;
-}
-
-export async function selectSeriesCategory(categoryId: string): Promise<void> {
-    const token = categorySelection.begin();
-    set(SERIES_ACTIVE_CATEGORY_ID, categoryId);
-    set(SERIES_STATUS, 'loading');
-    // Same reasoning as `selectVodCategory()`'s reveal — a selected variant
-    // must never sit inside a collapsed group.
-    if (seriesCategoryRail.reveal(categoryId)) publishSeriesCategories();
-
-    const account = await resolveActiveXtreamSource();
-    if (!account) {
-        set(SERIES_STATUS, 'error');
-        set(SERIES_ERROR_REASON, 'no-source');
-        return;
-    }
-    setCachedSeriesSource(account.source);
-
-    const now = Date.now();
-    let items = seriesMemory.itemsFor(categoryId);
-    let fetchedAt = seriesMemory.itemsFetchedAt(categoryId);
-
-    if (!items || !isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
-        const stored = await loadStoredItems<SeriesItem>('series', categoryId);
-        if (stored && (!items || stored.fetchedAt > (fetchedAt ?? 0))) {
-            seriesMemory.setItemsFor(categoryId, stored.items, stored.fetchedAt);
-            items = stored.items;
-            fetchedAt = stored.fetchedAt;
-        }
-    }
-
-    if (!items || !isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
-        const result = await getSeries(account.source, categoryId);
-        if (result.ok) {
-            items = result.data.map(toSeriesItem);
-            fetchedAt = now;
-            seriesMemory.setItemsFor(categoryId, items, fetchedAt);
-            void saveStoredItems('series', categoryId, { items, fetchedAt });
-            set(SERIES_STALE, false);
-        } else if (!items) {
-            set(SERIES_STATUS, 'error');
-            set(SERIES_ERROR_REASON, 'fetch-failed');
-            return;
-        } else {
-            set(SERIES_STALE, true);
-        }
-    }
-
-    // Same defensive/unreachable guard as `vod.actions.ts`'s
-    // `selectVodCategory()` — see its comment.
-    if (!items) {
-        set(SERIES_STATUS, 'error');
-        set(SERIES_ERROR_REASON, 'fetch-failed');
-        return;
-    }
-
-    if (!categorySelection.isCurrent(token)) return; // a newer selectCategory call started meanwhile
-
-    set(SERIES_ERROR_REASON, null);
-    set(SERIES_COUNT, items.length);
-    set(SERIES_STATUS, 'ready');
-    const categoryName = seriesCategoryName(categoryId);
-    setDisplayedRows(items.map((item) => seriesItemToRow(item, categoryName)));
-}
-
-/** Series' half of the shared-list republish — see `vod.actions.ts`'s `republishVodRows()` for why this is separate from `openSeriesCatalog()`. */
-export function republishSeriesRows(): boolean {
-    const categoryId = get<string | null>(SERIES_ACTIVE_CATEGORY_ID);
-    if (!categoryId) return false;
-    const items = seriesMemory.itemsFor(categoryId);
-    if (!items) return false;
-    const categoryName = seriesCategoryName(categoryId);
-    setDisplayedRows(items.map((item) => seriesItemToRow(item, categoryName)));
-    set(SERIES_COUNT, items.length);
-    set(SERIES_STATUS, 'ready');
-    return true;
-}
 
 /**
  * Same partial-then-filled publish + `replace()` reasoning as
