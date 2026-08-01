@@ -80,6 +80,8 @@ export interface KeyMeta {
     maxItems?: number;
     /** Feature 04.9's envelope version for this key's stored shape. Every current key is at v1 — v1 is the only version that has ever existed (same finding as Phase 04's storage records) — so this defaults to 1 when omitted rather than requiring every entry to repeat it. */
     version?: number;
+    /** UPGRADES U11: a later write to this key can be a strict subset of an earlier one, so Spektrum's deep merge would leave the dropped fields behind — `typed.ts`'s `replace()` is the only correct write, and `set()` throws in dev. Marked by hand (only the owner knows whether a subset write is possible) and mirrored in `map-shaped-keys.ts`, which is what the write path actually reads; `map-shaped-keys.spec.ts` gates the two against drift. */
+    mapShaped?: boolean;
     description: string;
 }
 export const KEY_REGISTRY: Record<string, KeyMeta> = {
@@ -176,6 +178,7 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
     [UI_LIST_STATE]: {
         owner: 'ui',
         persisted: true,
+        mapShaped: true,
         description: 'Per-source list UI state map (scrollTop, groupScrollTop, viewMode, activeGroup, selectedId), LRU-capped to the last 20 touched sources (Feature 08.6.1/08.6.7) — what makes returning to a playlist feel like never having left.',
     },
     [UI_ACTIVE_GROUP]: {
@@ -193,6 +196,7 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
     [FAVORITES_IDS]: {
         owner: 'favorites',
         persisted: false,
+        mapShaped: true,
         description: 'Live id -> true lookup for O(1) row-badge derivation (Feature 08.8.4) — a projection of the real `favorites` storage table, rebuilt at boot and on every toggle; the table (denormalized snapshots), not this map, is the source of truth and what actually persists.',
     },
     // --- player ---

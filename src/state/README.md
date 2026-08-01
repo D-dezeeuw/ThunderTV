@@ -630,9 +630,20 @@ this codebase (production always relies on `run()`'s rAF loop to drain) —
 `replace()` is the one sanctioned exception, confined to `state/typed.ts`.
 
 **Any future phase adding a removable-key `Record<string, T>` to Spektrum
-state must use `replace()` for the removal path, not `set()`.** Phase 13
-(Favorites/Recent) and Phase 15 (Multi-playlist Management) are the most
-likely next places this matters.
+state must use `replace()` for the removal path, not `set()`** — and since
+UPGRADES **U11** this is a gate rather than a request to remember. Mark the
+key `mapShaped: true` in `KEY_REGISTRY` *and* add it to
+`map-shaped-keys.ts`'s `MAP_SHAPED_KEYS`, and `set()` will throw in dev the
+first time anyone writes a plain object to it, naming `replace()` in the
+message. `map-shaped-keys.spec.ts` fails if those two lists disagree.
+
+The set is a literal rather than a read of `KEY_REGISTRY` because `typed.ts`
+is imported by every module in this directory, so anything it reaches joins
+a cycle with `registry-keys.ts` — which takes each key's name from the
+module that owns it. That cycle is why the check has to be answerable
+without loading the registry at all; `map-shaped-keys.ts`'s own comment has
+the detail. Currently marked: `ui.listState`, `favorites.ids`, `vod.detail`,
+`series.detail`.
 
 ## Boot order (masterplan §6.4)
 

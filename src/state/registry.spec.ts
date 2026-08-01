@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER_ACTIVE, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
 import { PLAYLIST_SOURCES } from './playlist';
-import { isPersistedKey, isRegisteredKey, keyVersion, KEY_REGISTRY, NON_REGISTRY_KEYS, persistedKeys } from './registry';
+import {
+    isMapShapedKey,
+    isPersistedKey,
+    isRegisteredKey,
+    keyVersion,
+    KEY_REGISTRY,
+    NON_REGISTRY_KEYS,
+    persistedKeys,
+} from './registry';
 
 describe('KEY_REGISTRY', () => {
     it('registers every key with an owner from the twelve state modules', () => {
@@ -47,5 +55,16 @@ describe('KEY_REGISTRY', () => {
     it('NON_REGISTRY_KEYS documents "strings" as deliberately outside the registry', () => {
         expect(NON_REGISTRY_KEYS).toContain('strings');
         expect(isRegisteredKey('strings')).toBe(false);
+    });
+});
+
+describe('isMapShapedKey (UPGRADES U11)', () => {
+    it('marks the keys whose writes can drop a field, and nothing else', () => {
+        for (const key of ['ui.listState', 'favorites.ids', 'vod.detail', 'series.detail']) {
+            expect(isMapShapedKey(key)).toBe(true);
+        }
+        // A fixed struct rewritten in full every time merges harmlessly.
+        expect(isMapShapedKey(PLAYER_ACTIVE)).toBe(false);
+        expect(isMapShapedKey('nothing.registered.here')).toBe(false);
     });
 });

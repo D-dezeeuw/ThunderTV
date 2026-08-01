@@ -1,5 +1,6 @@
 import { appState, getPathObj, setValue as spektrumSetValue, tick } from 'spektrum';
 import { assertCompact } from './bulk-policy';
+import { isMapShapedKey } from './map-shaped-keys';
 
 /**
  * Thin typed wrappers around Spektrum's `setValue`/`getPathObj` (Feature
@@ -9,7 +10,19 @@ import { assertCompact } from './bulk-policy';
  * `TStateValue` instead of writing `as` casts at every call site.
  */
 export function set<T>(key: string, value: T): void {
-    if (import.meta.env.DEV) assertCompact(key, value);
+    if (import.meta.env.DEV) {
+        assertCompact(key, value);
+        // UPGRADES U11. The merge hazard below used to be prevented by a
+        // README paragraph asking the next author to remember; this is the
+        // same rule as a gate. Arrays are exempt because Spektrum's merge
+        // already excludes them, and `null`/scalars cannot merge at all —
+        // only a plain object on a map-shaped key is the bug.
+        if (isMapShapedKey(key) && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            throw new Error(
+                `state: set("${key}") with an object value deep-merges onto live state, so keys removed by this write would survive it. Use replace() from state/typed.ts (state/README.md's merge-hazard section; UPGRADES U11).`,
+            );
+        }
+    }
     spektrumSetValue(key, value);
 }
 

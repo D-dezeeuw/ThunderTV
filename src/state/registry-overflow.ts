@@ -96,6 +96,7 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     [VOD_DETAIL]: {
         owner: 'vod',
         persisted: false,
+        mapShaped: true,
         description: 'Denormalized snapshot for the open movie (VodItem fields + get_vod_info once fetched) — always written via replace(), never set(), since two movies\' differing optional fields would otherwise bleed together (state/README.md\'s merge-hazard finding).',
     },
     [VOD_WARM_STATUS]: {
@@ -139,6 +140,7 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     [SERIES_DETAIL]: {
         owner: 'series',
         persisted: false,
+        mapShaped: true,
         description: 'Denormalized snapshot for the open series, including a flattened season-header/episode rows array (rows, series.ts\'s SeriesDetailRow) bounded to SERIES_DETAIL_EPISODES_CAP total episode rows — always written via replace(), same merge-hazard reasoning as vod.detail.',
     },
     [SERIES_DETAIL_STATUS]: {
