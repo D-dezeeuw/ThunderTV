@@ -6,8 +6,9 @@
 > Ordered by **leverage**, not by effort. U1–U4 are the ones that stop the
 > bleeding; everything after is compounding improvement.
 >
-> **Status:** U1, U2, U3, U4, U5 and U7 have landed; U14, U15 and U16 are
-> partly closed by work that arrived for other reasons. What they actually
+> **Status:** U1, U2, U3, U4, U5, U7, U10 and U11 have landed; U8 is fenced
+> but not split; U12, U14, U15 and U16 are partly closed by work that arrived
+> for other reasons. What they actually
 > cost and what they bought is recorded inline below, so the next person can
 > judge the remaining items against real numbers rather than my estimates.
 
@@ -267,7 +268,19 @@ U6's reset hook closes the residual class.
 ## Tier 2 — Close the architectural scars
 
 ### U8. Break up `index.html`
-**Closes §4.8. — OPEN, and now the worst-trending item in this document.**
+**Closes §4.8. — 🟡 FENCED, not yet split (step 3 landed; steps 1–2 open).**
+
+Step 3 — the load-bearing part, per this item's own argument — is done:
+`scripts/check-markup.mjs` caps `index.html` at its current 3,591 lines /
+246,284 bytes and runs in `verify` as `lint:markup`. It is a ratchet, so the
+file can shrink and can never grow; lower the cap in the same commit that
+shrinks it.
+
+Deliberately capped at today's size rather than the 400-line TypeScript
+ceiling: the latter would land `verify` red with no way to green it short of
+doing steps 1–2, and a permanently-red gate teaches everyone to skip the
+gate. The sprite extraction and the partials split are still open, and now
+have a number that can only move one way while they wait.
 
 Re-measured while landing U5:
 
@@ -309,7 +322,28 @@ because a phase mandate said "`src/state/` only."
 Then delete the 25-line apology comment at the top of `catalog-storage.ts`.
 
 ### U10. Finish the vod/series factoring
-**Closes §4.9.**
+**Closes §4.9. — ✅ LANDED**
+
+`src/state/catalog-actions.ts`'s `createCatalogActions()` now owns the browse
+flow — open, publish categories, select category, republish rows — and
+`vod.actions.ts`/`series.actions.ts` pass a config. Detail and playback stay
+per-catalog on purpose: a movie's detail is one flat `get_vod_info` snapshot,
+a series' is a seasons/episodes tree with its own status key, error reason
+and a fetch shared with episode playback.
+
+**The LOC estimate below was wrong, and worth recording as such.** 715 lines
+across two files became 742 across three: the ~160 lines of duplicated
+cascade logic do collapse to one copy, and the config plumbing plus the new
+module's own documentation spend that back. The second half of the estimate —
+one place to fix a catalog bug instead of two — is the part that actually
+paid, and was always the real reason.
+
+Two things fell out of it. The catalog instance is built lazily rather than
+at module scope, because the factory reads `vod-rows`/`series-rows`
+singletons and running it during module evaluation loses a race with the
+`src/state/` import cycle. And the in-flight guard and sequence tokens became
+per-instance closures instead of the module-level `let`s §4.4 counted — a
+small down payment on U6.
 
 `catalog-warm` / `catalog-memory` / `catalog-storage` / `catalog-sort` already
 prove the parameterized-core pattern. Extend it to the two remaining pairs:
@@ -326,7 +360,30 @@ Expected reduction: ~400 LOC, and — more valuable — one place to fix a catal
 bug instead of two, with no risk of fixing only one.
 
 ### U11. Make `replace()` unnecessary rather than remembered
-**Closes §4.5.**
+**Closes §4.5. — ✅ LANDED**
+
+`KeyMeta` gained `mapShaped`, four keys carry it (`ui.listState`,
+`favorites.ids`, `vod.detail`, `series.detail`), and `typed.ts`'s `set()`
+throws in dev on a plain-object write to one of them, naming `replace()`.
+All four already used `replace()`, so nothing changed behaviour — the full
+`src/state` suite passing with the gate live is also the sweep that proves no
+call site was getting it wrong.
+
+**One design note the plan below did not anticipate.** The check cannot read
+`KEY_REGISTRY`: `typed.ts` is imported by every state module, and
+`registry-keys.ts` imports each key's *name* back from the module that owns
+it, so the registry answers differently depending on which module the process
+loaded first. The key set therefore lives as a literal in
+`map-shaped-keys.ts`, which imports nothing, and `map-shaped-keys.spec.ts`
+fails if it and the registry's `mapShaped` flags ever disagree.
+
+That import cycle is worth knowing about independently: with `./favorites`
+loaded before `./registry`, `FAVORITES_IDS` is still uninitialized when
+`registry-keys.ts` builds its table, both favorites entries collapse onto one
+`"undefined"` key, and `KEY_REGISTRY` comes out with 116 entries instead of
+117. Harmless today (both keys are `persisted: false`, so only
+`assertCompact`'s per-key ceiling silently degrades) but it is a live trap for
+the next persisted key added to that module. Unowned by any item here yet.
 
 The deep-merge hazard is currently prevented by a README paragraph asking
 future authors to remember. Convert it to a gate: add `mapShaped: true` to the
@@ -432,21 +489,28 @@ unchanged.
 | Wave | Items | Outcome | State |
 | --- | --- | --- | --- |
 | **1** | U1, U3, U7, U5 | Green CI means something. The map matches the territory. | ✅ done |
-| **2** | U2, U4, U6, U8 | The app has no unreachable features and no unmapped state. Budget enforced. | U2, U4 done; **U6, U8 open** |
-| **3** | U9, U10, U11, U12 | Architectural scars closed; hazards gated instead of remembered. | all open |
+| **2** | U2, U4, U6, U8 | The app has no unreachable features and no unmapped state. Budget enforced. | U2, U4 done; U8 fenced; **U6 open** |
+| **3** | U9, U10, U11, U12 | Architectural scars closed; hazards gated instead of remembered. | U10, U11 done; U12 mostly; **U9 open** |
 | **4** | U13, U14, U15, U16 | Product whole enough that Phase 30's TV target is actually reachable. | U14/U15/U16 partly done; **U13 untouched** |
 
-**Where this stands now.** Wave 1 is closed and the two critical findings are
-gated rather than remembered. What remains splits cleanly in two:
+**Where this stands now.** Wave 1 is closed, wave 3 is nearly closed, and the
+two critical findings are gated rather than remembered.
 
-- **U6 and U8 are the ones still costing something daily.** The shadow state
-  layer has no reset hook (which is why §4.3's flake class is suppressed
-  rather than eliminated) and `index.html` has grown from 2,366 to **3,560
-  lines** since the audit — 50% larger, still unlinted, still uncapped. It is
-  the only major artifact in the repo with no size fence, and it is behaving
-  exactly as that predicts.
-- **U13 is the largest product gap left**, and it is the one item here nobody
-  has touched at all: Phase 24 remains a manifest with no service worker.
+`index.html` stopped getting worse: U8's step 3 landed a ratchet, so the file
+that grew 2,366 → 3,591 lines unmeasured can now only shrink. The split
+itself is still open, but it is no longer a race against the file.
 
-**The one-line version:** U8 first, because it is the one actively getting
-worse; then U6, because it makes the test suite honest; then U13.
+What is actually left, in order:
+
+- **U6 is now the one still costing something daily**, and the only wave-2
+  item open. The shadow state layer has no reset hook, which is why §4.3's
+  flake class is suppressed rather than eliminated. U10 made a small down
+  payment by turning the catalogs' in-flight guards into per-instance
+  closures; the other ~40 singletons are untouched.
+- **U9** (catalogs on the bulk-table surface) is the last wave-3 scar, plus
+  U12's Electron CSP header.
+- **U13 is the largest product gap left**, and the one item here nobody has
+  touched at all: Phase 24 remains a manifest with no service worker.
+
+**The one-line version:** U6 first, because it makes the test suite honest;
+then U13; then U8's actual split, now that its number can only go down.

@@ -8,9 +8,16 @@
 > here; verdicts below say what the verification actually found, not what the
 > audit claims.
 >
-> **Status: planned.** Items I1–I6 are described to be directly executable —
-> file paths, wiring points, and test lists are verified against the tree as
-> of `b1d5190` — but none have been implemented yet.
+> **Status: I1–I6 all landed** (this branch). Each shipped as its own commit;
+> `npm run verify` is green end to end — 187 test files, 1,697 tests, plus the
+> new `lint:markup` gate. The seven skipped items below stay skipped, with
+> their reasons. What each item actually cost, and where an estimate here
+> turned out wrong, is recorded inline.
+>
+> Two things were found while implementing that this plan did not predict, both
+> recorded in full at the end: a second splash-hang path in
+> `ui/list-bindings.ts`, and a latent circular-import defect in
+> `registry-keys.ts` that is **not fixed** and needs an owner.
 
 ## How the audit held up
 
@@ -292,3 +299,44 @@ unit test → `npm run typecheck` + targeted specs → merge to main, per
 `.claude/AGENTS.md`; I5 and I6 end with the fuller gates named above. The
 items are independent — any can be dropped or reordered without unblocking
 the others.
+
+---
+
+## What actually happened
+
+All six landed. Corrections to this plan's own predictions, since an estimate
+that was wrong is worth more written down than quietly dropped:
+
+| Item | Outcome |
+| --- | --- |
+| **I1** | As planned. Dep removed (125 lockfile lines), banner hoisted, CI comment de-staled. |
+| **I2** | As planned, and the leak was real: `debug.ts` stored console output verbatim behind a copy button. Redaction widened while consolidating — `token`/`auth`/`key` params and `user:pass@` userinfo, neither of which `xtream/urls.ts`'s regex caught, and the Xtream path match is no longer anchored to the root. `client.spec`/`import.spec`/`config-export.spec` passed unchanged, as required. |
+| **I3** | **Bigger than planned.** The named `boot.ts` hang was real (its spec fails without the fix, verified by reverting), but a *second* hang path existed in `ui/list-bindings.ts:96`: a rejected initial `loadActiveSource()` meant `markChannelDataReady()` never fired, stranding a configured install the same way. Both fixed. |
+| **I4** | **Design changed.** The gate cannot read `KEY_REGISTRY` — see the defect below — so the key set is a literal in `map-shaped-keys.ts` with a drift spec. All four keys already used `replace()`, so the full `src/state` suite passing with the gate live is the sweep proving no call site was wrong. |
+| **I5** | As planned. Ratchet at 3,591 lines / 246,284 bytes, wired as `lint:markup`; verified it fails on a one-line addition. |
+| **I6** | **LOC estimate was wrong.** U10 predicted ~400 lines saved; the real result is 715 lines across two files becoming 742 across three. The ~160 lines of duplicated cascade logic do collapse to one copy — the config plumbing and the new module's docs spend that back. The win is one place to fix a catalog bug, which was always the real reason. |
+
+## Found while implementing, not yet owned
+
+**A latent circular-import defect in the state registry.** `typed.ts` is
+imported by every state module; `bulk-policy.ts` (which `typed.ts` imports)
+reaches `registry.ts`; and `registry-keys.ts` imports each key's *name* back
+from the module that owns it. So when `./favorites` is evaluated before
+`./registry`, `FAVORITES_IDS` and `FAVORITES_ROWS` are still uninitialized as
+the table is built, both computed keys collapse to the string `"undefined"`,
+the second overwrites the first, and `KEY_REGISTRY` comes out with **116
+entries instead of 117 — with no favorites entry at all.**
+
+Reproduced directly; it is order-dependent, not universal, which is why 78
+existing state specs never caught it.
+
+Harmless *today*: both keys are `persisted: false`, so nothing fails to
+persist, and the only live consequence is that `assertCompact` silently falls
+back to its default ceiling instead of the registered `maxItems`. It is a trap
+for the next persisted key added to a module in that cycle, and for anything
+that starts trusting `isRegisteredKey()`.
+
+I4 routes around it rather than fixing it (that is what `map-shaped-keys.ts`'s
+literal set is for). The fix proper — breaking `typed.ts`'s reach into the
+registry graph, or moving key-name constants to a leaf — is a real refactor
+and belongs to its own change. **No UPGRADES item owns this yet.**
