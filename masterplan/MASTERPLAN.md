@@ -3,6 +3,12 @@
 **30 phases (epics) × 10 features (stories) × 10 to-do items (tasks) = the full
 road from empty repo to a 1.0 release on web, desktop, and TV.**
 
+> **Read each phase's `> **Status:**` line — and §4's generated table — not the
+> checkboxes.** Per-task boxes across phases 09–30 were abandoned while the
+> code shipped anyway, so they report finished work as unstarted. §4 explains
+> the inversion in full; this note is here so nobody has to reach §4 to learn
+> not to trust what they are already reading.
+
 This masterplan operationalizes the architecture plan in
 [`architecture-plan.md`](./architecture-plan.md). The plan says _what and
 why_; this document and the phase files under [`phases/`](./phases/) say

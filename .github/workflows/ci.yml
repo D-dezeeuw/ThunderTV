@@ -32,6 +32,7 @@ jobs:
       # "green", so what CI enforces and what a developer runs locally cannot
       # drift apart. Previously CI listed its own subset of checks and silently
       # omitted `npm run build`, check-importmap and check-dist — the last of
-      # which had been failing its own 200 kB startup budget unnoticed
-      # (AUDIT.md §4.2).
+      # which had been failing its own startup budget unnoticed (AUDIT.md
+      # §4.2). That budget now covers every eager script and is stated in
+      # `scripts/check-dist.mjs`, not here, so the two cannot drift.
       - run: npm run verify
