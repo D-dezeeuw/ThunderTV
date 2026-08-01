@@ -20,6 +20,7 @@
         "predeploy": "npm run spektrum:csp",
         "lint": "eslint . --max-warnings 0",
         "lint:css": "node scripts/check-css.mjs",
+        "lint:markup": "node scripts/check-markup.mjs",
         "lint:file-access": "node scripts/check-file-access-fence.mjs",
         "lint:importmap": "node scripts/check-importmap.mjs",
         "lint:csp": "node scripts/check-csp.mjs",
@@ -36,7 +37,7 @@
         "gen:m3u-fixture": "node scripts/gen-m3u-fixture.mjs",
         "gen:epg-countries": "node scripts/generate-epg-countries.mjs",
         "spektrum:csp": "node scripts/spektrum-csp.mjs",
-        "verify": "npm run typecheck && npm run lint && npm run lint:css && npm run lint:file-access && npm run lint:importmap && npm run lint:csp && npm run lint:version && npm run lint:reachability && npm run lint:state-keys && npm run lint:phase-status && npm test && vite build && npm run lint:dist"
+        "verify": "npm run typecheck && npm run lint && npm run lint:css && npm run lint:markup && npm run lint:file-access && npm run lint:importmap && npm run lint:csp && npm run lint:version && npm run lint:reachability && npm run lint:state-keys && npm run lint:phase-status && npm test && vite build && npm run lint:dist"
     },
     "devDependencies": {
         "@eslint/js": "10.0.1",
