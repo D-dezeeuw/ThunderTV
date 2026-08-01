@@ -60,11 +60,16 @@ describe('KEY_REGISTRY', () => {
 
 describe('isMapShapedKey (UPGRADES U11)', () => {
     it('marks the keys whose writes can drop a field, and nothing else', () => {
-        for (const key of ['ui.listState', 'favorites.ids', 'vod.detail', 'series.detail']) {
+        for (const key of ['ui.listState', 'favorites.ids', 'vod.detail', 'series.detail', 'series.nextPrompt']) {
             expect(isMapShapedKey(key)).toBe(true);
         }
-        // A fixed struct rewritten in full every time merges harmlessly.
-        expect(isMapShapedKey(PLAYER_ACTIVE)).toBe(false);
+        // `player.active` was listed here as safe — "a fixed struct rewritten
+        // in full every time merges harmlessly" — and that premise was wrong.
+        // It carries optional `kind`/`radio`/`series` fields that only some
+        // writers set, so a movie started after an episode inherited the
+        // episode's `series` coordinates and the Feature 21.6 offer fired for
+        // a film. Found by a test that expected no offer and got one.
+        expect(isMapShapedKey(PLAYER_ACTIVE)).toBe(true);
         expect(isMapShapedKey('nothing.registered.here')).toBe(false);
     });
 });

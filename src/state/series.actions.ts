@@ -1,12 +1,15 @@
 import { defineFn } from 'spektrum';
 import { getSeries, getSeriesCategories, getSeriesInfo } from '../xtream/client';
+import { nextEpisode } from '../xtream/next-episode';
 import type { XtreamSeries, XtreamSeriesInfo } from '../xtream/types';
 import { seriesEpisodeUrl } from '../xtream/urls';
 import { createCatalogActions, parseCatalogId, type CatalogActions } from './catalog-actions';
 import { refocusCategoryRow } from './groups.actions';
 import { selectChannel } from './list.actions';
 import { loadStoredDetail, saveStoredDetail } from './catalog-storage';
+import { PLAYER_ACTIVE } from './player';
 import { setActiveChannel } from './player.actions';
+import type { ActiveChannelSnapshot } from './records';
 import { createSequenceToken } from './sequence-token';
 import {
     SERIES_ACTIVE_CATEGORY_ID,
@@ -18,8 +21,10 @@ import {
     SERIES_DETAIL_ID,
     SERIES_DETAIL_STATUS,
     SERIES_ERROR_REASON,
+    SERIES_NEXT_PROMPT,
     SERIES_STALE,
     SERIES_STATUS,
+    type NextEpisodePrompt,
     type SeriesItem,
 } from './series';
 import {
@@ -35,7 +40,7 @@ import {
     toSeriesItem,
 } from './series-rows';
 import { CATALOG_TTL_MS, isFresh } from './ttl';
-import { replace, set } from './typed';
+import { get, replace, set } from './typed';
 import { resolveActiveXtreamSource, type ResolvedXtreamAccount } from './xtream-refresh';
 
 /**
@@ -117,6 +122,12 @@ export function registerSeriesActions(): void {
     defineFn('series/closeDetail', () => {
         closeSeriesDetail();
     });
+    defineFn('series/playNext', () => {
+        void playPromptedNextEpisode();
+    });
+    defineFn('series/dismissNext', () => {
+        clearNextEpisodePrompt();
+    });
     defineFn('series/playEpisode', (el) => {
         const seriesId = parseCatalogId(el.dataset['seriesId']);
         const episodeId = el.dataset['episodeId'];
@@ -126,6 +137,78 @@ export function registerSeriesActions(): void {
 
 /** Same "why not just re-read the key" reasoning as `vod.actions.ts`'s token — see `sequence-token.ts`. */
 const detailOpen = createSequenceToken();
+
+/**
+ * Feature 21.6.4 — an episode ended, so work out what follows and *offer* it.
+ *
+ * Called by `player/position.ts`'s `ended` handler, which owns the "when".
+ * Everything about the "which" is `nextEpisode()`, kept pure and tested
+ * separately; this function is the impure half — cache lookup, label, publish.
+ *
+ * Three deliberate properties:
+ *
+ * - **Nothing plays.** This only ever writes a prompt. Feature 21.6.6's
+ *   `playback.autoAdvance` seam belongs in front of this call, not inside it,
+ *   so "auto-advance" stays a decision someone made rather than a default.
+ * - **Cache-only.** It reads `seriesMemory`, never the network: the season
+ *   map was already fetched to start this episode, and an ended episode is a
+ *   bad moment to block on a request that might fail. No cached info simply
+ *   means no offer.
+ * - **Silent when there is nothing to offer.** Feature 21.6.8 — at the end of
+ *   a series the viewer returns quietly to the panel rather than being shown
+ *   a prompt that says "nothing".
+ */
+export function showNextEpisodePrompt(current: { seriesId: number; season: number; episode: number }): void {
+    const info = seriesMemory.detail(current.seriesId);
+    if (!info) return;
+
+    const next = nextEpisode(info, current);
+    if (!next) return;
+
+    const prompt: NextEpisodePrompt = {
+        seriesId: current.seriesId,
+        episodeId: next.episodeId,
+        label: formatEpisodeLabel(next.season, next.episode, next.title),
+    };
+    replace(SERIES_NEXT_PROMPT, prompt);
+}
+
+export function clearNextEpisodePrompt(): void {
+    replace(SERIES_NEXT_PROMPT, null);
+}
+
+/**
+ * The `ended` bridge, called from `player/playback-state-sync.ts`.
+ *
+ * It lives here rather than in `player.actions.ts` to keep the module graph
+ * acyclic: `series.actions` already imports `player.actions` for
+ * `setActiveChannel()`, so the dependency has to run in this direction. The
+ * player layer stays dumb — it reports *that* playback ended and knows
+ * nothing about series — and every decision about what that means is here.
+ *
+ * Anything that is not a series episode ends with no offer, which is the
+ * whole of Feature 21.4's "a movie just ends" behaviour.
+ */
+export function reportPlaybackEnded(): void {
+    const active = get<ActiveChannelSnapshot | null>(PLAYER_ACTIVE);
+    const series = active?.series;
+    if (!series) return;
+    showNextEpisodePrompt(series);
+}
+
+/** Consumes the standing offer. Clearing *before* playing matters: `playSeriesEpisode()` awaits a source resolve, and leaving the old prompt on screen across that await reads as "the click did nothing." */
+async function playPromptedNextEpisode(): Promise<void> {
+    const prompt = get<NextEpisodePrompt | null>(SERIES_NEXT_PROMPT);
+    if (!prompt) return;
+    clearNextEpisodePrompt();
+    await playSeriesEpisode(prompt.seriesId, prompt.episodeId);
+}
+
+/** "S02E01 — Pilot", zero-padded to two digits, with the dash dropped when the provider gave no title. Formatting lives here rather than in the template so the markup binds one string (masterplan §7: no logic in `{{ }}`). */
+function formatEpisodeLabel(season: number, episode: number, title: string): string {
+    const code = `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+    return title ? `${code} — ${title}` : code;
+}
 
 /**
  * Same partial-then-filled publish + `replace()` reasoning as
@@ -239,6 +322,7 @@ export async function playSeriesEpisode(seriesId: number, episodeId: number | st
         logo: item.cover ?? null,
         group: seriesCategoryName(item.categoryId),
         kind: 'series',
+        series: { seriesId, season: episode.season, episode: episode.episode },
     });
     selectChannel(makeSeriesRowId(seriesId));
     // Same reason as `playVod()`: the detail panel covers the list body,

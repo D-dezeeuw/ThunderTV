@@ -1615,6 +1615,12 @@
                                         <canvas class="radio-now-playing__canvas" data-ref="radioVisualizer" data-testid="radio-visualizer" aria-hidden="true"></canvas>
                                         <span class="radio-now-playing__name truncate">{{ player.active.name }}</span>
                                     </div>
+                                    <!-- Feature 21.6.4's next-episode offer; nothing auto-advances. Rationale in src/state/series.ts's SERIES_NEXT_PROMPT. -->
+                                    <div class="next-episode" data-if="series.nextPrompt" role="group" :aria-label="strings.catalog.series.nextAria" data-testid="next-episode">
+                                        <span class="next-episode__label truncate">{{ strings.catalog.series.nextUpLabel }}: {{ series.nextPrompt.label }}</span>
+                                        <button type="button" class="btn btn--primary" data-action="click" data-fn="series/playNext" data-testid="next-episode-play">{{ strings.catalog.series.nextPlay }}</button>
+                                        <button type="button" class="btn" data-action="click" data-fn="series/dismissNext" data-testid="next-episode-dismiss">{{ strings.catalog.series.nextDismiss }}</button>
+                                    </div>
                                     <div class="player-shell__bar">
                                         <!-- Live stream-quality bars (src/player/stream-health.ts) —
                                              lit count reflects stall frequency, engine-agnostic. -->

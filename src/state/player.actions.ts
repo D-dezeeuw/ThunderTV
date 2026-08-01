@@ -21,6 +21,7 @@ import {
 } from './player';
 import { closeTrackMenu } from './player-tracks.actions';
 import type { ActiveChannelSnapshot } from './records';
+import { SERIES_NEXT_PROMPT } from './series';
 import { get, replace, set } from './typed';
 import { UI_ACTIVE_VIEW } from './ui';
 
@@ -287,7 +288,15 @@ export function setVisualizerPreset(preference: string): void {
 }
 
 export function setActiveChannel(channel: ActiveChannelSnapshot): void {
-    setValue(PLAYER_ACTIVE, channel);
+    // `replace()`, not `setValue()`: the snapshot's optional `kind`/`radio`/
+    // `series` fields are written by only some callers, and a deep-merged
+    // write leaves the previous item's on the new one (`map-shaped-keys.ts`).
+    replace(PLAYER_ACTIVE, channel);
+    // A standing "Next: S02E01" offer belongs to the episode that produced
+    // it. Anything becoming active — including the offer being accepted —
+    // ends that, so clear it here rather than in each of the several paths
+    // that can start playback (Feature 21.6.4).
+    replace(SERIES_NEXT_PROMPT, null);
     setValue(PLAYER_PLAYBACK_ERROR, null);
     setValue(PLAYER_PLAYBACK_NOTICE, null);
     setValue(PLAYER_PAUSED, false);

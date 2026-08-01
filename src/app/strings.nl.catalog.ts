@@ -27,6 +27,10 @@ export const nlCatalog = {
         episodePrefix: 'A',
         minutesSuffix: 'min',
         noEpisodes: 'Nog geen afleveringen voor deze serie.',
+        nextUpLabel: 'Hierna',
+        nextPlay: 'Volgende afspelen',
+        nextDismiss: 'Sluiten',
+        nextAria: 'Volgende aflevering',
     },
 
     downloads: {

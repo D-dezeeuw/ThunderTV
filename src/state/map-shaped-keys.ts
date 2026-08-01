@@ -11,7 +11,7 @@
  * depending on which state module the process happened to load first. A
  * literal set has no initialization order to get wrong.
  *
- * `KEY_REGISTRY` still carries `mapShaped: true` on these same four keys —
+ * `KEY_REGISTRY` still carries `mapShaped: true` on these same keys —
  * that is where the *documentation* lives, next to the owner and the
  * persistence class. `map-shaped-keys.spec.ts` fails if the two disagree,
  * so the duplication cannot rot.
@@ -21,6 +21,14 @@ export const MAP_SHAPED_KEYS: ReadonlySet<string> = new Set([
     'favorites.ids',
     'vod.detail',
     'series.detail',
+    // `player.active` carries optional fields — `kind`, `radio`, `series` —
+    // that only some writers set, which is exactly the deep-merge hazard:
+    // starting a movie after an episode used to leave the episode's
+    // `series` coordinates on the movie's snapshot, and the next-episode
+    // offer (Feature 21.6) then fired for a film. Found by a test that
+    // expected no offer and got one.
+    'player.active',
+    'series.nextPrompt',
 ]);
 
 /**

@@ -1,4 +1,5 @@
 import { reportPaused } from '../state/player.actions';
+import { reportPlaybackEnded } from '../state/series.actions';
 
 /**
  * Keeps `player.paused` equal to what the `<video>` element is actually
@@ -37,11 +38,21 @@ export function attachPlaybackStateSync(video: HTMLVideoElement): () => void {
     const onPause = (): void => {
         reportPaused(true);
     };
+    // Feature 21.6.4. Attached here rather than beside `position.ts`'s own
+    // `ended` listener because the two want opposite things from the event:
+    // that one forgets the position (the programme is over), this one offers
+    // what follows. Keeping them separate means neither has to care about
+    // the other's ordering.
+    const onEnded = (): void => {
+        reportPlaybackEnded();
+    };
 
     video.addEventListener('play', onPlay);
     video.addEventListener('pause', onPause);
+    video.addEventListener('ended', onEnded);
     return () => {
         video.removeEventListener('play', onPlay);
         video.removeEventListener('pause', onPause);
+        video.removeEventListener('ended', onEnded);
     };
 }

@@ -203,7 +203,8 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
     [PLAYER_ACTIVE]: {
         owner: 'player',
         persisted: true,
-        description: 'Denormalized last-watched channel snapshot — the §6.4 instant-restore row.',
+        mapShaped: true,
+        description: 'Denormalized last-watched channel snapshot — the §6.4 instant-restore row. Written via replace(): its optional kind/radio/series fields are set by only some writers, so a deep-merged write leaves the previous item\'s fields on the new one (a movie started after an episode inherited the episode\'s series coordinates).',
     },
     [PLAYER_VARIANTS]: {
         owner: 'player',

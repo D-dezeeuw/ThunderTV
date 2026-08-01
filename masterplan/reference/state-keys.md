@@ -38,7 +38,7 @@ repeated here, to avoid the two drifting apart.
 | `live.stats` | list | no | — | v1 | Live-view filter readout (rows in, channels kept, how many hidden and why) — derived from the loaded catalog on every rebuild, so never persisted. Exists so a user who thinks a channel is missing can see that the list filtered rather than that the provider did. |
 | `platform.capabilities` | ui | no | — | v1 | Live-derived from storage.tier every boot (Feature 04.7.5) — never meaningfully cacheable. |
 | `platform.name` | ui | no | — | v1 | Diagnostics only (Feature 03.8.6) — recomputed fresh from real detection every boot. |
-| `player.active` | player | yes | — | v1 | Denormalized last-watched channel snapshot — the §6.4 instant-restore row. |
+| `player.active` | player | yes | — | v1 | Denormalized last-watched channel snapshot — the §6.4 instant-restore row. Written via replace(): its optional kind/radio/series fields are set by only some writers, so a deep-merged write leaves the previous item\'s fields on the new one (a movie started after an episode inherited the episode\'s series coordinates). |
 | `player.activeVariantId` | player | no | — | v1 | Which variant is currently playing, so the dock strip can mark one chip active. Derived alongside player.variants. |
 | `player.audioMode` | player | yes | — | v1 | Play TV channels audio-only, with the Radio visualizer standing in for the picture. A viewing preference (a TV used as a stereo stays that way), so persisted; the player bar always carries the switch back. |
 | `player.audioTracks` | player | no | 50 | v1 | Compact MediaTrack[] for the dock/theater audio-track popup — republished from getPlayerTracks() on every menu open and every engine track-changed event; never persisted, since a stale list would offer track ids a new attach may not carry. |
@@ -67,6 +67,7 @@ repeated here, to avoid the two drifting apart.
 | `series.detailId` | series | no | — | v1 | seriesId of the currently-open series detail, or null. |
 | `series.detailStatus` | series | no | — | v1 | idle/loading/ready/error — the OPEN series\' own get_series_info fetch status, distinct from series.status (the category list\'s). Lets the detail panel show a classified error + Retry instead of silently looking empty on a failed fetch. |
 | `series.errorReason` | series | no | — | v1 | Same no-source/fetch-failed/null contract as vod.errorReason. |
+| `series.nextPrompt` | series | no | — | v1 | The standing "Next: S02E01 — title" offer after an episode ends (Feature 21.6.4), or null. Never persisted: an offer only means anything while the player still holds the episode that produced it, so one restored at boot would point at a session that no longer exists. Cleared by setActiveChannel() on any new playback, including accepting the offer itself. Written via replace(), same merge-hazard reasoning as series.detail. |
 | `series.stale` | series | no | — | v1 | Same role as vod.stale, for the TV Shows catalog. |
 | `series.status` | series | no | — | v1 | idle/loading/ready/error — same role as vod.status. |
 | `series.warmStatus` | series | no | — | v1 | Same idle/warming/warmed/skipped contract as vod.warmStatus, for the series background warm (series-warm.ts). |

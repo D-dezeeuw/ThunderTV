@@ -37,6 +37,10 @@ export const enCatalog = {
         episodePrefix: 'E',
         minutesSuffix: 'min',
         noEpisodes: 'No episodes listed for this series yet.',
+        nextUpLabel: 'Next up',
+        nextPlay: 'Play next',
+        nextDismiss: 'Dismiss',
+        nextAria: 'Next episode',
     },
 
     /**

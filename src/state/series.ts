@@ -36,6 +36,20 @@ export const SERIES_DETAIL = 'series.detail';
 export const SERIES_DETAIL_STATUS = 'series.detailStatus';
 /** Same enum-ish, UI-copy-free contract as `SERIES_ERROR_REASON`, scoped to the open series' own fetch. */
 export const SERIES_DETAIL_ERROR_REASON = 'series.detailErrorReason';
+/**
+ * The "Next: S02E01 — title" offer shown when an episode ends (Feature
+ * 21.6.4), or `null` when there is nothing to offer or the viewer dismissed
+ * it. Never persisted: an offer is only meaningful while the player still
+ * holds the episode that produced it, and a prompt restored at boot would
+ * point at a session that no longer exists.
+ *
+ * **Nothing plays without consent** — this key exists precisely so that
+ * "what would play next" is a rendered offer rather than an autoplay. The
+ * `playback.autoAdvance` seam Feature 21.6.6 describes is deliberately not
+ * built yet; when it is, it belongs in front of `showNextEpisodePrompt()`,
+ * not inside the player.
+ */
+export const SERIES_NEXT_PROMPT = 'series.nextPrompt';
 /** Same role/contract as `vod.ts`'s `VOD_WARM_STATUS` — see its doc. */
 export const SERIES_WARM_STATUS = 'series.warmStatus';
 /** Same role as `vod.stale` — the TV Shows catalog on screen is a cache whose refresh failed. */
@@ -103,6 +117,13 @@ export interface SeriesDetail {
     rows: SeriesDetailRow[];
 }
 
+/** The rendered half of a next-episode offer: `label` is preformatted ("S02E01 — Pilot") so the markup binds one string and the season/episode numbers stay out of the template. `episodeId` is what `series/playNext` replays. */
+export interface NextEpisodePrompt {
+    seriesId: number;
+    episodeId: number | string;
+    label: string;
+}
+
 export interface SeriesState {
     categories: SeriesCategoryRow[];
     activeCategoryId: string | null;
@@ -113,6 +134,7 @@ export interface SeriesState {
     detail: SeriesDetail | null;
     detailStatus: SeriesStatus;
     detailErrorReason: SeriesErrorReason;
+    nextPrompt: NextEpisodePrompt | null;
     warmStatus: WarmStatus;
     stale: boolean;
 }
@@ -127,6 +149,7 @@ export const SERIES_DEFAULTS: SeriesState = {
     detail: null,
     detailStatus: 'idle',
     detailErrorReason: null,
+    nextPrompt: null,
     warmStatus: 'idle',
     stale: false,
 };
@@ -141,6 +164,7 @@ export function initSeriesState(): void {
     setValue(SERIES_DETAIL, SERIES_DEFAULTS.detail);
     setValue(SERIES_DETAIL_STATUS, SERIES_DEFAULTS.detailStatus);
     setValue(SERIES_DETAIL_ERROR_REASON, SERIES_DEFAULTS.detailErrorReason);
+    setValue(SERIES_NEXT_PROMPT, SERIES_DEFAULTS.nextPrompt);
     setValue(SERIES_WARM_STATUS, SERIES_DEFAULTS.warmStatus);
     setValue(SERIES_STALE, SERIES_DEFAULTS.stale);
 }

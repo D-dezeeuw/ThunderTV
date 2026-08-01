@@ -18,6 +18,7 @@ import {
     SERIES_DETAIL_ERROR_REASON,
     SERIES_DETAIL_ID,
     SERIES_DETAIL_STATUS,
+    SERIES_NEXT_PROMPT,
     SERIES_ERROR_REASON,
     SERIES_STALE,
     SERIES_STATUS,
@@ -152,6 +153,12 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'series',
         persisted: false,
         description: 'Same no-source/fetch-failed/null contract as series.errorReason, scoped to series.detailStatus.',
+    },
+    [SERIES_NEXT_PROMPT]: {
+        owner: 'series',
+        persisted: false,
+        mapShaped: true,
+        description: 'The standing "Next: S02E01 — title" offer after an episode ends (Feature 21.6.4), or null. Never persisted: an offer only means anything while the player still holds the episode that produced it, so one restored at boot would point at a session that no longer exists. Cleared by setActiveChannel() on any new playback, including accepting the offer itself. Written via replace(), same merge-hazard reasoning as series.detail.',
     },
     [SERIES_WARM_STATUS]: {
         owner: 'series',

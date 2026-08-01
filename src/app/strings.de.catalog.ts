@@ -27,6 +27,10 @@ export const deCatalog = {
         episodePrefix: 'F',
         minutesSuffix: 'Min.',
         noEpisodes: 'Für diese Serie sind noch keine Folgen gelistet.',
+        nextUpLabel: 'Als Nächstes',
+        nextPlay: 'Nächste abspielen',
+        nextDismiss: 'Schließen',
+        nextAria: 'Nächste Folge',
     },
 
     downloads: {
