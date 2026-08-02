@@ -5,6 +5,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { PLAYER_USER_AGENT } from '../scripts/cloudflare-cors-proxy.mjs';
 import {
     buildProbeArgs,
     buildTranscodeArgs,
@@ -103,6 +104,17 @@ describe('transcode arguments', () => {
         expect(buildTranscodeArgs('/tmp/local.mkv', 0)).not.toContain('-reconnect');
         expect(buildProbeArgs('https://p.example/1.mkv')).toContain('-reconnect');
         expect(buildProbeArgs('/tmp/local.mkv')).not.toContain('-reconnect');
+    });
+
+    // A panel that 403s `Lavf/61.1.100` and serves `VLC/3.0.20` is the
+    // difference between "the film has no sound" and "the film has sound",
+    // and the app's other client has always sent the latter.
+    it('asks the panel under the same identity the proxy uses, on both commands', () => {
+        for (const args of [buildTranscodeArgs('http://p.example/1.mkv', 0), buildProbeArgs('http://p.example/1.mkv')]) {
+            expect(args[args.indexOf('-user_agent') + 1]).toBe(PLAYER_USER_AGENT);
+            expect(args.indexOf('-user_agent')).toBeLessThan(args.indexOf('-i'));
+        }
+        expect(buildTranscodeArgs('/tmp/local.mkv', 0)).not.toContain('-user_agent');
     });
 });
 

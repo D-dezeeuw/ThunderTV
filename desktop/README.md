@@ -55,6 +55,13 @@ encoder.
   limits.
 - **VOD only.** Live has no duration to seek in and is routinely MPEG-2
   video, which `-c:v copy` cannot put into an MP4 that anything plays.
+- **It asks the panel as VLC**, via `-user_agent` on both the probe and the
+  transcode, importing `PLAYER_USER_AGENT` from the proxy worker rather than
+  repeating the string. ffmpeg's own `Lavf/<version>` is refused outright
+  (403/458) by a large share of Xtream panels — the same refusal the proxy
+  has always sidestepped — and since the direct playback path goes through
+  that proxy, the symptom was precisely a film that plays and cannot be
+  transcoded.
 
 ffmpeg comes from `ffmpeg-static`, a **devDependency** of this package on
 purpose: production dependencies are copied into `app.asar` automatically,
