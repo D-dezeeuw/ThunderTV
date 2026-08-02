@@ -13,6 +13,9 @@ Each subdirectory has its own README with the real detail:
   the keyed-snapshot vs. bulk-table split, versioning, chunked writes.
 - `http/README.md` — `classifiedFetch`'s failure taxonomy (`timeout`,
   `cors-or-network`, `mixed-content`, …) and the optional proxy template.
+- `subtitles/README.md` — free, keyless, CORS-open subtitle lookup for
+  Movies/TV Shows: which service, the CORS evidence, the IMDb-id
+  identification ladder, and the cache.
 - `connect/` — reserved for Phase 14's `#/connect?...` bookmark-URL parsing;
   today only `source-key.ts` lives here (see below), the rest is a stub
   (`index.ts` is `export {}`).

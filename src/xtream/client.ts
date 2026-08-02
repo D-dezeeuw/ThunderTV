@@ -201,12 +201,22 @@ function normalizeVodInfo(payload: Record<string, unknown>): XtreamVodInfo {
     const genre = asString(info['genre']);
     const durationSecs = asNumber(info['duration_secs']);
     const releaseDate = asString(info['releasedate']) ?? asString(info['release_date']);
+    // Panels disagree about both the key and the type: `imdb_id` arrives as
+    // `"tt0111161"`, `"0111161"`, `""` or `0`, and `tmdb_id` as a number or
+    // a numeric string. Both are normalized here rather than at the consumer,
+    // and anything that isn't a plausible id is simply dropped — a wrong id
+    // sent to a subtitle service returns a confident, empty answer.
+    const imdbId = /^tt\d{5,10}$/.test(asString(info['imdb_id'])?.trim() ?? '') ? asString(info['imdb_id'])?.trim() : undefined;
+    const tmdbRaw = asNumber(info['tmdb_id']) ?? asNumber(info['tmdb']);
+    const tmdbId = tmdbRaw !== undefined && tmdbRaw > 0 ? tmdbRaw : undefined;
 
     return {
         ...(plot !== undefined ? { plot } : {}),
         ...(genre !== undefined ? { genre } : {}),
         ...(durationSecs !== undefined ? { durationSecs } : {}),
         ...(releaseDate !== undefined ? { releaseDate } : {}),
+        ...(imdbId !== undefined ? { imdbId } : {}),
+        ...(tmdbId !== undefined ? { tmdbId } : {}),
     };
 }
 

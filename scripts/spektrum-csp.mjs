@@ -125,14 +125,21 @@ function normalizeNumericPaths(source) {
     );
 }
 
+/**
+ * Every record repeats the same wrapper, so its identifiers are one letter
+ * and the catch body is empty (`return` and `return void 0` are the same
+ * value). At ~750 expressions that is ~21 KB less to *parse*, which is the
+ * pressure `scripts/check-dist.mjs`'s raw eager budget exists to bound on a
+ * Chromium 87 TV — gzip barely notices repeated text, a parser does.
+ *
+ * The wrapper cannot be hoisted into a shared factory: building one function
+ * per expression from a string is exactly the `new Function`/`eval` that
+ * precompiling exists to avoid under CSP. Each body has to be a literal.
+ */
 export function emitClassicPrecompileSource(expressions) {
     const records = expressions.map((source) => {
         const normalized = normalizeNumericPaths(source);
-        return (
-            `[${JSON.stringify(source)},function(state,scope){try{` +
-            `with(state)with(scope||{})return(${normalized})` +
-            `}catch{return void 0}}]`
-        );
+        return `[${JSON.stringify(source)},function(s,c){try{with(s)with(c||{})return(${normalized})}catch{}}]`;
     });
 
     return [

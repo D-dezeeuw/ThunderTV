@@ -39,6 +39,8 @@ import { initDebugState } from './debug';
 import { registerPlayerActions } from './player.actions';
 import { initPlayerTracksState } from './player-tracks';
 import { registerPlayerTrackActions } from './player-tracks.actions';
+import { initSubtitleSearchState } from './subtitle-search';
+import { registerSubtitleSearchActions } from './subtitle-search.actions';
 import { registerRecentActions } from './recent.actions';
 import { registerGuideActions } from './guide.actions';
 import { registerGuideSelectors } from './guide.selectors';
@@ -109,6 +111,7 @@ export function initState(): void {
     initImportState();
     initPlayerState();
     initPlayerTracksState();
+    initSubtitleSearchState();
     initEpgState();
     initEpgSettingsState();
     initSettingsState();
@@ -139,6 +142,7 @@ export function registerActions(): void {
     registerSettingsActions();
     registerPlayerActions();
     registerPlayerTrackActions();
+    registerSubtitleSearchActions();
     registerUiActions();
     registerListActions();
     registerListLayoutActions();

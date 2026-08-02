@@ -83,4 +83,14 @@ export interface XtreamVodInfo {
     genre?: string;
     durationSecs?: number;
     releaseDate?: string;
+    /**
+     * The two external ids a TMDB-fed panel usually fills in. Nothing in the
+     * catalog UI renders them — they exist for `src/core/subtitles/`, whose
+     * whole identification ladder is "is there already a `tt…` for this
+     * film". Kept even when only `tmdbId` is present: it is not resolvable
+     * without an API key, but it is worth showing beside a fuzzy title match
+     * (see `core/subtitles/identify.ts`).
+     */
+    imdbId?: string;
+    tmdbId?: number;
 }
