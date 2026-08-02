@@ -1889,11 +1889,18 @@
                                         <!-- Watch a TV channel like a radio station: the
                                              picture collapses, the visualizer takes the
                                              pane. Not offered in Radio, which has no
-                                             picture to give up in the first place. -->
+                                             picture to give up in the first place, and no
+                                             longer offered in Live, where it was only ever
+                                             distracting beside the channel list. It does
+                                             still appear in Live while the mode is *on* —
+                                             the preference persists, so a viewer who
+                                             switched it on in Categories (or before it left
+                                             Live) must keep a visible way back to the
+                                             picture. -->
                                         <button
                                             type="button"
                                             class="icon-btn"
-                                            data-if="view.live.active || view.categories.active"
+                                            data-if="view.categories.active || (view.live.active && player.audioMode)"
                                             :class="{ 'icon-btn--active': player.audioMode }"
                                             :aria-pressed="player.audioMode"
                                             :aria-label="player.audioMode ? strings.list.playerShowPicture : strings.list.playerAudioOnly"

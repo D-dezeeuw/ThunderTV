@@ -92,6 +92,43 @@ describe('player shell: audio-only layout is class-driven, not structural', () =
 });
 
 /**
+ * The audio-only switch left Live (it read as clutter beside the channel
+ * list). `player.audioMode` is persisted and `isAudioVisual()` still honours
+ * it there, so the one case that must not regress is the escape hatch: a
+ * viewer arriving in Live with the mode already on has to keep a way back to
+ * the picture, or the visualizer is a state nothing can turn off.
+ */
+describe('audio-only switch: gone from Live, except as its own way out', () => {
+    // The real gate, read out of index.html — `[^>]*` cannot cross a `>`, so
+    // the captured data-if is guaranteed to be this button's own.
+    const AUDIO_MODE_GATE = /data-if="([^"]+)"[^>]*data-testid="player-audio-mode-btn"/.exec(indexHtml)?.[1] ?? '';
+
+    it('hides the button in Live unless audio-only is already on, and keeps it in Categories', () => {
+        expect(AUDIO_MODE_GATE).not.toBe('');
+        const mounted = mountTemplate(`
+            <button data-if="${AUDIO_MODE_GATE}" data-testid="player-audio-mode-btn"></button>
+        `);
+        const button = (): HTMLElement | null => mounted.query('[data-testid="player-audio-mode-btn"]');
+
+        setValue(PLAYER_AUDIO_MODE, false);
+        setValue(UI_ACTIVE_VIEW, 'live');
+        tick();
+        expect(button()?.style.display).toBe('none');
+
+        setValue(PLAYER_AUDIO_MODE, true);
+        tick();
+        expect(button()?.style.display).toBe('');
+
+        setValue(PLAYER_AUDIO_MODE, false);
+        setValue(UI_ACTIVE_VIEW, 'categories');
+        tick();
+        expect(button()?.style.display).toBe('');
+
+        mounted.cleanup();
+    });
+});
+
+/**
  * Categories is three columns — categories -> channels -> preview — which
  * only holds if the preview pane and the side-by-side modifier both cover
  * every channel-list view, not just Live/Radio.
