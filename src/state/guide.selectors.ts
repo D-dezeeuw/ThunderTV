@@ -54,8 +54,10 @@ export interface GuideView {
     /** Flat across every channel — see `GuideProgramView.channelIndex`'s doc for why this isn't nested under `channels`. */
     programs: GuideProgramView[];
     hasData: boolean;
-    /** `-1` when "now" falls outside the visible window — the markup hides the indicator rather than pinning it to an edge, which would read as a real position. */
+    /** `-1` when "now" falls outside the visible window — the markup hides the indicator rather than pinning it to an edge, which would read as a real position. A percent *of the program track* (grid column 2), not of the whole grid row — the label column must not offset it. */
     nowPercent: number;
+    /** The now-line's `grid-row` end line — `channels.length + 1`, spanning every channel row. The grid's rows are all implicit (`grid-auto-rows`), so the markup cannot say `1 / -1`; negative lines only count explicit tracks. */
+    nowRowEnd: number;
     rangeStartLabel: string;
     rangeEndLabel: string;
     /** Empty while the window tracks the clock; a weekday/date once shifted. */
@@ -187,6 +189,7 @@ export function registerGuideSelectors(): void {
             programs: programViews,
             hasData: rows.length > 0,
             nowPercent: nowInWindow ? percentInRange(nowMs, range.start, range.end) : -1,
+            nowRowEnd: rows.length + 1,
             rangeStartLabel: formatClockTime(range.start, locale),
             rangeEndLabel: formatClockTime(range.end, locale),
             dateLabel: offsetMs === 0 ? '' : formatWindowDate(range.start, locale),

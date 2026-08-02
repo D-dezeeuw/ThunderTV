@@ -2272,13 +2272,12 @@
                         </div>
 
                         <div class="guide__rows" data-testid="guide-rows">
-                            <!-- nowPercent is -1 once the window is shifted off
-                                 "now"; pinning the line to an edge instead would
-                                 read as a real position. -->
+                            <!-- nowPercent -1 = shifted off "now" (hidden). On the
+                                 program track (column 2) — mechanics in guide.css. -->
                             <div
                                 class="guide__now-line"
                                 data-if="guide.view.nowPercent >= 0"
-                                :style="'left:' + guide.view.nowPercent + '%'"
+                                :style="'grid-row: 1 / ' + guide.view.nowRowEnd + '; margin-left:' + guide.view.nowPercent + '%'"
                                 :aria-label="strings.guide.nowLabel"
                                 role="img"
                                 data-testid="guide-now-line"
