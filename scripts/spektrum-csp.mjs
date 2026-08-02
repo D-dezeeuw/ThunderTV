@@ -21,7 +21,13 @@ export const generatedPath = `${repoRoot}public/vendor/spektrum-precompiled.js`;
  * `expectedRuntimeSource()` for why it has to exist at all.
  */
 export const runtimePath = `${repoRoot}public/vendor/spektrum.runtime.js`;
-const vendoredPath = `${repoRoot}public/vendor/spektrum.min.js`;
+/**
+ * The pinned upstream bytes — a build *input*, so it lives at the repo root
+ * rather than in `public/`, where it would be copied into every dist/ that
+ * never fetches it. Keep in step with `spektrum-version.json`'s
+ * `vendoredPath`; see `vendor/README.md`.
+ */
+const vendoredPath = `${repoRoot}vendor/spektrum.min.js`;
 const versionPath = `${repoRoot}scripts/spektrum-version.json`;
 
 /**

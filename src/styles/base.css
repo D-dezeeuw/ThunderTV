@@ -68,6 +68,9 @@ body::before {
     bottom: -10vmin;
     width: 78vmin;
     height: 78vmin;
+    /* Also index.html's `rel="icon"` source. There used to be a byte-identical
+       public/favicon.svg beside it and dist/ shipped both; one bundled, hashed
+       copy now serves the watermark and the favicon. */
     background: url('./thunder-bolt.svg') center / contain no-repeat;
     opacity: var(--logo-watermark-opacity);
     transform: rotate(-8deg);

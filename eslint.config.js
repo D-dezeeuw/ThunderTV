@@ -40,7 +40,7 @@ const noBareSetValueSyntaxSelector = {
 
 export default tseslint.config(
     {
-        ignores: ['dist/**', 'dist-webos/**', 'release/**', 'node_modules/**', 'public/vendor/**'],
+        ignores: ['dist/**', 'dist-webos/**', 'release/**', 'node_modules/**', 'public/vendor/**', 'vendor/**'],
     },
     js.configs.recommended,
     ...tseslint.configs.recommendedTypeChecked,

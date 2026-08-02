@@ -44,10 +44,12 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url));
  * sixteen comment blocks condensed to cover it (the inline `.guide__detail`
  * panel it replaces came out too). The no-sound badge/toggle rows did it once
  * more: eight blocks condensed for a debug fact row, two detail warnings and
- * one Settings toggle.
+ * one Settings toggle. Pointing the SVG favicon at the bundled source file
+ * (so dist/ stops shipping the same 9.3 KiB bolt twice) cost 14 bytes on one
+ * href and paid for it with three condensed blocks, net -3 lines / -55 B.
  */
 const BUDGETS = [
-    { path: 'index.html', maxLines: 3526, maxBytes: 245_899 },
+    { path: 'index.html', maxLines: 3523, maxBytes: 245_844 },
 ];
 
 let failed = false;
