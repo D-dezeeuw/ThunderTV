@@ -6,6 +6,7 @@ import { enHandoff } from './strings.en.handoff';
 import { enStarred } from './strings.en.starred';
 import { enEpg } from './strings.en.epg';
 import { enPlayerTracks } from './strings.en.player';
+import { enWizard } from './strings.en.wizard';
 
 export const en = {
     appName: 'ThunderTV',
@@ -137,6 +138,7 @@ export const en = {
     ...enCodex,
     ...enHandoff,
     ...enStarred,
+    ...enWizard,
 
     recent: {
         nowPlaying: 'Now playing:',
@@ -182,8 +184,11 @@ export const en = {
         hiddenNote: 'Hidden from the sidebar because it carries no playable channels. Still selectable here.',
         showHidden: 'Show hidden sources',
         allTitle: 'Default source',
-        allHint: 'Choose which imported source Live, Radio and Categories show. Switching here does the same thing as picking one in the Sources tab.',
+        allHint: 'Choose which imported source Live, Radio and Categories show. Switching here does the same thing as pressing Use in the Sources tab.',
         activeBadge: 'Active',
+        configuredTitle: 'Your sources',
+        configuredHint: 'Select a source to edit its connection details. Use makes it the one Live, Radio and Categories show.',
+        useButton: 'Use',
     },
 
     settings: {
@@ -293,20 +298,6 @@ export const en = {
         appearance: enAppearance,
     },
 
-    wizard: {
-        title: 'Welcome to ThunderTV',
-        skip: 'Skip for now',
-        step1: {
-            heading: 'Let’s get you set up',
-            intro: 'Choose your language and preferred content country — both are switchable anytime in Settings.',
-            next: 'Continue',
-        },
-        step2: {
-            heading: 'Add your channels',
-            intro: 'Enter your Xtream Codes account to import your channels now, or skip and add a source later from the Connect card.',
-            back: 'Back',
-        },
-    },
 
     list: {
         ...enEpg.list,

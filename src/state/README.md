@@ -22,7 +22,8 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `codex-library.ts`   | `settings.codexLibraryRows`, `settings.codexLibraryState`, `settings.codexLibraryMessage`, `settings.codexBlockedRows` | No — a view model over storage (Phase 37). Subscriptions live under `codex.library.*` and the blocklist under `codex.blocked`; retained Codexes are bulk data and never enter Spektrum state. The follow field is an uncontrolled `data-ref` input, deliberately not a key |
 | `handoff.ts`         | `player.handoffLink`, `player.handoffState`, `player.handoffMessage`                                                  | No — the link outlives its usefulness within hours (Phase 38), and is published rather than hidden only so it can be read off screen where no clipboard exists |
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.theme`, `ui.fontSize`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.theme`/`ui.fontSize`/`ui.storageNoticeDismissed` yes; the rest no |
-| `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`, `ui.setupComplete`                                                                 | `ui.setupComplete` yes — it is what stops a configured install from being asked again; `wizardOpen`/`wizardStep` no (transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen`) |
+| `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`, `ui.setupComplete`, `ui.wizardEditSourceId`                                        | `ui.setupComplete` yes — it is what stops a configured install from being asked again; `wizardOpen`/`wizardStep`/`wizardEditSourceId` no (transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen`) |
+| `source-edit.ts`      | *(no keys of its own — reuses `settings.xtreamError`/`settings.xtreamBusy` for feedback)*                             | n/a — editing an already-configured source through the wizard (see "Editing a configured source" below) |
 | `boot.ts`             | `ui.bootPhase`                                                                                                        | No — the wallpaper splash's `'loading' \| 'exiting' \| 'done'` lifecycle, recomputed fresh (always starts at `'loading'`) every boot |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
 | `list-layout.ts`      | `ui.listLayout`                                                                                                      | Yes — the per-view list/grid choice for the shared virtual list, keyed by the three views that offer the switch (live/movies/series). A browsing preference, not session state, so asking once is enough; a scope missing from a stored value falls back to the list layout. Radio/Categories share the list but show no switch and therefore stay on rows — a mode with no visible control is a mode nobody can turn off |
@@ -722,6 +723,40 @@ wrapper (`wizard/saveXtreamAccount`) that only adds closing the wizard on a
 successful save. `wizard/open` (bound to a "Run setup wizard again" link in
 Settings → Streaming) is the sole manual reopen path, so the wizard is never
 a one-shot dead end.
+
+## Editing a configured source (`source-edit.ts`)
+
+A card in the Sources tab (`sources/edit`) reopens that same wizard on step
+2 with the source's stored server URL and username in it —
+`ui.wizardEditSourceId` is the entire difference between "first run" and
+"editor": it re-labels the copy, hides the step-1 detour, and routes Save
+through `applySourceEdit()` instead of `saveXtreamAccount()`. The fields are
+written imperatively through `refs` (they are uncontrolled inputs, and
+`data-if` only toggles `display`, so they exist before the modal is shown),
+and the password is deliberately left blank — blank means "keep the stored
+one", the same rule Settings → Streaming uses.
+
+**An edited source stays the same source.** `importXtreamSource()` — the one
+re-import path, shared with `xtream-refresh.ts` — already replaces the row
+whose `makeSourceKey()` matches, so an edit that only fixes a password or a
+typo'd path lands as a plain refresh. The case that needs handling is an edit
+that changes the *server URL or username*: that changes the source key, the
+upsert finds no match, and the original would sit beside the new import as a
+stale duplicate. `planSourceEdit()` (pure, `source-edit.spec.ts`) detects it
+and returns the row id to delete once the new import has actually succeeded,
+so the edit reads as a move rather than a fork — and a failed edit changes
+nothing at all.
+
+Nothing durable is stranded by that, because **the playlist id was never
+stable to begin with**: every refresh already mints a new one and deletes the
+old row with its `channels`/`groups`. Stream health keys on a
+credential-free stream fingerprint (`src/health/stream-key.ts`), and
+favorites/recents are denormalized snapshots carrying `sourceId` only for
+provenance. The one casualty is that source's `ui.listState` entry (scroll +
+group cursor), which every refresh already discards and which self-heals on
+the next visit. `playlist.activeSourceId` is re-aimed only when the id it
+names no longer exists, so editing a source you are not watching never
+switches the picture.
 
 ## Bulk-data bypass rules (Feature 05.8)
 

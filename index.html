@@ -343,9 +343,7 @@
                         <ul class="import-summary__lines" data-each="importSummaryLines">
                             <li>{{ item }}</li>
                         </ul>
-                        <!-- Feature 07.6.5: "Open channel list" is deferred — no per-source
-                             channel route exists until Phase 08 builds the virtual-scrolled
-                             list. Dismiss returns to the (now non-empty) sources view below. -->
+                        <!-- Dismiss returns to the sources list below. -->
                         <div class="import-summary__actions">
                             <button type="button" class="btn" data-action="click" data-fn="import/clearSummary" data-testid="import-summary-dismiss-btn">
                                 {{ strings.import.summary.dismiss }}
@@ -353,15 +351,13 @@
                         </div>
                     </div>
 
-                    <!-- Feature 07.1: first-run import card — the entire empty-state
-                         experience; every path funnels into src/m3u/import.ts. -->
-                    <!-- Feature 07.2.7: drag-and-drop target — drop.prevent stops the
-                         browser from navigating to the dropped file and hands it to the
-                         same file-import pipeline. dragover's own preventDefault (needed
-                         to make this a valid drop target at all — an HTML5 DnD spec
-                         requirement) is wired once, globally, in bootstrap.ts: Spektrum
-                         allows only one data-action/data-fn pair per element, so it can't
-                         also live here. -->
+                    <!-- First-run import card — the entire empty-state experience;
+                         every path funnels into src/m3u/import.ts. It is also the
+                         drag-and-drop target: drop.prevent stops the browser from
+                         navigating to the dropped file. dragover's own preventDefault
+                         (an HTML5 DnD requirement for being a drop target at all) is
+                         wired globally in bootstrap.ts, since Spektrum allows one
+                         data-action/data-fn pair per element. -->
                     <div
                         class="import-card"
                         data-if="!importDone && hasNoSources"
@@ -496,10 +492,10 @@
                             </div>
                         </div>
 
-                        <!-- Error / confirm surface (Feature 07.4/07.7.6/07.9) — the
-                             duplicate and large-paste "confirm" prompts reuse this same
-                             surface rather than a second one: both are "attention needed
-                             before proceeding" states, exactly like a classified failure. -->
+                        <!-- Error / confirm surface — the duplicate and large-paste
+                             "confirm" prompts reuse it rather than a second one: both
+                             are "attention needed before proceeding" states, exactly
+                             like a classified failure. -->
                         <div class="import-error" data-if="importHasError" role="alert" data-testid="import-error">
                             <p class="import-error__message">{{ importErrorMessage }}</p>
                             <div class="import-error__actions">
@@ -522,10 +518,10 @@
                         </div>
                     </div>
 
-                    <!-- Feature 08: source picker — sources exist but none is active
-                         yet (a fresh boot with 2+ sources, or "← Sources" was clicked).
-                         Rows are clickable (Feature 08.10.6's playlist/selectSource);
-                         Phase 15 builds real multi-playlist management on top of this. -->
+                    <!-- Source picker — sources exist but none is active yet (a
+                         fresh boot with 2+ sources, or "← Sources" was clicked).
+                         Selecting is the whole row's job here; in the
+                         configured list below the row edits instead. -->
                     <div data-if="!importDone && !hasNoSources && !activeSource" data-testid="sources-picker">
                         <p class="sources-picker__hint">{{ strings.list.chooseSource }}</p>
                         <ul class="sources-list" data-each="visibleSources" data-testid="sources-list">
@@ -549,16 +545,13 @@
                     </div>
 
                     <!-- The persistent "your sources" list — shown whenever at
-                         least one source is configured, regardless of whether
-                         one is currently active. Without this the Sources tab
-                         went blank the instant a source became active (which
-                         happens immediately for an env/build-time-configured
-                         source), even though it was the one tab meant to show
-                         what's configured. Same list/markup as Settings →
-                         Streaming's "default-source-section". -->
+                         least one source is configured, active or not. The card
+                         is the *editor*: sources/edit reopens the wizard on step
+                         2, prefilled from the stored record (state/source-edit.ts),
+                         so choosing the default moved to the Use button beside it. -->
                     <div data-if="!hasNoSources" data-testid="configured-sources">
-                        <h2 class="sources-picker__hint">{{ strings.sourcesAdmin.allTitle }}</h2>
-                        <p class="settings-section__hint">{{ strings.sourcesAdmin.allHint }}</p>
+                        <h2 class="sources-picker__hint">{{ strings.sourcesAdmin.configuredTitle }}</h2>
+                        <p class="settings-section__hint">{{ strings.sourcesAdmin.configuredHint }}</p>
                         <ul class="sources-list" data-each="visibleSources" data-testid="configured-sources-list">
                             <li class="sources-list__row">
                                 <button
@@ -566,12 +559,15 @@
                                     class="sources-list__select"
                                     :class="{ 'sources-list__select--active': item.id === playlist.activeSourceId }"
                                     data-action="click"
-                                    data-fn="playlist/selectSource"
+                                    data-fn="sources/edit"
                                     :data-id="item.id"
-                                    data-testid="configured-source-select-btn"
+                                    data-testid="configured-source-edit-btn"
                                 >
                                     <span class="sources-list__name truncate">{{ item.name }}</span>
                                     <span class="sources-list__meta">{{ item.channelCount }} channels</span>
+                                </button>
+                                <button type="button" class="btn sources-list__use" data-if="item.id !== playlist.activeSourceId" data-action="click" data-fn="playlist/selectSource" :data-id="item.id" data-testid="configured-source-use-btn">
+                                    {{ strings.sourcesAdmin.useButton }}
                                 </button>
                                 <span class="sources-list__active-badge" data-if="item.id === playlist.activeSourceId" data-testid="configured-source-active-badge">
                                     {{ strings.sourcesAdmin.activeBadge }}
@@ -2890,11 +2886,8 @@
                         </label>
                     </section>
 
-                    <!-- Switch the active source without going back to the
-                         Sources tab (which only offers a picker while no
-                         source is active). Same playlist/selectSource fn the
-                         Sources-view popup and the hidden-sources list below
-                         use — this is just a third entry point onto it. -->
+                    <!-- A third entry point onto playlist/selectSource, beside
+                         the Sources tab's picker and Use buttons. -->
                     <section class="settings-section" data-if="!hasNoSources" data-testid="default-source-section">
                         <h3 class="settings-section__title">
                             {{ strings.sourcesAdmin.allTitle }}
@@ -3062,10 +3055,9 @@
                         </p>
                         <p class="settings-section__hint">{{ strings.settings.streaming.xtreamHelp }}</p>
 
-                        <!-- Manual reopen of the first-run wizard (see the
-                             <aside data-if="ui.wizardOpen"> below) — so
-                             redoing the language/country/Xtream setup is
-                             always one click away, never a one-shot trap. -->
+                        <!-- Manual reopen of the first-run wizard below — redoing
+                             the language/country/Xtream setup is always one click
+                             away, never a one-shot trap. -->
                         <button
                             type="button"
                             class="btn"
@@ -3335,19 +3327,20 @@
             </aside>
 
             <!-- First-run setup wizard: shown automatically when boot finds
-                 zero configured sources on an install that has never
-                 completed setup (state/wizard.ts's shouldOpenWizard(), wired
-                 in app/bootstrap.ts right after the real playlist.sources
-                 load resolves). Saving, skipping, or booting with a source
+                 zero configured sources on an install that never completed
+                 setup (state/wizard.ts's shouldOpenWizard(), wired in
+                 app/bootstrap.ts right after the real playlist.sources load
+                 resolves). Saving, skipping, or booting with a source
                  already configured writes the persisted ui.setupComplete
-                 flag, so a known configuration never sees this again. Also reachable any time via
-                 the "Run setup wizard again" link in Settings → Streaming
-                 (data-fn="wizard/open" above) — never a one-shot trap. Every
-                 field reuses an existing action/setting: step 1's selects are
-                 the exact same settings/setLocale and settings/setLiveCountry
-                 data-fn's the Settings panel uses; step 2 is the same Xtream
-                 account fields/feedback as Settings → Streaming, saved
-                 through the same settings.actions.ts saveXtreamAccount(). -->
+                 flag, so a known configuration never sees this again; it
+                 also reopens from Settings → Streaming (wizard/open).
+                 Every field reuses an existing action: step 1's selects are
+                 settings/setLocale + setLiveCountry, step 2 is Settings →
+                 Streaming's own Xtream fields/feedback and saveXtreamAccount().
+                 ui.wizardEditSourceId turns that same step 2 into an editor
+                 for one configured source (state/source-edit.ts): re-labelled
+                 copy, no step-1 detour, Save routed down the re-import path.
+                 Closes unsaved on Escape, backdrop click, and TV Back. -->
             <aside
                 class="wizard-modal"
                 data-if="ui.wizardOpen"
@@ -3355,11 +3348,13 @@
                 tabindex="-1"
                 role="dialog"
                 aria-modal="true"
-                :aria-label="strings.wizard.title"
+                :aria-label="ui.wizardEditSourceId ? strings.wizard.edit.title : strings.wizard.title"
+                data-action="keydown.esc"
+                data-fn="wizard/skip"
             >
-                <div class="wizard-modal__backdrop"></div>
+                <div class="wizard-modal__backdrop" data-action="click" data-fn="wizard/skip"></div>
                 <div class="wizard-modal__body">
-                    <h2 class="wizard-modal__title">{{ strings.wizard.title }}</h2>
+                    <h2 class="wizard-modal__title">{{ ui.wizardEditSourceId ? strings.wizard.edit.title : strings.wizard.title }}</h2>
 
                     <section data-if="ui.wizardStep === 1" data-testid="wizard-step-1">
                         <h3 class="settings-section__title">{{ strings.wizard.step1.heading }}</h3>
@@ -3425,8 +3420,8 @@
                     </section>
 
                     <section data-if="ui.wizardStep === 2" data-testid="wizard-step-2">
-                        <h3 class="settings-section__title">{{ strings.wizard.step2.heading }}</h3>
-                        <p class="settings-section__hint">{{ strings.wizard.step2.intro }}</p>
+                        <h3 class="settings-section__title">{{ ui.wizardEditSourceId ? strings.wizard.edit.heading : strings.wizard.step2.heading }}</h3>
+                        <p class="settings-section__hint">{{ ui.wizardEditSourceId ? strings.wizard.edit.intro : strings.wizard.step2.intro }}</p>
 
                         <label class="settings-section__label" for="wizard-xtream-url-input">
                             {{ strings.settings.streaming.xtreamUrlLabel }}
@@ -3461,6 +3456,7 @@
                             id="wizard-xtream-pass-input"
                             data-ref="wizardXtreamPassInput"
                             class="settings-section__input"
+                            :placeholder="ui.wizardEditSourceId ? strings.settings.streaming.xtreamPassPlaceholder : ''"
                             data-testid="wizard-xtream-pass-input"
                             data-action="input"
                             data-fn="settings/clearXtreamFeedback"
@@ -3476,6 +3472,7 @@
                             <button
                                 type="button"
                                 class="btn"
+                                data-if="!ui.wizardEditSourceId"
                                 data-action="click"
                                 data-fn="wizard/backStep"
                                 data-testid="wizard-back-btn"
@@ -3489,7 +3486,7 @@
                                 data-fn="wizard/skip"
                                 data-testid="wizard-skip-btn-2"
                             >
-                                {{ strings.wizard.skip }}
+                                {{ ui.wizardEditSourceId ? strings.wizard.edit.cancel : strings.wizard.skip }}
                             </button>
                             <button
                                 type="button"

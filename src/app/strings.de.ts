@@ -9,6 +9,7 @@ import { deHandoff } from './strings.de.handoff';
 import { deStarred } from './strings.de.starred';
 import { deEpg } from './strings.de.epg';
 import { dePlayerTracks } from './strings.de.player';
+import { deWizard } from './strings.de.wizard';
 
 export const de = {
     appName: 'ThunderTV',
@@ -142,6 +143,7 @@ export const de = {
     ...deCodex,
     ...deHandoff,
     ...deStarred,
+    ...deWizard,
 
     recent: {
         nowPlaying: 'Läuft gerade:',
@@ -186,8 +188,11 @@ export const de = {
         hiddenNote: 'In der Seitenleiste ausgeblendet, da keine abspielbaren Sender enthalten sind. Hier weiterhin auswählbar.',
         showHidden: 'Ausgeblendete Quellen anzeigen',
         allTitle: 'Standardquelle',
-        allHint: 'Wählen Sie, welche importierte Quelle Live, Radio und Kategorien anzeigen. Die Auswahl hier bewirkt dasselbe wie die Auswahl im Tab Quellen.',
+        allHint: 'Wählen Sie, welche importierte Quelle Live, Radio und Kategorien anzeigen. Die Auswahl hier bewirkt dasselbe wie „Verwenden“ im Tab Quellen.',
         activeBadge: 'Aktiv',
+        configuredTitle: 'Ihre Quellen',
+        configuredHint: 'Wählen Sie eine Quelle, um ihre Verbindungsdaten zu bearbeiten. „Verwenden“ macht sie zur Quelle für Live, Radio und Kategorien.',
+        useButton: 'Verwenden',
     },
 
     settings: {
@@ -297,20 +302,6 @@ export const de = {
         appearance: deAppearance,
     },
 
-    wizard: {
-        title: 'Willkommen bei ThunderTV',
-        skip: 'Vorerst überspringen',
-        step1: {
-            heading: 'Richten wir Sie ein',
-            intro: 'Wählen Sie Ihre Sprache und Ihr bevorzugtes Inhaltsland — beides können Sie jederzeit in den Einstellungen ändern.',
-            next: 'Weiter',
-        },
-        step2: {
-            heading: 'Fügen Sie Ihre Sender hinzu',
-            intro: 'Geben Sie Ihr Xtream-Codes-Konto ein, um jetzt Ihre Sender zu importieren, oder überspringen Sie diesen Schritt und fügen Sie später über die Verbinden-Karte eine Quelle hinzu.',
-            back: 'Zurück',
-        },
-    },
 
     list: {
         ...deEpg.list,
