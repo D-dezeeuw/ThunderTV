@@ -135,6 +135,12 @@ console.log(`check-dist: OK — no devtools symbols found in ${jsFiles.length} b
 // plugin's strict strip-count guard is that a reformat which stops matching
 // fails the build, and a slack budget here would let it fail quietly instead.
 // shellText follows for the same reason: 800/175 → 520/128.
+//
+// `installRaw` 10 MiB → 2 MiB after scripts/generate-icons.mjs started
+// compressing what it emits: the 1920×1080 boot wallpaper and the Electron
+// splash became WebP and the icon set became palette PNG, taking dist/ from
+// 4.44 to 1.81 MiB without touching a master under assets/. The old 10 MiB
+// ceiling was never a budget, just a tripwire; 2 MiB is one.
 const BUDGETS = {
     startupJsRaw: 400 * 1024,
     startupJsGzip: 104 * 1024,
@@ -144,7 +150,7 @@ const BUDGETS = {
     cssGzip: 25 * 1024,
     shellTextRaw: 520 * 1024,
     shellTextGzip: 128 * 1024,
-    installRaw: 10 * 1024 * 1024,
+    installRaw: 2 * 1024 * 1024,
 };
 
 const normalizeRef = (ref) => ref.replace(/^\.\//, '').split(/[?#]/, 1)[0];

@@ -4,9 +4,11 @@
   the branding asset centered on the same dark background as the real
   window (`backgroundColor: '#0b0d10'` in main.mjs and tokens.css) so there
   is never a blank white/black flash before the real window is ready.
-  `../dist/splash.png` is the build output path (public/splash.png is
+  `../dist/splash.webp` is the build output path (public/splash.webp is
   copied there by Vite) — this file is only ever loaded after `npm run
-  build`, same as index.html.
+  build`, same as index.html. WebP rather than PNG because the only
+  consumer is this <img> inside an Electron BrowserWindow (Chromium), and
+  it costs 15 KiB instead of 672.
 -->
 <html>
     <head>
@@ -32,6 +34,6 @@
         </style>
     </head>
     <body>
-        <img src="../dist/splash.png" alt="ThunderTV" draggable="false" />
+        <img src="../dist/splash.webp" alt="ThunderTV" draggable="false" />
     </body>
 </html>
