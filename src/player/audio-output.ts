@@ -2,7 +2,6 @@ import { PLAYER_ACTIVE } from '../state/player';
 import { reportPlaybackNotice } from '../state/player.actions';
 import { get } from '../state/typed';
 import { clearNoAudioMark, markedContentId } from './no-audio-marks';
-import { handleSilentAudio } from './transcode-fallback';
 
 /**
  * "The picture is fine and there is no sound" — the one playback failure no
@@ -104,7 +103,10 @@ function probe(video: HTMLVideoElement): void {
     // process with ffmpeg in it, the film restarts with its audio
     // re-encoded instead (`transcode-fallback.ts`), and the message is what
     // is left when that is impossible or fails.
-    void handleSilentAudio(video);
+    // Imported here rather than at the top: this whole route is Electron-only
+    // (`transcode-lazy.ts`), it is reached at most once per film, and a webOS
+    // TV must not parse an ffmpeg MSE pipeline it can never use.
+    void import('./transcode-fallback').then((module) => module.handleSilentAudio(video));
 }
 
 /**

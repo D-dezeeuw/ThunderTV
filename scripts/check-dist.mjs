@@ -171,15 +171,23 @@ console.log(`check-dist: OK — no devtools symbols found in ${jsFiles.length} b
 // gzip. Raw is the metric that models parse work on the TV and it moved 43
 // KiB — this is the item the 101→102→104 notes above kept deferring to, and
 // it did not cost a single feature.
+//
+// 102 → 97 gzip / 330 → 300 raw once the four eager-but-unreached graphs went
+// behind action shims (the `subtitle-search.actions.ts` pattern): Codex
+// export/import and the shared-Codex library, the 10 KiB EPG country table,
+// the Electron-only ffmpeg transcode route, and handoff. Eager 317.6 → 288.9
+// KiB raw, 101.6 → 94.8 gzip. That closes out the standing note above: the
+// answer to "how does this get back under 101" was these four plus the
+// registry compaction, and neither took a feature away.
 const WEB_BUDGETS = {
-    startupJsRaw: 330 * 1024,
-    startupJsGzip: 102 * 1024,
+    startupJsRaw: 300 * 1024,
+    startupJsGzip: 97 * 1024,
     htmlRaw: 115 * 1024,
     htmlGzip: 17 * 1024,
     cssRaw: 100 * 1024,
     cssGzip: 25 * 1024,
-    shellTextRaw: 480 * 1024,
-    shellTextGzip: 126 * 1024,
+    shellTextRaw: 455 * 1024,
+    shellTextGzip: 121 * 1024,
     installRaw: 2 * 1024 * 1024,
 };
 
@@ -197,9 +205,9 @@ const WEB_BUDGETS = {
  * targets by default and only diverges when it has a measured reason to.
  */
 const WEBOS_BUDGET_OVERRIDES = {
-    startupJsGzip: 104 * 1024,
-    shellTextRaw: 490 * 1024,
-    shellTextGzip: 130 * 1024,
+    startupJsGzip: 99 * 1024,
+    shellTextRaw: 465 * 1024,
+    shellTextGzip: 124 * 1024,
 };
 
 const isWebos = path.basename(distDir.replace(/[/\\]$/, '')) === 'dist-webos';

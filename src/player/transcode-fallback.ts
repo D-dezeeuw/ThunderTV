@@ -9,7 +9,7 @@ import { get } from '../state/typed';
 import { attachAndPlay, detach } from './engine';
 import { clearNoAudioMark, markedContentId, markNoAudio } from './no-audio-marks';
 import { monitorPlaybackPosition } from './position';
-import { attachTranscode } from './transcode-engine';
+import { loadTranscodeEngine } from './transcode-lazy';
 
 /**
  * What happens when a film turns out to have audio this device cannot
@@ -90,6 +90,7 @@ export async function handleSilentAudio(video: HTMLVideoElement): Promise<void> 
     // health monitor and a position monitor, and the transcode route brings
     // its own of each.
     detach(video);
+    const { attachTranscode } = await loadTranscodeEngine();
     const started = await attachTranscode(video, source, at, {
         onFailure: (detail) => {
             fallBackToDirect(video, proxied, detail, contentId);
