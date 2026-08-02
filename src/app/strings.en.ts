@@ -82,6 +82,8 @@ export const en = {
             radioCount: 'Radio stations',
             storage: 'Storage tier',
             platform: 'Platform',
+            /** The desktop audio transcode's last word — the codecs found, or the HTTP status and ffmpeg's own error. */
+            transcode: 'Last audio transcode',
         },
     },
 

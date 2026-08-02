@@ -39,17 +39,13 @@
 
         <!--
           Spektrum is the app's only UI/state framework, resolved at runtime
-          through this import map instead of being bundled by Vite — see
-          vite.config.ts's `build.rollupOptions.external`.
-
-          Every target uses the pinned, integrity-checked local copy. This
-          removes a runtime CDN dependency from the web build too. Packaged
-          targets rewrite the built JS imports to a relative file and remove
-          this import map, avoiding an import-map shim on Chromium 87.
-
-          spektrum-version.json pins the version + SHA-384; the import
-          target is the generated spektrum.runtime.js, not the vendored
-          spektrum.min.js — see public/vendor/README.md.
+          through this import map rather than bundled by Vite (vite.config.ts's
+          `build.rollupOptions.external`). Every target uses the pinned,
+          integrity-checked local copy, so the web build has no runtime CDN
+          dependency either; packaged targets rewrite the built imports to a
+          relative file and drop this map, avoiding a shim on Chromium 87.
+          spektrum-version.json pins version + SHA-384, and the target is the
+          generated spektrum.runtime.js — see public/vendor/README.md.
         -->
         <script type="importmap">{ "imports": { "spektrum": "./vendor/spektrum.runtime.js" } }</script>
         <!-- The classic script is intentionally copied verbatim. -->
@@ -125,16 +121,13 @@
             <p class="sr-only" role="status" aria-live="polite" data-testid="announcer">{{ ui.announcement }}</p>
             <nav class="rail" aria-label="Main">
                 <!-- Order is by how often a viewer reaches for each: what they
-                     saved, what is on now, then the two live lists, then the
-                     catalogs, then the things you visit to set something up.
-
-                     TV (route `live`) is the app's home and the destination
-                     every empty state points at, so alone among these it has
-                     no visibility toggle: switching every button off must
-                     never strand the user with nowhere to go. Its route id
-                     stays `live` on purpose — `#/live` is in bookmarks,
-                     handoff links and saved list state, and renaming a label
-                     is not a reason to break them. -->
+                     saved, what is on now, the two live lists, the catalogs,
+                     then what you visit to set something up. TV (route `live`)
+                     is the app's home and every empty state's destination, so
+                     alone among these it has no visibility toggle — switching
+                     every button off must never strand the user. Its route id
+                     stays `live`: `#/live` is in bookmarks, handoff links and
+                     saved list state, and a label is no reason to break them. -->
                 <button
                     type="button"
                     class="rail__btn"
@@ -1027,15 +1020,13 @@
                                         <span data-if="vod.detail.rating"> · ★ {{ vod.detail.rating }}</span>
                                     </p>
                                     <p class="catalog-detail__plot" data-if="vod.detail.plot">{{ vod.detail.plot }}</p>
-                                    <!-- While this movie is downloading, the panel's own
-                                         buttons go inert (:disabled binds the property, not
-                                         the attribute — Spektrum assigns el[name] for
-                                         dash-free names) and the Download button is replaced
-                                         by the progress row below. Play stays disabled too:
-                                         playing opens a second connection to the same
-                                         account, which is exactly what most panels'
-                                         concurrent-connection cap refuses — and refusing it
-                                         kills the download, not the playback. -->
+                                    <!-- While this movie is downloading the panel's buttons go
+                                         inert (:disabled binds the property, not the attribute
+                                         — Spektrum assigns el[name] for dash-free names) and
+                                         Download becomes the progress row below. Play is
+                                         disabled too: it would open a second connection to the
+                                         same account, which most panels' concurrency cap
+                                         refuses — killing the download, not the playback. -->
                                     <div class="catalog-detail__actions">
                                         <button
                                             type="button"
@@ -1111,15 +1102,13 @@
 
                             <!-- Series detail (Phase 21, Issue 2 follow-up): same overlay chrome
                                  as Movies, plus ONE flat data-each over series.detail.rows —
-                                 never seasons[].episodes[] nested two levels. Spektrum's
-                                 data-each clones an element's own *first element child*, so a
-                                 season block carrying data-each treats its nested episode list as
-                                 a static sibling that binds once and never again: the literal
-                                 "{{ }}" episode lines this replaced. buildSeriesDetailRows()
-                                 pre-flattens and pre-formats (durationMins rounded in state, not
-                                 via Math.round() in a template expression), so a single-level
-                                 data-each + data-if per row kind is enough — the pattern every
-                                 other list here uses. No season-tab selection exists in state. -->
+                                 never seasons[].episodes[] nested two levels. data-each clones
+                                 an element's own *first element child*, so a season block
+                                 carrying data-each treats its nested episode list as a static
+                                 sibling that binds once and never again (the literal "{{ }}"
+                                 lines this replaced). buildSeriesDetailRows() pre-flattens and
+                                 pre-formats, so one level plus a data-if per row kind is enough
+                                 — the pattern every other list here uses. -->
                             <div
                                 class="catalog-detail"
                                 data-if="view.series.active && series.detailId"
@@ -1427,16 +1416,14 @@
                                 data-fn="list/handleListKeydown"
                             >
                                 <div class="pad" :style="'height:' + list.padTop + 'px'"></div>
-                                <!-- `data-key` matters more here than anywhere else. Without
-                                     it Spektrum's `data-each` diffs by object identity over a
-                                     prefix scan, so any change that isn't a pure append/trim
-                                     rebuilds every clone. A virtual list's window changes every
-                                     scroll frame and list-publish.ts re-allocates enriched rows,
-                                     so the row DOM was torn down mid-scroll, collapsing this
-                                     container's height — the browser then clamps scrollTop and
-                                     fires another scroll at a different position: the "list
-                                     ping-pongs while scrolling" report. Keyed, clones are
-                                     reused and only re-bound. -->
+                                <!-- `data-key` matters more here than anywhere else. Without it
+                                     `data-each` diffs by object identity over a prefix scan, so
+                                     anything but a pure append/trim rebuilds every clone. A
+                                     virtual window changes each scroll frame and list-publish.ts
+                                     re-allocates enriched rows, so the row DOM was torn down
+                                     mid-scroll, collapsing this container's height — the browser
+                                     then clamps scrollTop and fires another scroll elsewhere:
+                                     the "list ping-pongs while scrolling" report. -->
                                 <div class="rows" data-ref="rowsContainer" data-each="list.visibleRows" data-key="item.id" data-action="click" data-fn="list/selectChannel">
                                     <div
                                         class="channel-row"
@@ -2279,14 +2266,11 @@
 
             <!-- Download queue. Outside <main> and fixed-position, because a
                  transfer outlives the view that started it: closing the movie
-                 detail, or navigating to Live, must not hide a download that
-                 is still running. Hidden entirely while empty — it is a
-                 status surface, not a permanent piece of chrome.
-
-                 One row per entry, driven by download.rows (the pre-shaped
-                 copy in downloads.selectors.ts) so each row's flags are plain
-                 `data-if="row.busy"` rather than expressions doing work in
-                 the template. -->
+                 detail, or leaving for Live, must not hide a running download.
+                 Hidden entirely while empty — a status surface, not chrome.
+                 One row per entry from download.rows (pre-shaped in
+                 downloads.selectors.ts), so each row's flags are plain
+                 `data-if="row.busy"` rather than work done in the template. -->
             <aside
                 class="download-queue"
                 data-if="download.queueVisible"
@@ -3515,6 +3499,7 @@
                         <div class="debug-panel__fact"><dt>{{ strings.debug.facts.radioCount }}</dt><dd>{{ debug.snapshot.radioCount }}</dd></div>
                         <div class="debug-panel__fact"><dt>{{ strings.debug.facts.storage }}</dt><dd>{{ debug.snapshot.storageTier }}</dd></div>
                         <div class="debug-panel__fact"><dt>{{ strings.debug.facts.platform }}</dt><dd>{{ debug.snapshot.platform }}</dd></div>
+                        <div class="debug-panel__fact"><dt>{{ strings.debug.facts.transcode }}</dt><dd>{{ debug.snapshot.transcode }}</dd></div>
                     </dl>
 
                     <h3 class="debug-panel__subtitle">

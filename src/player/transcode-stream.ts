@@ -1,4 +1,5 @@
 import type { AudioTranscodeControl } from '../core/platform/transcode-adapter';
+import { reportTranscodeDiagnostic } from '../state/player.actions';
 import { readInitSegmentCodecs } from './mp4-init';
 
 /**
@@ -30,6 +31,22 @@ export interface OpenStream {
 /** The `moov` sits at the very front; anything beyond this is not an init segment we can read. */
 const INIT_SCAN_LIMIT_BYTES = 512 * 1024;
 
+/** ffmpeg's stderr comes back in the 502 body; enough of it to name the cause, not so much that it fills a panel. */
+const FAILURE_BODY_CHARS = 400;
+
+/**
+ * Everything the debug panel is entitled to know about one attempt, in one
+ * line. The transcode server already produces all of it — a 502 whose body
+ * is `ffmpeg exited (1)\n<stderr tail>`, and an
+ * `x-thundertv-source-audio` header naming what the file actually carries —
+ * and until now the renderer read the status, returned `null`, and threw the
+ * rest away. That is why "the transcode failed" was the whole of every bug
+ * report, this one included.
+ */
+function reportFailure(detail: string): void {
+    reportTranscodeDiagnostic(`failed — ${detail}`);
+}
+
 /**
  * Resolves `null` for every kind of "no route": a refused request, a body
  * that never names its codecs, and an abort (routine — a second seek
@@ -45,11 +62,19 @@ export async function openTranscodeStream(
     let response: Response;
     try {
         response = await control.open(sourceUrl, startAt, signal);
-    } catch {
+    } catch (err) {
+        // An abort is routine (a second seek cancels the first) and says
+        // nothing worth keeping; anything else never reached the server.
+        if (!signal.aborted) reportFailure(`the transcode server could not be reached (${String(err)})`);
         return null;
     }
-    if (!response.ok || !response.body) return null;
+    if (!response.ok || !response.body) {
+        const body = await response.text().catch(() => '');
+        reportFailure(`HTTP ${String(response.status)} — ${body.trim().slice(-FAILURE_BODY_CHARS) || 'no detail'}`);
+        return null;
+    }
 
+    const sourceAudio = response.headers.get('x-thundertv-source-audio') ?? '';
     const durationHeader = Number(response.headers.get('x-thundertv-duration'));
     const reader = response.body.getReader();
     const head: Chunk[] = [];
@@ -63,6 +88,9 @@ export async function openTranscodeStream(
             scanned += value.byteLength;
             const codecs = readInitSegmentCodecs(concat(head, scanned));
             if (codecs) {
+                reportTranscodeDiagnostic(
+                    `opened — source audio ${sourceAudio || 'unknown'}, playing ${codecs.mime}`,
+                );
                 return {
                     reader,
                     head,
@@ -71,10 +99,12 @@ export async function openTranscodeStream(
                 };
             }
         }
-    } catch {
+    } catch (err) {
+        if (!signal.aborted) reportFailure(`the transcoded stream stopped while being read (${String(err)})`);
         return null;
     }
     await reader.cancel().catch(() => undefined);
+    reportFailure(`no codec this build can name in the first ${String(scanned)} bytes (source audio ${sourceAudio || 'unknown'})`);
     return null;
 }
 

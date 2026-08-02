@@ -4,7 +4,7 @@ import { getPlatform } from '../core/platform';
 import { effectiveProxyTemplate } from '../core/platform/electron-platform';
 import { streamKey } from '../health/stream-key';
 import { PLAYER_ACTIVE } from '../state/player';
-import { reportPlaybackNotice } from '../state/player.actions';
+import { appendTranscodeDiagnostic, reportPlaybackNotice, reportTranscodeDiagnostic } from '../state/player.actions';
 import { get } from '../state/typed';
 import { attachAndPlay, detach } from './engine';
 import { monitorPlaybackPosition } from './position';
@@ -71,6 +71,9 @@ export async function handleSilentAudio(video: HTMLVideoElement): Promise<void> 
     }
     attemptedFor = source;
 
+    // Whatever the previous film's attempt found is not evidence about this
+    // one, and a stale line in the debug panel is worse than an empty one.
+    reportTranscodeDiagnostic(null);
     const at = Number.isFinite(video.currentTime) ? Math.max(0, video.currentTime) : 0;
     const proxied = applyProxy(effectiveProxyTemplate(), source);
     reportPlaybackNotice(strings.list.playerTranscodingAudio);
@@ -109,6 +112,7 @@ export async function handleSilentAudio(video: HTMLVideoElement): Promise<void> 
  */
 function fallBackToDirect(video: HTMLVideoElement, proxiedUrl: string, detail: string): void {
     console.warn('[ThunderTV] audio transcode unavailable:', detail);
+    appendTranscodeDiagnostic(detail);
     reportPlaybackNotice(strings.list.playerNoAudioDecodedTranscodeFailed);
     void attachAndPlay(video, proxiedUrl, { live: false });
 }
