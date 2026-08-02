@@ -287,7 +287,8 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     [GUIDE_SELECTED_KEY]: {
         owner: 'epg',
         persisted: false,
-        description: 'Which programme block is selected in the Guide grid ("<channelId>|<start>"), or null — view-local UI state, reset every boot.',
+        description:
+            'Which programme block is selected in the Guide grid ("<channelId>|<start>"), or null — view-local UI state, reset every boot. Non-null is also what opens the programme detail modal, so closing it (button, backdrop, Escape, TV Back) is a write of null; there is deliberately no second "modal open" flag to drift out of sync with the selection.',
     },
     [GUIDE_LOADING]: {
         owner: 'epg',

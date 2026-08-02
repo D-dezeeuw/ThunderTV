@@ -1,5 +1,6 @@
 import { setValue } from 'spektrum';
 import { DEBUG_OPEN } from './debug';
+import { GUIDE_SELECTED_KEY } from './guide';
 import { PLAYER_TRACK_MENU, type TrackMenu } from './player-tracks';
 import { SEARCH_SWEEP_OPEN } from './search';
 import { closeSweep } from './search-sweep.actions';
@@ -57,6 +58,12 @@ export function closeTopmostOverlay(): boolean {
         // fields are uncontrolled, so nothing was written anywhere yet.
         setValue(UI_WIZARD_EDIT_SOURCE_ID, null);
         setValue(UI_WIZARD_OPEN, false);
+        return true;
+    }
+    // The Guide's programme detail modal — same family as the catalog detail
+    // panels below: an overlay over one view, unwound before the view itself.
+    if (get<string | null>(GUIDE_SELECTED_KEY)) {
+        setValue(GUIDE_SELECTED_KEY, null);
         return true;
     }
     // The catalog detail panels are overlays over the list, so they unwind

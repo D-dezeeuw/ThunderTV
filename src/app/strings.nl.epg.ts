@@ -32,7 +32,8 @@ export const nlEpg = {
     topLevel: {
         guide: {
             nowLabel: 'Nu',
-            detailEmpty: 'Selecteer een programma om de details hier te bekijken.',
+            noDescription: 'Geen beschrijving beschikbaar voor dit programma.',
+            watchChannel: 'Deze zender kijken',
             earlier: 'Eerder',
             later: 'Later',
             backToNow: 'Terug naar nu',

@@ -32,7 +32,8 @@ export const deEpg = {
     topLevel: {
         guide: {
             nowLabel: 'Jetzt',
-            detailEmpty: 'Wählen Sie eine Sendung, um hier deren Details zu sehen.',
+            noDescription: 'Keine Beschreibung für diese Sendung verfügbar.',
+            watchChannel: 'Diesen Sender ansehen',
             earlier: 'Früher',
             later: 'Später',
             backToNow: 'Zurück zu jetzt',

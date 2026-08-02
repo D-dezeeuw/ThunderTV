@@ -50,7 +50,8 @@ export const enEpg = {
     topLevel: {
         guide: {
             nowLabel: 'Now',
-            detailEmpty: 'Select a programme to see its details here.',
+            noDescription: 'No description available for this programme.',
+            watchChannel: 'Watch this channel',
             earlier: 'Earlier',
             later: 'Later',
             backToNow: 'Back to now',

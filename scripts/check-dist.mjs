@@ -103,9 +103,18 @@ console.log(`check-dist: OK — no devtools symbols found in ${jsFiles.length} b
 // 17.8 KiB while transfer moved the wrong way by 0.8. If this needs to come
 // back down, the honest target is the eager Codex/handoff action modules,
 // which are registered at boot for UI nobody reaches before Settings.
+//
+// 101 → 102 for the Guide's programme-detail modal: ~0.55 KiB gzip, of which
+// a third is the generated CSP expression registry growing by its dozen
+// bindings (public/vendor/spektrum-precompiled.js — every template expression
+// in index.html has an entry). Nothing here is lazy-loadable: the Guide's
+// selectors and actions are registered at boot like every other view's, and
+// the modal is markup in the one index.html. Eager *raw* — the metric that
+// models TV parse work — went 352.5 → 354.6 KiB, still 45 KiB inside its own
+// budget. The Codex/handoff note above is still the honest way back down.
 const BUDGETS = {
     startupJsRaw: 400 * 1024,
-    startupJsGzip: 101 * 1024,
+    startupJsGzip: 102 * 1024,
     htmlRaw: 300 * 1024,
     htmlGzip: 60 * 1024,
     cssRaw: 100 * 1024,

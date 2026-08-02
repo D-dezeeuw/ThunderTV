@@ -4,6 +4,7 @@ import {
     computeProgramLayout,
     floorToHalfHour,
     formatClockTime,
+    formatDuration,
     formatTimeRange,
     isProgramNow,
     percentInRange,
@@ -109,6 +110,26 @@ describe('state/guide-time', () => {
             const after = Date.UTC(2025, 9, 26, 2, 30, 0);
             expect(formatClockTime(before, 'en-GB')).toMatch(/^\d{2}:\d{2}$/);
             expect(formatClockTime(after, 'en-GB')).toMatch(/^\d{2}:\d{2}$/);
+        });
+    });
+
+    describe('formatDuration', () => {
+        const start = Date.UTC(2026, 0, 15, 20, 0, 0);
+        const after = (minutes: number): number => start + minutes * 60_000;
+
+        it('drops the hours part under an hour and the minutes part on a whole one', () => {
+            expect(formatDuration(start, after(45), 'en-GB')).toBe('45 mins');
+            expect(formatDuration(start, after(120), 'en-GB')).toBe('2 hrs');
+            expect(formatDuration(start, after(90), 'en-GB')).toBe('1 hr 30 mins');
+        });
+
+        it('is empty for a non-positive span rather than claiming "0 min"', () => {
+            expect(formatDuration(start, start, 'en-GB')).toBe('');
+            expect(formatDuration(start, after(-30), 'en-GB')).toBe('');
+        });
+
+        it('abbreviates in the app locale, not the runtime one', () => {
+            expect(formatDuration(start, after(90), 'nl-NL')).toBe('1 uur 30 min');
         });
     });
 });

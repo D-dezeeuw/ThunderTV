@@ -37,20 +37,15 @@
         <link rel="stylesheet" href="/src/styles/guide.css" />
         <link rel="stylesheet" href="/src/styles/catalog.css" />
 
-        <!--
-          Spektrum is the app's only UI/state framework, resolved at runtime
-          through this import map instead of being bundled by Vite — see
-          vite.config.ts's `build.rollupOptions.external`.
-
-          Every target uses the pinned, integrity-checked local copy. This
-          removes a runtime CDN dependency from the web build too. Packaged
-          targets rewrite the built JS imports to a relative file and remove
-          this import map, avoiding an import-map shim on Chromium 87.
-
-          spektrum-version.json pins the version + SHA-384; the import
-          target is the generated spektrum.runtime.js, not the vendored
-          spektrum.min.js — see public/vendor/README.md.
-        -->
+        <!-- Spektrum, the app's only UI/state framework, resolved at runtime
+          through this import map rather than bundled (vite.config.ts's
+          `build.rollupOptions.external`). Every target uses the pinned,
+          integrity-checked local copy — no runtime CDN, not even on web.
+          Packaged targets rewrite the built imports to a relative file and drop
+          this map, avoiding an import-map shim on Chromium 87.
+          spektrum-version.json pins version + SHA-384; the target is the
+          generated spektrum.runtime.js, not the vendored spektrum.min.js —
+          see public/vendor/README.md. -->
         <script type="importmap">{ "imports": { "spektrum": "./vendor/spektrum.runtime.js" } }</script>
         <!-- The classic script is intentionally copied verbatim. -->
         <script vite-ignore src="./vendor/spektrum-precompiled.js"></script>
@@ -125,16 +120,13 @@
             <p class="sr-only" role="status" aria-live="polite" data-testid="announcer">{{ ui.announcement }}</p>
             <nav class="rail" aria-label="Main">
                 <!-- Order is by how often a viewer reaches for each: what they
-                     saved, what is on now, then the two live lists, then the
-                     catalogs, then the things you visit to set something up.
-
-                     TV (route `live`) is the app's home and the destination
-                     every empty state points at, so alone among these it has
-                     no visibility toggle: switching every button off must
-                     never strand the user with nowhere to go. Its route id
-                     stays `live` on purpose — `#/live` is in bookmarks,
-                     handoff links and saved list state, and renaming a label
-                     is not a reason to break them. -->
+                     saved, what is on now, the two live lists, the catalogs,
+                     then the set-something-up destinations. TV (route `live`)
+                     is home and every empty state's destination, so alone here
+                     it has no visibility toggle — switching every button off
+                     must never strand the user. Its route id stays `live`:
+                     `#/live` is in bookmarks, handoff links and saved list
+                     state, and a relabel is no reason to break them. -->
                 <button
                     type="button"
                     class="rail__btn"
@@ -1027,15 +1019,13 @@
                                         <span data-if="vod.detail.rating"> · ★ {{ vod.detail.rating }}</span>
                                     </p>
                                     <p class="catalog-detail__plot" data-if="vod.detail.plot">{{ vod.detail.plot }}</p>
-                                    <!-- While this movie is downloading, the panel's own
-                                         buttons go inert (:disabled binds the property, not
-                                         the attribute — Spektrum assigns el[name] for
-                                         dash-free names) and the Download button is replaced
-                                         by the progress row below. Play stays disabled too:
-                                         playing opens a second connection to the same
-                                         account, which is exactly what most panels'
-                                         concurrent-connection cap refuses — and refusing it
-                                         kills the download, not the playback. -->
+                                    <!-- While this movie downloads the panel's buttons go inert
+                                         (:disabled binds the property, not the attribute —
+                                         Spektrum assigns el[name] for dash-free names) and
+                                         Download becomes the progress row below. Play too: a
+                                         second connection to the same account is what most
+                                         panels' concurrency cap refuses, and it kills the
+                                         download, not the playback. -->
                                     <div class="catalog-detail__actions">
                                         <button
                                             type="button"
@@ -1109,17 +1099,13 @@
                                 </div>
                             </div>
 
-                            <!-- Series detail (Phase 21, Issue 2 follow-up): same overlay chrome
-                                 as Movies, plus ONE flat data-each over series.detail.rows —
-                                 never seasons[].episodes[] nested two levels. Spektrum's
-                                 data-each clones an element's own *first element child*, so a
-                                 season block carrying data-each treats its nested episode list as
-                                 a static sibling that binds once and never again: the literal
-                                 "{{ }}" episode lines this replaced. buildSeriesDetailRows()
-                                 pre-flattens and pre-formats (durationMins rounded in state, not
-                                 via Math.round() in a template expression), so a single-level
-                                 data-each + data-if per row kind is enough — the pattern every
-                                 other list here uses. No season-tab selection exists in state. -->
+                            <!-- Series detail (Phase 21): Movies' overlay chrome plus ONE flat
+                                 data-each over series.detail.rows — never seasons[].episodes[]
+                                 nested. data-each clones an element's *first element child*, so a
+                                 season block's nested episode list binds once and never again
+                                 (the literal "{{ }}" lines this replaced). buildSeriesDetailRows()
+                                 pre-flattens and pre-formats, so single-level data-each + data-if
+                                 per row kind is enough. -->
                             <div
                                 class="catalog-detail"
                                 data-if="view.series.active && series.detailId"
@@ -1183,13 +1169,12 @@
                                         {{ strings.series.noEpisodes }}
                                     </p>
                                     <!-- data-each binds `download.episodeRows`, not
-                                         `series.detail.rows`: a flat row cannot look itself up
-                                         in `downloads.items`, so the join happens in a selector
-                                         first (downloads.selectors.ts); the rows are otherwise
-                                         verbatim. It is also a PLAIN PATH on purpose — this was
-                                         `series.detail?.rows || []`, and data-each does not
-                                         evaluate an expression there, so it silently rendered
-                                         zero rows. Keep any fallback in the selector. -->
+                                         `series.detail.rows`: a flat row cannot look itself up in
+                                         `downloads.items`, so the join happens in a selector first
+                                         (downloads.selectors.ts). A PLAIN PATH on purpose — this
+                                         was `series.detail?.rows || []`, and data-each evaluates
+                                         no expression there, so it rendered zero rows silently.
+                                         Keep any fallback in the selector. -->
                                     <div
                                         class="catalog-seasons"
                                         data-if="series.detailStatus === 'ready' && series.detail.rows.length > 0"
@@ -1294,14 +1279,13 @@
                                 data-testid="movies-categories-wrap"
                             >
                                 <div class="groups-panel__list" data-each="vod.categories" data-testid="movies-categories">
-                                    <!-- One row per *service*, not per provider category:
-                                         a panel ships NETFLIX a dozen times over, once per
-                                         country and once per editorial slice, and stripping
-                                         the `| NL |` tags leaves several rows reading the
-                                         same word. The triangle expands the rest in place
-                                         (src/state/catalog-category-tree.ts). The wrapper is
-                                         role="presentation" so the listbox still sees the
-                                         option buttons as its own children. -->
+                                    <!-- One row per *service*, not per provider category: a
+                                         panel ships NETFLIX a dozen times, once per country and
+                                         per editorial slice, so stripping `| NL |` tags leaves
+                                         rows reading the same word. The triangle expands the
+                                         rest in place (state/catalog-category-tree.ts). The
+                                         wrapper is role="presentation" so the listbox still
+                                         sees the option buttons as its children. -->
                                     <div class="groups-panel__row" role="presentation">
                                         <button
                                             type="button"
@@ -1427,16 +1411,12 @@
                                 data-fn="list/handleListKeydown"
                             >
                                 <div class="pad" :style="'height:' + list.padTop + 'px'"></div>
-                                <!-- `data-key` matters more here than anywhere else. Without
-                                     it Spektrum's `data-each` diffs by object identity over a
-                                     prefix scan, so any change that isn't a pure append/trim
-                                     rebuilds every clone. A virtual list's window changes every
-                                     scroll frame and list-publish.ts re-allocates enriched rows,
-                                     so the row DOM was torn down mid-scroll, collapsing this
-                                     container's height — the browser then clamps scrollTop and
-                                     fires another scroll at a different position: the "list
-                                     ping-pongs while scrolling" report. Keyed, clones are
-                                     reused and only re-bound. -->
+                                <!-- `data-key` matters more here than anywhere else. Without it
+                                     `data-each` diffs by object identity, so anything but a pure
+                                     append/trim rebuilds every clone: row DOM torn down mid-scroll
+                                     collapses this container's height, the browser clamps
+                                     scrollTop and fires another scroll elsewhere — the "list
+                                     ping-pongs while scrolling" report. -->
                                 <div class="rows" data-ref="rowsContainer" data-each="list.visibleRows" data-key="item.id" data-action="click" data-fn="list/selectChannel">
                                     <div
                                         class="channel-row"
@@ -1488,14 +1468,12 @@
                                         </span>
                                         <!-- Movies/Series catalog rows (Phase 21): `.rows`' own
                                              data-fn="list/selectChannel" always plays the row's
-                                             `url` — right for a live channel, wrong for a movie
-                                             (open detail, don't autoplay) and broken for a series
-                                             (its `url` is ''). `ChannelRow` has no `kind` to branch
-                                             on and `data-fn` cannot vary per row in a shared
-                                             data-each (Spektrum binds it once per clone), so these
-                                             two full-row overlays key off the `vod:`/`series:` id
-                                             prefix and `.stop` before the container's generic
-                                             handler sees the click. Absent for a real channel row. -->
+                                             `url` — right for a channel, wrong for a movie (open
+                                             detail), broken for a series (`url` is ''). No `kind`
+                                             to branch on, and `data-fn` cannot vary per row in a
+                                             shared data-each, so these full-row overlays key off
+                                             the `vod:`/`series:` id prefix and `.stop` ahead of
+                                             the container's handler. -->
                                         <div
                                             class="channel-row__catalog-trigger"
                                             data-if="item.id.indexOf('vod:') === 0"
@@ -1520,15 +1498,13 @@
                             </div>
 
                             <!-- Right column: the preview. One <video> for every view
-                                 (src/player/bindings.ts is its sole attach point, and the
-                                 visualizer's Web Audio source); audio-only presentations keep it
-                                 mounted but minimal (player.css's .list-shell--split). Categories
-                                 makes the column count three; Movies/TV Shows play through the
-                                 same setActiveChannel, so they get the pane too — without it Play
-                                 gave audio inside a `display: none` pane. One rule everywhere: no
-                                 pane unless something plays, which is what playerPaneVisible
-                                 (state/player.selectors.ts) answers that persisted player.active
-                                 cannot. -->
+                                 (player/bindings.ts is its sole attach point and the visualizer's
+                                 Web Audio source); audio-only keeps it mounted but minimal
+                                 (.list-shell--split). Movies/TV Shows play through the same
+                                 setActiveChannel, so they get the pane too — without it Play gave
+                                 audio inside a `display: none` pane. One rule: no pane unless
+                                 something plays, which playerPaneVisible answers and persisted
+                                 player.active cannot. -->
                             <div
                                 class="now-playing"
                                 data-if="playerPaneVisible"
@@ -1595,14 +1571,13 @@
                                             <span class="signal__bar signal__bar--3"></span>
                                         </span>
 
-                                        <!-- Audio/subtitle track menus. Each opens as a centered,
-                                             keyboard-navigable modal dialog (`.track-menu` below); the
-                                             old anchored popup could clip off the viewport's left edge.
-                                             Movies/Series only — a live channel or station has no
-                                             per-title track list. Rendered whatever the track count: an
-                                             empty list opens the dialog and explains itself
-                                             (.track-menu__empty) rather than hiding the button, so the
-                                             feature never looks broken instead of merely absent. -->
+                                        <!-- Audio/subtitle track menus, each a centered, keyboard-
+                                             navigable modal dialog (`.track-menu` below) — the old
+                                             anchored popup clipped off the viewport's left edge.
+                                             Movies/Series only; a live channel has no per-title track
+                                             list. Rendered whatever the count: an empty list opens and
+                                             explains itself (.track-menu__empty) rather than hiding the
+                                             button, so the feature never looks broken. -->
                                         <div class="track-menu-anchor" data-if="view.movies.active || view.series.active">
                                             <button
                                                 type="button"
@@ -1725,10 +1700,10 @@
                                                     </div>
                                                     <!-- Always offered, not just when the list is empty: a movie's own
                                                          subtitles live inside its container and no browser exposes them
-                                                         (src/player/external-subs.ts), so a file from disk — or the free,
-                                                         keyless online search beside it (src/core/subtitles/) — is the only
-                                                         subtitle route Movies/TV Shows ever has. The search is one press,
-                                                         never automatic, and every one of its outcomes is a message here. -->
+                                                         (player/external-subs.ts), so a file from disk — or the free,
+                                                         keyless online search beside it (core/subtitles/) — is the only
+                                                         subtitle route Movies/TV Shows has. One press, never automatic,
+                                                         and every outcome of it is a message here. -->
                                                     <button type="button" class="track-menu__item track-menu__item--action" data-action="click" data-fn="player/loadSubtitleFile" data-testid="subtitle-load-file">
                                                         <span class="track-menu__label">{{ strings.list.subtitlesLoadFile }}</span>
                                                     </button>
@@ -1753,13 +1728,11 @@
                                              all three — the buttons no longer repeat data-if. -->
                                         <div class="player-shell__group" data-if="visualizerActive" data-testid="visualizer-controls">
                                             <!-- Radio's preset picker. NOT a native <select>: on webOS
-                                                 that dropdown lives outside the page, so injected remote
-                                                 keys never reach it — it opens, cannot be navigated or
-                                                 dismissed, and every OK re-triggers it (the endless
-                                                 self-reactivating dropdown). Same track-menu pattern as
-                                                 the popups above: ordinary focusable DOM spatial nav,
-                                                 Enter/OK and Back already understand, one `data-each`
-                                                 over `visualizerPresetOptions`. -->
+                                                 that dropdown lives outside the page, so remote keys
+                                                 never reach it — it opens, cannot be navigated or
+                                                 dismissed, and every OK re-triggers it. Same track-menu
+                                                 pattern as above: focusable DOM spatial nav, Enter/OK
+                                                 and Back already understand, one `data-each`. -->
                                             <div class="track-menu-anchor">
                                                 <button
                                                     type="button"
@@ -1910,15 +1883,14 @@
                                             {{ strings.handoff.dismiss }}
                                         </button>
                                     </div>
-                                    <!-- Variant switcher for the channel being watched, here rather
-                                         than per list row: the window republishes every scroll frame,
-                                         so a nested data-each would rebuild these continuously across
-                                         90k channels, and alternate feeds only matter for what plays.
-                                         Icons, not text tabs — "FHD · NEDERLAND ULTRA" overran and
-                                         clipped. Picture tier is lit bars (4 = UHD … 1 = SD), catch-up
-                                         its own glyph, the full label the accessible name, spelled out
-                                         beside the strip and repeated as an instant `data-tip` (the
-                                         native `title` never shows on touch/TV). -->
+                                    <!-- Variant switcher for what's being watched, not per list row:
+                                         the window republishes every scroll frame, so a nested
+                                         data-each would rebuild these across 90k rows, and alternate
+                                         feeds only matter for what plays. Icons, not text tabs ("FHD ·
+                                         NEDERLAND ULTRA" clipped): lit bars for picture tier (4 = UHD
+                                         … 1 = SD), a glyph for catch-up, the full label as accessible
+                                         name and as an instant `data-tip` (native `title` never shows
+                                         on TV). -->
                                     <div
                                         class="variants"
                                         data-if="hasVariants"
@@ -2124,14 +2096,12 @@
                 >
                     <h1 class="view__heading">{{ strings.views.guide.heading }}</h1>
 
-                    <!-- Two distinct empty states, deliberately. "Nothing yet"
-                         and "the upstream feed stopped being updated on <date>"
-                         look identical on screen but need completely different
-                         responses from the viewer, and the generic message made
+                    <!-- Two distinct empty states, deliberately: "nothing yet" and
+                         "the upstream feed stopped updating on <date>" look alike
+                         but need different responses, and the generic message made
                          a dead feed read as an app bug. `staleThroughLabel` is
-                         non-empty only when the newest programme the feed
-                         carries is already in the past — see
-                         state/epg-settings.ts's EPG_FEED_THROUGH. -->
+                         non-empty only once the feed's newest programme is past —
+                         see state/epg-settings.ts's EPG_FEED_THROUGH. -->
                     <div class="empty-state" data-if="!guide.view.hasData" data-testid="guide-empty">
                         <svg class="icon icon--empty" aria-hidden="true">
                             <use href="#icon-guide"></use>
@@ -2204,13 +2174,12 @@
                             ></div>
 
                             <!-- Channel rows and program blocks are two SIBLING flat
-                                 `data-each` lists, never nested: Spektrum's `data-each`
-                                 does not reliably (re)bind inside another's per-item
-                                 template (the reason `series.detail.rows` flattens too —
-                                 state/README.md's "Two Spektrum gotchas"). Both are placed
-                                 on `.guide__rows`' grid by an explicit `grid-row` (rows via
-                                 loop `index`, blocks via `program.channelIndex`), so the
-                                 2-column layout survives the un-nesting. -->
+                                 `data-each` lists, never nested: `data-each` does not
+                                 reliably (re)bind inside another's per-item template (why
+                                 `series.detail.rows` flattens too — state/README.md's "Two
+                                 Spektrum gotchas"). Both are placed on `.guide__rows`' grid
+                                 by an explicit `grid-row` (loop `index`, and
+                                 `program.channelIndex`), so the 2-column layout survives. -->
                             <div class="guide__row-list" data-each="guide.view.channels" data-testid="guide-row-list">
                                 <button
                                     type="button"
@@ -2235,6 +2204,10 @@
                                 </button>
                             </div>
 
+                            <!-- A block opens the programme modal (below, outside this
+                                 view); the channel cell above plays. Blocks used to
+                                 change channel too, which made reading the guide
+                                 impossible without interrupting playback. -->
                             <div class="guide__program-list" data-each="guide.view.programs" data-as="program" data-testid="guide-program-list">
                                 <button
                                     type="button"
@@ -2242,7 +2215,6 @@
                                     :class="{ 'guide__program--now': program.isNow, 'guide__program--selected': program.isSelected }"
                                     :style="'grid-row:' + (program.channelIndex + 1) + '; margin-left:' + program.leftPercent + '%; width:' + program.widthPercent + '%'"
                                     :data-program-key="program.key"
-                                    :data-epg-id="program.channelId"
                                     :title="program.title"
                                     data-action="click"
                                     data-fn="guide/openProgram"
@@ -2250,15 +2222,6 @@
                                 >
                                     <span class="guide__program-title truncate">{{ program.title }}</span>
                                 </button>
-                            </div>
-                        </div>
-
-                        <div class="guide__detail" data-testid="guide-detail">
-                            <p class="guide__detail-empty" data-if="!guide.view.selected">{{ strings.guide.detailEmpty }}</p>
-                            <div class="guide__detail-body" data-if="guide.view.selected">
-                                <h2 class="guide__detail-title">{{ guide.view.selected.title }}</h2>
-                                <p class="guide__detail-time">{{ guide.view.selected.channelName }} · {{ guide.view.selected.timeLabel }}</p>
-                                <p class="guide__detail-description">{{ guide.view.selected.description }}</p>
                             </div>
                         </div>
                     </div>
@@ -3261,14 +3224,44 @@
                 </div>
             </aside>
 
-            <!-- "Search all" warning + progress (state/catalog-sweep.ts). Only
-                 opens when at least one provider's catalogue cache is cold or
-                 stale — a warm one needs no fetching, so search-all just turns
-                 on. Start is the consent; Cancel aborts mid-request and keeps
-                 whatever already landed. Closing (button, Escape, backdrop, TV
-                 Back) cancels too, so a sweep never runs with nothing on screen
-                 saying so. Reuses the wizard's modal chrome verbatim: no new CSS,
-                 and the same D-pad/Back behaviour every other overlay has. -->
+            <!-- Guide programme detail. Button, backdrop, Escape and TV Back
+                 (back-navigation.ts) all close it, each a single write of
+                 `guide.selectedKey` — what `guide.view.selected` derives from, so
+                 no second "is it open" flag can drift. Watching is the modal's own
+                 action, not the block's. Wizard chrome reused, no new overlay CSS.
+                 Attribute bindings use `?.`, and the bar's `|| 0`, because they
+                 evaluate while `data-if` keeps the dialog hidden and `selected`
+                 null — and `<progress>.value = undefined` is a TypeError, not a
+                 no-op. The bar shows only while the programme airs; a missing
+                 synopsis says so rather than leaving a blank that reads as a
+                 stuck load. -->
+            <aside class="wizard-modal" data-if="guide.view.selected" data-ref="guideProgramModal" tabindex="-1" role="dialog" aria-modal="true" :aria-label="guide.view.selected?.title" data-action="keydown.esc" data-fn="guide/closeProgram" data-testid="guide-program-modal">
+                <div class="wizard-modal__backdrop" data-action="click" data-fn="guide/closeProgram"></div>
+                <div class="wizard-modal__body">
+                    <div class="guide-modal__head">
+                        <img data-if="guide.view.selected.channelIcon" class="guide-modal__logo" :src="guide.view.selected?.channelIcon || blankImage" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="" />
+                        <p class="guide-modal__channel truncate" data-testid="guide-modal-channel">{{ guide.view.selected.channelName }}</p>
+                    </div>
+                    <h2 class="wizard-modal__title" data-testid="guide-modal-title">{{ guide.view.selected.title }}</h2>
+                    <p class="guide-modal__meta">
+                        <span class="guide-modal__badge" data-if="guide.view.selected.isNow">{{ strings.guide.nowLabel }}</span>
+                        <span>{{ guide.view.selected.metaLabel }}</span>
+                    </p>
+                    <progress class="guide-modal__progress" data-if="guide.view.selected.progressPercent >= 0" max="100" :value="guide.view.selected?.progressPercent || 0" :aria-label="strings.guide.nowLabel"></progress>
+                    <p class="guide-modal__description" data-if="guide.view.selected.description">{{ guide.view.selected.description }}</p>
+                    <p class="guide-modal__description guide-modal__description--empty" data-if="!guide.view.selected.description">{{ strings.guide.noDescription }}</p>
+                    <div class="wizard-modal__actions">
+                        <button type="button" class="btn btn--primary" data-action="click" data-fn="guide/playSelectedChannel" :data-epg-id="guide.view.selected?.channelId" data-testid="guide-modal-watch-btn">{{ strings.guide.watchChannel }}</button>
+                        <button type="button" class="btn" data-action="click" data-fn="guide/closeProgram" data-testid="guide-modal-close-btn">{{ strings.catalog.close }}</button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- "Search all" warning + progress (state/catalog-sweep.ts). Opens
+                 only when a provider's catalogue cache is cold or stale — a warm
+                 one just turns search-all on. Start is the consent; Cancel aborts
+                 mid-request and keeps what landed. Closing cancels too, so a sweep
+                 never runs unannounced. Wizard chrome verbatim: no new CSS. -->
             <aside class="wizard-modal" data-if="search.sweepOpen" data-ref="sweepModal" tabindex="-1" role="dialog" aria-modal="true" :aria-label="strings.search.sweepTitle" data-action="keydown.esc" data-fn="search/closeSweep">
                 <div class="wizard-modal__backdrop" data-action="click" data-fn="search/closeSweep"></div>
                 <div class="wizard-modal__body">
@@ -3287,18 +3280,16 @@
                 </div>
             </aside>
 
-            <!-- First-run setup wizard: opened by state/wizard.ts's
-                 shouldOpenWizard() when boot finds zero sources on an install that
-                 never completed setup. Saving, skipping, or booting with a source
-                 configured writes the persisted ui.setupComplete, so a known
-                 configuration never sees it again; Settings → Streaming reopens it.
-                 Every field reuses an existing action: step 1 is
-                 settings/setLocale + setLiveCountry, step 2 is Settings →
-                 Streaming's own Xtream fields and saveXtreamAccount().
-                 ui.wizardEditSourceId turns step 2 into an editor for one
-                 configured source (state/source-edit.ts): re-labelled copy, no
-                 step-1 detour, Save routed down the re-import path. Closes
-                 unsaved on Escape, backdrop click, and TV Back. -->
+            <!-- First-run setup wizard: state/wizard.ts's shouldOpenWizard()
+                 opens it when boot finds zero sources on an install that never
+                 completed setup. Saving, skipping, or booting configured writes
+                 the persisted ui.setupComplete, so a known configuration never
+                 sees it again; Settings → Streaming reopens it. Every field
+                 reuses an existing action: step 1 settings/setLocale +
+                 setLiveCountry, step 2 Settings → Streaming's Xtream fields and
+                 saveXtreamAccount(). ui.wizardEditSourceId turns step 2 into an
+                 editor for one source (state/source-edit.ts): re-labelled, no
+                 step-1 detour, Save down the re-import path. -->
             <aside
                 class="wizard-modal"
                 data-if="ui.wizardOpen"

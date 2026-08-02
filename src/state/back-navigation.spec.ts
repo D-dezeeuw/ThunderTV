@@ -2,6 +2,7 @@ import { setValue, tick } from 'spektrum';
 import { afterEach, describe, expect, it } from 'vitest';
 import { closeTopmostOverlay } from './back-navigation';
 import { DEBUG_OPEN } from './debug';
+import { GUIDE_SELECTED_KEY } from './guide';
 import { PLAYER_TRACK_MENU, type TrackMenu } from './player-tracks';
 import { SERIES_DETAIL_ID } from './series';
 import { get } from './typed';
@@ -22,6 +23,7 @@ afterEach(() => {
     setValue(UI_WIZARD_OPEN, false);
     setValue(VOD_DETAIL_ID, null);
     setValue(SERIES_DETAIL_ID, null);
+    setValue(GUIDE_SELECTED_KEY, null);
     tick();
 });
 
@@ -46,6 +48,14 @@ describe('closeTopmostOverlay', () => {
         tick();
         expect(get<TrackMenu>(PLAYER_TRACK_MENU)).toBe('none');
         expect(get<boolean>(DEBUG_OPEN)).toBe(true);
+    });
+
+    it("closes the Guide's programme modal — a remote has no Escape, so Back is the only way out of it", () => {
+        setValue(GUIDE_SELECTED_KEY, 'NPO 1.nl|123');
+        tick();
+        expect(closeTopmostOverlay()).toBe(true);
+        tick();
+        expect(get<string | null>(GUIDE_SELECTED_KEY)).toBeNull();
     });
 
     it('falls through to the debug panel once the track menu is closed', () => {
