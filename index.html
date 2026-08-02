@@ -1489,26 +1489,17 @@
                                             data-testid="channel-row-dead"
                                             >!</span
                                         >
-                                        <!-- Feature 08.3.4's reserved column, filled by Phase 32.
-                                             `data-if` only toggles display, so every binding inside
-                                             still evaluates on an unmatched row — each one therefore
-                                             reads a field that is safely absent (renders empty)
-                                             rather than an optional-chained path
+                                        <!-- Feature 08.3.4's reserved column, filled by Phase 32:
+                                             what is on *now* and how far through it is. `data-if`
+                                             only toggles display, so every binding inside still
+                                             evaluates on an unmatched row — each one therefore
+                                             reads a field the publisher always sets (null/0 ->
+                                             renders empty) rather than an optional-chained path
                                              (state/README.md's "two Spektrum gotchas"). -->
                                         <span class="channel-row__epg" data-if="item.epgNowTitle">
                                             <span class="channel-row__epg-now truncate">{{ item.epgNowTitle }}</span>
-                                            <span
-                                                class="channel-row__epg-bar"
-                                                aria-hidden="true"
-                                                data-testid="channel-row-epg-bar"
-                                            >
-                                                <span
-                                                    class="channel-row__epg-fill"
-                                                    :style="'width:' + item.epgProgress + '%'"
-                                                ></span>
-                                            </span>
-                                            <span class="channel-row__epg-next truncate" data-if="item.epgNextTitle">
-                                                {{ strings.list.epgNextPrefix }} {{ item.epgNextTitle }}
+                                            <span class="channel-row__epg-bar" aria-hidden="true" data-testid="channel-row-epg-bar">
+                                                <span class="channel-row__epg-fill" :style="'width:' + item.epgProgress + '%'"></span>
                                             </span>
                                         </span>
                                         <!-- Movies/Series catalog rows (Phase 21): `.rows`' own

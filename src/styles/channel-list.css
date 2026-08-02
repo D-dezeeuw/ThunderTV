@@ -428,10 +428,10 @@
     font-size: var(--text-sm);
 }
 
-/* Feature 08.3.4's reserved column, filled by Phase 32: what's on now, how
-   far through it is, and what follows. Fixed width by design — the row's
-   name column must not reflow as programmes change under it every 30s tick,
-   which a content-sized column would cause on every beat. */
+/* Feature 08.3.4's reserved column, filled by Phase 32: what's on now and
+   how far through it is. Fixed width by design — the row's name column must
+   not reflow as programmes change under it every 30s tick, which a
+   content-sized column would cause on every beat. */
 .channel-row__epg {
     flex: none;
     width: 11rem;
@@ -445,11 +445,6 @@
 .channel-row__epg-now {
     font-size: var(--text-xs);
     color: var(--color-text);
-}
-
-.channel-row__epg-next {
-    font-size: var(--text-xs);
-    color: var(--color-text-dim);
 }
 
 /* No transition on the fill (repo-wide no-animation policy): the bar steps

@@ -69,7 +69,6 @@ export function publishListWindow(visibleRows: readonly ChannelRow[], padTop: nu
             cached.base === row &&
             cached.out.logo === logo &&
             cached.out.epgNowTitle === epg?.nowTitle &&
-            cached.out.epgNextTitle === epg?.nextTitle &&
             cached.out.epgProgress === epg?.progress &&
             (cached.out.unhealthy ?? false) === unhealthy
         ) {
@@ -79,9 +78,7 @@ export function publishListWindow(visibleRows: readonly ChannelRow[], padTop: nu
         return {
             ...row,
             logo,
-            ...(epg
-                ? { epgNowTitle: epg.nowTitle, epgNextTitle: epg.nextTitle, epgProgress: epg.progress }
-                : {}),
+            ...(epg ? { epgNowTitle: epg.nowTitle, epgProgress: epg.progress } : {}),
             ...(unhealthy ? { unhealthy: true } : {}),
         };
     });

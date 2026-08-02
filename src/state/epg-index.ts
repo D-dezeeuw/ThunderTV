@@ -56,9 +56,8 @@ export function epgChannelIdForRow(row: { tvgId?: string | null; epgId?: string 
 }
 
 export interface RowEpgSnapshot {
-    nowTitle: string | null;
-    nextTitle: string | null;
-    /** 0–100 through the current programme; 0 when nothing is airing. */
+    nowTitle: string;
+    /** 0–100 through the current programme. */
     progress: number;
 }
 
@@ -67,6 +66,12 @@ export interface RowEpgSnapshot {
  * resolved for the row, so a channel neither pipeline filed programmes for
  * simply has no id to look up and gets `null` here, rather than a wrong
  * guess.
+ *
+ * Now-playing only: a channel row used to carry the *next* programme too,
+ * which made every row three lines of competing text. `nowNext()` still
+ * computes both — the Guide reads `next` — but a list row that has nothing
+ * on air right now (a gap between programmes) is a row with nothing to say,
+ * so it gets `null` rather than a line about something an hour away.
  */
 export function rowEpgSnapshot(channelId: string | null | undefined, nowMs: number): RowEpgSnapshot | null {
     if (!channelId) return null;
@@ -74,11 +79,10 @@ export function rowEpgSnapshot(channelId: string | null | undefined, nowMs: numb
     if (!programs || programs.length === 0) return null;
 
     const found: NowNext<EpgProgramRecord> = nowNext(programs, nowMs);
-    if (!found.now && !found.next) return null;
+    if (!found.now) return null;
 
     return {
-        nowTitle: found.now?.title ?? null,
-        nextTitle: found.next?.title ?? null,
+        nowTitle: found.now.title,
         // Rounded to a whole percent, which is the most the progress bar can
         // possibly render (`index.html` binds it straight to a `width: %`).
         // The raw value is a float off `Date.now()`, so it changed on every
@@ -86,6 +90,6 @@ export function rowEpgSnapshot(channelId: string | null | undefined, nowMs: numb
         // re-derive, the published array churn identities, and the keyless
         // `data-each` rebuild every row. Invisible precision was driving a
         // visible bug; see `list-publish.stability.spec.ts`.
-        progress: found.now ? Math.round(progressPercent(found.now.start, found.now.stop, nowMs)) : 0,
+        progress: Math.round(progressPercent(found.now.start, found.now.stop, nowMs)),
     };
 }

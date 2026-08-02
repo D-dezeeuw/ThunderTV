@@ -45,12 +45,13 @@ export interface ChannelRow {
     /**
      * Display-only EPG enrichment, attached per *visible window* by
      * `src/state/list-publish.ts` and refreshed on every `epg.tick` beat —
-     * never stored, never part of a row's identity. Absent on any row the
+     * never stored, never part of a row's identity. `null` on any row the
      * catalog didn't match or that has no programme data (masterplan §5.5:
      * one global tick re-enriches the visible slice, no per-row timers).
+     * What's on *now* only — the next programme was dropped, it made every
+     * row three lines of competing text.
      */
     epgNowTitle?: string | null;
-    epgNextTitle?: string | null;
     /** 0–100 through the currently-airing programme; 0 when nothing is on. */
     epgProgress?: number;
     /**
