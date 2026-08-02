@@ -163,15 +163,23 @@ console.log(`check-dist: OK — no devtools symbols found in ${jsFiles.length} b
 // splash became WebP and the icon set became palette PNG, taking dist/ from
 // 4.44 to 1.81 MiB without touching a master under assets/. The old 10 MiB
 // ceiling was never a budget, just a tripwire; 2 MiB is one.
+//
+// 104 → 102 gzip / 400 → 330 raw once the generated CSP expression registry
+// stopped emitting a literal `with` wrapper per record. 543 of 768 template
+// expressions are a plain (or negated) dotted path and now ship as bare
+// strings fed to one shared path walker: 92.9 → 49.8 KiB raw, 8.81 → 7.16
+// gzip. Raw is the metric that models parse work on the TV and it moved 43
+// KiB — this is the item the 101→102→104 notes above kept deferring to, and
+// it did not cost a single feature.
 const WEB_BUDGETS = {
-    startupJsRaw: 400 * 1024,
-    startupJsGzip: 104 * 1024,
+    startupJsRaw: 330 * 1024,
+    startupJsGzip: 102 * 1024,
     htmlRaw: 115 * 1024,
     htmlGzip: 17 * 1024,
     cssRaw: 100 * 1024,
     cssGzip: 25 * 1024,
-    shellTextRaw: 520 * 1024,
-    shellTextGzip: 128 * 1024,
+    shellTextRaw: 480 * 1024,
+    shellTextGzip: 126 * 1024,
     installRaw: 2 * 1024 * 1024,
 };
 
@@ -189,11 +197,9 @@ const WEB_BUDGETS = {
  * targets by default and only diverges when it has a measured reason to.
  */
 const WEBOS_BUDGET_OVERRIDES = {
-    startupJsRaw: 400 * 1024,
-    startupJsGzip: 107 * 1024,
-    cssGzip: 25 * 1024,
-    shellTextRaw: 540 * 1024,
-    shellTextGzip: 132 * 1024,
+    startupJsGzip: 104 * 1024,
+    shellTextRaw: 490 * 1024,
+    shellTextGzip: 130 * 1024,
 };
 
 const isWebos = path.basename(distDir.replace(/[/\\]$/, '')) === 'dist-webos';
