@@ -30,6 +30,7 @@
         "lint:desktop-package": "node scripts/check-desktop-package.mjs",
         "smoke:desktop": "npm run build && node scripts/package-target.mjs electron && node scripts/smoke-desktop.mjs",
         "smoke:desktop:packaged": "node scripts/smoke-desktop.mjs --packaged release/linux-unpacked/thundertv-desktop",
+        "smoke:desktop:playback": "node scripts/smoke-desktop-playback.mjs",
         "lint:state-keys": "node scripts/gen-state-keys.mjs --check",
         "lint:phase-status": "node scripts/gen-phase-status.mjs --check",
         "format": "prettier --write .",

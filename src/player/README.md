@@ -182,9 +182,21 @@ ffmpeg's own errors come back as an HTTP status, and a status can be turned
 into a sentence — once a media element is consuming a body there is nothing
 left to say to anyone.
 
+**A seek must reset the append state, not just the appends.** `abort()` on
+the SourceBuffer is called before `timestampOffset` is reassigned, and not
+because an append is necessarily in flight: it is the only call that puts
+the *append state* back to `WAITING_FOR_SEGMENT`, and a stream cut off
+mid-fragment always leaves it at `PARSING_MEDIA_SEGMENT`, where assigning
+`timestampOffset` throws. Checking `updating` is not the same question and
+is not enough. This is not theoretical — it is what the first live run of
+this module did on its first seek, after ten seconds of perfect playback,
+and `npm run smoke:desktop:playback` exists to keep it that way.
+
 Two known edges, both stated rather than hidden: `-ss` lands on the keyframe
 at or before the requested second, so a seek can resume up to one GOP early
-(never late, so nothing is skipped); and only H.264 video is taken, since
+(never late, so nothing is skipped — and the appended frames can push
+`duration` a second past the probed length, which is why the scrub bar may
+read 121s for a 120s film after a seek); and only H.264 video is taken, since
 `mp4-init.ts` builds its `addSourceBuffer()` codec string from the `avcC`
 box and declines anything it cannot name — HEVC does not play in Chromium
 today with or without this route. `position.ts` keeps working across the
