@@ -54,6 +54,35 @@ const ICON_CANDIDATES = [
     path.join(desktopDir, '..', 'build', 'icons', '512.png'),
 ];
 
+// The built web app, which moves for exactly the same reason the icon does
+// — and for a while pointed only at the unpackaged location, so every
+// packaged build opened a window onto `ERR_FILE_NOT_FOUND` while
+// `npm start` looked perfectly healthy:
+//   - packaged: `electron-builder.yml` maps `../dist` to `dist` *inside*
+//     `app.asar`, so it sits beside `main.mjs`;
+//   - `npm start` from the repo: `desktop/` and `dist/` are siblings.
+// `fs` (not a bare path check) again, so the packaged branch can see into
+// the asar archive.
+const INDEX_HTML_CANDIDATES = [
+    path.join(desktopDir, 'dist', 'index.html'),
+    path.join(desktopDir, '..', 'dist', 'index.html'),
+];
+
+/**
+ * Resolves the built `index.html`, or throws naming both candidates.
+ * Throwing beats letting `loadFile` reject: a packaging mistake here is
+ * fatal and should say so, not surface as a blank window plus an
+ * unhandled rejection in a log nobody reads.
+ */
+function resolveIndexHtml() {
+    for (const candidate of INDEX_HTML_CANDIDATES) {
+        if (fs.existsSync(candidate)) return candidate;
+    }
+    throw new Error(
+        `ThunderTV: no built web app found. Run \`npm run build\` at the repo root. Looked in:\n  ${INDEX_HTML_CANDIDATES.join('\n  ')}`,
+    );
+}
+
 /**
  * Loads the app icon as a `NativeImage`, or `null` when none of the
  * candidates exist. Read through `fs` rather than
@@ -201,16 +230,19 @@ if (!gotLock) {
             if (!splash.isDestroyed()) splash.destroy();
         });
 
-        await mainWindow.loadFile(path.join(desktopDir, '..', 'dist', 'index.html'));
+        await mainWindow.loadFile(resolveIndexHtml());
     }
 
-    app.whenReady().then(
-        () => void start(),
-        (err) => {
+    // `start()`'s own rejection is caught too, not just `whenReady()`'s —
+    // it was previously fired with a bare `void`, so a failed `loadFile`
+    // became an unhandled rejection and left an empty window on screen
+    // instead of a diagnosable crash.
+    app.whenReady()
+        .then(start)
+        .catch((err) => {
             console.error(err);
             app.quit();
-        },
-    );
+        });
 
     app.on('window-all-closed', () => {
         app.quit();

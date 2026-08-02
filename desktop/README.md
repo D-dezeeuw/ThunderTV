@@ -29,6 +29,54 @@ still opens it, pre-filled. See
 so this never affects a packaged build, only `npm start` from your own
 checkout.
 
+## Testing this shell (and why the usual gates miss it)
+
+`npm run verify` never launches Electron, and `tsconfig.json` doesn't
+include `desktop/`, so for a long time the only thing standing behind these
+four files was ESLint's untyped pass. Two bugs shipped through that gap at
+once — both invisible from a checkout, both fatal in a packaged build:
+
+| Bug | Why `npm start` couldn't see it |
+| --- | --- |
+| `main.mjs` imports `../scripts/proxy-server.mjs`, which nothing packaged | `desktop/` and `scripts/` are siblings in the repo; inside `app.asar` that path leaves the package entirely |
+| `main.mjs` loaded `../dist/index.html` | `electron-builder.yml` maps `dist/` *inside* the asar, so packaged it resolved one level too high |
+
+**A broken Electron app does not exit.** Both failures left a live process:
+the first parked on Electron's "A JavaScript error occurred in the main
+process" dialog, the second held an empty window open. Anything shaped like
+`run it for 30s and check the exit code` passes on a completely dead app —
+which is why the checks below assert positive signals instead.
+
+Three layers, cheapest first:
+
+```bash
+npm run lint:desktop-package   # ~50ms, no Electron — in `npm run verify`
+npm run smoke:desktop          # ~10s, real Electron, headless
+npm run smoke:desktop:packaged # the same, against a built artifact
+```
+
+**`scripts/check-desktop-package.mjs`** walks the module graph from
+`main.mjs`/`preload.cjs` and resolves every relative import *in packaged
+coordinates* (`app.asar/` for `files:`, `resources/` for
+`extraResources:`), failing on anything the allowlist doesn't place there.
+It is in `npm run verify`, so the first bug above can't come back.
+
+**`scripts/smoke-desktop.mjs`** actually launches the app — starting its own
+Xvfb when `DISPLAY` is unset — and drives the live renderer over the Chrome
+DevTools Protocol on Node's built-in `WebSocket` (no Playwright, no new
+dependency). It asserts the main process survived its own module graph, a
+window loaded the built `index.html`, `#app` is populated, Spektrum bound
+the template, `window.electron` matches `ElectronBridge` member for member,
+and the embedded proxy answers on the origin the bridge advertises. It
+writes a PNG to `release/smoke/` either way, and `--json` prints a
+machine-readable report.
+
+Findings the harness can see but that reproduce against the plain web build
+are reported as non-fatal notes rather than failures — a desktop smoke that
+goes red for an app-wide bug no change to `desktop/` could fix stops being
+worth running. There are two such notes today; see the repo-root
+`CLAUDE.md` table entry for where they live.
+
 ## Packaging
 
 ```bash

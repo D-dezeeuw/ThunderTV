@@ -43,6 +43,7 @@ phase file only for historical "why."
 | Any Spektrum state key, action, or selector                 | `src/state/README.md` (has the module-ownership table — check it before adding a key anywhere) |
 | Storage (IndexedDB/localStorage/memory tiers, versioning)    | `src/core/storage/README.md` |
 | Platform adapter (web vs. Electron, capabilities, testing)   | `src/core/platform/README.md` |
+| The Electron shell itself — main process, preload, packaging, desktop smoke tests | `desktop/README.md` |
 | Network calls, CORS/timeout classification, proxy            | `src/core/http/README.md` |
 | Routing, boot sequence, view titles, user-facing copy        | `src/app/README.md` |
 | Platform/storage/http foundations, raw-capture diagnostics, source-key dedup | `src/core/README.md` |
