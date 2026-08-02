@@ -19,8 +19,11 @@ npm run build:lg
 Runs `tsc --noEmit`, builds the app in webOS mode (`vite build --mode
 webos`, output to `dist-webos/`, syntax floor Chromium 87 — see
 `vite.config.ts`), applies the webOS-specific swaps
-(`scripts/package-target.mjs webos`), then stages and packages
-(`scripts/package-webos.mjs`). Output:
+(`scripts/package-target.mjs webos`), checks the result against the size
+budgets (`scripts/check-dist.mjs --dist dist-webos` — see
+`PERFORMANCE-BUDGET.md`; this is the same gate `npm run verify` applies to
+the web build, and it runs *before* packaging so a blown budget fails fast),
+then stages and packages (`scripts/package-webos.mjs`). Output:
 `release/thundertv-<version>-webos.ipk` (`release/` is gitignored).
 
 This requires LG's `ares-package` CLI on `PATH` — see below. It does not
