@@ -279,7 +279,7 @@ async function restart(active: Session, atSeconds: number): Promise<void> {
     active.controller.abort();
     const controller = new AbortController();
     active.controller = controller;
-    if (active.buffer && active.mediaSource.readyState === 'open' && active.buffer.updating) active.buffer.abort();
+    resetAppendState(active);
 
     const opened = await openTranscodeStream(active.control, active.sourceUrl, atSeconds, controller.signal);
     if (!current(active, generation)) return;
@@ -288,15 +288,35 @@ async function restart(active: Session, atSeconds: number): Promise<void> {
         return;
     }
     try {
-        // Throws if an append from the generation just abandoned is somehow
-        // still in flight — a failure worth reporting, never one worth
-        // leaving as an unhandled rejection out of a fire-and-forget seek.
+        // Again after the await: the abort above cancelled whatever was in
+        // flight *then*, and this is the state the assignment below actually
+        // requires. Wrapped because a SourceBuffer the element has let go of
+        // throws here, and that is a failure to report rather than an
+        // unhandled rejection out of a fire-and-forget seek.
+        resetAppendState(active);
         if (active.buffer) active.buffer.timestampOffset = atSeconds;
     } catch (err) {
         fail(active, generation, `could not seek the transcoded stream: ${String(err)}`);
         return;
     }
     void pump(active, generation, opened);
+}
+
+/**
+ * `abort()` is not really about aborting here — it is the only call that
+ * puts the SourceBuffer's *append state* back to `WAITING_FOR_SEGMENT`, and
+ * `timestampOffset` may not be assigned while a media segment is half
+ * parsed. Cutting a transcode off mid-fragment leaves it exactly that way,
+ * every time, so a seek without this fails with "The timestamp offset may
+ * not be set while the SourceBuffer's append state is
+ * 'PARSING_MEDIA_SEGMENT'" — which is what the first live run of this
+ * module did, on the first seek, having played perfectly until then.
+ * Checking `updating` instead is not enough: the last append can be long
+ * finished and the parse still be mid-segment.
+ */
+function resetAppendState(active: Session): void {
+    if (!active.buffer || active.mediaSource.readyState !== 'open') return;
+    active.buffer.abort();
 }
 
 function fail(active: Session, generation: number, detail: string): void {

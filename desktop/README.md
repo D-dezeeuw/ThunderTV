@@ -91,7 +91,22 @@ npm run lint:desktop-package   # ~50ms, no Electron — in `npm run verify`
 npm test -- desktop/           # the main-process specs, no Electron
 npm run smoke:desktop          # ~10s, real Electron, headless
 npm run smoke:desktop:packaged # the same, against a built artifact
+npm run smoke:desktop:playback # ~60s, plays a real AC-3 film end to end
 ```
+
+**`scripts/smoke-desktop-playback.mjs`** is the one that covers the audio
+transcode route as a viewer meets it: it builds an H.264 + AC-3 film with
+the bundled ffmpeg, serves it over loopback with `Range`, seeds a Recents
+row, clicks it, and then asserts on the live renderer — the direct attempt
+decodes video and zero audio, the transcode takes over on its own, real AAC
+bytes decode, MediaSource carries the film's real duration, a seek outside
+the buffered window restarts ffmpeg at that second and plays on, the notice
+comes and goes, and leaving the view leaves no ffmpeg behind. Opt-in
+(Electron + a minute of wall clock), but run it after touching anything
+under `src/player/transcode-*`, `src/player/mp4-init.ts` or
+`desktop/transcode.mjs`: that is MSE-semantics code, and neither jsdom nor
+the type checker can say anything about it. Its first run found a real
+seek-time `InvalidStateError` that every other gate was green through.
 
 `desktop/*.spec.mts` runs in the repo's own Vitest (see `vitest.config.ts`'s
 `include`), against a *fake* `spawn` so the transcode server's HTTP contract
