@@ -3,21 +3,14 @@
 // catches "the desktop app doesn't start" in an environment with no screen
 // and no human to look at one.
 //
-// Why this exists, concretely: two packaging bugs shipped at once, and
-// neither was visible to anything the repo already ran. `npm start` from a
-// checkout worked perfectly; the *packaged* app died on
-// `ERR_MODULE_NOT_FOUND` for `resources/scripts/proxy-server.mjs`, and
-// behind that, loaded its window from `resources/dist/index.html` — a path
-// that only exists unpackaged. `npm run verify` never launches Electron, so
-// it saw neither.
-//
-// **The trap this test is designed around: a broken Electron app does not
-// exit.** Both failures above left the process alive and happy — Electron
-// parks on its "A JavaScript error occurred in the main process" dialog, or
-// simply holds an empty window open, forever. `run it and check the exit
-// code` passes on a completely dead app. So every assertion here is a
-// *positive* signal read out of the live renderer over CDP, never the
-// absence of a crash.
+// **The trap this is designed around: a broken Electron app does not
+// exit.** The two packaging bugs that prompted it both left a live process
+// — one parked on Electron's "A JavaScript error occurred in the main
+// process" dialog, one holding an empty window open. `run it and check the
+// exit code` passes on a completely dead app, so every assertion here is a
+// *positive* signal read out of the live renderer over CDP. The converse
+// trap is just as easy: see `.claude/skills/electron-testing/` for why
+// asserting DOM *absence* is usually the harness being wrong.
 //
 // Usage — no args smokes desktop/ via its local electron; `--packaged
 // <binary>` smokes a built artifact; `--json` prints a machine-readable
@@ -250,17 +243,24 @@ async function main() {
                 hasApp: Boolean(app),
                 childCount: app ? app.childElementCount : 0,
                 unboundMustaches: (document.body.innerText.match(/\\{\\{[^}]+\\}\\}/g) || []).slice(0, 3),
-                bootOverlayGone: !document.querySelector('[data-testid="boot-overlay"]'),
+                // Spektrum's data-if sets style.display, it does not unmount
+                // — so presence in the DOM proves nothing and asking for
+                // absence is a permanently-failing assertion. Ask what a
+                // viewer would see instead.
+                bootOverlayHidden: (() => {
+                    const el = document.querySelector('[data-testid="boot-overlay"]');
+                    return !el || getComputedStyle(el).display === 'none';
+                })(),
                 title: document.title,
             };
         `);
         record('#app is present and populated', dom.hasApp && dom.childCount > 0, `${String(dom.childCount)} children`);
         record('Spektrum bound the template', dom.unboundMustaches.length === 0, dom.unboundMustaches.join(' '));
-        // Not fatal: the overlay also stays up on the plain web build (its
-        // `data-if` is one of the expressions Spektrum can't evaluate under
-        // this app's `unsafe-eval`-free CSP), so it is an app bug the
-        // desktop shell inherits rather than one it causes.
-        observe('boot overlay cleared', dom.bootOverlayGone, dom.bootOverlayGone ? '' : 'still mounted after boot — reproduces on the web build too');
+        // Fatal, and worth being fatal: an overlay still painted after boot
+        // means the app is sitting behind a full-screen scrim, which is
+        // indistinguishable from "the app never started" to whoever is
+        // looking at it.
+        record('boot overlay cleared', dom.bootOverlayHidden, dom.bootOverlayHidden ? '' : 'still visible after boot');
 
         // ---- 5. the preload bridge matches its declared contract ----------
         // `desktop/preload.cjs` is hand-kept in sync with

@@ -24,7 +24,7 @@
         -->
         <meta
             http-equiv="Content-Security-Policy"
-            content="default-src 'self'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; script-src 'self' 'sha256-mtA3tdtHIJeeY3gzK7VPhmmeCZ2VAo22LB+2pT6vWo4='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; media-src 'self' blob: http: https:; connect-src 'self' blob: http: https:; font-src 'self' data:; worker-src 'self' blob:; manifest-src 'self'"
+            content="default-src 'self'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; script-src 'self' 'sha256-6LCTVeYOA+8bY/X/wzednIrMfrdBCRYGWaLb8ZwPmoM='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; media-src 'self' blob: http: https:; connect-src 'self' blob: http: https:; font-src 'self' data:; worker-src 'self' blob:; manifest-src 'self'"
         />
         <title>ThunderTV</title>
         <link rel="stylesheet" href="/src/styles/tokens.css" />
@@ -47,11 +47,11 @@
           targets rewrite the built JS imports to a relative file and remove
           this import map, avoiding an import-map shim on Chromium 87.
 
-          scripts/spektrum-version.json is the single source of truth for
-          the pinned version + its SHA-384 — scripts/check-importmap.mjs
-          fails the build if the vendored bytes drift from that file.
+          spektrum-version.json pins the version + SHA-384; the import
+          target is the generated spektrum.runtime.js, not the vendored
+          spektrum.min.js — see public/vendor/README.md.
         -->
-        <script type="importmap">{ "imports": { "spektrum": "./vendor/spektrum.min.js" } }</script>
+        <script type="importmap">{ "imports": { "spektrum": "./vendor/spektrum.runtime.js" } }</script>
         <!-- The classic script is intentionally copied verbatim. -->
         <script vite-ignore src="./vendor/spektrum-precompiled.js"></script>
     </head>

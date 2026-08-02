@@ -6,7 +6,7 @@
 //      diverging from the pinned build's recorded SHA-384 — a corrupted or
 //      hand-edited vendor copy fails this check.
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -36,11 +36,26 @@ if (!spektrumUrl) {
     process.exit(1);
 }
 
-const expectedLocalUrl = `./${version.vendoredPath.replace(/^public\//, '')}`;
+// The app loads the *generated* runtime — the vendored bytes with their
+// expression-cache cap raised (see scripts/spektrum-csp.mjs's
+// `expectedRuntimeSource`). `spektrum.min.js` is still the pinned,
+// hash-verified input to that transform, which is what the rest of this
+// check guards; it just isn't what the page fetches. Both files stay local,
+// so the no-CDN property this check exists for is unchanged.
+const expectedLocalUrl = `./${version.runtimePath.replace(/^public\//, '')}`;
 if (spektrumUrl !== expectedLocalUrl) {
     console.error(
         `check-importmap: index.html points spektrum at "${spektrumUrl}" but ` +
             `the offline runtime must use "${expectedLocalUrl}".`,
+    );
+    process.exit(1);
+}
+
+// A missing generated runtime is a broken app, not a stale artifact: the
+// import map would resolve to nothing and no module would load at all.
+if (!existsSync(`${repoRoot}${version.runtimePath}`)) {
+    console.error(
+        `check-importmap: ${version.runtimePath} is missing — run "npm run spektrum:csp" to generate it.`,
     );
     process.exit(1);
 }

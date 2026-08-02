@@ -120,9 +120,9 @@ if (importMapText) {
 }
 // Packaged targets remove the import map after rewriting asset imports.
 if (
-    jsFiles.some((name) => readFileSync(`${assetsDir}/${name}`, 'utf8').includes('../vendor/spektrum.min.js'))
+    jsFiles.some((name) => readFileSync(`${assetsDir}/${name}`, 'utf8').includes('../vendor/spektrum.runtime.js'))
 ) {
-    startupJs.add('vendor/spektrum.min.js');
+    startupJs.add('vendor/spektrum.runtime.js');
 }
 
 if (startupJs.size === 0) {

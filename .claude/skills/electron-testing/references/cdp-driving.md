@@ -229,3 +229,17 @@ Filter them out of reported output, but keep the raw log for a failure dump.
 **Probing your own harness into the error list.** If a check deliberately
 provokes an HTTP error to prove a server is listening, snapshot the error
 list *before* running it, or the harness fails itself.
+
+**Asserting DOM absence for something the framework only hides.** Most
+conditional-rendering directives toggle `style.display` rather than
+unmounting, so `!document.querySelector(sel)` is a check that can never
+pass. Assert `getComputedStyle(el).display === 'none'` — or whatever the
+framework actually does — and you are testing what a viewer sees rather
+than an implementation detail you guessed at. An assertion that fails on
+every single run, including ones whose screenshot looks perfect, is almost
+always this.
+
+**Collecting only `console.error`.** `Runtime.consoleAPICalled` carries a
+`type`, and a framework that reports broken bindings via `console.warn`
+will be invisible to a harness filtering for errors. When a run looks clean
+but the screenshot doesn't, widen to `warning` before suspecting the app.

@@ -139,16 +139,44 @@ the smoke test finds a renderer error, the first question is whether it
 reproduces against that same build in plain Chromium over `http://`.
 
 This is worth the ten minutes it takes. In ThunderTV a "blank UI" that
-looked like a desktop packaging failure turned out to reproduce identically
-on the web build (the app registers more precompiled template expressions
-than the framework's LRU cache holds, so the earliest ones are evicted and
-fall back to CSP-blocked `eval`). Had that been wired in as a fatal desktop
-assertion, the desktop smoke would be permanently red for a bug no change
-to the shell could fix.
+looked like a desktop packaging failure reproduced identically on the web
+build in plain Chromium — the app registered more precompiled template
+expressions than the framework's LRU cache holds, so the earliest were
+evicted and fell back to CSP-blocked `eval`. Same bundle, same bug, nothing
+to do with Electron.
 
 **Report cross-target findings as non-fatal notes, and shell-specific ones
 as failures.** A suite that is red for reasons its owners cannot act on
 stops being run.
+
+But **non-fatal is a routing decision, not a verdict**. That note sat in the
+output for two rounds while the desktop shell was declared fixed, and the
+app was still unusable. Cross-target means *someone else's layer*, not
+*acceptable*. Chase every note to a root cause and say plainly which layer
+owns it; a note nobody is accountable for is just a warning that will be
+scrolled past.
+
+## Assert what a viewer would see, not what the DOM contains
+
+The counterpart to "no absence-of-crash assertions": presence assertions are
+just as easy to get wrong, and they fail in the more embarrassing direction.
+
+A "boot overlay is still up" failure in this repo survived three rounds of
+investigation — instrumenting the boot sequence, ruling out renderer
+backgrounding, confirming the state change landed — before the actual cause
+turned out to be the *assertion*. The framework's conditional directive sets
+`style.display = 'none'`; it never unmounts. `!document.querySelector(...)`
+could therefore never be true, so the check was reporting a permanent
+failure about a perfectly healthy app.
+
+Before asserting that something is gone, confirm what the framework does
+when it hides things — `display`, `hidden`, `visibility`, an unmount, or an
+`aria-hidden` — and assert that. `getComputedStyle(el).display === 'none'`
+is a cheap, framework-agnostic proxy for "a viewer cannot see this."
+
+The tell for this class of mistake: an assertion that fails identically on
+every run, in every environment, including ones where the app is visibly
+fine in a screenshot. That is the harness being wrong, not the app.
 
 ## Reading the logs
 
@@ -199,6 +227,5 @@ npm run smoke:desktop:packaged    # layer 3
   `references/cdp-driving.md`.
 - `desktop/README.md` — the shell's own testing section.
 
-Screenshots land in `release/smoke/`. Two non-fatal notes are expected
-today; both are the cross-target framework issue described above, and
-`scripts/check-csp.mjs` warns about its cause.
+Screenshots land in `release/smoke/`. All checks pass and no notes are
+expected — if one appears, it is new.

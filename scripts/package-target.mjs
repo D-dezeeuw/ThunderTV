@@ -39,7 +39,10 @@ for (const name of readdirSync(assetsDir).filter((entry) => entry.endsWith('.js'
     const source = readFileSync(assetPath, 'utf8');
     const output = source.replace(/(["'])spektrum\1/g, (_match, quote) => {
         rewrittenImports += 1;
-        return `${quote}../vendor/spektrum.min.js${quote}`;
+        // The generated runtime, matching index.html's import map — the
+        // packaged targets must load the same patched build the web one
+        // does, or they get the CSP-blocked-eval blank UI back.
+        return `${quote}../vendor/spektrum.runtime.js${quote}`;
     });
     if (!checkOnly && output !== source) writeFileSync(assetPath, output);
 }
