@@ -21,4 +21,7 @@ export const dePlayerTracks = {
     playerNoDataYet: 'nach 20 Sekunden noch keine abspielbaren Daten',
     playerNoAudioDecoded:
         'Kein Ton — dieses Gerät hat keinen Decoder für den Ton dieser Datei (meist Dolby Digital/AC-3, E-AC-3 oder DTS). Das Bild läuft normal weiter.',
+    playerTranscodingAudio: 'Ton wird wiederhergestellt — die Tonspur wird umgewandelt…',
+    playerNoAudioDecodedTranscodeFailed:
+        'Kein Ton — dieses Gerät hat keinen Decoder für den Ton dieser Datei (meist Dolby Digital/AC-3, E-AC-3 oder DTS), und das Umwandeln ist hier ebenfalls fehlgeschlagen. Das Bild läuft normal weiter.',
 } as const;

@@ -29,6 +29,43 @@ still opens it, pre-filled. See
 so this never affects a packaged build, only `npm start` from your own
 checkout.
 
+## Audio transcoding (`transcode.mjs`)
+
+Chromium ships no AC-3, E-AC-3 or DTS decoder, and a large share of movie
+files carry exactly those — the browser plays the picture, drops the audio
+track, and reports no error at all. On the web the only honest answer is a
+message. Here there is a better one: `transcode.mjs` embeds a second
+loopback server that streams the same film back with `-c:v copy -c:a aac`,
+so the video is passed through untouched and only the audio goes through an
+encoder.
+
+- **Fragmented MP4 on stdout**, not HLS: no temp files, no segment
+  bookkeeping, one ffmpeg process per session. The renderer feeds it into
+  MediaSource (`src/player/transcode-engine.ts`), which is what keeps the
+  duration and the scrub bar real.
+- **Seeking is a new request.** `/stream?t=…` kills the running process and
+  starts another with `-ss`, so jumping into hour two costs a keyframe scan
+  rather than a download of everything before it. One process at a time,
+  killed on supersede, on client abort, and on `will-quit`.
+- **Token-gated**, unlike the proxy next door: this one hands an arbitrary
+  URL to a subprocess, so `preload.cjs` passes a per-session token along with
+  the origin (`window.electron.transcode`) and an untokened request gets 403.
+- **`/status`** reports `{ ok, ffmpeg }` — the smoke test asserts both, since
+  a build that shipped without the binary is a desktop app with a web app's
+  limits.
+- **VOD only.** Live has no duration to seek in and is routinely MPEG-2
+  video, which `-c:v copy` cannot put into an MP4 that anything plays.
+
+ffmpeg comes from `ffmpeg-static`, a **devDependency** of this package on
+purpose: production dependencies are copied into `app.asar` automatically,
+and this one is placed by hand under `extraResources` — a binary inside an
+asar has no filesystem path and cannot be executed at all. It costs about
+78 MB per platform artifact, which is the price of a media pipeline; nothing
+smaller decodes AC-3, E-AC-3, DTS and TrueHD. `resolveFfmpegPath()` looks in
+the packaged location first (`resources/ffmpeg/`) and then in
+`desktop/node_modules/`, the same candidate-list pattern `main.mjs` uses for
+the icon and `index.html`.
+
 ## Testing this shell (and why the usual gates miss it)
 
 `npm run verify` never launches Electron, and `tsconfig.json` doesn't
@@ -51,9 +88,15 @@ Three layers, cheapest first:
 
 ```bash
 npm run lint:desktop-package   # ~50ms, no Electron — in `npm run verify`
+npm test -- desktop/           # the main-process specs, no Electron
 npm run smoke:desktop          # ~10s, real Electron, headless
 npm run smoke:desktop:packaged # the same, against a built artifact
 ```
+
+`desktop/*.spec.mts` runs in the repo's own Vitest (see `vitest.config.ts`'s
+`include`), against a *fake* `spawn` so the transcode server's HTTP contract
+is checked on every machine; the one block that needs the real binary skips
+itself where `desktop/node_modules` was never installed.
 
 **`scripts/check-desktop-package.mjs`** walks the module graph from
 `main.mjs`/`preload.cjs` and resolves every relative import *in packaged
@@ -61,13 +104,17 @@ coordinates* (`app.asar/` for `files:`, `resources/` for
 `extraResources:`), failing on anything the allowlist doesn't place there.
 It is in `npm run verify`, so the first bug above can't come back.
 
-**`scripts/smoke-desktop.mjs`** actually launches the app — starting its own
+**`scripts/smoke-desktop.mjs`** (with `smoke-desktop-bridge.mjs`, which owns
+the `window.electron` contract and the two localhost-server probes) actually
+launches the app — starting its own
 Xvfb when `DISPLAY` is unset — and drives the live renderer over the Chrome
 DevTools Protocol on Node's built-in `WebSocket` (no Playwright, no new
 dependency). It asserts the main process survived its own module graph, a
 window loaded the built `index.html`, `#app` is populated, Spektrum bound
 the template, `window.electron` matches `ElectronBridge` member for member,
-and the embedded proxy answers on the origin the bridge advertises. It
+and both embedded servers answer on the origins the bridge advertises — the
+proxy, and the transcoder (`/status` with `ffmpeg: true`, plus a 403 for an
+untokened `/stream`). It
 writes a PNG to `release/smoke/` either way, and `--json` prints a
 machine-readable report.
 

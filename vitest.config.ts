@@ -27,9 +27,10 @@ export default defineConfig({
     },
     test: {
         environment: 'jsdom',
-        // `scripts/` is Node, not browser — those specs opt into the node
-        // environment per-file with a `@vitest-environment node` docblock.
-        include: ['src/**/*.spec.ts', 'scripts/**/*.spec.mts'],
+        // `scripts/` and `desktop/` are Node, not browser — those specs opt
+        // into the node environment per-file with a `@vitest-environment
+        // node` docblock.
+        include: ['src/**/*.spec.ts', 'scripts/**/*.spec.mts', 'desktop/**/*.spec.mts'],
         css: false,
         // Feature 06.3.8: jsdom has no real Worker implementation at all
         // (`new Worker(...)` throws `ReferenceError`) — @vitest/web-worker

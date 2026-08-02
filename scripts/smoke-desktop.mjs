@@ -26,6 +26,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CdpSession, fetchJson, sleep, startDisplay, waitFor } from './cdp-client.mjs';
+import { checkBridge, checkHostServices } from './smoke-desktop-bridge.mjs';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 const args = process.argv.slice(2);
@@ -105,17 +106,6 @@ function readDevToolsPort(userDataDir) {
         return null;
     }
 }
-
-/** The `window.electron` members `src/core/platform/electron-bridge.types.ts` promises. */
-const BRIDGE_CONTRACT = {
-    proxyOrigin: 'string',
-    appVersion: 'string',
-    isWindowFullscreen: 'function',
-    setWindowFullscreen: 'function',
-    getDefaultConfig: 'function',
-    downloads: 'object',
-};
-const DOWNLOAD_BRIDGE_CONTRACT = ['prepare', 'start', 'cancel', 'onEvent'];
 
 async function main() {
     const display = startDisplay(log);
@@ -263,43 +253,7 @@ async function main() {
         record('boot overlay cleared', dom.bootOverlayHidden, dom.bootOverlayHidden ? '' : 'still visible after boot');
 
         // ---- 5. the preload bridge matches its declared contract ----------
-        // `desktop/preload.cjs` is hand-kept in sync with
-        // `electron-bridge.types.ts` "by review" — nothing else checks it,
-        // and a renderer that quietly falls back to the *web* adapter
-        // because `window.electron` is missing is a bug this app has
-        // already shipped once.
-        const bridge = await cdp.evaluate(`
-            const b = window.electron;
-            if (!b) return { present: false };
-            return {
-                present: true,
-                types: Object.fromEntries(${JSON.stringify(Object.keys(BRIDGE_CONTRACT))}.map((k) => [k, typeof b[k]])),
-                downloads: b.downloads ? ${JSON.stringify(DOWNLOAD_BRIDGE_CONTRACT)}.map((k) => typeof b.downloads[k]) : [],
-                proxyOrigin: b.proxyOrigin,
-            };
-        `);
-        record('window.electron bridge is exposed', bridge.present === true, bridge.present ? '' : 'renderer silently fell back to the web adapter');
-
-        let proxyOrigin = '';
-        if (bridge.present) {
-            const wrongTypes = Object.entries(BRIDGE_CONTRACT)
-                .filter(([key, expected]) => bridge.types[key] !== expected)
-                .map(([key, expected]) => `${key}: expected ${expected}, got ${String(bridge.types[key])}`);
-            record('bridge matches ElectronBridge', wrongTypes.length === 0, wrongTypes.join('; '));
-
-            const badDownloads = bridge.downloads.filter((t) => t !== 'function');
-            record(
-                'downloads bridge exposes all four members',
-                bridge.downloads.length === DOWNLOAD_BRIDGE_CONTRACT.length && badDownloads.length === 0,
-                bridge.downloads.join(','),
-            );
-
-            // The embedded proxy is the whole reason the desktop build
-            // reports `corsUnrestricted: true`; a bridge that came up with
-            // no reachable proxy is a desktop app with a web app's limits.
-            proxyOrigin = String(bridge.proxyOrigin ?? '');
-            record('proxy origin is loopback', /^http:\/\/127\.0\.0\.1:\d+$/.test(proxyOrigin), proxyOrigin);
-        }
+        const origins = await checkBridge(cdp, record);
 
         // ---- 6. what the renderer logged ----------------------------------
         // Snapshotted *before* the proxy probe below, which deliberately
@@ -319,22 +273,11 @@ async function main() {
         record('no main-process fatals during the run', fatals.length === 0, fatals[0] ?? '');
         observe('no app-level renderer errors', appErrors.length === 0, appErrors.slice(0, 2).join(' | '));
 
-        // The embedded proxy is the whole reason the desktop build reports
-        // `corsUnrestricted: true`; a bridge that came up with no reachable
-        // proxy is a desktop app with a web app's limits. Probed last, for
-        // the reason given above.
-        if (proxyOrigin) {
-            // A bare `/` has no target URL, so the worker answers 400 —
-            // which is the point: any HTTP status proves the server is
-            // listening. Only a thrown fetch means nothing is there.
-            const reachable = await cdp.evaluate(`
-                try {
-                    const res = await fetch(${JSON.stringify(proxyOrigin)} + '/', { method: 'GET' });
-                    return res.status;
-                } catch (err) { return 'unreachable: ' + String(err); }
-            `);
-            record('embedded proxy answers on that origin', typeof reachable === 'number', `HTTP ${String(reachable)}`);
-        }
+        // The two servers the main process embeds — the embedded proxy is
+        // the whole reason the desktop build reports `corsUnrestricted:
+        // true`, and the transcoder is the whole reason a film with AC-3
+        // audio has sound here. Probed last, for the reason given above.
+        await checkHostServices(cdp, record, observe, origins);
 
         // ---- 7. leave something a human/agent can look at ------------------
         try {

@@ -4,7 +4,7 @@ import { reportPlaybackError } from '../state/player.actions';
 import { SETTINGS_BUFFERING, type BufferingMode, type PlaybackEngine } from '../state/settings';
 import { get } from '../state/typed';
 import { appendStreamProbe, describeMediaError } from './engine-report';
-import { attemptChain, hlsFormOf, preferredEngine, tsFormOf } from './engine-select';
+import { attemptChain, hlsFormOf, preferredEngine, supportsNativeHls, tsFormOf } from './engine-select';
 import { createHlsTrackEngine } from './hls-tracks';
 import { clearExternalSubtitles } from './external-subs';
 import { attachMpegts, detachMpegts } from './mpegts-engine';
@@ -12,6 +12,7 @@ import { createNativeTrackEngine } from './native-tracks';
 import type { PlayerEngine } from './player-engine';
 import { stopPositionMonitor, trackPlaybackPosition } from './position';
 import { monitorStreamHealth, reportAttachFailed, stopStreamHealthMonitor } from './stream-health';
+import { detachTranscode } from './transcode-engine';
 import type { TrackSnapshot } from './tracks';
 
 /**
@@ -86,10 +87,6 @@ function setActiveTrackEngine(engine: PlayerEngine | null, dispose: (() => void)
     activeTrackEngine = engine;
     activeTrackEngineDispose = dispose;
     if (tracksChangedListener) engine?.onTracksChanged?.(tracksChangedListener);
-}
-
-function supportsNativeHls(video: HTMLVideoElement): boolean {
-    return video.canPlayType('application/vnd.apple.mpegurl') !== '';
 }
 
 /**
@@ -300,6 +297,9 @@ function detachEngines(): void {
         hls = null;
     }
     detachMpegts();
+    // The desktop audio-transcode route feeds this element through a
+    // MediaSource of its own, started outside the chain (`transcode-fallback.ts`).
+    detachTranscode();
     setActiveTrackEngine(null);
 }
 

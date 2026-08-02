@@ -59,6 +59,11 @@ export function isProgressiveFile(url: string): boolean {
     return PROGRESSIVE_FILE_EXTENSIONS.some((ext) => tail.endsWith(ext));
 }
 
+/** Safari/iOS ship their own HLS and refuse a second decoder for it, so those get the URL directly rather than hls.js. */
+export function supportsNativeHls(video: HTMLVideoElement): boolean {
+    return video.canPlayType('application/vnd.apple.mpegurl') !== '';
+}
+
 export function preferredEngine(): PlaybackEngine {
     const configured = get<PlaybackEngine | null>(SETTINGS_PLAYBACK_ENGINE);
     return configured ?? 'mpegts';

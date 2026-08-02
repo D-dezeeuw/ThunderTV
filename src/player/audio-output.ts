@@ -1,5 +1,5 @@
-import { strings } from '../app/strings';
 import { reportPlaybackNotice } from '../state/player.actions';
+import { handleSilentAudio } from './transcode-fallback';
 
 /**
  * "The picture is fine and there is no sound" — the one playback failure no
@@ -21,6 +21,12 @@ import { reportPlaybackNotice } from '../state/player.actions';
  * `mozHasAudio`, which answers the same question directly. A browser with
  * neither reports `'unknown'` and says nothing — a wrong "no audio" notice
  * over a stream that is merely quiet would be worse than none.
+ *
+ * What is *done* about a positive verdict is `transcode-fallback.ts`'s
+ * decision, not this module's: on the desktop a film restarts through the
+ * bundled ffmpeg with its audio re-encoded, and only where that is
+ * impossible (the web, a live channel, a failed transcode) does the verdict
+ * still surface as the message this file used to publish outright.
  */
 
 /** The subset of the (non-standard, vendor-prefixed) decoder statistics this reads — declared structurally so the judge can be tested with plain objects. */
@@ -82,7 +88,15 @@ function probe(video: HTMLVideoElement): void {
     const verdict = judgeAudioOutput(readAudioOutput(video));
     if (verdict === 'unknown') return;
     clearTimers();
-    reportPlaybackNotice(verdict === 'silent' ? strings.list.playerNoAudioDecoded : null);
+    if (verdict !== 'silent') {
+        reportPlaybackNotice(null);
+        return;
+    }
+    // Not a message on every host any more: where the app owns a main
+    // process with ffmpeg in it, the film restarts with its audio
+    // re-encoded instead (`transcode-fallback.ts`), and the message is what
+    // is left when that is impossible or fails.
+    void handleSilentAudio(video);
 }
 
 /**

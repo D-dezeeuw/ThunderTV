@@ -35,5 +35,10 @@ export const enPlayerTracks = {
     playerNoDataYet: 'no playable data after 20 seconds',
     /** The picture runs and the audio track never decodes a byte — `src/player/audio-output.ts`. Named codecs on purpose: "no sound" sends a viewer hunting for a mute button, "AC-3" sends them to a different copy of the film. */
     playerNoAudioDecoded:
-        "No sound — this device has no decoder for this file's audio (Dolby Digital/AC-3, E-AC-3 and DTS are the usual cause). The picture plays normally."
+        "No sound — this device has no decoder for this file's audio (Dolby Digital/AC-3, E-AC-3 and DTS are the usual cause). The picture plays normally.",
+    /** The desktop answer to the same finding: the film restarts through the bundled ffmpeg with its audio re-encoded (`src/player/transcode-fallback.ts`). Shown only for the few seconds that restart takes. */
+    playerTranscodingAudio: "Restoring sound — converting this file's audio…",
+    /** Both halves of what happened, because the fallback is the file playing silently again rather than nothing at all. */
+    playerNoAudioDecodedTranscodeFailed:
+        "No sound — this device has no decoder for this file's audio (Dolby Digital/AC-3, E-AC-3 and DTS are the usual cause), and converting it here failed too. The picture plays normally.",
 } as const;

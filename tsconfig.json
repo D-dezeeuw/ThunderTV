@@ -26,5 +26,5 @@
         "erasableSyntaxOnly": true,
         "noFallthroughCasesInSwitch": true
     },
-    "include": ["src", "scripts", "bench", "vite.config.ts", "vitest.config.ts", "vitest.bench.config.ts"]
+    "include": ["src", "scripts", "desktop", "bench", "vite.config.ts", "vitest.config.ts", "vitest.bench.config.ts"]
 }

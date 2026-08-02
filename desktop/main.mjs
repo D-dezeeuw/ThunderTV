@@ -32,6 +32,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createProxyServer } from '../scripts/proxy-server.mjs';
 import { registerDownloadHandlers } from './downloads.mjs';
+import { createTranscodeServer } from './transcode.mjs';
 
 const desktopDir = path.dirname(fileURLToPath(import.meta.url));
 const APP_BACKGROUND_COLOR = '#0b0d10';
@@ -155,6 +156,7 @@ if (!gotLock) {
     app.quit();
 } else {
     let mainWindow = null;
+    let transcodeServer = null;
 
     app.on('second-instance', () => {
         if (!mainWindow) return;
@@ -193,6 +195,7 @@ if (!gotLock) {
         // Loopback-only bind: never reachable from the network, so no
         // ALLOWED_HOSTS needed — this is not an open proxy.
         const { origin } = await createProxyServer({ host: '127.0.0.1', port: 0 });
+        const transcode = await startTranscodeServer();
 
         mainWindow = new BrowserWindow({
             width: 1280,
@@ -218,6 +221,15 @@ if (!gotLock) {
                 additionalArguments: [
                     `--thundertv-proxy-origin=${origin}`,
                     `--thundertv-app-version=${app.getVersion()}`,
+                    // Absent when the transcode server didn't come up, which
+                    // the preload reads as "this host cannot transcode" —
+                    // the renderer then behaves exactly like the web build.
+                    ...(transcode
+                        ? [
+                              `--thundertv-transcode-origin=${transcode.origin}`,
+                              `--thundertv-transcode-token=${transcode.token}`,
+                          ]
+                        : []),
                 ],
             },
         });
@@ -232,6 +244,30 @@ if (!gotLock) {
 
         await mainWindow.loadFile(resolveIndexHtml());
     }
+
+    /**
+     * The audio-transcode server (`transcode.mjs`) is a nice-to-have, not a
+     * precondition: a build without the bundled ffmpeg, or a port that will
+     * not bind, must still open the app — the renderer simply keeps the web
+     * build's "this device has no decoder for this audio" behaviour.
+     */
+    async function startTranscodeServer() {
+        try {
+            const server = await createTranscodeServer({ host: '127.0.0.1', port: 0 });
+            transcodeServer = server;
+            return server;
+        } catch (err) {
+            console.error('[ThunderTV] audio transcoding unavailable:', err);
+            return null;
+        }
+    }
+
+    // Never leave an ffmpeg behind: `close()` kills whatever it is running
+    // before dropping the listener.
+    app.on('will-quit', () => {
+        transcodeServer?.close();
+        transcodeServer = null;
+    });
 
     // `start()`'s own rejection is caught too, not just `whenReady()`'s —
     // it was previously fired with a bare `void`, so a failed `loadFile`
