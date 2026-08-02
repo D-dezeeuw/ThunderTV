@@ -74,8 +74,9 @@ machine-readable report.
 Findings the harness can see but that reproduce against the plain web build
 are reported as non-fatal notes rather than failures — a desktop smoke that
 goes red for an app-wide bug no change to `desktop/` could fix stops being
-worth running. There are two such notes today; see the repo-root
-`CLAUDE.md` table entry for where they live.
+worth running. There are none today: the two that existed were both the
+Spektrum expression-cache overflow, fixed by
+`public/vendor/spektrum.runtime.js` (see that directory's README).
 
 The technique behind all of this — Xvfb, CDP over Node's built-in
 `WebSocket`, and the packaged-vs-source path table that explains both bugs

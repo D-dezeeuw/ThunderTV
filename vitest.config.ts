@@ -15,7 +15,14 @@ export default defineConfig({
             // 'spektrum' specifier needs a real resolution target. Point it
             // at the vendored copy (Feature 01.5) rather than a mock —
             // specs exercise the real engine, not a stand-in.
-            spektrum: fileURLToPath(new URL('./public/vendor/spektrum.min.js', import.meta.url)),
+            //
+            // Specifically the *generated* runtime, which is what the app
+            // loads: it is the pinned build with its expression-cache cap
+            // raised (see scripts/spektrum-csp.mjs). Resolving specs against
+            // the unpatched `spektrum.min.js` would mean the one property
+            // src/app/spektrum-csp.spec.ts exists to protect is the one
+            // property tests don't share with production.
+            spektrum: fileURLToPath(new URL('./public/vendor/spektrum.runtime.js', import.meta.url)),
         },
     },
     test: {
