@@ -2,7 +2,7 @@ import type { ChannelRow } from '../m3u/types';
 import { publishListWindow } from '../state/list-publish';
 import { rowHeight, type Density } from './density';
 import { gridColumns, gridTileHeight, type TileShape } from './grid-metrics';
-import { clampScrollTop, computeVisibleCount, computeWindow } from './window-math';
+import { clampScrollTop, computeVisibleCount, computeWindow, resolveScrollTarget } from './window-math';
 
 /**
  * The Feature 08.1/08.10 windowing controller — masterplan §5.4/§6.1's
@@ -80,7 +80,9 @@ export interface SetRowsOptions {
      * forced `scrollTop` write fed another `scroll` event straight back into
      * `onScroll()`. Growth cannot move a row that is already on screen (the
      * new rows are all past the end), so there is nothing to re-anchor: the
-     * position is simply left alone.
+     * position is left alone, and the container's own `scrollTop` is never
+     * assigned on this path at all (`window-math.ts`'s
+     * `resolveScrollTarget()` has the rest of the reasoning).
      */
     preserveScroll?: boolean;
 }
@@ -98,10 +100,21 @@ export function setRows(rows: readonly ChannelRow[], options: SetRowsOptions = {
     allRows = rows as ChannelRow[];
     rowIndexById = new Map(allRows.map((row, index) => [row.id, index]));
     if (!options.preserveScroll) viewerScrolled = false;
-    const requested = options.scrollTop ?? (options.preserveScroll ? scrollTop : 0);
-    scrollTop = clampScrollTop(requested, allRows.length, currentRowH(), viewportHeight, currentColumns());
-    syncContainerScrollTop();
+    const target = resolveScrollTarget({
+        current: scrollTop,
+        live: measuredScrollTop(),
+        ...(options.scrollTop !== undefined ? { requested: options.scrollTop } : {}),
+        growth: options.preserveScroll === true,
+    });
+    scrollTop = clampScrollTop(target.scrollTop, allRows.length, currentRowH(), viewportHeight, currentColumns());
+    if (target.writeToDom) syncContainerScrollTop();
     publishWindow();
+}
+
+/** The container's real position, or `null` when there is nothing to read one from — a container hidden behind a `data-if` reports 0 rather than where it will be once it is shown. */
+function measuredScrollTop(): number | null {
+    if (!containerEl || containerEl.clientHeight === 0) return null;
+    return containerEl.scrollTop;
 }
 
 export function getAllRows(): readonly ChannelRow[] {
