@@ -9,7 +9,7 @@
 //   node scripts/package-target.mjs <electron|webos> [--dist <path>] [--check]
 //
 // --check   dry-run: report what would change, change nothing.
-import { copyFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -95,6 +95,58 @@ if (target === 'webos') {
             changed = true;
         }
         console.log(`package-target: copied tv-mode.css to ${distDir}/tv-mode.css and ensured its <link> tag is present`);
+    }
+
+    // Everything in public/ is copied verbatim into every build, and three
+    // groups of it are browser/desktop furniture a TV app has no consumer for:
+    //
+    //   icons/ + manifest.webmanifest  a webOS app has no tab, no bookmark bar
+    //                                  and no "install to home screen"; its
+    //                                  launcher art is appinfo.json's
+    //                                  icon/largeIcon, packaged separately.
+    //   splash.webp                    the Electron launch window
+    //                                  (desktop/splash.html), which loads it
+    //                                  out of dist/, never dist-webos/.
+    //   .nojekyll                      a GitHub Pages instruction.
+    //
+    // Deleted here rather than excluded at build time: this is packaging, and
+    // keeping it in the packaging step is what stops the app itself from
+    // growing a platform fork over ~37 KiB. The SVG mark stays — base.css
+    // draws it as the watermark, so it is a real runtime asset.
+    const TV_DEAD = ['icons', 'manifest.webmanifest', 'splash.webp', '.nojekyll'];
+    const ICON_LINKS = /\s*<link rel="(?:icon|apple-touch-icon)"[^>]*href="\.\/icons\/[^"]*"[^>]*>/g;
+    const MANIFEST_LINK = /\s*<link rel="manifest"[^>]*>/;
+    const present = TV_DEAD.filter((entry) => existsSync(`${distDir}/${entry}`));
+
+    if (checkOnly) {
+        console.log(`package-target: --check — would delete ${present.join(', ')} from ${distDir}`);
+    } else {
+        // Strict, like the rest of this file: if the build stops emitting
+        // these, that is a change worth noticing rather than silently
+        // tolerating — the same reasoning as the "no bare Spektrum imports"
+        // failure above.
+        if (present.length !== TV_DEAD.length) {
+            console.error(
+                `package-target: expected ${distDir} to contain ${TV_DEAD.join(', ')} but found only ${present.join(', ') || '(none)'}. ` +
+                    'Update the TV_DEAD list rather than leaving a stale deletion in place.',
+            );
+            process.exit(1);
+        }
+        for (const entry of present) rmSync(`${distDir}/${entry}`, { recursive: true, force: true });
+
+        let removedLinks = 0;
+        html = html.replace(ICON_LINKS, () => {
+            removedLinks += 1;
+            return '';
+        });
+        if (MANIFEST_LINK.test(html)) {
+            html = html.replace(MANIFEST_LINK, '');
+            removedLinks += 1;
+        }
+        if (removedLinks > 0) changed = true;
+        console.log(
+            `package-target: removed ${present.join(', ')} and ${String(removedLinks)} browser-only <link> tag(s) from the TV build`,
+        );
     }
 }
 

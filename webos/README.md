@@ -6,7 +6,18 @@ adapter — see `src/core/platform/create-platform.ts`'s header comment)
 plus this directory's `appinfo.json`/icons and two build-time transforms:
 bare Spektrum imports become relative references to the vendored,
 network-independent copy, and TV-specific CSS is added. Rewriting the
-imports avoids an import-map polyfill on Chromium 87. See
+imports avoids an import-map polyfill on Chromium 87.
+
+The same step also deletes what a TV has no consumer for — `icons/` and
+`manifest.webmanifest` (no tab, no bookmark bar, no "install to home
+screen"; the launcher reads `appinfo.json`'s `icon`/`largeIcon`, packaged
+separately), `splash.webp` (the Electron launch window loads it from
+`dist/`), and `.nojekyll` — plus their `<link>` tags. That is deliberately
+a *packaging* step: the app itself stays one codebase, and the ffmpeg
+transcode route, the Codex surface and the rest of the Electron/desktop-only
+work are simply chunks a TV never fetches. See `PERFORMANCE-BUDGET.md`.
+
+See
 `masterplan/phases/phase-30-webos-target-and-release.md` for the full
 epic this is one slice of.
 

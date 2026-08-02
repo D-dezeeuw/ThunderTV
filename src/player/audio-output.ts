@@ -1,7 +1,9 @@
+import { strings } from '../app/strings';
+import { getPlatform } from '../core/platform';
 import { PLAYER_ACTIVE } from '../state/player';
 import { reportPlaybackNotice } from '../state/player.actions';
 import { get } from '../state/typed';
-import { clearNoAudioMark, markedContentId } from './no-audio-marks';
+import { clearNoAudioMark, markedContentId, markNoAudio } from './no-audio-marks';
 
 /**
  * "The picture is fine and there is no sound" — the one playback failure no
@@ -103,9 +105,17 @@ function probe(video: HTMLVideoElement): void {
     // process with ffmpeg in it, the film restarts with its audio
     // re-encoded instead (`transcode-fallback.ts`), and the message is what
     // is left when that is impossible or fails.
-    // Imported here rather than at the top: this whole route is Electron-only
-    // (`transcode-lazy.ts`), it is reached at most once per film, and a webOS
-    // TV must not parse an ffmpeg MSE pipeline it can never use.
+    //
+    // The capability is checked *here*, before the import, and again inside
+    // `handleSilentAudio()` (which also has to answer for a stream that is
+    // not transcodable). One duplicated `if` buys a plain statement about the
+    // TV build: on a host with no transcoder — every browser, every webOS TV
+    // — nothing under `transcode-*` is ever fetched, not even to print this.
+    if (!getPlatform().audioTranscode) {
+        markNoAudio(markedContentId(get(PLAYER_ACTIVE)), 'no-transcode', 'silent');
+        reportPlaybackNotice(strings.list.playerNoAudioDecoded);
+        return;
+    }
     void import('./transcode-fallback').then((module) => module.handleSilentAudio(video));
 }
 
