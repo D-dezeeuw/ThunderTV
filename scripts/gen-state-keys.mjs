@@ -71,6 +71,7 @@ function parseRegistry(consts) {
         // comment above warns about. Adding it also restores the three
         // player-diagnostics keys to this doc.
         { file: 'registry-player.ts', pattern: /export const PLAYER_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
+        { file: 'registry-settings.ts', pattern: /export const SETTINGS_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
     ];
     let body = '';
     for (const { file, pattern } of sources) {

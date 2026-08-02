@@ -1,6 +1,7 @@
 import { strings } from '../app/strings';
 import { getPlatform, hasPlatform } from '../core/platform';
 import { judgeAudioCodec, judgeVideoCodec } from '../player/codec-support';
+import { markApplies, noAudioMark } from '../player/no-audio-marks';
 
 /**
  * The one line a movie/series detail pane shows *before* play when this
@@ -12,8 +13,8 @@ import { judgeAudioCodec, judgeVideoCodec } from '../player/codec-support';
  *  - the panel's own `get_vod_info` codec blocks, which are free but
  *    frequently wrong or absent (`src/xtream/coerce.ts`'s `codecName`);
  *  - what this device *learned* by actually playing the title, which is
- *    right by construction (added in the follow-up commit here —
- *    `src/player/no-audio-marks.ts`).
+ *    right by construction (`src/player/no-audio-marks.ts`) and therefore
+ *    checked first.
  *
  * Neither may ever block playback. A viewer who presses Play on a warned
  * title gets exactly what they got before this existed, message included;
@@ -25,12 +26,19 @@ import { judgeAudioCodec, judgeVideoCodec } from '../player/codec-support';
  * question is per-device, which is why nothing here is cached in the
  * catalog's stored payloads.
  */
-export function catalogAudioWarning(audioCodec?: string | null, videoCodec?: string | null): string | null {
+export function catalogAudioWarning(
+    contentId: string | null,
+    audioCodec?: string | null,
+    videoCodec?: string | null,
+): string | null {
     // The absence of `audioTranscode` *is* the capability check, exactly as
     // `src/core/platform/transcode-adapter.ts`'s header describes. Guarded by
     // `hasPlatform()` so the detail mappers that call this stay callable in a
     // spec that is testing something else entirely.
     const canTranscode = hasPlatform() && Boolean(getPlatform().audioTranscode);
+    // Evidence before metadata: a mark means this device already played the
+    // title and heard nothing.
+    if (markApplies(noAudioMark(contentId), canTranscode)) return strings.catalog.noSoundWarning;
     if (judgeVideoCodec(videoCodec) === 'unplayable') return strings.catalog.noPictureWarning;
     return judgeAudioCodec(audioCodec, canTranscode) === 'silent' ? strings.catalog.noSoundWarning : null;
 }

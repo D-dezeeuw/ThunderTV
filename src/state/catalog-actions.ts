@@ -1,9 +1,11 @@
+import { getPlatform, hasPlatform } from '../core/platform';
+import { markApplies, noAudioMark } from '../player/no-audio-marks';
 import { setDisplayedRows } from './list-rows';
 import { loadStoredCategories, loadStoredItems, saveStoredCategories, saveStoredItems } from './catalog-storage';
 import type { CategoryRail, CategoryRailRow } from './catalog-category-tree';
 import type { CatalogMemory } from './catalog-memory';
 import { createSequenceToken } from './sequence-token';
-import { SETTINGS_LIVE_COUNTRY } from './settings';
+import { SETTINGS_HIDE_NO_AUDIO_TITLES, SETTINGS_LIVE_COUNTRY } from './settings';
 import { CATALOG_TTL_MS, isFresh } from './ttl';
 import { get, set } from './typed';
 import type { ChannelRow } from '../m3u/types';
@@ -83,6 +85,19 @@ export interface CatalogActions {
     selectCategory: (categoryId: string) => Promise<void>;
     /** @returns false when there is nothing cached to publish, so the caller can fall back to `open()`. */
     republishRows: () => boolean;
+}
+
+/**
+ * Drops titles this device has already proved come out silent, when the
+ * viewer asked for that (`settings.hideNoAudioTitles`, off by default —
+ * `src/player/no-audio-marks.ts` holds the evidence and the per-platform
+ * matching rule). Row ids are the ids marks are filed under, so this costs
+ * one map lookup per row and no lookup at all while the setting is off.
+ */
+function withoutSilentTitles(rows: ChannelRow[]): ChannelRow[] {
+    if (get<boolean>(SETTINGS_HIDE_NO_AUDIO_TITLES) !== true) return rows;
+    const canTranscode = hasPlatform() && Boolean(getPlatform().audioTranscode);
+    return rows.filter((row) => !markApplies(noAudioMark(row.id), canTranscode));
 }
 
 /** Both catalogs read their id off a `data-*` attribute, so both need the same "is this a real number" check before using it. */
@@ -255,7 +270,7 @@ export function createCatalogActions<TItem, TRaw>(config: CatalogActionsConfig<T
         set(keys.count, items.length);
         set(keys.status, 'ready');
         const categoryName = config.categoryName(categoryId);
-        setDisplayedRows(items.map((item) => config.toRow(item, account.source, categoryName)));
+        setDisplayedRows(withoutSilentTitles(items.map((item) => config.toRow(item, account.source, categoryName))));
     }
 
     /**
@@ -275,7 +290,7 @@ export function createCatalogActions<TItem, TRaw>(config: CatalogActionsConfig<T
         const items = memory.itemsFor(categoryId);
         if (!items) return false;
         const categoryName = config.categoryName(categoryId);
-        setDisplayedRows(items.map((item) => config.toRow(item, config.cachedSource(), categoryName)));
+        setDisplayedRows(withoutSilentTitles(items.map((item) => config.toRow(item, config.cachedSource(), categoryName))));
         set(keys.count, items.length);
         set(keys.status, 'ready');
         return true;

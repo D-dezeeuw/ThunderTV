@@ -459,3 +459,32 @@ The store is keyed on `src/health/stream-key.ts`'s masked fingerprint, so a
 position survives a password rotation — and so an arriving handoff
 (`src/handoff/README.md`) can write into the very same store rather than
 needing a second resume path through the engine.
+
+### Titles that have no sound *here* (`codec-support.ts`, `no-audio-marks.ts`)
+
+Two layers, deliberately unequal, both feeding one line on the Movies/TV
+Shows detail pane ("No sound on this device…", `state/catalog-audio-
+warning.ts`) and neither ever blocking playback:
+
+- **Metadata.** `get_vod_info`'s `info.video`/`info.audio` are the panel's
+  own ffprobe output, so an AC-3 soundtrack can be named before anything is
+  played. `codec-support.ts` judges it: audio from a list (Chromium answers
+  `''` to `canPlayType('audio/mp4; codecs="ac-3"')` on the very desktop
+  builds that decode it, and `''` is indistinguishable from "no"), video
+  from `MediaSource.isTypeSupported()` at runtime — because the same app
+  answers differently in a tab and in Electron, which is the whole HEVC
+  story above. The desktop calls AC-3 fine, since ffmpeg covers it. This
+  metadata is absent as often as present and wrong often enough that
+  `transcode-fallback.ts` still refuses to consult it before playing.
+- **Evidence.** `no-audio-marks.ts` records a title only after the detector
+  above measured silence — and on the desktop, only after the transcode that
+  exists to fix that also failed. The class is the point: `'no-transcode'`
+  (browser) warns only on hosts that likewise cannot transcode, while
+  `'transcode'` (the desktop tried ffmpeg and still got nothing) warns
+  everywhere. A mark is dropped the instant the title plays with sound, so a
+  re-encoded file or a wrong verdict clears itself.
+
+Settings → Playback's **"Hide titles with no sound on this device"** filters
+marked titles out of the two catalog lists (`state/catalog-actions.ts`), and
+is **off by default**: a catalog with entries silently missing is a worse
+surprise than a badged entry.

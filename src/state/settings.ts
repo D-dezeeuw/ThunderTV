@@ -145,6 +145,16 @@ export const SETTINGS_SUBTITLE_LANGUAGE = 'settings.subtitleLanguage';
 export const SETTINGS_SHOW_HANDOFF_BUTTON = 'settings.showHandoffButton';
 
 /**
+ * Hide titles from Movies/TV Shows that this device has already proved come
+ * out silent — a marker written only after playback measured it (and, on the
+ * desktop, after the transcode meant to fix it also failed);
+ * `src/player/no-audio-marks.ts` holds the evidence. **Off by default**: a
+ * catalog quietly missing entries is a worse bug than a badged entry, and the
+ * detail pane's warning is the half that is always on.
+ */
+export const SETTINGS_HIDE_NO_AUDIO_TITLES = 'settings.hideNoAudioTitles';
+
+/**
  * Mirrors the stored settings blob (masterplan §6.3's `settings` key
  * family). `proxyTemplate` is the only persisted field — density lives
  * under `ui.density` (kept there for continuity with Phase 02 rather than
@@ -176,6 +186,7 @@ export interface SettingsState {
     audioLanguage: string;
     subtitleLanguage: string;
     showHandoffButton: boolean;
+    hideNoAudioTitles: boolean;
 }
 
 export interface NavVisibility {
@@ -211,6 +222,7 @@ export const SETTINGS_DEFAULTS: SettingsState = {
     audioLanguage: 'en',
     subtitleLanguage: 'auto',
     showHandoffButton: false,
+    hideNoAudioTitles: false,
 };
 
 export function initSettingsState(): void {
@@ -242,4 +254,5 @@ export function initSettingsState(): void {
     setValue(SETTINGS_AUDIO_LANGUAGE, SETTINGS_DEFAULTS.audioLanguage);
     setValue(SETTINGS_SUBTITLE_LANGUAGE, SETTINGS_DEFAULTS.subtitleLanguage);
     setValue(SETTINGS_SHOW_HANDOFF_BUTTON, SETTINGS_DEFAULTS.showHandoffButton);
+    setValue(SETTINGS_HIDE_NO_AUDIO_TITLES, SETTINGS_DEFAULTS.hideNoAudioTitles);
 }

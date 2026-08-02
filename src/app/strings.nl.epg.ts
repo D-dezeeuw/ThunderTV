@@ -22,6 +22,9 @@ export const nlEpg = {
             'Standaard uit: een zender die de EPG-catalogus nog niet heeft gekoppeld, is vaker een ontbrekend stukje programmagegevens dan een niet-bestaande zender. Zet dit aan zodra uw catalogus gevuld is om zenders zonder programmagegevens te verbergen. Geldt nooit voor Radio.',
     },
     playback: {
+        hideNoAudioTitles: 'Verberg titels zonder geluid op dit apparaat',
+        hideNoAudioTitlesHelp:
+            'Verbergt alleen titels die dit apparaat al zonder geluid heeft afgespeeld (en op de desktop ook niet kon omzetten). Standaard uit \u2014 de waarschuwing op de detailpagina blijft altijd staan.',
         showHandoffButton: 'Toon knop "Doorgaan op ander apparaat"',
         showHandoffButtonHelp: 'Voegt een knop toe aan de spelerbalk om de huidige stream over te dragen naar een ander scherm. Standaard uit.',
     },

@@ -95,6 +95,7 @@ repeated here, to avoid the two drifting apart.
 | `settings.healthCleared` | settings | no | — | v1 | One-shot confirmation that the forget-stream-health button ran. |
 | `settings.healthDeadCount` | settings | no | — | v1 | How many of those score below the likely-dead threshold. Advisory: such rows are marked in the list, never removed. |
 | `settings.healthTrackedCount` | settings | no | — | v1 | How many feeds have accumulated playback evidence — Settings readout only, recomputed on demand from src/health/store.ts. |
+| `settings.hideNoAudioTitles` | settings | yes | — | v1 | Hide Movies/TV Shows titles this device has already proved come out silent (src/player/no-audio-marks.ts). Off by default, deliberately: filtering a catalog on evidence the viewer cannot see is worse than badging it, and the badge on the detail pane is the always-on half of the feature. |
 | `settings.liveCountry` | settings | yes | — | v1 | Country token the Live view keeps, matched against the "| NL |"-style prefix providers put on channels and categories. Empty string disables country filtering. |
 | `settings.liveDropJunk` | settings | yes | — | v1 | Drop event-slot placeholders (VIAPLAY 07 and friends), separator rows and adult entries from the Live view. On by default. |
 | `settings.liveEpgVerifiedOnly` | settings | yes | — | v1 | Live view strict mode — show only channels the Phase 31 EPG country catalog matched. Off by default; a not-yet-matched channel is far more often a catalog gap than an absent channel. |

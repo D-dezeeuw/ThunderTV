@@ -109,7 +109,7 @@ export function toVodDetail(item: VodItem, categoryName: string | null, info?: X
         genre: info?.genre ?? null,
         durationSecs: info?.durationSecs ?? null,
         releaseDate: info?.releaseDate ?? null,
-        audioWarning: catalogAudioWarning(info?.audioCodec, info?.videoCodec),
+        audioWarning: catalogAudioWarning(makeVodRowId(item.streamId), info?.audioCodec, info?.videoCodec),
     };
 }
 

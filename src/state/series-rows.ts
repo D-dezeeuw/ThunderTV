@@ -141,7 +141,7 @@ export function toSeriesDetail(item: SeriesItem, categoryName: string | null, in
         year: item.year ?? null,
         rating: item.rating ?? null,
         rows: info ? buildSeriesDetailRows(info, SERIES_DETAIL_EPISODES_CAP) : [],
-        audioWarning: catalogAudioWarning(firstEpisodeAudioCodec(info)),
+        audioWarning: catalogAudioWarning(makeSeriesRowId(item.seriesId), firstEpisodeAudioCodec(info)),
     };
 }
 

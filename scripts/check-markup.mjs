@@ -39,10 +39,12 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url));
  * ten of the file's longest comment blocks were condensed — same findings,
  * tighter prose — to cover its ~30 lines. The online-subtitle search rows did
  * the same and then some: four more comment blocks condensed, the ratchet
- * lowered below where it started.
+ * lowered below where it started. The no-sound badge/toggle rows paid the
+ * same way — eight more blocks condensed for a debug fact row, two detail
+ * warnings and one Settings toggle, and the ratchet came down again.
  */
 const BUDGETS = [
-    { path: 'index.html', maxLines: 3538, maxBytes: 246_023 },
+    { path: 'index.html', maxLines: 3530, maxBytes: 245_811 },
 ];
 
 let failed = false;
