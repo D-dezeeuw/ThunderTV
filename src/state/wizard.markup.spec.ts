@@ -1,11 +1,12 @@
 import { tick } from 'spektrum';
 import { describe, expect, it } from 'vitest';
 import { withFakePlatform, type FakeHttpAdapter } from '../core/platform/fake-platform';
+import { makePlaylistRecord } from '../core/storage/fixtures';
 import { apiUrl } from '../xtream/urls';
 import type { XtreamSource } from '../xtream/types';
 import { mountTemplate } from '../shared/testing/bind-dom';
 import { get, set } from './typed';
-import { UI_WIZARD_OPEN, UI_WIZARD_STEP } from './wizard';
+import { UI_WIZARD_EDIT_SOURCE_ID, UI_WIZARD_OPEN, UI_WIZARD_STEP } from './wizard';
 import { SETTINGS_LOCALE } from './settings';
 
 /**
@@ -42,11 +43,12 @@ const TEMPLATE = `
             <input type="text" data-ref="wizardXtreamUserInput" data-testid="wizard-xtream-user-input" />
             <input type="password" data-ref="wizardXtreamPassInput" data-testid="wizard-xtream-pass-input" />
             <p data-if="settings.xtreamError" data-testid="wizard-xtream-error">{{ settings.xtreamError }}</p>
-            <button type="button" data-action="click" data-fn="wizard/backStep" data-testid="wizard-back-btn">Back</button>
+            <button type="button" data-if="!ui.wizardEditSourceId" data-action="click" data-fn="wizard/backStep" data-testid="wizard-back-btn">Back</button>
             <button type="button" data-action="click" data-fn="wizard/skip" data-testid="wizard-skip-btn-2">Skip</button>
             <button type="button" data-action="click" data-fn="wizard/saveXtreamAccount" data-testid="wizard-xtream-save-btn">Save</button>
         </section>
     </aside>
+    <button type="button" data-action="click" data-fn="sources/edit" data-id="src-1" data-testid="configured-source-edit-btn">Edit</button>
 `;
 
 /** Same select-driven-change helper `settings.locale.markup.spec.ts` uses — matches how a real <option> pick fires `data-action="change"`. */
@@ -155,6 +157,44 @@ describe('First-run wizard (DOM-bound)', () => {
                 expect.objectContaining({ type: 'xtream', username: source.user, url: source.url }),
             ]);
             expect(get<boolean>(UI_WIZARD_OPEN)).toBe(false);
+
+            mounted.cleanup();
+        });
+    });
+
+    /**
+     * The edit half: a configured source's card reopens this same modal on
+     * step 2 with the stored server/username already filled in. The password
+     * stays blank on purpose — blank means "keep the stored one"
+     * (`source-edit.ts`'s `planSourceEdit()`), so prefilling it would put a
+     * real credential in the DOM for nothing.
+     */
+    it('a source card prefills the wizard from the stored record and opens it as an editor', async () => {
+        await withFakePlatform({}, async ({ storage }) => {
+            const mounted = mountTemplate(TEMPLATE);
+            await storage.bulkPut(
+                'playlists',
+                [makePlaylistRecord({ id: 'src-1', type: 'xtream', url: source.url, username: source.user, password: source.pass })],
+                (r) => r.id,
+            );
+
+            mounted.dispatch('sources/edit');
+            await flushAsync();
+
+            expect(get<string | null>(UI_WIZARD_EDIT_SOURCE_ID)).toBe('src-1');
+            expect(get<number>(UI_WIZARD_STEP)).toBe(2);
+            expect(mounted.query<HTMLInputElement>('[data-testid="wizard-xtream-url-input"]')?.value).toBe(source.url);
+            expect(mounted.query<HTMLInputElement>('[data-testid="wizard-xtream-user-input"]')?.value).toBe(source.user);
+            expect(mounted.query<HTMLInputElement>('[data-testid="wizard-xtream-pass-input"]')?.value).toBe('');
+            // Step 1 is language/country, which an edit has no business in.
+            expect(mounted.query('[data-testid="wizard-back-btn"]')?.style.display).toBe('none');
+
+            // Cancelling leaves the source exactly as it was.
+            mounted.dispatch('wizard/skip');
+            tick();
+            expect(get<boolean>(UI_WIZARD_OPEN)).toBe(false);
+            expect(get<string | null>(UI_WIZARD_EDIT_SOURCE_ID)).toBeNull();
+            expect(await storage.getAll('playlists')).toEqual([expect.objectContaining({ id: 'src-1', url: source.url })]);
 
             mounted.cleanup();
         });

@@ -1,9 +1,12 @@
 import { defineFn } from 'spektrum';
+import type { Route } from '../app/router';
 import type { ChannelRow } from '../m3u/types';
 import { DEFAULT_SEARCH_LIMIT, rankSearch } from '../search/fuzzy';
 import { normalizeForSearch } from '../search/normalize';
-import { liveDisplayRows } from './live-rows';
+import { cleanCatalogDisplayName } from './catalog-clean-name';
+import { ensureRadioRows, liveDisplayRows, radioDisplayRows } from './live-rows';
 import { setDisplayedRows } from './list-rows';
+import type { SeriesItem } from './series';
 import {
     allLoadedSeriesItems,
     seriesCategoryName,
@@ -11,7 +14,15 @@ import {
     seriesItemToRow,
 } from './series-rows';
 import {
+    sweptMultiSource,
+    sweptSeriesItems,
+    sweptSeriesOwnership,
+    sweptVodItems,
+    sweptVodOwnership,
+} from './catalog-sweep';
+import {
     SEARCH_ACTIVE,
+    SEARCH_ALL_SOURCES,
     SEARCH_LOADED_ONLY,
     SEARCH_QUERY,
     SEARCH_RESULT_COUNTS,
@@ -19,7 +30,9 @@ import {
     type SearchResultCounts,
     type SearchScope,
 } from './search';
-import { replace, set } from './typed';
+import { get, replace, set } from './typed';
+import { UI_ACTIVE_VIEW } from './ui';
+import type { VodItem } from './vod';
 import { allLoadedVodItems, cachedVodSource, vodCategoryName, vodHasUnfetchedCategories, vodItemToRow } from './vod-rows';
 
 /**
@@ -43,14 +56,24 @@ import { allLoadedVodItems, cachedVodSource, vodCategoryName, vodHasUnfetchedCat
  */
 let currentQuery = '';
 let currentScope: SearchScope = 'all';
+/** Same plain-module-variable reasoning as the two above — the sweep runner flips these and re-ranks in the same tick, so neither can be re-read from state here. */
+let currentAllSources = false;
+let currentSweepPartial = false;
 export function registerSearchActions(): void {
     // Each catalog tab's search bar is scoped to its own content — Live only
     // searches channels, Movies only movies, Series only series — so the
     // scope is forced from the input's own view rather than left to a
     // scope-picker the user could point at the wrong category.
+    //
+    // Live and Radio share one input (index.html mounts the same
+    // `.catalog-search` block for both), so this one reads which of the two
+    // is on screen. Same rule, just resolved at press time instead of at
+    // authoring time — the alternative was a second input, a second data-fn
+    // and a second copy of the clear button for a list that differs only in
+    // which rows it holds.
     defineFn('search/setQueryChannels', (el) => {
         if (el instanceof HTMLInputElement) {
-            setSearchScope('channels');
+            setSearchScope(get<Route>(UI_ACTIVE_VIEW) === 'radio' ? 'radio' : 'channels');
             setSearchQuery(el.value);
         }
     });
@@ -75,23 +98,37 @@ export function registerSearchActions(): void {
  * Channels have no persisted `searchKey` field (`ChannelRow` is owned by
  * `src/m3u/`, out of this phase's `src/state/`-only scope) — so this module
  * builds its own small cache the first time a search touches a given row
- * array, keyed by reference identity: `liveDisplayRows()` only returns a
- * *new* array when the underlying catalog is actually rebuilt (source
- * switch, a Live filter change), never on a keystroke, so this still
+ * array, keyed by reference identity: `liveDisplayRows()`/`radioDisplayRows()`
+ * only return a *new* array when the underlying catalog is actually rebuilt
+ * (source switch, a Live filter change), never on a keystroke, so this still
  * satisfies `src/search/README.md`'s "normalize once, score many times"
- * contract in practice.
+ * contract in practice. One cache per row source, since the two arrays are
+ * rebuilt independently.
  */
-let channelIndexSource: readonly ChannelRow[] | null = null;
-let channelSearchKeys = new Map<string, string>();
-
-function channelSearchKey(row: ChannelRow): string {
-    const rows = liveDisplayRows();
-    if (channelIndexSource !== rows) {
-        channelSearchKeys = new Map(rows.map((r) => [r.id, normalizeForSearch(r.name)]));
-        channelIndexSource = rows;
-    }
-    return channelSearchKeys.get(row.id) ?? '';
+function createSearchKeyCache(rowsOf: () => readonly ChannelRow[]): {
+    keyFor: (row: ChannelRow) => string;
+    reset: () => void;
+} {
+    let indexSource: readonly ChannelRow[] | null = null;
+    let keys = new Map<string, string>();
+    return {
+        keyFor(row) {
+            const rows = rowsOf();
+            if (indexSource !== rows) {
+                keys = new Map(rows.map((r) => [r.id, normalizeForSearch(r.name)]));
+                indexSource = rows;
+            }
+            return keys.get(row.id) ?? '';
+        },
+        reset() {
+            indexSource = null;
+            keys = new Map();
+        },
+    };
 }
+
+const channelKeys = createSearchKeyCache(liveDisplayRows);
+const radioKeys = createSearchKeyCache(radioDisplayRows);
 
 export function setSearchQuery(raw: string): void {
     currentQuery = raw;
@@ -103,6 +140,18 @@ export function setSearchQuery(raw: string): void {
 export function setSearchScope(scope: SearchScope): void {
     currentScope = scope;
     set(SEARCH_SCOPE, scope);
+    recomputeSearch();
+}
+
+/**
+ * Widens (or narrows) the `movies`/`series` scopes to every configured
+ * provider's swept catalog — `catalog-sweep.ts` owns the fetching and the
+ * pool, this only decides which row source the ranking reads.
+ */
+export function setSearchAllSources(on: boolean, partial = false): void {
+    currentAllSources = on;
+    currentSweepPartial = partial;
+    set(SEARCH_ALL_SOURCES, on);
     recomputeSearch();
 }
 
@@ -133,32 +182,101 @@ export function recomputeSearch(): void {
     }
 
     const wantChannels = scope === 'channels' || scope === 'all';
+    const wantRadio = scope === 'radio';
     const wantMovies = scope === 'movies' || scope === 'all';
     const wantSeries = scope === 'series' || scope === 'all';
 
-    const channelMatches = wantChannels ? rankSearch(query, liveDisplayRows(), channelSearchKey, DEFAULT_SEARCH_LIMIT) : [];
+    // Radio's rows are built on entering the view, but a recompute can also
+    // arrive from elsewhere (`catalog-warm.ts`) — `ensureRadioRows()` is
+    // memoized on its own inputs, so asking is free when they already exist.
+    if (wantRadio) ensureRadioRows();
+    const channelMatches = wantChannels
+        ? rankSearch(query, liveDisplayRows(), channelKeys.keyFor, DEFAULT_SEARCH_LIMIT)
+        : [];
+    // The two scopes are mutually exclusive, so one of these is always empty
+    // — kept as separate ranks rather than one row source picked by an `if`
+    // so each keeps its own normalize-once cache.
+    const radioMatches = wantRadio
+        ? rankSearch(query, radioDisplayRows(), radioKeys.keyFor, DEFAULT_SEARCH_LIMIT)
+        : [];
+    // "Search all" only swaps the row source — same `rankSearch()`, same
+    // pre-normalized `searchKey`, same limit, so a swept result is ranked by
+    // exactly the rules a single-provider one is. An empty pool (a sweep
+    // cancelled before anything landed) falls back to the loaded catalog
+    // rather than showing nothing.
+    const swept = currentAllSources;
+    const vodPool = swept && sweptVodItems().length > 0 ? sweptVodItems() : allLoadedVodItems();
+    const seriesPool = swept && sweptSeriesItems().length > 0 ? sweptSeriesItems() : allLoadedSeriesItems();
+
     const vodMatches = wantMovies
-        ? rankSearch(query, allLoadedVodItems(), (item) => item.searchKey, DEFAULT_SEARCH_LIMIT)
+        ? rankSearch(query, vodPool, (item) => item.searchKey, DEFAULT_SEARCH_LIMIT)
         : [];
     const seriesMatches = wantSeries
-        ? rankSearch(query, allLoadedSeriesItems(), (item) => item.searchKey, DEFAULT_SEARCH_LIMIT)
+        ? rankSearch(query, seriesPool, (item) => item.searchKey, DEFAULT_SEARCH_LIMIT)
         : [];
 
     const counts: SearchResultCounts = {
-        channels: channelMatches.length,
+        channels: channelMatches.length + radioMatches.length,
         movies: vodMatches.length,
         series: seriesMatches.length,
     };
-    const loadedOnly = (wantMovies && vodHasUnfetchedCategories()) || (wantSeries && seriesHasUnfetchedCategories());
+    // Search-all answers the coverage question differently: a swept pool
+    // holds every category of every provider it reached, so what is left to
+    // admit is whichever provider it did NOT reach (a failure, or a cancel).
+    const loadedOnly = swept
+        ? currentSweepPartial
+        : (wantMovies && vodHasUnfetchedCategories()) || (wantSeries && seriesHasUnfetchedCategories());
 
-    const vodSource = cachedVodSource();
     const rows: ChannelRow[] = [
         ...channelMatches,
-        ...vodMatches.map((item) => vodItemToRow(item, vodSource, vodCategoryName(item.categoryId))),
-        ...seriesMatches.map((item) => seriesItemToRow(item, seriesCategoryName(item.categoryId))),
+        ...radioMatches,
+        ...vodMatches.map((item) => vodResultRow(item)),
+        ...seriesMatches.map((item) => seriesResultRow(item)),
     ].slice(0, DEFAULT_SEARCH_LIMIT);
 
     publishResults(rows, counts, loadedOnly);
+}
+
+/**
+ * A swept result can belong to a provider that is not the active one, so
+ * its playable URL has to be built from *that* provider's credentials and
+ * its category named from *that* provider's catalog — the active source's
+ * rail only knows its own. `sweptVodOwnership()` is `null` for everything
+ * the pool has never seen, which is every row when search-all is off, so
+ * this collapses back to the original single-source mapping.
+ */
+function vodResultRow(item: VodItem): ChannelRow {
+    const ownership = sweptVodOwnership(item.streamId, item.categoryId);
+    const category =
+        ownership?.categoryName != null
+            ? cleanCatalogDisplayName(ownership.categoryName)
+            : vodCategoryName(item.categoryId);
+    return vodItemToRow(
+        item,
+        ownership?.owner.source ?? cachedVodSource(),
+        withProvider(ownership?.owner.name, category, sweptMultiSource('vod')),
+    );
+}
+
+function seriesResultRow(item: SeriesItem): ChannelRow {
+    const ownership = sweptSeriesOwnership(item.seriesId, item.categoryId);
+    const category =
+        ownership?.categoryName != null
+            ? cleanCatalogDisplayName(ownership.categoryName)
+            : seriesCategoryName(item.categoryId);
+    return seriesItemToRow(item, withProvider(ownership?.owner.name, category, sweptMultiSource('series')));
+}
+
+/**
+ * Which provider a result came from, folded into the row's existing
+ * `group` line — the row shape already renders it, so provenance costs no
+ * markup at all. Only shown once the pool actually holds more than one
+ * provider: with a single source configured, naming it on every row is
+ * noise.
+ */
+function withProvider(provider: string | undefined, category: string | null, multiSource: boolean): string | null {
+    if (!multiSource || provider === undefined) return category;
+    return category ? `${provider} · ${category}` : provider;
 }
 
 function publishResults(rows: ChannelRow[], counts: SearchResultCounts, loadedOnly: boolean): void {
@@ -167,10 +285,12 @@ function publishResults(rows: ChannelRow[], counts: SearchResultCounts, loadedOn
     setDisplayedRows(rows);
 }
 
-/** Test-only: resets the module-level query/scope/channel-index memory this file keeps outside Spektrum state. Never call from app code. */
+/** Test-only: resets the module-level query/scope/row-index memory this file keeps outside Spektrum state. Never call from app code. */
 export function resetSearchActionsForTests(): void {
     currentQuery = '';
     currentScope = 'all';
-    channelIndexSource = null;
-    channelSearchKeys = new Map();
+    currentAllSources = false;
+    currentSweepPartial = false;
+    channelKeys.reset();
+    radioKeys.reset();
 }

@@ -62,6 +62,23 @@ export function normalizeCategoryName(name: string): string {
         .trim();
 }
 
+/**
+ * A provider's "Top 100" category — the one every panel ships and every
+ * viewer opens first, and which the popularity table above cannot rank
+ * because it names no service.
+ *
+ * The rule, chosen over the alternatives and documented here because a
+ * looser one costs real categories their place: the **normalized name
+ * contains the token `top 100`**, anywhere in it. `normalizeCategoryName()`
+ * has already lower-cased and flattened the punctuation, so `"TOP 100"`,
+ * `"| NL | Top 100"`, `"Top 100 Films"` and `"Top100"` (which normalizes to
+ * one word, hence the optional space) all match, while `"Top 1000"` and
+ * `"Stop 100"` do not — `\b` on both ends is what keeps them out.
+ */
+export function isTopHundredCategory(name: string): boolean {
+    return /\btop ?100\b/.test(normalizeCategoryName(name));
+}
+
 /** This category's index in `POPULAR_SERVICES`, or `UNRANKED`. */
 export function popularityRank(name: string): number {
     const normalized = normalizeCategoryName(name);

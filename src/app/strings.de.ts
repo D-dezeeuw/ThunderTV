@@ -9,6 +9,7 @@ import { deHandoff } from './strings.de.handoff';
 import { deStarred } from './strings.de.starred';
 import { deEpg } from './strings.de.epg';
 import { dePlayerTracks } from './strings.de.player';
+import { deWizard } from './strings.de.wizard';
 
 export const de = {
     appName: 'ThunderTV',
@@ -99,7 +100,7 @@ export const de = {
     emptyStates: {
         firstRun: {
             heading: 'Fügen Sie eine Quelle hinzu, um loszulegen',
-            note: 'Oder öffnen Sie einen Verbindungslink, um dieses Gerät in einem Schritt zu konfigurieren.',
+            note: 'Sie können Quellen später unter Quellen hinzufügen, ersetzen oder aktualisieren.',
             file: 'M3U-Datei hochladen',
             urlPlaceholder: 'https://anbieter.beispiel/playlist.m3u',
             urlSubmit: 'Von URL importieren',
@@ -135,13 +136,14 @@ export const de = {
     },
 
     connect: {
-        detected: 'Verbindungslink erkannt — dieses Gerät wird in Kürze konfiguriert.',
+        detected: 'Verbindungslesezeichen sind in dieser Version nicht aktiviert. Fügen Sie die Quelle unter Quellen manuell hinzu.',
     },
 
     ...deEpg.topLevel,
     ...deCodex,
     ...deHandoff,
     ...deStarred,
+    ...deWizard,
 
     recent: {
         nowPlaying: 'Läuft gerade:',
@@ -186,8 +188,11 @@ export const de = {
         hiddenNote: 'In der Seitenleiste ausgeblendet, da keine abspielbaren Sender enthalten sind. Hier weiterhin auswählbar.',
         showHidden: 'Ausgeblendete Quellen anzeigen',
         allTitle: 'Standardquelle',
-        allHint: 'Wählen Sie, welche importierte Quelle Live, Radio und Kategorien anzeigen. Die Auswahl hier bewirkt dasselbe wie die Auswahl im Tab Quellen.',
+        allHint: 'Wählen Sie, welche importierte Quelle Live, Radio und Kategorien anzeigen. Die Auswahl hier bewirkt dasselbe wie „Verwenden“ im Tab Quellen.',
         activeBadge: 'Aktiv',
+        configuredTitle: 'Ihre Quellen',
+        configuredHint: 'Wählen Sie eine Quelle, um ihre Verbindungsdaten zu bearbeiten. „Verwenden“ macht sie zur Quelle für Live, Radio und Kategorien.',
+        useButton: 'Verwenden',
     },
 
     settings: {
@@ -248,7 +253,7 @@ export const de = {
             proxyLabel: 'Proxy-URL-Vorlage',
             proxyPlaceholder: 'https://mein-proxy.beispiel/{url}',
             proxyHelp:
-                'Optional. Wird bei Playlist-, EPG- und API-Anfragen angewendet, wenn festgelegt. Es wird kein öffentlicher Proxy bereitgestellt oder zugesichert — Videosegmente werden separat vom Player abgerufen und bleiben im Web ohnehin an CORS gebunden.',
+                'Optional. Wird bei Playlist-, EPG-, API- und Stream-Anfragen angewendet, wenn festgelegt, sowie bei Senderlogos, die eine sichere Seite sonst blockiert. Es wird kein öffentlicher Proxy bereitgestellt oder zugesichert — betreiben Sie einen eigenen (siehe scripts/home-proxy.mjs). Wenn Streams mit 403/404 fehlschlagen, während die Senderliste lädt, läuft der Proxy vermutlich auf einer Rechenzentrums-IP, die der Anbieter blockiert; betreiben Sie ihn stattdessen über Ihren Heimanschluss.',
             proxySave: 'Speichern',
             proxyInvalid: 'Muss eine gültige https://-URL sein (oder http://localhost zum lokalen Testen).',
             proxySaved: 'Gespeichert.',
@@ -297,20 +302,6 @@ export const de = {
         appearance: deAppearance,
     },
 
-    wizard: {
-        title: 'Willkommen bei ThunderTV',
-        skip: 'Vorerst überspringen',
-        step1: {
-            heading: 'Richten wir Sie ein',
-            intro: 'Wählen Sie Ihre Sprache und Ihr bevorzugtes Inhaltsland — beides können Sie jederzeit in den Einstellungen ändern.',
-            next: 'Weiter',
-        },
-        step2: {
-            heading: 'Fügen Sie Ihre Sender hinzu',
-            intro: 'Geben Sie Ihr Xtream-Codes-Konto ein, um jetzt Ihre Sender zu importieren, oder überspringen Sie diesen Schritt und fügen Sie später über die Verbinden-Karte eine Quelle hinzu.',
-            back: 'Zurück',
-        },
-    },
 
     list: {
         ...deEpg.list,
@@ -328,7 +319,6 @@ export const de = {
             openSources: 'Zu Quellen',
         },
         backToGroups: '← Gruppen',
-        playerStop: 'Stopp',
         playerFullscreen: 'Vollbild',
         playerNextVisual: 'Nächster Visual',
         playerPauseVisual: 'Visual pausieren',
@@ -351,7 +341,6 @@ export const de = {
         signalGood: 'Stream stabil',
         signalFair: 'Stream puffert gelegentlich',
         signalPoor: 'Stream stockt — Verbindung zu langsam oder instabil',
-        nowPlayingEmpty: 'Wählen Sie einen Sender, um mit dem Ansehen zu beginnen.',
         ...dePlayerTracks,
     },
 

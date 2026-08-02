@@ -29,6 +29,124 @@ still opens it, pre-filled. See
 so this never affects a packaged build, only `npm start` from your own
 checkout.
 
+## Audio transcoding (`transcode.mjs`)
+
+Chromium ships no AC-3, E-AC-3 or DTS decoder, and a large share of movie
+files carry exactly those — the browser plays the picture, drops the audio
+track, and reports no error at all. On the web the only honest answer is a
+message. Here there is a better one: `transcode.mjs` embeds a second
+loopback server that streams the same film back with `-c:v copy -c:a aac`,
+so the video is passed through untouched and only the audio goes through an
+encoder.
+
+- **Fragmented MP4 on stdout**, not HLS: no temp files, no segment
+  bookkeeping, one ffmpeg process per session. The renderer feeds it into
+  MediaSource (`src/player/transcode-engine.ts`), which is what keeps the
+  duration and the scrub bar real.
+- **Seeking is a new request.** `/stream?t=…` kills the running process and
+  starts another with `-ss`, so jumping into hour two costs a keyframe scan
+  rather than a download of everything before it. One process at a time,
+  killed on supersede, on client abort, and on `will-quit`.
+- **Token-gated**, unlike the proxy next door: this one hands an arbitrary
+  URL to a subprocess, so `preload.cjs` passes a per-session token along with
+  the origin (`window.electron.transcode`) and an untokened request gets 403.
+- **`/status`** reports `{ ok, ffmpeg }` — the smoke test asserts both, since
+  a build that shipped without the binary is a desktop app with a web app's
+  limits.
+- **VOD only.** Live has no duration to seek in and is routinely MPEG-2
+  video, which `-c:v copy` cannot put into an MP4 that anything plays.
+
+ffmpeg comes from `ffmpeg-static`, a **devDependency** of this package on
+purpose: production dependencies are copied into `app.asar` automatically,
+and this one is placed by hand under `extraResources` — a binary inside an
+asar has no filesystem path and cannot be executed at all. It costs about
+78 MB per platform artifact, which is the price of a media pipeline; nothing
+smaller decodes AC-3, E-AC-3, DTS and TrueHD. `resolveFfmpegPath()` looks in
+the packaged location first (`resources/ffmpeg/`) and then in
+`desktop/node_modules/`, the same candidate-list pattern `main.mjs` uses for
+the icon and `index.html`.
+
+## Testing this shell (and why the usual gates miss it)
+
+`npm run verify` never launches Electron, and `tsconfig.json` doesn't
+include `desktop/`, so for a long time the only thing standing behind these
+four files was ESLint's untyped pass. Two bugs shipped through that gap at
+once — both invisible from a checkout, both fatal in a packaged build:
+
+| Bug | Why `npm start` couldn't see it |
+| --- | --- |
+| `main.mjs` imports `../scripts/proxy-server.mjs`, which nothing packaged | `desktop/` and `scripts/` are siblings in the repo; inside `app.asar` that path leaves the package entirely |
+| `main.mjs` loaded `../dist/index.html` | `electron-builder.yml` maps `dist/` *inside* the asar, so packaged it resolved one level too high |
+
+**A broken Electron app does not exit.** Both failures left a live process:
+the first parked on Electron's "A JavaScript error occurred in the main
+process" dialog, the second held an empty window open. Anything shaped like
+`run it for 30s and check the exit code` passes on a completely dead app —
+which is why the checks below assert positive signals instead.
+
+Three layers, cheapest first:
+
+```bash
+npm run lint:desktop-package   # ~50ms, no Electron — in `npm run verify`
+npm test -- desktop/           # the main-process specs, no Electron
+npm run smoke:desktop          # ~10s, real Electron, headless
+npm run smoke:desktop:packaged # the same, against a built artifact
+npm run smoke:desktop:playback # ~60s, plays a real AC-3 film end to end
+```
+
+**`scripts/smoke-desktop-playback.mjs`** is the one that covers the audio
+transcode route as a viewer meets it: it builds an H.264 + AC-3 film with
+the bundled ffmpeg, serves it over loopback with `Range`, seeds a Recents
+row, clicks it, and then asserts on the live renderer — the direct attempt
+decodes video and zero audio, the transcode takes over on its own, real AAC
+bytes decode, MediaSource carries the film's real duration, a seek outside
+the buffered window restarts ffmpeg at that second and plays on, the notice
+comes and goes, and leaving the view leaves no ffmpeg behind. Opt-in
+(Electron + a minute of wall clock), but run it after touching anything
+under `src/player/transcode-*`, `src/player/mp4-init.ts` or
+`desktop/transcode.mjs`: that is MSE-semantics code, and neither jsdom nor
+the type checker can say anything about it. Its first run found a real
+seek-time `InvalidStateError` that every other gate was green through.
+
+`desktop/*.spec.mts` runs in the repo's own Vitest (see `vitest.config.ts`'s
+`include`), against a *fake* `spawn` so the transcode server's HTTP contract
+is checked on every machine; the one block that needs the real binary skips
+itself where `desktop/node_modules` was never installed.
+
+**`scripts/check-desktop-package.mjs`** walks the module graph from
+`main.mjs`/`preload.cjs` and resolves every relative import *in packaged
+coordinates* (`app.asar/` for `files:`, `resources/` for
+`extraResources:`), failing on anything the allowlist doesn't place there.
+It is in `npm run verify`, so the first bug above can't come back.
+
+**`scripts/smoke-desktop.mjs`** (with `smoke-desktop-bridge.mjs`, which owns
+the `window.electron` contract and the two localhost-server probes) actually
+launches the app — starting its own
+Xvfb when `DISPLAY` is unset — and drives the live renderer over the Chrome
+DevTools Protocol on Node's built-in `WebSocket` (no Playwright, no new
+dependency). It asserts the main process survived its own module graph, a
+window loaded the built `index.html`, `#app` is populated, Spektrum bound
+the template, `window.electron` matches `ElectronBridge` member for member,
+and both embedded servers answer on the origins the bridge advertises — the
+proxy, and the transcoder (`/status` with `ffmpeg: true`, plus a 403 for an
+untokened `/stream`). It
+writes a PNG to `release/smoke/` either way, and `--json` prints a
+machine-readable report.
+
+Findings the harness can see but that reproduce against the plain web build
+are reported as non-fatal notes rather than failures — a desktop smoke that
+goes red for an app-wide bug no change to `desktop/` could fix stops being
+worth running. There are none today: the two that existed were both the
+Spektrum expression-cache overflow, fixed by
+`public/vendor/spektrum.runtime.js` (see that directory's README).
+
+The technique behind all of this — Xvfb, CDP over Node's built-in
+`WebSocket`, and the packaged-vs-source path table that explains both bugs
+above — is written up as an agent skill in
+`.claude/skills/electron-testing/`. Read that before changing
+`electron-builder.yml`'s allowlists or any `__dirname`-relative path in
+`main.mjs`.
+
 ## Packaging
 
 ```bash

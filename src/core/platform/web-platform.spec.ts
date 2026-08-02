@@ -17,10 +17,32 @@ describe('createWebPlatform', () => {
         expect(platform.capabilities).toBeDefined();
     });
 
-    it('fixes corsUnrestricted and externalPlayers to false on the web', async () => {
+    it('reports no CORS freedom with no proxy getter, and never external players', async () => {
         const platform = await createWebPlatform();
         expect(platform.capabilities.corsUnrestricted).toBe(false);
         expect(platform.capabilities.externalPlayers).toBe(false);
+    });
+
+    // Read live, not snapshotted: the user sets the proxy from Settings long
+    // after the platform is constructed, and only a valid template counts —
+    // `applyProxy` would ignore an empty one, so reporting CORS freedom for it
+    // would be a lie the warning surface acts on.
+    it('derives corsUnrestricted from the live proxy template, ignoring empty and invalid ones', async () => {
+        let template: string | undefined;
+        const platform = await createWebPlatform({ getProxyTemplate: () => template });
+        expect(platform.capabilities.corsUnrestricted).toBe(false);
+
+        template = '';
+        expect(platform.capabilities.corsUnrestricted).toBe(false);
+
+        template = 'not a url';
+        expect(platform.capabilities.corsUnrestricted).toBe(false);
+
+        template = 'http://insecure.example/{url}';
+        expect(platform.capabilities.corsUnrestricted).toBe(false);
+
+        template = 'https://my-proxy.example/{url}';
+        expect(platform.capabilities.corsUnrestricted).toBe(true);
     });
 
     it('capabilities.durableStorage always reflects the live storage tier — no separately cached value to drift (Feature 04.7.5)', async () => {

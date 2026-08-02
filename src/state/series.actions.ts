@@ -1,12 +1,16 @@
 import { defineFn } from 'spektrum';
 import { getSeries, getSeriesCategories, getSeriesInfo } from '../xtream/client';
-import type { XtreamSeriesInfo } from '../xtream/types';
+import { nextEpisode } from '../xtream/next-episode';
+import type { XtreamSeries, XtreamSeriesInfo } from '../xtream/types';
 import { seriesEpisodeUrl } from '../xtream/urls';
+import { createCatalogActions, parseCatalogId, type CatalogActions } from './catalog-actions';
+import { foreignSeriesItem } from './catalog-sweep';
 import { refocusCategoryRow } from './groups.actions';
-import { setDisplayedRows } from './list-rows';
 import { selectChannel } from './list.actions';
-import { loadStoredCategories, loadStoredDetail, loadStoredItems, saveStoredCategories, saveStoredDetail, saveStoredItems } from './catalog-storage';
+import { loadStoredDetail, saveStoredDetail } from './catalog-storage';
+import { PLAYER_ACTIVE } from './player';
 import { setActiveChannel } from './player.actions';
+import type { ActiveChannelSnapshot } from './records';
 import { createSequenceToken } from './sequence-token';
 import {
     SERIES_ACTIVE_CATEGORY_ID,
@@ -18,12 +22,14 @@ import {
     SERIES_DETAIL_ID,
     SERIES_DETAIL_STATUS,
     SERIES_ERROR_REASON,
+    SERIES_NEXT_PROMPT,
     SERIES_STALE,
     SERIES_STATUS,
-    type SeriesCategoryRow,
+    type NextEpisodePrompt,
     type SeriesItem,
 } from './series';
 import {
+    cachedSeriesSource,
     makeSeriesEpisodeId,
     makeSeriesRowId,
     seriesCategoryName,
@@ -34,17 +40,67 @@ import {
     toSeriesDetail,
     toSeriesItem,
 } from './series-rows';
-import { SETTINGS_LIVE_COUNTRY } from './settings';
 import { CATALOG_TTL_MS, isFresh } from './ttl';
 import { get, replace, set } from './typed';
 import { resolveActiveXtreamSource, type ResolvedXtreamAccount } from './xtream-refresh';
 
 /**
- * TV Shows (series) catalog actions (Phase 21) — the exact same shape as
- * `vod.actions.ts`, with one addition (`playSeriesEpisode`) since a series
- * itself is a container, never directly playable — see `series-rows.ts`'s
- * `seriesItemToRow()` doc.
+ * TV Shows (series) catalog actions (Phase 21).
+ *
+ * Browsing is `catalog-actions.ts`'s parameterized core (UPGRADES U10),
+ * shared with Movies. What stays here is what genuinely differs: a series
+ * is a container rather than something directly playable, and its detail is
+ * a seasons/episodes tree with its own status key, its own error reason,
+ * and a fetch shared with episode playback.
+ *
+ * Built on first use, never at module scope — same import-cycle reasoning
+ * as `vod.actions.ts`'s.
  */
+let catalog: CatalogActions | null = null;
+
+function seriesCatalog(): CatalogActions {
+    catalog ??= createCatalogActions<SeriesItem, XtreamSeries>({
+        kind: 'series',
+        keys: {
+            status: SERIES_STATUS,
+            errorReason: SERIES_ERROR_REASON,
+            stale: SERIES_STALE,
+            categories: SERIES_CATEGORIES,
+            activeCategoryId: SERIES_ACTIVE_CATEGORY_ID,
+            count: SERIES_COUNT,
+        },
+        categoriesCap: SERIES_CATEGORIES_CAP,
+        rail: seriesCategoryRail,
+        memory: seriesMemory,
+        setCachedSource: setCachedSeriesSource,
+        cachedSource: cachedSeriesSource,
+        fetchCategories: (source) => getSeriesCategories(source),
+        fetchItems: (source, categoryId) => getSeries(source, categoryId),
+        toItem: toSeriesItem,
+        categoryName: seriesCategoryName,
+        // A series row's URL is built per episode, not per item, so the
+        // source the shared core threads through is unused here.
+        toRow: (item, _source, categoryName) => seriesItemToRow(item, categoryName),
+    });
+    return catalog;
+}
+
+export function openSeriesCatalog(): Promise<void> {
+    return seriesCatalog().open();
+}
+
+export function selectSeriesCategory(categoryId: string): Promise<void> {
+    return seriesCatalog().selectCategory(categoryId);
+}
+
+export function republishSeriesRows(): boolean {
+    return seriesCatalog().republishRows();
+}
+
+function publishSeriesCategories(): void {
+    seriesCatalog().publishCategories();
+}
+
 export function registerSeriesActions(): void {
     defineFn('series/open', () => {
         void openSeriesCatalog();
@@ -61,177 +117,98 @@ export function registerSeriesActions(): void {
         refocusCategoryRow(id);
     });
     defineFn('series/openDetail', (el) => {
-        const id = parseSeriesId(el.dataset['seriesId']);
+        const id = parseCatalogId(el.dataset['seriesId']);
         if (id !== null) void openSeriesDetail(id);
     });
     defineFn('series/closeDetail', () => {
         closeSeriesDetail();
     });
+    defineFn('series/playNext', () => {
+        void playPromptedNextEpisode();
+    });
+    defineFn('series/dismissNext', () => {
+        clearNextEpisodePrompt();
+    });
     defineFn('series/playEpisode', (el) => {
-        const seriesId = parseSeriesId(el.dataset['seriesId']);
+        const seriesId = parseCatalogId(el.dataset['seriesId']);
         const episodeId = el.dataset['episodeId'];
         if (seriesId !== null && episodeId) void playSeriesEpisode(seriesId, episodeId);
     });
 }
 
-function parseSeriesId(raw: string | undefined): number | null {
-    if (!raw) return null;
-    const id = Number(raw);
-    return Number.isFinite(id) ? id : null;
-}
-
-let openInFlight = false;
-/** Same "why not just re-read the key" reasoning as `vod.actions.ts`'s tokens — see `sequence-token.ts`. */
-const categorySelection = createSequenceToken();
+/** Same "why not just re-read the key" reasoning as `vod.actions.ts`'s token — see `sequence-token.ts`. */
 const detailOpen = createSequenceToken();
 
-/** Same flow/decision as `vod.actions.ts`'s `openVodCatalog()` — no "All" pseudo-category, auto-select is the first (now country-first-sorted) category. */
-export async function openSeriesCatalog(): Promise<void> {
-    if (openInFlight) return;
-    openInFlight = true;
-    set(SERIES_STATUS, 'loading');
-    set(SERIES_ERROR_REASON, null);
-    try {
-        const account = await resolveActiveXtreamSource();
-        if (!account) {
-            set(SERIES_STATUS, 'error');
-            set(SERIES_ERROR_REASON, 'no-source');
-            return;
-        }
-        setCachedSeriesSource(account.source);
+/**
+ * Feature 21.6.4 — an episode ended, so work out what follows and *offer* it.
+ *
+ * Called by `player/position.ts`'s `ended` handler, which owns the "when".
+ * Everything about the "which" is `nextEpisode()`, kept pure and tested
+ * separately; this function is the impure half — cache lookup, label, publish.
+ *
+ * Three deliberate properties:
+ *
+ * - **Nothing plays.** This only ever writes a prompt. Feature 21.6.6's
+ *   `playback.autoAdvance` seam belongs in front of this call, not inside it,
+ *   so "auto-advance" stays a decision someone made rather than a default.
+ * - **Cache-only.** It reads `seriesMemory`, never the network: the season
+ *   map was already fetched to start this episode, and an ended episode is a
+ *   bad moment to block on a request that might fail. No cached info simply
+ *   means no offer.
+ * - **Silent when there is nothing to offer.** Feature 21.6.8 — at the end of
+ *   a series the viewer returns quietly to the panel rather than being shown
+ *   a prompt that says "nothing".
+ */
+export function showNextEpisodePrompt(current: { seriesId: number; season: number; episode: number }): void {
+    const info = seriesMemory.detail(current.seriesId);
+    if (!info) return;
 
-        const now = Date.now();
-        let categories = seriesMemory.categories();
-        let fetchedAt = seriesMemory.categoriesFetchedAt();
+    const next = nextEpisode(info, current);
+    if (!next) return;
 
-        if (!isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
-            const stored = await loadStoredCategories('series');
-            // Adopted past its TTL — see `vod.actions.ts`'s identical branch
-            // for why: it is what turns "no connection" into "yesterday's
-            // catalog" instead of an error screen.
-            if (stored && (categories.length === 0 || stored.fetchedAt > (fetchedAt ?? 0))) {
-                seriesMemory.setCategories(stored.categories);
-                seriesMemory.setCategoriesFetchedAt(stored.fetchedAt);
-                categories = stored.categories;
-                fetchedAt = stored.fetchedAt;
-            }
-        }
-
-        if (!isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
-            const result = await getSeriesCategories(account.source);
-            if (result.ok) {
-                categories = result.data;
-                fetchedAt = now;
-                seriesMemory.setCategories(categories);
-                seriesMemory.setCategoriesFetchedAt(fetchedAt);
-                void saveStoredCategories('series', { fetchedAt, categories });
-                set(SERIES_STALE, false);
-            } else if (categories.length > 0) {
-                set(SERIES_STALE, true);
-            } else {
-                set(SERIES_STATUS, 'error');
-                set(SERIES_ERROR_REASON, 'fetch-failed');
-                return;
-            }
-        } else {
-            set(SERIES_STALE, false);
-        }
-
-        seriesCategoryRail.setCategories(categories, get<string>(SETTINGS_LIVE_COUNTRY) ?? '', SERIES_CATEGORIES_CAP);
-        const rows = publishSeriesCategories();
-
-        const first = rows[0];
-        if (first) {
-            await selectSeriesCategory(first.id);
-        } else {
-            set(SERIES_STATUS, 'ready');
-        }
-    } finally {
-        openInFlight = false;
-    }
+    const prompt: NextEpisodePrompt = {
+        seriesId: current.seriesId,
+        episodeId: next.episodeId,
+        label: formatEpisodeLabel(next.season, next.episode, next.title),
+    };
+    replace(SERIES_NEXT_PROMPT, prompt);
 }
 
-/** Same role as `vod.actions.ts`'s `publishVodCategories()` — the accordion's visible rows. */
-function publishSeriesCategories(): SeriesCategoryRow[] {
-    const rows = seriesCategoryRail.rows();
-    set(SERIES_CATEGORIES, rows);
-    return rows;
+export function clearNextEpisodePrompt(): void {
+    replace(SERIES_NEXT_PROMPT, null);
 }
 
-export async function selectSeriesCategory(categoryId: string): Promise<void> {
-    const token = categorySelection.begin();
-    set(SERIES_ACTIVE_CATEGORY_ID, categoryId);
-    set(SERIES_STATUS, 'loading');
-    // Same reasoning as `selectVodCategory()`'s reveal — a selected variant
-    // must never sit inside a collapsed group.
-    if (seriesCategoryRail.reveal(categoryId)) publishSeriesCategories();
-
-    const account = await resolveActiveXtreamSource();
-    if (!account) {
-        set(SERIES_STATUS, 'error');
-        set(SERIES_ERROR_REASON, 'no-source');
-        return;
-    }
-    setCachedSeriesSource(account.source);
-
-    const now = Date.now();
-    let items = seriesMemory.itemsFor(categoryId);
-    let fetchedAt = seriesMemory.itemsFetchedAt(categoryId);
-
-    if (!items || !isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
-        const stored = await loadStoredItems<SeriesItem>('series', categoryId);
-        if (stored && (!items || stored.fetchedAt > (fetchedAt ?? 0))) {
-            seriesMemory.setItemsFor(categoryId, stored.items, stored.fetchedAt);
-            items = stored.items;
-            fetchedAt = stored.fetchedAt;
-        }
-    }
-
-    if (!items || !isFresh(fetchedAt, now, CATALOG_TTL_MS)) {
-        const result = await getSeries(account.source, categoryId);
-        if (result.ok) {
-            items = result.data.map(toSeriesItem);
-            fetchedAt = now;
-            seriesMemory.setItemsFor(categoryId, items, fetchedAt);
-            void saveStoredItems('series', categoryId, { items, fetchedAt });
-            set(SERIES_STALE, false);
-        } else if (!items) {
-            set(SERIES_STATUS, 'error');
-            set(SERIES_ERROR_REASON, 'fetch-failed');
-            return;
-        } else {
-            set(SERIES_STALE, true);
-        }
-    }
-
-    // Same defensive/unreachable guard as `vod.actions.ts`'s
-    // `selectVodCategory()` — see its comment.
-    if (!items) {
-        set(SERIES_STATUS, 'error');
-        set(SERIES_ERROR_REASON, 'fetch-failed');
-        return;
-    }
-
-    if (!categorySelection.isCurrent(token)) return; // a newer selectCategory call started meanwhile
-
-    set(SERIES_ERROR_REASON, null);
-    set(SERIES_COUNT, items.length);
-    set(SERIES_STATUS, 'ready');
-    const categoryName = seriesCategoryName(categoryId);
-    setDisplayedRows(items.map((item) => seriesItemToRow(item, categoryName)));
+/**
+ * The `ended` bridge, called from `player/playback-state-sync.ts`.
+ *
+ * It lives here rather than in `player.actions.ts` to keep the module graph
+ * acyclic: `series.actions` already imports `player.actions` for
+ * `setActiveChannel()`, so the dependency has to run in this direction. The
+ * player layer stays dumb — it reports *that* playback ended and knows
+ * nothing about series — and every decision about what that means is here.
+ *
+ * Anything that is not a series episode ends with no offer, which is the
+ * whole of Feature 21.4's "a movie just ends" behaviour.
+ */
+export function reportPlaybackEnded(): void {
+    const active = get<ActiveChannelSnapshot | null>(PLAYER_ACTIVE);
+    const series = active?.series;
+    if (!series) return;
+    showNextEpisodePrompt(series);
 }
 
-/** Series' half of the shared-list republish — see `vod.actions.ts`'s `republishVodRows()` for why this is separate from `openSeriesCatalog()`. */
-export function republishSeriesRows(): boolean {
-    const categoryId = get<string | null>(SERIES_ACTIVE_CATEGORY_ID);
-    if (!categoryId) return false;
-    const items = seriesMemory.itemsFor(categoryId);
-    if (!items) return false;
-    const categoryName = seriesCategoryName(categoryId);
-    setDisplayedRows(items.map((item) => seriesItemToRow(item, categoryName)));
-    set(SERIES_COUNT, items.length);
-    set(SERIES_STATUS, 'ready');
-    return true;
+/** Consumes the standing offer. Clearing *before* playing matters: `playSeriesEpisode()` awaits a source resolve, and leaving the old prompt on screen across that await reads as "the click did nothing." */
+async function playPromptedNextEpisode(): Promise<void> {
+    const prompt = get<NextEpisodePrompt | null>(SERIES_NEXT_PROMPT);
+    if (!prompt) return;
+    clearNextEpisodePrompt();
+    await playSeriesEpisode(prompt.seriesId, prompt.episodeId);
+}
+
+/** "S02E01 — Pilot", zero-padded to two digits, with the dash dropped when the provider gave no title. Formatting lives here rather than in the template so the markup binds one string (masterplan §7: no logic in `{{ }}`). */
+function formatEpisodeLabel(season: number, episode: number, title: string): string {
+    const code = `S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+    return title ? `${code} — ${title}` : code;
 }
 
 /**
@@ -243,26 +220,29 @@ export function republishSeriesRows(): boolean {
  * to fall back on still reports `'ready'` (stale beats alarming).
  */
 export async function openSeriesDetail(seriesId: number): Promise<void> {
-    const item = seriesMemory.findItem(seriesId);
+    // Same "a search-all result may belong to another provider" contract as
+    // `vod.actions.ts`'s `openVodDetail()` — see its comment.
+    const foreign = foreignSeriesItem(seriesId);
+    const item = seriesMemory.findItem(seriesId) ?? foreign?.item;
     if (!item) return;
 
     const token = detailOpen.begin();
     set(SERIES_DETAIL_ID, seriesId);
     set(SERIES_DETAIL_STATUS, 'loading');
     set(SERIES_DETAIL_ERROR_REASON, null);
-    const categoryName = seriesCategoryName(item.categoryId);
+    const categoryName = foreign?.categoryName ?? seriesCategoryName(item.categoryId);
     replace(SERIES_DETAIL, toSeriesDetail(item, categoryName));
 
-    const account = await resolveActiveXtreamSource();
+    const account = foreign?.account ?? (await resolveActiveXtreamSource());
     if (!account) {
         if (!detailOpen.isCurrent(token)) return;
         set(SERIES_DETAIL_STATUS, 'error');
         set(SERIES_DETAIL_ERROR_REASON, 'no-source');
         return;
     }
-    setCachedSeriesSource(account.source);
+    if (!foreign) setCachedSeriesSource(account.source);
 
-    const { info, failed } = await fetchSeriesInfo(seriesId, account);
+    const { info, failed } = await fetchSeriesInfo(seriesId, account, foreign?.prefix ?? 'series');
     if (!detailOpen.isCurrent(token)) return; // superseded — the user moved on
 
     if (failed && !info) {
@@ -288,13 +268,17 @@ interface SeriesInfoFetch {
     failed: boolean;
 }
 
-/** Module-memory cache first, then the full-tier storage cache, then the network — shared by `openSeriesDetail()` and `playSeriesEpisode()` (an episode needs the season/episode list too, to find its `containerExtension`). `account` is always already-resolved non-null (both call sites resolve it themselves first). */
-async function fetchSeriesInfo(seriesId: number, account: ResolvedXtreamAccount): Promise<SeriesInfoFetch> {
+/** Module-memory cache first, then the full-tier storage cache, then the network — shared by `openSeriesDetail()` and `playSeriesEpisode()` (an episode needs the season/episode list too, to find its `containerExtension`). `account` is always already-resolved non-null (both call sites resolve it themselves first); `prefix` is its storage namespace, `'series'` for the active source and its own for a search-all result from another provider. */
+async function fetchSeriesInfo(
+    seriesId: number,
+    account: Pick<ResolvedXtreamAccount, 'source'>,
+    prefix: string,
+): Promise<SeriesInfoFetch> {
     const now = Date.now();
 
     let info = seriesMemory.detail(seriesId);
     if (!info || !isFresh(seriesMemory.detailFetchedAt(seriesId), now, CATALOG_TTL_MS)) {
-        const stored = await loadStoredDetail<XtreamSeriesInfo>('series', seriesId);
+        const stored = await loadStoredDetail<XtreamSeriesInfo>(prefix, seriesId);
         // No freshness gate — a season/episode list is exactly what an
         // offline viewer needs to still see, and a show that gained an
         // episode yesterday is a much smaller problem than a panel that
@@ -312,7 +296,7 @@ async function fetchSeriesInfo(seriesId: number, account: ResolvedXtreamAccount)
         if (!result.ok) return { info, failed: info === undefined };
         info = result.data;
         seriesMemory.setDetail(seriesId, info, now);
-        void saveStoredDetail('series', seriesId, { fetchedAt: now, data: info });
+        void saveStoredDetail(prefix, seriesId, { fetchedAt: now, data: info });
     }
     return { info, failed: false };
 }
@@ -327,13 +311,14 @@ async function fetchSeriesInfo(seriesId: number, account: ResolvedXtreamAccount)
  * this state-layer module has no business inventing.
  */
 export async function playSeriesEpisode(seriesId: number, episodeId: number | string): Promise<void> {
-    const item = seriesMemory.findItem(seriesId);
+    const foreign = foreignSeriesItem(seriesId);
+    const item = seriesMemory.findItem(seriesId) ?? foreign?.item;
     if (!item) return;
-    const account = await resolveActiveXtreamSource();
+    const account = foreign?.account ?? (await resolveActiveXtreamSource());
     if (!account) return;
-    setCachedSeriesSource(account.source);
+    if (!foreign) setCachedSeriesSource(account.source);
 
-    const { info } = await fetchSeriesInfo(seriesId, account);
+    const { info } = await fetchSeriesInfo(seriesId, account, foreign?.prefix ?? 'series');
     const episode = (info ?? []).flatMap((season) => season.episodes).find((ep) => String(ep.episodeId) === String(episodeId));
     if (!episode) return;
 
@@ -344,8 +329,9 @@ export async function playSeriesEpisode(seriesId: number, episodeId: number | st
         name: episode.title || item.name,
         streamUrl: url,
         logo: item.cover ?? null,
-        group: seriesCategoryName(item.categoryId),
+        group: foreign?.categoryName ?? seriesCategoryName(item.categoryId),
         kind: 'series',
+        series: { seriesId, season: episode.season, episode: episode.episode },
     });
     selectChannel(makeSeriesRowId(seriesId));
     // Same reason as `playVod()`: the detail panel covers the list body,

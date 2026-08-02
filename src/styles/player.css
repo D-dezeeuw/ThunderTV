@@ -575,3 +575,29 @@
     font-size: var(--text-xs);
     color: var(--color-text-dim);
 }
+
+/* Feature 21.6.4 — the next-episode offer, between the picture and the
+   control bar. Deliberately a row rather than an overlay on the video: an
+   overlay would cover the last frame and collide with the native control
+   strip on exactly the platforms (TV webviews) where the controls are
+   hardest to hit. It also means no layout shift, because the row simply
+   is not there until there is something to offer. */
+.next-episode {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-m);
+    background: var(--color-surface-raised);
+}
+
+.next-episode__label {
+    /* Takes the slack so the two buttons keep their intrinsic width and a
+       long episode title truncates instead of wrapping them onto a new
+       line. */
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--color-text-dim);
+}

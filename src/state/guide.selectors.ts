@@ -4,6 +4,7 @@ import {
     computeGuideWindow,
     computeProgramLayout,
     formatClockTime,
+    formatDuration,
     formatTimeRange,
     formatWindowDate,
     isProgramNow,
@@ -42,11 +43,33 @@ export interface GuideChannelView {
     icon: string | null;
 }
 
+/**
+ * The picked programme, everything the detail modal shows. A block click
+ * opens this modal instead of jumping straight to the channel — reading the
+ * grid is how a viewer decides *whether* to watch, so the jump is the
+ * modal's own primary action (`guide/playSelectedChannel`) rather than a
+ * side effect of wanting to know what a block is.
+ */
 export interface GuideSelectedView {
     title: string;
     description: string;
     channelName: string;
-    timeLabel: string;
+    /** The Live channel's logo, for the modal's header — `null` renders no image at all rather than a broken one. */
+    channelIcon: string | null;
+    /** The EPG channel id, carried onto the modal's watch button as `data-epg-id` — the same contract a grid row's channel cell uses, so both go through `playChannelByEpgId()`. */
+    channelId: string;
+    /**
+     * One line: weekday + day/month, the clock range, and the runtime when
+     * there is one (`formatDuration` gives `''` for a malformed span, and
+     * that part is simply left out). Formatted here rather than as three
+     * template expressions — the date is always shown because a modal opened
+     * from a shifted window is about some other day, and "20:00–21:00" alone
+     * doesn't say which.
+     */
+    metaLabel: string;
+    isNow: boolean;
+    /** How far through an airing programme the clock is, 0–100; `-1` when it isn't airing, which is what hides the bar. */
+    progressPercent: number;
 }
 
 export interface GuideView {
@@ -54,8 +77,10 @@ export interface GuideView {
     /** Flat across every channel — see `GuideProgramView.channelIndex`'s doc for why this isn't nested under `channels`. */
     programs: GuideProgramView[];
     hasData: boolean;
-    /** `-1` when "now" falls outside the visible window — the markup hides the indicator rather than pinning it to an edge, which would read as a real position. */
+    /** `-1` when "now" falls outside the visible window — the markup hides the indicator rather than pinning it to an edge, which would read as a real position. A percent *of the program track* (grid column 2), not of the whole grid row — the label column must not offset it. */
     nowPercent: number;
+    /** The now-line's `grid-row` end line — `channels.length + 1`, spanning every channel row. The grid's rows are all implicit (`grid-auto-rows`), so the markup cannot say `1 / -1`; negative lines only count explicit tracks. */
+    nowRowEnd: number;
     rangeStartLabel: string;
     rangeEndLabel: string;
     /** Empty while the window tracks the clock; a weekday/date once shifted. */
@@ -110,6 +135,49 @@ function rowsShownInLiveOrder(channels: readonly GuideChannel[]): GuideRowBindin
 }
 
 /**
+ * The selected programme's detail view, resolved against every programme the
+ * bound rows carry — deliberately **not** against the windowed subset the
+ * grid draws.
+ *
+ * The modal must not evaporate under the viewer. Reading the selection out of
+ * the block loop (which only ever visits programmes overlapping the visible
+ * window) meant an open modal closed itself the moment the programme aged out
+ * of the window, or the instant a stray shift moved the window off it — the
+ * selection is a thing the viewer picked, not a property of the current
+ * scroll position.
+ */
+function selectedProgramView(
+    rows: readonly GuideRowBinding<GuideChannel, GroupedChannel>[],
+    selectedKey: string,
+    nowMs: number,
+    locale: string | undefined,
+): GuideSelectedView | null {
+    for (const { channel, live } of rows) {
+        for (const program of channel.programs) {
+            if (guideProgramKey(program.channelId, program.start) !== selectedKey) continue;
+            const isNow = isProgramNow(nowMs, program.start, program.stop);
+            return {
+                title: program.title,
+                description: program.description ?? '',
+                channelName: live.name,
+                channelIcon: channel.icon,
+                channelId: channel.id,
+                metaLabel: [
+                    formatWindowDate(program.start, locale),
+                    formatTimeRange(program.start, program.stop, locale),
+                    formatDuration(program.start, program.stop, locale),
+                ]
+                    .filter((part) => part !== '')
+                    .join(' · '),
+                isNow,
+                progressPercent: isNow ? percentInRange(nowMs, program.start, program.stop) : -1,
+            };
+        }
+    }
+    return null;
+}
+
+/**
  * One `computed('guide.view', ...)` doing all the per-tick shaping
  * (window, layout, formatting, selection) in a single pass — index.html
  * binds directly to its output, so the template stays declarative markup
@@ -138,8 +206,6 @@ export function registerGuideSelectors(): void {
         // frame once the user browses to another part of the day.
         const range = computeGuideWindow(nowMs + offsetMs);
 
-        let selected: GuideSelectedView | null = null;
-
         // `live.name`, not `channel.displayName`: the row is labelled with
         // the name the TV list shows for it. The feed's own spelling is only
         // ever a second opinion about a channel this app has already named.
@@ -153,21 +219,12 @@ export function registerGuideSelectors(): void {
         // carries its own `channelIndex` (see `GuideProgramView`'s doc) so the
         // markup can render it as a sibling `data-each`, placed onto the right
         // grid row/track by index rather than by DOM nesting.
-        const programViews: GuideProgramView[] = rows.flatMap(({ channel, live }, channelIndex) =>
+        const programViews: GuideProgramView[] = rows.flatMap(({ channel }, channelIndex) =>
             channel.programs
                 .filter((program) => program.stop > range.start && program.start < range.end)
                 .map((program): GuideProgramView => {
                     const key = guideProgramKey(program.channelId, program.start);
                     const layout = computeProgramLayout(program.start, program.stop, range.start, range.end);
-                    const isSelected = key === selectedKey;
-                    if (isSelected) {
-                        selected = {
-                            title: program.title,
-                            description: program.description ?? '',
-                            channelName: live.name,
-                            timeLabel: formatTimeRange(program.start, program.stop, locale),
-                        };
-                    }
                     return {
                         key,
                         title: program.title,
@@ -176,10 +233,12 @@ export function registerGuideSelectors(): void {
                         leftPercent: layout.leftPercent,
                         widthPercent: layout.widthPercent,
                         isNow: isProgramNow(nowMs, program.start, program.stop),
-                        isSelected,
+                        isSelected: key === selectedKey,
                     };
                 }),
         );
+
+        const selected = selectedKey === null ? null : selectedProgramView(rows, selectedKey, nowMs, locale);
 
         const nowInWindow = nowMs >= range.start && nowMs <= range.end;
         return {
@@ -187,6 +246,7 @@ export function registerGuideSelectors(): void {
             programs: programViews,
             hasData: rows.length > 0,
             nowPercent: nowInWindow ? percentInRange(nowMs, range.start, range.end) : -1,
+            nowRowEnd: rows.length + 1,
             rangeStartLabel: formatClockTime(range.start, locale),
             rangeEndLabel: formatClockTime(range.end, locale),
             dateLabel: offsetMs === 0 ? '' : formatWindowDate(range.start, locale),

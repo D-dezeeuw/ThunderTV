@@ -24,6 +24,32 @@ describe('toVtt', () => {
         expect(toVtt('just some notes about the film')).toBeNull();
         expect(toVtt('')).toBeNull();
     });
+
+    // Everything below is a cue a browser drops *silently* — the track
+    // attaches, the menu lists it, and no text ever appears. A file fetched
+    // from the internet gets no second pair of eyes, so these are the cases
+    // that decide whether the feature works at all.
+    it('pads short hours and hour-less stamps, which WebVTT rejects outright', () => {
+        const vtt = toVtt('1\n0:00:01,000 --> 0:00:02,000\nA\n\n2\n01:02,500 --> 01:03,000\nB\n');
+        expect(vtt).toContain('00:00:01.000 --> 00:00:02.000');
+        expect(vtt).toContain('00:01:02.500 --> 00:01:03.000');
+    });
+
+    it('pads a short fraction on the right — ",5" is half a second, not five milliseconds', () => {
+        expect(toVtt('1\n00:00:01,5 --> 00:00:02,25\nA\n')).toContain('00:00:01.500 --> 00:00:02.250');
+    });
+
+    it('normalizes arrow spacing, including the no-space and tab spellings', () => {
+        const vtt = toVtt('1\n00:00:01,000-->00:00:02,000\nA\n\n2\n00:00:03,000\t-->\t00:00:04,000\nB\n');
+        expect(vtt).toContain('00:00:01.000 --> 00:00:02.000');
+        expect(vtt).toContain('00:00:03.000 --> 00:00:04.000');
+    });
+
+    it('keeps multi-line cues and tolerates a malformed one instead of failing the file', () => {
+        const vtt = toVtt('1\n00:00:01,000 --> 00:00:02,000\nfirst line\nsecond line\n\n2\nnot a timestamp\nstray\n\n3\n00:00:05,000 --> 00:00:06,000\nlast\n');
+        expect(vtt).toContain('first line\nsecond line');
+        expect(vtt).toContain('00:00:05.000 --> 00:00:06.000');
+    });
 });
 
 describe('subtitleLabel / subtitleLang', () => {

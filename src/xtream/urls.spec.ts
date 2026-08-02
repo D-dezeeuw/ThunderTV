@@ -31,9 +31,9 @@ describe('xtream/urls', () => {
 
     it('redactUrl masks credentials in both the api and stream URL shapes', () => {
         expect(redactUrl(apiUrl(source, 'get_live_categories'))).toBe(
-            'http://example.com:8080/player_api.php?username=***&password=***&action=get_live_categories',
+            'http://example.com:8080/player_api.php?username=REDACTED&password=REDACTED&action=get_live_categories',
         );
-        expect(redactUrl(liveStreamUrl(source, 42))).toBe('http://example.com:8080/live/***/***/42.m3u8');
+        expect(redactUrl(liveStreamUrl(source, 42))).toBe('http://example.com:8080/live/REDACTED/REDACTED/42.m3u8');
     });
 
     it('vodStreamUrl builds the /movie/user/pass/id.ext shape, defaulting to mp4', () => {
@@ -49,7 +49,9 @@ describe('xtream/urls', () => {
     });
 
     it('redactUrl masks credentials in the movie and series URL shapes', () => {
-        expect(redactUrl(vodStreamUrl(source, 7))).toBe('http://example.com:8080/movie/***/***/7.mp4');
-        expect(redactUrl(seriesEpisodeUrl(source, 99))).toBe('http://example.com:8080/series/***/***/99.mp4');
+        expect(redactUrl(vodStreamUrl(source, 7))).toBe('http://example.com:8080/movie/REDACTED/REDACTED/7.mp4');
+        expect(redactUrl(seriesEpisodeUrl(source, 99))).toBe(
+            'http://example.com:8080/series/REDACTED/REDACTED/99.mp4',
+        );
     });
 });

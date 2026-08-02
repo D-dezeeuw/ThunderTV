@@ -6,6 +6,7 @@ import { get } from '../../state/typed';
 import { createElectronCapabilities } from './capabilities';
 import { ElectronDownloadAdapter } from './electron-downloads';
 import type { DefaultConfig, PlatformAdapter, WindowFullscreenControl } from './platform-adapter';
+import { buildTranscodeStreamUrl, type AudioTranscodeControl } from './transcode-adapter';
 import { WebFileAdapter } from './web-file-adapter';
 
 /**
@@ -56,6 +57,28 @@ const windowFullscreen: WindowFullscreenControl = {
     },
 };
 
+/**
+ * The audio-transcode route, if this build has one. Read once per adapter:
+ * the bridge's `transcode` is a boot-time constant from the main process
+ * (`desktop/main.mjs`'s `additionalArguments`), and its absence is the
+ * honest "this host cannot transcode" — an older preload, or a main process
+ * whose transcode server did not come up.
+ */
+function audioTranscodeControl(): AudioTranscodeControl | undefined {
+    const bridge = window.electron?.transcode;
+    if (!bridge?.origin || !bridge.token) return undefined;
+    return {
+        open: (sourceUrl, atSeconds, signal) =>
+            // Not through `WebHttpAdapter`: that layer exists to classify
+            // and *complete* a request, and this one is an endless body the
+            // player reads for as long as the film lasts.
+            fetch(buildTranscodeStreamUrl(bridge.origin, bridge.token, sourceUrl, atSeconds), {
+                signal,
+                cache: 'no-store',
+            }),
+    };
+}
+
 async function getDefaultConfig(): Promise<DefaultConfig> {
     const empty: DefaultConfig = { xtream: null, locale: null, liveCountry: null };
     return (await window.electron?.getDefaultConfig()) ?? empty;
@@ -83,7 +106,9 @@ export interface CreateElectronPlatformOptions {
  */
 export async function createElectronPlatform(options: CreateElectronPlatformOptions = {}): Promise<PlatformAdapter> {
     const storage = await createStorage({ onDemote: options.onStorageDemote });
+    const audioTranscode = audioTranscodeControl();
     return {
+        ...(audioTranscode ? { audioTranscode } : {}),
         name: 'electron',
         storage,
         http: new WebHttpAdapter(

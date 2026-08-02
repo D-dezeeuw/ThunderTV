@@ -13,6 +13,9 @@ Each subdirectory has its own README with the real detail:
   the keyed-snapshot vs. bulk-table split, versioning, chunked writes.
 - `http/README.md` — `classifiedFetch`'s failure taxonomy (`timeout`,
   `cors-or-network`, `mixed-content`, …) and the optional proxy template.
+- `subtitles/README.md` — free, keyless, CORS-open subtitle lookup for
+  Movies/TV Shows: which service, the CORS evidence, the IMDb-id
+  identification ladder, and the cache.
 - `connect/` — reserved for Phase 14's `#/connect?...` bookmark-URL parsing;
   today only `source-key.ts` lives here (see below), the rest is a stub
   (`index.ts` is `export {}`).
@@ -24,6 +27,16 @@ Each subdirectory has its own README with the real detail:
   shows the wrong thing" against "the provider actually sent this." Session
   memory only, deliberately never persisted — see the file's own comment for
   why persisting a provider's full catalogue isn't worth it as a diagnostic.
+- `redact.ts` — the one credential scrubber. `redactUrl()` for a value that
+  *is* a URL (parse-based: userinfo, credential query params, and the
+  `/live/{user}/{pass}/` path shape), `redactText()` for free text that may
+  contain one (regex sweeps, never throws — this runs on the debug console's
+  ingress path), and `redactJsonCredentialFields()` for a captured provider
+  body, which stays deliberately narrower so the capture remains a near-exact
+  copy. `CREDENTIAL_PARAMS` is shared with `health/stream-key.ts`, which masks
+  the same parameters to build a persisted identity rather than a display
+  string. **Never write a sixth local redactor** — that is how the five this
+  replaced ended up disagreeing about userinfo and `token`.
 - `connect/source-key.ts` — `makeSourceKey()`/`normalizeUrlKey()`: the one
   normalization rule for treating two playlist sources as "the same" source
   (masterplan §5.6). Both Phase 07's dedup-on-import and the future Phase 14

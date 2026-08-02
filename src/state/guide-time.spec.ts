@@ -4,6 +4,7 @@ import {
     computeProgramLayout,
     floorToHalfHour,
     formatClockTime,
+    formatDuration,
     formatTimeRange,
     isProgramNow,
     percentInRange,
@@ -16,11 +17,17 @@ describe('state/guide-time', () => {
             expect(floorToHalfHour(ms)).toBe(Date.UTC(2026, 0, 1, 20, 30, 0));
         });
 
-        it('builds a 4h window starting at the floored mark', () => {
+        it('builds a 5h window reaching an hour behind "now", floored to the half-hour grid', () => {
             const ms = Date.UTC(2026, 0, 1, 20, 47, 12);
             const window = computeGuideWindow(ms);
-            expect(window.start).toBe(Date.UTC(2026, 0, 1, 20, 30, 0));
-            expect(window.end - window.start).toBe(4 * 60 * 60 * 1000);
+            // An hour back from 20:47 is 19:47, floored to 19:30.
+            expect(window.start).toBe(Date.UTC(2026, 0, 1, 19, 30, 0));
+            expect(window.end - window.start).toBe(5 * 60 * 60 * 1000);
+            // The contract behind the shape: at least an hour of past on
+            // screen, and up to 4h ahead — "now" sits inside the airing
+            // blocks, never on the window's left edge.
+            expect(ms - window.start).toBeGreaterThanOrEqual(60 * 60 * 1000);
+            expect(window.end - ms).toBeLessThanOrEqual(4 * 60 * 60 * 1000);
         });
     });
 
@@ -103,6 +110,26 @@ describe('state/guide-time', () => {
             const after = Date.UTC(2025, 9, 26, 2, 30, 0);
             expect(formatClockTime(before, 'en-GB')).toMatch(/^\d{2}:\d{2}$/);
             expect(formatClockTime(after, 'en-GB')).toMatch(/^\d{2}:\d{2}$/);
+        });
+    });
+
+    describe('formatDuration', () => {
+        const start = Date.UTC(2026, 0, 15, 20, 0, 0);
+        const after = (minutes: number): number => start + minutes * 60_000;
+
+        it('drops the hours part under an hour and the minutes part on a whole one', () => {
+            expect(formatDuration(start, after(45), 'en-GB')).toBe('45 mins');
+            expect(formatDuration(start, after(120), 'en-GB')).toBe('2 hrs');
+            expect(formatDuration(start, after(90), 'en-GB')).toBe('1 hr 30 mins');
+        });
+
+        it('is empty for a non-positive span rather than claiming "0 min"', () => {
+            expect(formatDuration(start, start, 'en-GB')).toBe('');
+            expect(formatDuration(start, after(-30), 'en-GB')).toBe('');
+        });
+
+        it('abbreviates in the app locale, not the runtime one', () => {
+            expect(formatDuration(start, after(90), 'nl-NL')).toBe('1 uur 30 min');
         });
     });
 });

@@ -13,6 +13,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `player.ts`          | `player.active`, `player.zapHistory`, `player.visualizerPreset`, `player.visualizerPaused`, `player.audioMode`, plus the transient diagnostics trio `player.playbackError`, `player.playbackNotice` (the stream plays but decodes no audio — `src/player/audio-output.ts`), `player.streamHealth` | Yes — the §6.4 instant-restore pair; the diagnostics trio never persists (all three describe one attach and are cleared by the next); `visualizerPreset` also persists (the listener's Radio visualizer choice) and so does `audioMode` (watch TV channels audio-only, with the visualizer standing in for the picture — a viewing preference, and the player bar always carries the switch back); `visualizerPaused` does not (always false on a fresh Radio visit) |
 | `xtream-epg-load.ts` | *(no keys of its own — writes `settings.epgFeedThrough` and the `epgChannels`/`epgPrograms` storage tables)* | n/a — the Xtream guide pipeline. `loadXtreamGuide()` pulls the panel's whole `xmltv.php` once per source (12h TTL); `ensureChannelEpg()` fills a single channel via `get_short_epg` when it starts playing with nothing to show. Joined by `epg_channel_id`/`tvgId`, so it uses none of `src/epg/`'s catalog or matcher |
 | `guide-live-join.ts` | *(no keys — a pure function over two arrays)* | n/a — the tvg-id → catalog-id → name ladder that decides which stored guide channels the Guide shows, which Live channel names each row, and which Live row a picked one plays. See `src/epg/README.md`'s "Which channels the Guide shows" |
+| `subtitle-search.ts` | `player.subtitleSearch`                                                                                              | No — the subtitle menu's "search online" panel (status + one message + the pickable rows), fed by `src/core/subtitles/`'s keyless service and cleared by its own `watch([PLAYER_ACTIVE])` on every stream change. The download URLs never enter state: `subtitle-search.actions.ts` keeps the raw provider rows in module memory and publishes only this compact projection, the same shape `downloads.ts` uses and for the same reason |
 | `player-tracks.ts`   | `player.audioTracks`, `player.subtitleTracks`, `player.trackMenu`                                                     | No — the dock/theater popups' own published lists (`player-tracks.actions.ts`'s `registerTrackSync()` republishes them from `getPlayerTracks()`) and which popup is open (`'audio' \| 'subtitles' \| 'visualizer'` — Radio's preset picker shares the key so only one can be open); rebuilt every stream, never restored |
 | `epg.ts`             | `epg.tick`                                                                                                            | No — a heartbeat timestamp, recomputed every boot |
 | `epg-settings.ts`    | `settings.epgCacheState`, `settings.epgCatalogCount`                                                                  | No — transient Settings → Diagnostics feedback (`epg-settings.actions.ts`'s `refreshEpgCatalog()`/`clearEpgCache()`) and a derived count `state/epg-load.ts`'s `loadDefaultEpg()` re-publishes on every run; neither survives a reload (nor should — the count is wrong the instant the underlying `epgCatalog` table changes) |
@@ -22,7 +23,9 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `codex-library.ts`   | `settings.codexLibraryRows`, `settings.codexLibraryState`, `settings.codexLibraryMessage`, `settings.codexBlockedRows` | No — a view model over storage (Phase 37). Subscriptions live under `codex.library.*` and the blocklist under `codex.blocked`; retained Codexes are bulk data and never enter Spektrum state. The follow field is an uncontrolled `data-ref` input, deliberately not a key |
 | `handoff.ts`         | `player.handoffLink`, `player.handoffState`, `player.handoffMessage`                                                  | No — the link outlives its usefulness within hours (Phase 38), and is published rather than hidden only so it can be read off screen where no clipboard exists |
 | `ui.ts`               | `ui.activeView`, `ui.density`, `ui.theme`, `ui.fontSize`, `ui.settingsOpen`, `ui.storageNoticeDismissed`, `platform.name`, `platform.capabilities`, `storage.tier` | `ui.density`/`ui.theme`/`ui.fontSize`/`ui.storageNoticeDismissed` yes; the rest no |
-| `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`, `ui.setupComplete`                                                                 | `ui.setupComplete` yes — it is what stops a configured install from being asked again; `wizardOpen`/`wizardStep` no (transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen`) |
+| `wizard.ts`           | `ui.wizardOpen`, `ui.wizardStep`, `ui.setupComplete`, `ui.wizardEditSourceId`                                        | `ui.setupComplete` yes — it is what stops a configured install from being asked again; `wizardOpen`/`wizardStep`/`wizardEditSourceId` no (transient, recomputed/reset every boot and every (re)open, same reasoning as `ui.settingsOpen`) |
+| `source-edit.ts`      | *(no keys of its own — reuses `settings.xtreamError`/`settings.xtreamBusy` for feedback)*                             | n/a — editing an already-configured source through the wizard (see "Editing a configured source" below) |
+| `boot.ts`             | `ui.bootPhase`                                                                                                        | No — the wallpaper splash's `'loading' \| 'exiting' \| 'done'` lifecycle, recomputed fresh (always starts at `'loading'`) every boot |
 | `list.ts`             | `list.visibleRows`, `list.padTop`, `list.padBottom`, `list.selectedId`                                               | No — the Feature 08.1/08.2/08.7 virtual-list window and selection cursor, republished continuously |
 | `list-layout.ts`      | `ui.listLayout`                                                                                                      | Yes — the per-view list/grid choice for the shared virtual list, keyed by the three views that offer the switch (live/movies/series). A browsing preference, not session state, so asking once is enough; a scope missing from a stored value falls back to the list layout. Radio/Categories share the list but show no switch and therefore stay on rows — a mode with no visible control is a mode nobody can turn off |
 | `list-state.ts`       | `ui.listState`, `ui.activeGroup`, `ui.viewMode`                                                                      | `ui.listState` yes (Feature 08.6, LRU-capped at 20 sources); the two live mirrors restore from it on source entry but aren't separately persisted |
@@ -31,7 +34,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `vod.ts`              | `vod.categories`, `vod.activeCategoryId`, `vod.status`, `vod.errorReason`, `vod.count`, `vod.detailId`, `vod.detail`, `vod.warmStatus` | No (Phase 21) — the Movies catalog itself (categories/items/detail cache) lives in `vod-rows.ts`'s module memory and, on the `'full'` storage tier only, in ad hoc `catalog-storage.ts` keys outside the Phase 05 bridge; see "Existing-key decisions" below |
 | `series.ts`           | `series.categories`, `series.activeCategoryId`, `series.status`, `series.errorReason`, `series.count`, `series.detailId`, `series.detail`, `series.warmStatus` | No (Phase 21) — same reasoning as `vod.ts`, via `series-rows.ts`/`catalog-storage.ts` |
 | `vod.ts`/`series.ts`  | (also `vod.stale`, `series.stale`)                                                                                   | No — each describes this session's last fetch attempt; a restored `true` would accuse a healthy boot of being offline before it had tried anything |
-| `search.ts`           | `search.query`, `search.scope`, `search.active`, `search.resultCounts`, `search.loadedOnly`                           | No (Phase 21) — a live, disposable session activity, reset every boot like `ui.settingsOpen` |
+| `search.ts`           | `search.query`, `search.scope`, `search.active`, `search.resultCounts`, `search.loadedOnly`, plus the "search all" quintet `search.allSources`, `search.sweepOpen`, `search.sweepStatus`, `search.sweepKind`, `search.sweepProgress` | No (Phase 21) — a live, disposable session activity, reset every boot like `ui.settingsOpen`. The sweep keys follow the same rule: the *catalogs* it fetches are cached for 24h through `catalog-storage.ts`, but which mode the box is in and how far one sweep got describe a single sitting (`catalog-sweep.ts`/`sweep-pool.ts`/`search-sweep.actions.ts`, registered in `registry-search.ts`) |
 | `downloads.ts`        | `downloads.items`, `downloads.activeId`                                                                              | No — the save-file handle and the transfer belong to the session that started them, so a restored queue would show rows nothing could resume; a reload genuinely does abandon an in-flight download |
 
 **The rule:** adding a Spektrum key means adding it to `registry-keys.ts`'s
@@ -78,6 +81,14 @@ action, because nothing user-triggered causes the write:
   rule intact without a fourth ESLint carve-out). Anything *derived* from
   the window (row count, empty-list flag) belongs in a `computed()` instead
   (Feature 05.6.4) — none exists yet, nothing has needed one.
+  **Each row object published here is stable per row id and updated in
+  place**, and its enrichment fields are always written (`null`/`0`, never
+  omitted). Both are load-bearing, not style: a keyed `data-each` clone
+  captures `item = array[index]` when it binds and is only re-scoped when
+  its *index* changes, and a binding whose delta path is `undefined` is
+  skipped entirely — so a fresh object, or an omitted field, at an unchanged
+  index is never read and the row keeps the line it was bound with. See
+  `list-publish.ts`'s header and `list-publish.row-join.spec.ts`.
 
 ## Naming rules
 
@@ -142,7 +153,10 @@ recording once rather than re-discovering per call site:
   `KEY_REGISTRY` itself is still the one object every consumer
   (`persist.ts`, `bulk-policy.ts`, `index.ts`'s `rehydrateState()`) reads —
   this only changes how it's assembled. `KeyMeta.owner`'s union gained
-  `'vod' | 'series' | 'search'`.
+  `'vod' | 'series' | 'search'`. The boot splash's `ui.bootPhase` (`boot.ts`)
+  is the example this pattern was built for: it landed in `registry-ui.ts`
+  (the `ui`-owned leaf file), not a new one — check whether an existing leaf
+  already owns your key's subject before adding another.
 - **Catalog payload persistence** (`catalog-storage.ts`): no bulk table in
   `src/core/storage/records.ts`'s `TableName` union fits a VOD/series
   catalog, and adding one means editing `src/core/storage/**`, outside this
@@ -185,7 +199,12 @@ recording once rather than re-discovering per call site:
   identity against `live-rows.ts`'s `liveDisplayRows()` array (which only
   changes reference on an actual rebuild, never per keystroke) — satisfying
   `src/search/README.md`'s "normalize once" contract without a `ChannelRow`
-  schema change.
+  schema change. Radio gets a second instance of that same cache over
+  `radioDisplayRows()`: the `'radio'` scope is `'channels'` pointed at the
+  other row set (the two are disjoint — a station search must never surface a
+  TV channel the Radio tab cannot show), and since Live and Radio share one
+  search input in `index.html`, `search/setQueryChannels` resolves which of
+  the two it is from `ui.activeView` when that input fires.
 - **A series row's `url` is `''`** (`series-rows.ts`'s `seriesItemToRow()`)
   — a series is a container of episodes, never directly playable; a click
   handler must trigger `series/openDetail`, never reuse a generic play-on-
@@ -345,6 +364,54 @@ app layer calls them (after first paint, on a Movies/Series tab open, etc.).
   a `sequence-token.ts` instance was not needed here since there is only one
   warm attempt per catalog to protect, not a rapid sequence of
   user-triggered ones.
+
+### "Search all" — one query across every provider (`catalog-sweep.ts`)
+
+The warm above covers every *category* of the **active** account. It does
+not, and cannot, cover the accounts you are not watching: Movies and TV
+Shows resolve exactly one source (`resolveActiveXtreamSource()`), so a
+second configured provider's catalog was never fetched at all. That gap is
+what "Search all" closes, and it shapes every decision below.
+
+- **It is the same cache, once per source.** `sweep-pool.ts` calls
+  `catalog-warm.ts`'s own `loadStoredWarmMeta` → `rehydrateWarmedCatalog`,
+  or fetch → `groupWarmedItems` → `commitWarmedCatalog`, against
+  `sweepPrefix()`'s key namespace: the **bare** `'vod'`/`'series'` prefix
+  for the active source — so a Movies tab opened today has already paid for
+  it — and `'<kind>@<sourceKey>'` for every other. No parallel cache, no
+  second TTL. (`sourceKey` is `makeSourceKey()`, stable across the id churn
+  every re-import causes.)
+- **A warm cache means no modal.** `isSweepWarm()` asks "is every planned
+  source inside the 24h TTL" with local reads only, so the usual press just
+  turns the mode on. The warning modal exists for the cold case, and
+  nothing is fetched before Start.
+- **Cancel aborts the request, not just the loop.** This is the one place
+  in the app that passes an `AbortSignal` into `xtream/client.ts`, because
+  the thing being cancelled is a single multi-megabyte dump. A caller-
+  initiated abort *rejects* (`classified-fetch.ts` re-throws it deliberately),
+  so the sweep catches it and re-checks `signal.aborted` rather than
+  counting it as a provider failure. Sources already committed stay
+  committed. Closing the modal cancels, so a sweep never runs unseen.
+- **Partial is a published fact, not a silence.** A failed source still
+  counts as done (it is finished) and raises `sourcesFailed`/`partial`;
+  `search.loadedOnly` is fed from that flag while search-all is on, which
+  is what puts the "some providers could not be reached" line under the
+  results.
+- **Dedup is by item id, first source wins** (`sweep-plan.ts`). Not a
+  preference: a row's id is `vod:<streamId>`, so two entries sharing one id
+  are indistinguishable to the detail/play/selection paths. The active
+  source is swept first precisely so it wins those collisions. The same
+  film from two providers is *kept* — different ids, individually playable,
+  and one panel's copy works when another's does not; the rows are told
+  apart by the provider name folded into `group`, which the row shape
+  already renders (so provenance cost no markup).
+- **A foreign result behaves like a local one.** `foreignVodItem()`/
+  `foreignSeriesItem()` hand `vod.actions.ts`/`series.actions.ts` the owning
+  account and its cache prefix, so detail and playback use the right
+  credentials and never write a foreign movie's `get_vod_info` into the
+  active source's detail keys. They return `null` for the active source and
+  for everything the pool has not seen — which is every row when search-all
+  is off, leaving that path exactly as it was.
 
 ### Movies/Series rail visibility (`settings.nav.movies`/`settings.nav.series`)
 
@@ -572,9 +639,43 @@ layer:
   stops playback on a genuine route change, so the direct write killed the
   stream the navigation existed to show. The helper arms that exemption,
   queues the row for `revealRowOnNextPublish()`, and covers the
-  already-on-TV case where no `hashchange` fires. Programme blocks reach
-  the same action (`guide/openProgram`), so clicking anywhere on a row —
-  logo, name, or a block — lands on TV with the channel playing.
+  already-on-TV case where no `hashchange` fires. The channel cell
+  (`guide/playChannel`) and the programme modal's watch button
+  (`guide/playSelectedChannel`) both end up here.
+- **A row's two halves do two different things.** The channel cell plays;
+  a programme block opens the detail modal (`guide/openProgram`) and
+  changes nothing else. Blocks used to play too, which made reading the
+  grid impossible without interrupting playback — the jump is now the
+  modal's own primary action, taken after the viewer knows what the
+  programme is. The modal *is* `guide.selectedKey`: non-null opens it,
+  and closing (button, backdrop, Escape, TV Back via
+  `back-navigation.ts`) is one write of null, so no second open-flag can
+  drift out of sync with the selection. `guide.view.selected` resolves
+  that key against **every** programme the bound rows carry, not the
+  windowed subset the grid draws, so an open modal doesn't evaporate when
+  its programme ages out of the visible window.
+
+### Starred and Recents get the same line, through a map
+
+`epg-rows.selectors.ts` publishes `computed('epg.nowByRow', …)` — row id →
+what is on now — and those two lists read `epg.nowByRow[item.id]` rather
+than carrying enriched rows of their own. Three reasons, all of which
+generalise to any future list that wants the line:
+
+- **It joins by id.** A row can only ever render its own programme, whatever
+  the engine does with the clone (see the `list.visibleRows` note above).
+- **It leaves the row arrays alone.** `favorites.rows`/`player.zapHistory`
+  are keyless `data-each`es, so republishing either on the 30s beat would
+  destroy and rebuild every row — twice a minute, under whatever the viewer
+  had focused. Only the line's own bindings re-run.
+- **`player.zapHistory` is persisted.** Enriching the snapshots in place
+  would write programme titles into storage that are wrong within the hour.
+
+A `computed()` *assigns* its value rather than merging it, so an entry
+disappears with its row and none of the map-shaped-key ceremony applies. A
+`FavoriteRecord`/`ActiveChannelSnapshot` carries no `tvgId`, so the guide id
+comes from the channel row wearing the same id (variants included); an id
+that resolves to nothing is absent from the map, and the row shows no line.
 
 ## The persistence bridge, in one paragraph
 
@@ -626,9 +727,20 @@ this codebase (production always relies on `run()`'s rAF loop to drain) —
 `replace()` is the one sanctioned exception, confined to `state/typed.ts`.
 
 **Any future phase adding a removable-key `Record<string, T>` to Spektrum
-state must use `replace()` for the removal path, not `set()`.** Phase 13
-(Favorites/Recent) and Phase 15 (Multi-playlist Management) are the most
-likely next places this matters.
+state must use `replace()` for the removal path, not `set()`** — and since
+UPGRADES **U11** this is a gate rather than a request to remember. Mark the
+key `mapShaped: true` in `KEY_REGISTRY` *and* add it to
+`map-shaped-keys.ts`'s `MAP_SHAPED_KEYS`, and `set()` will throw in dev the
+first time anyone writes a plain object to it, naming `replace()` in the
+message. `map-shaped-keys.spec.ts` fails if those two lists disagree.
+
+The set is a literal rather than a read of `KEY_REGISTRY` because `typed.ts`
+is imported by every module in this directory, so anything it reaches joins
+a cycle with `registry-keys.ts` — which takes each key's name from the
+module that owns it. That cycle is why the check has to be answerable
+without loading the registry at all; `map-shaped-keys.ts`'s own comment has
+the detail. Currently marked: `ui.listState`, `favorites.ids`, `vod.detail`,
+`series.detail`.
 
 ## Boot order (masterplan §6.4)
 
@@ -672,6 +784,40 @@ wrapper (`wizard/saveXtreamAccount`) that only adds closing the wizard on a
 successful save. `wizard/open` (bound to a "Run setup wizard again" link in
 Settings → Streaming) is the sole manual reopen path, so the wizard is never
 a one-shot dead end.
+
+## Editing a configured source (`source-edit.ts`)
+
+A card in the Sources tab (`sources/edit`) reopens that same wizard on step
+2 with the source's stored server URL and username in it —
+`ui.wizardEditSourceId` is the entire difference between "first run" and
+"editor": it re-labels the copy, hides the step-1 detour, and routes Save
+through `applySourceEdit()` instead of `saveXtreamAccount()`. The fields are
+written imperatively through `refs` (they are uncontrolled inputs, and
+`data-if` only toggles `display`, so they exist before the modal is shown),
+and the password is deliberately left blank — blank means "keep the stored
+one", the same rule Settings → Streaming uses.
+
+**An edited source stays the same source.** `importXtreamSource()` — the one
+re-import path, shared with `xtream-refresh.ts` — already replaces the row
+whose `makeSourceKey()` matches, so an edit that only fixes a password or a
+typo'd path lands as a plain refresh. The case that needs handling is an edit
+that changes the *server URL or username*: that changes the source key, the
+upsert finds no match, and the original would sit beside the new import as a
+stale duplicate. `planSourceEdit()` (pure, `source-edit.spec.ts`) detects it
+and returns the row id to delete once the new import has actually succeeded,
+so the edit reads as a move rather than a fork — and a failed edit changes
+nothing at all.
+
+Nothing durable is stranded by that, because **the playlist id was never
+stable to begin with**: every refresh already mints a new one and deletes the
+old row with its `channels`/`groups`. Stream health keys on a
+credential-free stream fingerprint (`src/health/stream-key.ts`), and
+favorites/recents are denormalized snapshots carrying `sourceId` only for
+provenance. The one casualty is that source's `ui.listState` entry (scroll +
+group cursor), which every refresh already discards and which self-heals on
+the next visit. `playlist.activeSourceId` is re-aimed only when the id it
+names no longer exists, so editing a source you are not watching never
+switches the picture.
 
 ## Bulk-data bypass rules (Feature 05.8)
 

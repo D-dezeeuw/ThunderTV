@@ -126,6 +126,25 @@ menu's existing "Off" row turns it off. `clearExternalSubtitles()` runs in
 the engine's `stopVideoElement()`, so a file loaded for one film never
 follows the viewer into the next one with silently wrong timings.
 
+The menu's second route is **"Search subtitles online"**, which fetches one
+off the internet instead of off disk — a free, keyless, CORS-open service, an
+IMDb-id identification ladder, and a cache, all of which live in
+`src/core/subtitles/README.md`; the state half is
+`src/state/subtitle-search.actions.ts`. From this folder's point of view
+nothing new happens: the downloaded text goes through the same `toVtt()` and
+the same `addExternalSubtitle()`, so it is a `<track>` like any other, and the
+new MSE transcode route (`transcode-engine.ts`) changes none of that — a
+`<track>` sits on the element, not on the source. It is a manual press, never
+automatic, and **Movies/TV Shows only**: a live channel has no title to
+identify and no fixed timeline for cues to sit on.
+
+`toVtt()` grew for it. A browser drops a malformed cue *silently* — the track
+attaches, the menu lists it, no text appears — and a file nobody vetted is
+exactly where that bites: one-digit hours, hour-less stamps, a `,5`
+fraction, and an arrow with no spaces around it are all real SubRip and all
+invalid WebVTT. All four are normalized, and `subtitle-text.spec.ts` is where
+that behaviour is pinned.
+
 ### No decodable audio (`audio-output.ts`)
 
 A browser that meets an audio codec it has no decoder for does not fail the
@@ -140,6 +159,77 @@ stays at zero (or Firefox's `mozHasAudio === false`) publishes
 `player.playbackNotice`. Anything less positive stays `'unknown'` and says
 nothing — a false "no sound" over a stream that has sound is worse than
 silence about it.
+
+### …and what the desktop does about it instead (`transcode-fallback.ts`, `transcode-engine.ts`)
+
+A message is the best a *browser* can do. The desktop build owns a main
+process, so `transcode-fallback.ts` answers the same verdict by playing the
+film again with its audio re-encoded — `-c:v copy -c:a aac`, video untouched,
+only a couple of hundred kbit/s actually through an encoder
+(`desktop/transcode.mjs` runs it; `src/core/platform/transcode-adapter.ts` is
+the seam). AC-3, E-AC-3, DTS and TrueHD are all covered by that one
+mechanism, because none of them are special — they are simply "not AAC".
+
+The flow is a fallback, never a pre-emptive route: the film plays directly
+first, exactly as before, and only the detector above triggers a restart —
+at the second it had reached, with `playerTranscodingAudio` shown for the few
+seconds it takes. Metadata is not consulted, because a panel's
+`get_vod_info` audio codec is wrong often enough that trusting it would send
+files that play fine down a slower path. One attempt per film
+(`attemptedFor`): if the transcode fails, the direct stream is re-attached —
+picture back, no sound — under `playerNoAudioDecodedTranscodeFailed`, which
+says both halves. A *fix* that fails must never be worse than the bug.
+
+`transcode-engine.ts` plays the result through MediaSource rather than
+`video.src`, and that is the difference between "sound works" and "this is a
+film". ffmpeg's fragmented MP4 comes down a pipe with no `Content-Length`,
+no byte ranges and a zero `mvhd` duration, so a `<video>` handed it directly
+treats it as a live feed: no duration, no usable scrub bar, nowhere to jump.
+MediaSource gets `duration` from what ffmpeg probed off the real file, gets
+`timestampOffset` set to each restart's position (so `currentTime` is a
+position in the *film*), and turns a seek outside the buffer into a new
+`/stream?t=` — one `-ss` keyframe scan, no streaming through everything in
+between. Inside the buffered window a seek is the browser's own and free.
+Buffer limits are deliberate and small (60 s ahead, 30 s behind): a copied 4K
+video stream is hundreds of megabytes a minute, MSE's quota is not, and *not
+reading* is the entire flow-control mechanism — the socket stalls, ffmpeg's
+write blocks, and the provider stops being read from.
+
+`transcode-stream.ts` opens each stream and reads its head before the
+element sees a byte of it, which is what keeps a failure reportable:
+ffmpeg's own errors come back as an HTTP status, and a status can be turned
+into a sentence — once a media element is consuming a body there is nothing
+left to say to anyone.
+
+**A seek must reset the append state, not just the appends.** `abort()` on
+the SourceBuffer is called before `timestampOffset` is reassigned, and not
+because an append is necessarily in flight: it is the only call that puts
+the *append state* back to `WAITING_FOR_SEGMENT`, and a stream cut off
+mid-fragment always leaves it at `PARSING_MEDIA_SEGMENT`, where assigning
+`timestampOffset` throws. Checking `updating` is not the same question and
+is not enough. This is not theoretical — it is what the first live run of
+this module did on its first seek, after ten seconds of perfect playback,
+and `npm run smoke:desktop:playback` exists to keep it that way.
+
+Two known edges, both stated rather than hidden: `-ss` lands on the keyframe
+at or before the requested second, so a seek can resume up to one GOP early
+(never late, so nothing is skipped — and the appended frames can push
+`duration` a second past the probed length, which is why the scrub bar may
+read 121s for a 120s film after a seek); and only H.264 video is taken, since
+`mp4-init.ts` builds its `addSourceBuffer()` codec string from the `avcC`
+box and declines anything it cannot name — HEVC does not play in Chromium
+today with or without this route. `position.ts` keeps working across the
+switch: `transcode-fallback.ts` re-arms the position monitor under the same
+`streamKey` the direct attempt used, so resume does not care which route
+played the film. The stream-health indicator, by contrast, stays off while
+transcoding on purpose: what the element would be reporting on is a local
+pipe, and crediting its stalls to the provider's feed would poison the very
+score that picks between variants (`src/health/README.md`).
+
+**Live is out of scope, deliberately.** A live channel reaches the element
+through mpegts.js, has no duration to seek in, and routinely carries MPEG-2
+video that `-c:v copy` cannot put into an MP4 anything will play. Live keeps
+the message.
 
 The state/UI stage this section used to describe as "later" is
 `src/state/player-tracks.ts`/`player-tracks.actions.ts` (`state/README.md`'s
@@ -252,8 +342,10 @@ resumed.
 ### Audio-only TV (`player.audioMode`)
 
 The visualizer is not Radio's alone: `player/toggleAudioMode`
-(`state/player.actions.ts`, a button in the player bar shown in Live and
-Categories) plays a *television* channel with the picture collapsed and the
+(`state/player.actions.ts`, a button in the player bar shown in Categories —
+and in Live *only while the mode is already on*, so a persisted preference
+always keeps a visible way back to the picture; it was distracting there
+otherwise) plays a *television* channel with the picture collapsed and the
 visualizer in its place — a TV used as a stereo. One pure predicate,
 `state/player.ts`'s `isAudioVisual(view, audioMode)`, decides this
 everywhere: the `visualizerActive` computed the markup binds to

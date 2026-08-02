@@ -26,14 +26,14 @@ export const deEpg = {
         showHandoffButtonHelp: 'Fügt der Player-Leiste eine Schaltfläche hinzu, um den aktuellen Stream an ein anderes Gerät zu übergeben. Standardmäßig aus.',
     },
     list: {
-        epgNextPrefix: 'Danach ·',
         streamLikelyDead: 'Dieser Feed ist zuletzt meistens fehlgeschlagen. Er kann trotzdem funktionieren — dies ist eine Schätzung aus Ihrem eigenen Wiedergabeverlauf.',
     },
     /** Complete top-level blocks, spread as one line into `strings.<locale>.ts` — that file has no room left for a nested block of its own. */
     topLevel: {
         guide: {
             nowLabel: 'Jetzt',
-            detailEmpty: 'Wählen Sie eine Sendung, um hier deren Details zu sehen.',
+            noDescription: 'Keine Beschreibung für diese Sendung verfügbar.',
+            watchChannel: 'Diesen Sender ansehen',
             earlier: 'Früher',
             later: 'Später',
             backToNow: 'Zurück zu jetzt',

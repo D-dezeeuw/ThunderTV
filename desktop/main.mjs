@@ -32,6 +32,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createProxyServer } from '../scripts/proxy-server.mjs';
 import { registerDownloadHandlers } from './downloads.mjs';
+import { createTranscodeServer } from './transcode.mjs';
 
 const desktopDir = path.dirname(fileURLToPath(import.meta.url));
 const APP_BACKGROUND_COLOR = '#0b0d10';
@@ -53,6 +54,35 @@ const ICON_CANDIDATES = [
     path.join(desktopDir, 'icons', '512.png'),
     path.join(desktopDir, '..', 'build', 'icons', '512.png'),
 ];
+
+// The built web app, which moves for exactly the same reason the icon does
+// — and for a while pointed only at the unpackaged location, so every
+// packaged build opened a window onto `ERR_FILE_NOT_FOUND` while
+// `npm start` looked perfectly healthy:
+//   - packaged: `electron-builder.yml` maps `../dist` to `dist` *inside*
+//     `app.asar`, so it sits beside `main.mjs`;
+//   - `npm start` from the repo: `desktop/` and `dist/` are siblings.
+// `fs` (not a bare path check) again, so the packaged branch can see into
+// the asar archive.
+const INDEX_HTML_CANDIDATES = [
+    path.join(desktopDir, 'dist', 'index.html'),
+    path.join(desktopDir, '..', 'dist', 'index.html'),
+];
+
+/**
+ * Resolves the built `index.html`, or throws naming both candidates.
+ * Throwing beats letting `loadFile` reject: a packaging mistake here is
+ * fatal and should say so, not surface as a blank window plus an
+ * unhandled rejection in a log nobody reads.
+ */
+function resolveIndexHtml() {
+    for (const candidate of INDEX_HTML_CANDIDATES) {
+        if (fs.existsSync(candidate)) return candidate;
+    }
+    throw new Error(
+        `ThunderTV: no built web app found. Run \`npm run build\` at the repo root. Looked in:\n  ${INDEX_HTML_CANDIDATES.join('\n  ')}`,
+    );
+}
 
 /**
  * Loads the app icon as a `NativeImage`, or `null` when none of the
@@ -126,6 +156,7 @@ if (!gotLock) {
     app.quit();
 } else {
     let mainWindow = null;
+    let transcodeServer = null;
 
     app.on('second-instance', () => {
         if (!mainWindow) return;
@@ -164,6 +195,7 @@ if (!gotLock) {
         // Loopback-only bind: never reachable from the network, so no
         // ALLOWED_HOSTS needed — this is not an open proxy.
         const { origin } = await createProxyServer({ host: '127.0.0.1', port: 0 });
+        const transcode = await startTranscodeServer();
 
         mainWindow = new BrowserWindow({
             width: 1280,
@@ -189,6 +221,15 @@ if (!gotLock) {
                 additionalArguments: [
                     `--thundertv-proxy-origin=${origin}`,
                     `--thundertv-app-version=${app.getVersion()}`,
+                    // Absent when the transcode server didn't come up, which
+                    // the preload reads as "this host cannot transcode" —
+                    // the renderer then behaves exactly like the web build.
+                    ...(transcode
+                        ? [
+                              `--thundertv-transcode-origin=${transcode.origin}`,
+                              `--thundertv-transcode-token=${transcode.token}`,
+                          ]
+                        : []),
                 ],
             },
         });
@@ -201,16 +242,43 @@ if (!gotLock) {
             if (!splash.isDestroyed()) splash.destroy();
         });
 
-        await mainWindow.loadFile(path.join(desktopDir, '..', 'dist', 'index.html'));
+        await mainWindow.loadFile(resolveIndexHtml());
     }
 
-    app.whenReady().then(
-        () => void start(),
-        (err) => {
+    /**
+     * The audio-transcode server (`transcode.mjs`) is a nice-to-have, not a
+     * precondition: a build without the bundled ffmpeg, or a port that will
+     * not bind, must still open the app — the renderer simply keeps the web
+     * build's "this device has no decoder for this audio" behaviour.
+     */
+    async function startTranscodeServer() {
+        try {
+            const server = await createTranscodeServer({ host: '127.0.0.1', port: 0 });
+            transcodeServer = server;
+            return server;
+        } catch (err) {
+            console.error('[ThunderTV] audio transcoding unavailable:', err);
+            return null;
+        }
+    }
+
+    // Never leave an ffmpeg behind: `close()` kills whatever it is running
+    // before dropping the listener.
+    app.on('will-quit', () => {
+        transcodeServer?.close();
+        transcodeServer = null;
+    });
+
+    // `start()`'s own rejection is caught too, not just `whenReady()`'s —
+    // it was previously fired with a bare `void`, so a failed `loadFile`
+    // became an unhandled rejection and left an empty window on screen
+    // instead of a diagnosable crash.
+    app.whenReady()
+        .then(start)
+        .catch((err) => {
             console.error(err);
             app.quit();
-        },
-    );
+        });
 
     app.on('window-all-closed', () => {
         app.quit();

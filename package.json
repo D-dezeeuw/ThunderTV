@@ -1,25 +1,38 @@
 {
     "name": "thundertv",
     "private": true,
-    "version": "0.0.0",
+    "version": "1.0.0",
     "description": "A compact, fast IPTV player for the web, desktop, and TV.",
     "license": "SEE LICENSE IN LICENSE",
     "type": "module",
     "engines": {
-        "node": ">=22"
+        "node": ">=22.13.0"
     },
     "scripts": {
         "dev": "vite",
+        "predev": "npm run spektrum:csp",
         "build": "tsc --noEmit && vite build",
+        "prebuild": "npm run spektrum:csp",
         "build:lg": "tsc --noEmit && vite build --mode webos && node scripts/package-target.mjs webos && node scripts/package-webos.mjs",
+        "prebuild:lg": "npm run spektrum:csp",
         "preview": "vite preview",
         "deploy": "vite build && gh-pages -d dist --dotfiles",
+        "predeploy": "npm run spektrum:csp",
         "lint": "eslint . --max-warnings 0",
         "lint:css": "node scripts/check-css.mjs",
+        "lint:markup": "node scripts/check-markup.mjs",
         "lint:file-access": "node scripts/check-file-access-fence.mjs",
         "lint:importmap": "node scripts/check-importmap.mjs",
+        "lint:csp": "node scripts/check-csp.mjs",
+        "lint:version": "node scripts/check-version.mjs",
         "lint:reachability": "node scripts/check-reachability.mjs",
         "lint:dist": "node scripts/check-dist.mjs",
+        "lint:desktop-package": "node scripts/check-desktop-package.mjs",
+        "smoke:desktop": "npm run build && node scripts/package-target.mjs electron && node scripts/smoke-desktop.mjs",
+        "smoke:desktop:packaged": "node scripts/smoke-desktop.mjs --packaged release/linux-unpacked/thundertv-desktop",
+        "smoke:desktop:playback": "node scripts/smoke-desktop-playback.mjs",
+        "lint:state-keys": "node scripts/gen-state-keys.mjs --check",
+        "lint:phase-status": "node scripts/gen-phase-status.mjs --check",
         "format": "prettier --write .",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
@@ -27,7 +40,8 @@
         "bench:list": "vitest run --config vitest.bench.config.ts src/ui/virtual-list.bench.ts",
         "gen:m3u-fixture": "node scripts/gen-m3u-fixture.mjs",
         "gen:epg-countries": "node scripts/generate-epg-countries.mjs",
-        "verify": "npm run typecheck && npm run lint && npm run lint:css && npm run lint:file-access && npm run lint:importmap && npm run lint:reachability && npm test && npm run build && npm run lint:dist"
+        "spektrum:csp": "node scripts/spektrum-csp.mjs",
+        "verify": "npm run typecheck && npm run lint && npm run lint:css && npm run lint:markup && npm run lint:file-access && npm run lint:importmap && npm run lint:csp && npm run lint:version && npm run lint:reachability && npm run lint:state-keys && npm run lint:phase-status && npm run lint:desktop-package && npm test && vite build && npm run lint:dist"
     },
     "devDependencies": {
         "@eslint/js": "10.0.1",

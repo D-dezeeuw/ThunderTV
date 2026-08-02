@@ -1,18 +1,12 @@
 #!/usr/bin/env node
 // Guards the pinned-Spektrum contract against silent drift:
 //   1. index.html's "spektrum" import-map key disappearing (typo, accidental
-//      edit), or resolving to something other than an exact-pinned CDN URL;
-//   2. that URL no longer matching scripts/spektrum-version.json (the single
-//      source of truth bumped by scripts/sync-vendor-spektrum.mjs); and
-//   3. the vendored public/vendor/spektrum.min.js (Feature 01.5) silently
+//      edit), or resolving to something other than the local vendored copy;
+//   2. the vendored public/vendor/spektrum.min.js (Feature 01.5) silently
 //      diverging from the pinned build's recorded SHA-384 — a corrupted or
 //      hand-edited vendor copy fails this check.
-//
-// scripts/package-target.mjs rewrites index.html's import map for packaged
-// builds — this check runs against the *source* index.html, so it always
-// validates the CDN-pinned, pre-swap state.
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -42,18 +36,26 @@ if (!spektrumUrl) {
     process.exit(1);
 }
 
-if (spektrumUrl !== version.cdnUrl) {
+// The app loads the *generated* runtime — the vendored bytes with their
+// expression-cache cap raised (see scripts/spektrum-csp.mjs's
+// `expectedRuntimeSource`). `spektrum.min.js` is still the pinned,
+// hash-verified input to that transform, which is what the rest of this
+// check guards; it just isn't what the page fetches. Both files stay local,
+// so the no-CDN property this check exists for is unchanged.
+const expectedLocalUrl = `./${version.runtimePath.replace(/^public\//, '')}`;
+if (spektrumUrl !== expectedLocalUrl) {
     console.error(
         `check-importmap: index.html points spektrum at "${spektrumUrl}" but ` +
-            `scripts/spektrum-version.json pins "${version.cdnUrl}" — bump both together ` +
-            `via scripts/sync-vendor-spektrum.mjs.`,
+            `the offline runtime must use "${expectedLocalUrl}".`,
     );
     process.exit(1);
 }
 
-if (/@latest|\^|~|>=|<=/.test(spektrumUrl)) {
+// A missing generated runtime is a broken app, not a stale artifact: the
+// import map would resolve to nothing and no module would load at all.
+if (!existsSync(`${repoRoot}${version.runtimePath}`)) {
     console.error(
-        `check-importmap: "${spektrumUrl}" is not an exact pin (found a range/latest marker)`,
+        `check-importmap: ${version.runtimePath} is missing — run "npm run spektrum:csp" to generate it.`,
     );
     process.exit(1);
 }
@@ -78,4 +80,4 @@ if (vendoredSha384 !== version.sha384) {
     process.exit(1);
 }
 
-console.log(`check-importmap: OK — spektrum pinned to ${spektrumUrl}, vendored copy verified`);
+console.log(`check-importmap: OK — Spektrum ${version.version} is local and its vendored copy is verified`);

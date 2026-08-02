@@ -18,6 +18,7 @@ import {
     SERIES_DETAIL_ERROR_REASON,
     SERIES_DETAIL_ID,
     SERIES_DETAIL_STATUS,
+    SERIES_NEXT_PROMPT,
     SERIES_ERROR_REASON,
     SERIES_STALE,
     SERIES_STATUS,
@@ -42,6 +43,7 @@ import { CODEX_AUTHOR_ID, CODEX_MESSAGE, CODEX_STATE } from './codex';
 import { CODEX_BLOCKED_ROWS, CODEX_LIBRARY_MESSAGE, CODEX_LIBRARY_ROWS, CODEX_LIBRARY_STATE } from './codex-library';
 import { HANDOFF_LINK, HANDOFF_MESSAGE, HANDOFF_STATE } from './handoff';
 import { HEALTH_CLEARED, HEALTH_DEAD_COUNT, HEALTH_TRACKED_COUNT } from './health';
+import { SEARCH_SWEEP_REGISTRY_ENTRIES } from './registry-search';
 import { UI_REGISTRY_ENTRIES } from './registry-ui';
 import type { KeyMeta } from './registry';
 
@@ -53,13 +55,12 @@ import type { KeyMeta } from './registry';
  * prose to make room costs more than it saves — so anything added after that
  * lands here regardless of which module owns it (the file started out
  * catalog-only, hence its original name; the track-menu and audio-only-TV
- * `player` entries below are the ones that aren't). `KEY_REGISTRY` itself
- * (`registry.ts`) is still the single object every consumer (`persist.ts`,
- * `bulk-policy.ts`, `index.ts`'s `rehydrateState()`) reads — this file only
- * changes *how* it gets built, not what it is.
+ * `player` entries below are the ones that aren't). This file has since hit
+ * the same ceiling, so new entries go into a themed leaf spread in below.
  */
 export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     ...EPG_REGISTRY_ENTRIES,
+    ...SEARCH_SWEEP_REGISTRY_ENTRIES,
     ...UI_REGISTRY_ENTRIES,
     // --- vod (Phase 21 Movies catalog) ---
     [VOD_CATEGORIES]: {
@@ -96,6 +97,7 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     [VOD_DETAIL]: {
         owner: 'vod',
         persisted: false,
+        mapShaped: true,
         description: 'Denormalized snapshot for the open movie (VodItem fields + get_vod_info once fetched) — always written via replace(), never set(), since two movies\' differing optional fields would otherwise bleed together (state/README.md\'s merge-hazard finding).',
     },
     [VOD_WARM_STATUS]: {
@@ -139,6 +141,7 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     [SERIES_DETAIL]: {
         owner: 'series',
         persisted: false,
+        mapShaped: true,
         description: 'Denormalized snapshot for the open series, including a flattened season-header/episode rows array (rows, series.ts\'s SeriesDetailRow) bounded to SERIES_DETAIL_EPISODES_CAP total episode rows — always written via replace(), same merge-hazard reasoning as vod.detail.',
     },
     [SERIES_DETAIL_STATUS]: {
@@ -150,6 +153,12 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'series',
         persisted: false,
         description: 'Same no-source/fetch-failed/null contract as series.errorReason, scoped to series.detailStatus.',
+    },
+    [SERIES_NEXT_PROMPT]: {
+        owner: 'series',
+        persisted: false,
+        mapShaped: true,
+        description: 'The standing "Next: S02E01 — title" offer after an episode ends (Feature 21.6.4), or null. Never persisted: an offer only means anything while the player still holds the episode that produced it, so one restored at boot would point at a session that no longer exists. Cleared by setActiveChannel() on any new playback, including accepting the offer itself. Written via replace(), same merge-hazard reasoning as series.detail.',
     },
     [SERIES_WARM_STATUS]: {
         owner: 'series',
@@ -166,7 +175,7 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     [SEARCH_SCOPE]: {
         owner: 'search',
         persisted: false,
-        description: '"channels" | "movies" | "series" | "all" — which catalog(s) recomputeSearch() ranks against.',
+        description: '"channels" | "radio" | "movies" | "series" | "all" — which catalog(s) recomputeSearch() ranks against. "radio" is "channels" over the Radio row set; Live and Radio share one input, so it is resolved from ui.activeView when that input fires.',
     },
     [SEARCH_ACTIVE]: {
         owner: 'search',
@@ -176,12 +185,12 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     [SEARCH_RESULT_COUNTS]: {
         owner: 'search',
         persisted: false,
-        description: '{channels, movies, series} match counts, each scope\'s own (pre-concatenation) rankSearch() result length — stays accurate even when the "all" scope\'s combined row set had to truncate at DEFAULT_SEARCH_LIMIT.',
+        description: '{channels, movies, series} match counts, each scope\'s own (pre-concatenation) rankSearch() result length (radio stations count as channels) — stays accurate even when the "all" scope\'s combined row set had to truncate at DEFAULT_SEARCH_LIMIT.',
     },
     [SEARCH_LOADED_ONLY]: {
         owner: 'search',
         persisted: false,
-        description: 'True when the active scope includes movies/series and at least one relevant category has never been fetched — an honesty flag, not an error: results are real, just possibly incomplete. Always false for "channels" alone (always fully loaded).',
+        description: 'True when the active scope includes movies/series and at least one relevant category has never been fetched — an honesty flag, not an error: results are real, just possibly incomplete. Always false for "channels"/"radio" alone (both always fully loaded).',
     },
 
     // --- settings: audio/subtitle language (Phase 21) ---
@@ -278,7 +287,8 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     [GUIDE_SELECTED_KEY]: {
         owner: 'epg',
         persisted: false,
-        description: 'Which programme block is selected in the Guide grid ("<channelId>|<start>"), or null — view-local UI state, reset every boot.',
+        description:
+            'Which programme block is selected in the Guide grid ("<channelId>|<start>"), or null — view-local UI state, reset every boot. Non-null is also what opens the programme detail modal, so closing it (button, backdrop, Escape, TV Back) is a write of null; there is deliberately no second "modal open" flag to drift out of sync with the selection.',
     },
     [GUIDE_LOADING]: {
         owner: 'epg',

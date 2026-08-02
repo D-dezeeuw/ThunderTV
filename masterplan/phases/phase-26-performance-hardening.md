@@ -2,6 +2,7 @@
 
 > **Epic goal:** Turn the §3 performance budgets from prose into measured, enforced numbers — deterministic stress fixtures, runnable local scripts, and a logged regression protocol that every later phase and release re-runs.
 > **Verification:** `node scripts/check-budgets.mjs` passes against a fresh `vite build`; the scripted measurement runs against the 100 k fixture show cold start < 1 s (cached, full tier), import < 5 s, scroll with zero >50 ms long tasks and ≤ ~40 DOM rows, and search p95 < 50 ms; all baselines are recorded in `masterplan/perf-log.md`.
+> **Status:** `partial` · tracker: `not-maintained` — The budgets are codified **and enforced**: `scripts/check-dist.mjs` fails `npm run verify` at 200 kB raw / 60 kB gz on the entry chunk, and `gen-m3u-fixture.mjs` plus `parser.bench.ts` and `virtual-list.bench.ts` cover the stress fixture, parse throughput and scroll work. **Not built:** startup instrumentation (26.3 — there is no `performance.mark` anywhere in `src/`), the memory profiling pass (26.4) and low-end device validation (26.10).
 
 Before this phase the app is feature-complete for the web target (Phases 01–25), but the performance budgets exist only as a manually-checked list in MASTERPLAN.md §3 and the standing checklist. After this phase every budget has a deterministic fixture, a local script that measures it and fails red on regression, a tuned set of worker/storage constants backed by sweep data, and a committed perf log that becomes the per-release tracking document — all pure local tooling, no CI.
 

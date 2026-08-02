@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { MemoryStorage, withFakePlatform, type FakeHttpAdapter } from '../core/platform/fake-platform';
 import { makePlaylistRecord } from '../core/storage/fixtures';
 import { apiUrl } from '../xtream/urls';
-import { get } from './typed';
+import { get, replace } from './typed';
 import { resetPersistForTests } from './persist';
 import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
 import { PLAYER_ACTIVE } from './player';
@@ -13,6 +13,7 @@ import {
     openSeriesCatalog,
     openSeriesDetail,
     playSeriesEpisode,
+    reportPlaybackEnded,
     selectSeriesCategory,
 } from './series.actions';
 import {
@@ -23,6 +24,7 @@ import {
     SERIES_DETAIL_ERROR_REASON,
     SERIES_DETAIL_ID,
     SERIES_DETAIL_STATUS,
+    SERIES_NEXT_PROMPT,
     SERIES_ERROR_REASON,
     SERIES_STATUS,
     type SeriesCategoryRow,
@@ -259,6 +261,95 @@ describe('series.actions', () => {
             // The detail panel covers the whole list body, player pane
             // included — leaving it open hides the episode you just started.
             expect(get<number | null>(SERIES_DETAIL_ID)).toBeNull();
+        });
+    });
+    describe('next-episode offer (Feature 21.6)', () => {
+        /** Two episodes in season 1, so ending the first has somewhere to go. */
+        function seedTwoEpisodeSeries(http: FakeHttpAdapter): void {
+            http.onGet(apiUrl(source, 'get_series', '&category_id=1')).reply({
+                kind: 'ok',
+                body: JSON.stringify([{ series_id: 7, name: 'Show B', category_id: '1' }]),
+            });
+            http.onGet(apiUrl(source, 'get_series_info', '&series_id=7')).reply({
+                kind: 'ok',
+                body: JSON.stringify({
+                    episodes: {
+                        '1': [
+                            { id: 100, episode_num: 1, title: 'Pilot', container_extension: 'mp4' },
+                            { id: 101, episode_num: 2, title: 'Second', container_extension: 'mp4' },
+                        ],
+                    },
+                }),
+            });
+        }
+
+        async function playFirstEpisode(http: FakeHttpAdapter, storage: MemoryStorage): Promise<void> {
+            initSeriesState();
+            await activateXtreamSource(storage);
+            seedTwoEpisodeSeries(http);
+            await selectSeriesCategory('1');
+            tick();
+            await openSeriesDetail(7);
+            tick();
+            await playSeriesEpisode(7, 100);
+            tick();
+        }
+
+        it('offers the next episode when one ends, without playing it', async () => {
+            await withFakePlatform({}, async ({ http, storage }) => {
+                await playFirstEpisode(http, storage);
+
+                reportPlaybackEnded();
+                tick();
+
+                expect(get<{ label: string } | null>(SERIES_NEXT_PROMPT)?.label).toBe('S01E02 — Second');
+                // Nothing auto-advances: the player still holds episode 1.
+                expect(get<ActiveChannelSnapshot | null>(PLAYER_ACTIVE)?.name).toBe('Pilot');
+            });
+        });
+
+        it('offers nothing at the end of a series', async () => {
+            await withFakePlatform({}, async ({ http, storage }) => {
+                await playFirstEpisode(http, storage);
+                await playSeriesEpisode(7, 101);
+                tick();
+
+                reportPlaybackEnded();
+                tick();
+
+                expect(get<unknown>(SERIES_NEXT_PROMPT)).toBeNull();
+            });
+        });
+
+        it('offers nothing when what ended was not a series episode', async () => {
+            await withFakePlatform({}, async ({ http, storage }) => {
+                await playFirstEpisode(http, storage);
+                // A movie: same shape, no `series` coordinates. Written the
+                // way production writes it — `replace()`, because a plain
+                // `set()` would deep-merge and leave the episode's `series`
+                // field on the film, which is the bug this asserts against.
+                replace(PLAYER_ACTIVE, { id: 'vod:1', sourceId: 'src-1', name: 'A Film', streamUrl: 'http://x/1.mp4', logo: null, group: null, kind: 'vod' });
+                tick();
+
+                reportPlaybackEnded();
+                tick();
+
+                expect(get<unknown>(SERIES_NEXT_PROMPT)).toBeNull();
+            });
+        });
+
+        it('clears a standing offer as soon as anything else starts playing', async () => {
+            await withFakePlatform({}, async ({ http, storage }) => {
+                await playFirstEpisode(http, storage);
+                reportPlaybackEnded();
+                tick();
+                expect(get<unknown>(SERIES_NEXT_PROMPT)).not.toBeNull();
+
+                await playSeriesEpisode(7, 101);
+                tick();
+
+                expect(get<unknown>(SERIES_NEXT_PROMPT)).toBeNull();
+            });
         });
     });
 });

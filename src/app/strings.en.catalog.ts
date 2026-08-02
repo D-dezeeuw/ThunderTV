@@ -37,6 +37,10 @@ export const enCatalog = {
         episodePrefix: 'E',
         minutesSuffix: 'min',
         noEpisodes: 'No episodes listed for this series yet.',
+        nextUpLabel: 'Next up',
+        nextPlay: 'Play next',
+        nextDismiss: 'Dismiss',
+        nextAria: 'Next episode',
     },
 
     /**
@@ -69,6 +73,21 @@ export const enCatalog = {
         scopeMovies: 'Movies',
         scopeSeries: 'Series',
         loadedOnlyHint: 'Searching loaded titles only — open more categories to widen results.',
+        /** "Search all": one search across every configured provider's whole catalog (src/state/catalog-sweep.ts). */
+        allOff: 'Search all providers',
+        allOn: 'Searching all providers — back to this one',
+        partialHint: 'Some providers could not be reached, so these results are incomplete.',
+        sweepTitle: 'Search every provider',
+        sweepWarning:
+            'This fetches the complete movie and series catalogue of every provider you have set up. It can take several minutes and moves a lot of data. The result is saved for a day, so the next search is instant.',
+        sweepStart: 'Start',
+        sweepProviders: 'Providers',
+        sweepCategories: 'Categories',
+        sweepItems: 'Titles found',
+        sweepFailed: 'Could not be reached',
+        sweepPartial: 'Finished, but incomplete — some providers were skipped or failed.',
+        sweepComplete: 'Done — every provider was covered.',
+        sweepCancelled: 'Stopped. Everything fetched so far has been kept.',
     },
     /** The list/grid switch beside each view's search box. */
     layout: {

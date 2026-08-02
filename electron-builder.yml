@@ -33,6 +33,7 @@ files:
   # `desktop/*.mjs` that nobody adds here is simply absent from the packaged
   # app and only fails at runtime in a distributed build.
   - downloads.mjs
+  - transcode.mjs
   - preload.cjs
   - splash.html
   - package.json
@@ -47,6 +48,50 @@ files:
   # ICON_CANDIDATES looks for `icons/512.png` first for exactly this.
   - from: ../build/icons
     to: icons
+
+# `desktop/main.mjs` imports `../scripts/proxy-server.mjs` — a path that
+# points *outside* `directories.app`, so no `files:` entry above can ever
+# satisfy it (nothing can be placed above the asar root from in there).
+# From inside `app.asar`, `../scripts/…` resolves to `resources/scripts/…`,
+# which is precisely what `extraResources` writes — so the one static
+# import specifier is correct both packaged and unpackaged, with no
+# `app.isPackaged` branch in `main.mjs`.
+#
+# Without this the packaged app died at startup with
+# `ERR_MODULE_NOT_FOUND: …/resources/scripts/proxy-server.mjs` before any
+# window opened, while `npm start` from a checkout kept working — the
+# packaged-only failure mode `scripts/check-desktop-package.mjs` now
+# guards in `npm run verify`.
+extraResources:
+  - from: ../scripts/proxy-server.mjs
+    to: scripts/proxy-server.mjs
+  # `proxy-server.mjs`'s own import — the graph has to travel whole.
+  - from: ../scripts/cloudflare-cors-proxy.mjs
+    to: scripts/cloudflare-cors-proxy.mjs
+  # The bundled ffmpeg (`desktop/transcode.mjs`), which re-encodes a film's
+  # AC-3/E-AC-3/DTS audio to AAC on the fly because Chromium decodes none of
+  # those. `extraResources`, not `files`, for a reason that is not
+  # cosmetic: an executable inside `app.asar` cannot be exec'd at all —
+  # it has no path on the filesystem — so a binary that must be *run*
+  # belongs outside the archive, where it also keeps its executable bit.
+  #
+  # The whole directory rather than the binary alone: `ffmpeg-static`
+  # installs the current platform's build under its own name (`ffmpeg` /
+  # `ffmpeg.exe`), so copying the folder is what keeps this one entry
+  # correct on all three targets — and it carries the GPL license text
+  # ffmpeg ships beside the binary, which is a distribution requirement,
+  # not a nicety. `transcode.mjs`'s FFMPEG_CANDIDATES resolves
+  # `../ffmpeg/…` from inside the asar, which is exactly `resources/ffmpeg/`.
+  #
+  # It is a *devDependency* of desktop/package.json on purpose: production
+  # dependencies are copied into `app.asar/node_modules` automatically, and
+  # this one is placed here by hand — as a dependency it would ship twice,
+  # once in a form that cannot even be executed.
+  #
+  # Cost: ~78 MB per platform artifact. It is a whole media pipeline, and
+  # nothing smaller decodes AC-3, E-AC-3, DTS and TrueHD.
+  - from: node_modules/ffmpeg-static
+    to: ffmpeg
 
 # No publish config (see header comment) — releases are manual, per
 # masterplan Phase 29's "zero GitHub Actions publishes" rule. The desktop

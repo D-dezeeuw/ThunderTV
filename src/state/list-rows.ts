@@ -63,8 +63,12 @@ export function setDisplayedRows(rows: readonly ChannelRow[], options: SetDispla
         ...(options.preserveScroll ? { preserveScroll: true } : {}),
     });
 
-    const reveal = pendingRevealId;
-    pendingRevealId = null;
+    // A publish that only appends is not the arrival republish a reveal is
+    // waiting for: the row it names may not have loaded yet, and consuming
+    // it here would both lose the reveal and scroll a viewer who is reading
+    // the rows that *have* loaded.
+    const reveal = options.preserveScroll ? null : pendingRevealId;
+    if (!options.preserveScroll) pendingRevealId = null;
 
     // A pending reveal outranks both: it names the row the viewer just
     // clicked, in the view they were sent to see it in.

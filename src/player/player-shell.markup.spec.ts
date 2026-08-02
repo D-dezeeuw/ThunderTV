@@ -4,7 +4,7 @@ import { setValue, tick } from 'spektrum';
 import { describe, expect, it } from 'vitest';
 import { mountTemplate } from '../shared/testing/bind-dom';
 import { PLAYER_AUDIO_MODE } from '../state/player';
-import { setActiveChannel } from '../state/player.actions';
+import { reportStreamHealth, setActiveChannel } from '../state/player.actions';
 import type { ActiveChannelSnapshot } from '../state/records';
 import { UI_ACTIVE_VIEW } from '../state/ui';
 
@@ -92,14 +92,51 @@ describe('player shell: audio-only layout is class-driven, not structural', () =
 });
 
 /**
+ * The audio-only switch left Live (it read as clutter beside the channel
+ * list). `player.audioMode` is persisted and `isAudioVisual()` still honours
+ * it there, so the one case that must not regress is the escape hatch: a
+ * viewer arriving in Live with the mode already on has to keep a way back to
+ * the picture, or the visualizer is a state nothing can turn off.
+ */
+describe('audio-only switch: gone from Live, except as its own way out', () => {
+    // The real gate, read out of index.html — `[^>]*` cannot cross a `>`, so
+    // the captured data-if is guaranteed to be this button's own.
+    const AUDIO_MODE_GATE = /data-if="([^"]+)"[^>]*data-testid="player-audio-mode-btn"/.exec(indexHtml)?.[1] ?? '';
+
+    it('hides the button in Live unless audio-only is already on, and keeps it in Categories', () => {
+        expect(AUDIO_MODE_GATE).not.toBe('');
+        const mounted = mountTemplate(`
+            <button data-if="${AUDIO_MODE_GATE}" data-testid="player-audio-mode-btn"></button>
+        `);
+        const button = (): HTMLElement | null => mounted.query('[data-testid="player-audio-mode-btn"]');
+
+        setValue(PLAYER_AUDIO_MODE, false);
+        setValue(UI_ACTIVE_VIEW, 'live');
+        tick();
+        expect(button()?.style.display).toBe('none');
+
+        setValue(PLAYER_AUDIO_MODE, true);
+        tick();
+        expect(button()?.style.display).toBe('');
+
+        setValue(PLAYER_AUDIO_MODE, false);
+        setValue(UI_ACTIVE_VIEW, 'categories');
+        tick();
+        expect(button()?.style.display).toBe('');
+
+        mounted.cleanup();
+    });
+});
+
+/**
  * Categories is three columns — categories -> channels -> preview — which
  * only holds if the preview pane and the side-by-side modifier both cover
  * every channel-list view, not just Live/Radio.
  */
 describe('Categories preview column', () => {
-    it('mounts the now-playing pane for every channel-list view', () => {
+    it('mounts one pane for every view that plays something, gated on playback alone', () => {
         expect(indexHtml).toContain(`data-if="${NOW_PLAYING_GATE}"`);
-        expect(NOW_PLAYING_GATE.startsWith('view.channelList.active')).toBe(true);
+        expect(NOW_PLAYING_GATE).toBe('playerPaneVisible');
     });
 
     it('puts the list and the preview side by side in Categories too', () => {
@@ -115,35 +152,52 @@ describe('Categories preview column', () => {
 });
 
 /**
- * Movies/TV Shows played into the same `<video>` as the channel-list views
- * — but the pane holding it was gated on those views alone, and `data-if`
- * only sets `display: none`. Pressing Play on a movie therefore gave you
- * audio, no picture, and nothing to fullscreen.
+ * The pane is gated on playback, in every view. Two bugs meet here: Movies/TV
+ * Shows played into the same `<video>` as the channel-list views but the pane
+ * holding it was gated on those views alone (audio, no picture, nothing to
+ * fullscreen), and the channel-list views showed the pane unconditionally —
+ * including on a fresh boot, where `player.active` is a *persisted* snapshot
+ * of a channel this session never attached, so the player sat there empty.
  */
-describe('now-playing pane covers every view that plays something', () => {
-    it('index.html shows the pane in Movies/TV Shows once something is playing', () => {
-        expect(NOW_PLAYING_GATE).toContain('(view.movies.active || view.series.active) && player.active');
-    });
-
+describe('now-playing pane follows playback, not the view', () => {
     it('the fullscreen button carries no view gate — the shell itself is the gate', () => {
         const button = /<button[^>]*data-fn="player\/fullscreen"[^>]*>/.exec(indexHtml)?.[0] ?? '';
         expect(button).not.toBe('');
         expect(button).not.toContain('data-if');
     });
 
-    it('renders the pane in Movies only while a title is playing', () => {
+    it('stays hidden for a restored-but-never-attached channel, and appears when one attaches', () => {
         const mounted = mountTemplate(`
             <div class="now-playing" data-if="${NOW_PLAYING_GATE}" data-testid="now-playing-pane"></div>
         `);
         const pane = (): HTMLElement | null => mounted.query('[data-testid="now-playing-pane"]');
 
-        setValue(UI_ACTIVE_VIEW, 'movies');
+        setValue(UI_ACTIVE_VIEW, 'live');
         tick();
         expect(pane()?.style.display).toBe('none');
 
+        // What a boot leaves behind: the snapshot is restored, but nothing
+        // ever called attachAndPlay(), so no stream health was published.
+        setActiveChannel(CHANNEL);
+        tick();
+        expect(pane()?.style.display).toBe('none');
+
+        // `monitorStreamHealth()` publishes this synchronously at the top of
+        // every attach — the session's own "a stream is attached" evidence.
+        reportStreamHealth('good');
+        tick();
+        expect(pane()?.style.display).toBe('');
+
+        // A view switch that keeps playing (a replay's handoff, Movies) keeps
+        // the pane; stopping playback takes it away with the channel.
+        setValue(UI_ACTIVE_VIEW, 'movies');
         setActiveChannel({ ...CHANNEL, kind: 'vod' });
         tick();
         expect(pane()?.style.display).toBe('');
+
+        reportStreamHealth(null);
+        tick();
+        expect(pane()?.style.display).toBe('none');
 
         mounted.cleanup();
     });

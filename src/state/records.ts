@@ -32,4 +32,16 @@ export interface ActiveChannelSnapshot {
      * `playSeriesEpisode()` are the only current writers of `'vod'`/`'series'`.
      */
     kind?: 'live' | 'vod' | 'series';
+    /**
+     * Where this episode sits in its series (Feature 21.6.2) — carried so the
+     * ended-handler can resolve "what plays next" without re-deriving it from
+     * the row id, which encodes only the series and episode ids and not the
+     * season/episode *numbers* `nextEpisode()` needs.
+     *
+     * Additive and optional like `kind` above: `'series'` snapshots stored
+     * before this existed simply offer no next episode, which is the same
+     * behaviour they have today. Written only by
+     * `series.actions.ts`'s `playSeriesEpisode()`.
+     */
+    series?: { seriesId: number; season: number; episode: number };
 }

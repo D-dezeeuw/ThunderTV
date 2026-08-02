@@ -9,6 +9,7 @@ import { nlHandoff } from './strings.nl.handoff';
 import { nlStarred } from './strings.nl.starred';
 import { nlEpg } from './strings.nl.epg';
 import { nlPlayerTracks } from './strings.nl.player';
+import { nlWizard } from './strings.nl.wizard';
 
 export const nl = {
     appName: 'ThunderTV',
@@ -99,7 +100,7 @@ export const nl = {
     emptyStates: {
         firstRun: {
             heading: 'Voeg een bron toe om te beginnen',
-            note: 'Of open een verbindingslink om dit apparaat in één keer te configureren.',
+            note: 'U kunt bronnen later toevoegen, vervangen of vernieuwen via Bronnen.',
             file: 'M3U-bestand uploaden',
             urlPlaceholder: 'https://provider.voorbeeld/playlist.m3u',
             urlSubmit: 'Importeren via URL',
@@ -135,13 +136,14 @@ export const nl = {
     },
 
     connect: {
-        detected: 'Verbindingslink gedetecteerd — dit apparaat wordt zo geconfigureerd.',
+        detected: 'Verbindingsbladwijzers zijn niet ingeschakeld in deze versie. Voeg de bron handmatig toe onder Bronnen.',
     },
 
     ...nlEpg.topLevel,
     ...nlCodex,
     ...nlHandoff,
     ...nlStarred,
+    ...nlWizard,
 
     recent: {
         nowPlaying: 'Nu aan het afspelen:',
@@ -186,8 +188,11 @@ export const nl = {
         hiddenNote: 'Verborgen in de zijbalk omdat er geen afspeelbare zenders in zitten. Hier nog wel selecteerbaar.',
         showHidden: 'Verborgen bronnen tonen',
         allTitle: 'Standaardbron',
-        allHint: 'Kies welke geïmporteerde bron Live, Radio en Categorieën tonen. Hier wisselen doet hetzelfde als er een kiezen bij Bronnen.',
+        allHint: 'Kies welke geïmporteerde bron Live, Radio en Categorieën tonen. Hier wisselen doet hetzelfde als op Gebruiken drukken bij Bronnen.',
         activeBadge: 'Actief',
+        configuredTitle: 'Uw bronnen',
+        configuredHint: 'Kies een bron om de verbindingsgegevens te bewerken. Met Gebruiken wordt het de bron die Live, Radio en Categorieën tonen.',
+        useButton: 'Gebruiken',
     },
 
     settings: {
@@ -248,7 +253,7 @@ export const nl = {
             proxyLabel: 'Proxy-URL-sjabloon',
             proxyPlaceholder: 'https://mijn-proxy.voorbeeld/{url}',
             proxyHelp:
-                'Optioneel. Wordt toegepast op playlist-, EPG- en API-verzoeken indien ingesteld. Er wordt geen publieke proxy aangeboden of beloofd — videosegmenten worden apart door de speler opgehaald en blijven op het web sowieso aan CORS gebonden.',
+                'Optioneel. Wordt toegepast op playlist-, EPG-, API- en streamverzoeken indien ingesteld, en op zenderlogo’s die een beveiligde pagina anders blokkeert. Er wordt geen publieke proxy aangeboden of beloofd — draai er zelf een (zie scripts/home-proxy.mjs). Als streams falen met 403/404 terwijl de zenderlijst wel laadt, draait de proxy waarschijnlijk op een datacenter-IP dat de aanbieder blokkeert; draai hem dan via je thuisverbinding.',
             proxySave: 'Opslaan',
             proxyInvalid: 'Moet een geldige https://-URL zijn (of http://localhost voor lokaal testen).',
             proxySaved: 'Opgeslagen.',
@@ -297,20 +302,6 @@ export const nl = {
         appearance: nlAppearance,
     },
 
-    wizard: {
-        title: 'Welkom bij ThunderTV',
-        skip: 'Voorlopig overslaan',
-        step1: {
-            heading: 'Laten we u instellen',
-            intro: 'Kies uw taal en gewenste inhoudsland — beide zijn later altijd wijzigbaar in Instellingen.',
-            next: 'Doorgaan',
-        },
-        step2: {
-            heading: 'Voeg uw zenders toe',
-            intro: 'Voer uw Xtream Codes-account in om nu uw zenders te importeren, of sla over en voeg later een bron toe via de Verbinden-kaart.',
-            back: 'Terug',
-        },
-    },
 
     list: {
         ...nlEpg.list,
@@ -328,7 +319,6 @@ export const nl = {
             openSources: 'Naar Bronnen',
         },
         backToGroups: '← Groepen',
-        playerStop: 'Stoppen',
         playerFullscreen: 'Volledig scherm',
         playerNextVisual: 'Volgende visual',
         playerPauseVisual: 'Visual pauzeren',
@@ -351,7 +341,6 @@ export const nl = {
         signalGood: 'Stream stabiel',
         signalFair: 'Stream buffert af en toe',
         signalPoor: 'Stream sputtert — verbinding te traag of onstabiel',
-        nowPlayingEmpty: 'Kies een zender om te beginnen met kijken.',
         ...nlPlayerTracks,
     },
 

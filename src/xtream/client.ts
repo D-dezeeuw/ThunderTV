@@ -13,17 +13,27 @@ import type {
     XtreamVodInfo,
     XtreamVodStream,
 } from './types';
-import { apiUrl } from './urls';
+import { apiUrl, redactUrl } from './urls';
 
 export type XtreamResult<T> = { ok: true; data: T } | { ok: false; error: XtreamError };
 
 /** The API URL with credentials stripped — `apiUrl()` embeds username and password as query parameters. Exported for direct hostile-fixture testing (client.spec.ts), same rationale as `xtream/urls.ts`'s own `redactUrl`. */
 export function redactApiUrl(source: XtreamSource, action: string): string {
-    return apiUrl({ ...source, user: 'REDACTED', pass: 'REDACTED' }, action, '');
+    return redactUrl(apiUrl(source, action, ''));
 }
 
-async function callApi(source: XtreamSource, action: string, extra = ''): Promise<XtreamResult<unknown>> {
-    const res = await getPlatform().http.get(apiUrl(source, action, extra));
+/**
+ * `signal` is opt-in and, when passed, is the one way a call here can
+ * *throw* rather than resolve a classified failure: `classifiedFetch()`
+ * deliberately re-throws a caller-initiated `AbortError` (the caller already
+ * knows it aborted). Only the "search all" sweep (`state/catalog-sweep.ts`)
+ * passes one — it needs a multi-megabyte catalog dump to stop the moment the
+ * user presses Cancel, not when the download finally finishes — and it
+ * catches the rejection itself. Every other call site omits it and is
+ * unaffected.
+ */
+async function callApi(source: XtreamSource, action: string, extra = '', signal?: AbortSignal): Promise<XtreamResult<unknown>> {
+    const res = await getPlatform().http.get(apiUrl(source, action, extra), signal ? { signal } : undefined);
     if (res.kind !== 'ok') return { ok: false, error: classifyXtreamHttpFailure(action, res) };
 
     const text = await res.res.text();
@@ -120,16 +130,16 @@ function normalizeStream(row: Record<string, unknown>): XtreamLiveStream | undef
 /** Bucket for rows whose `category_id` is null, missing, or unparseable (Feature 21.1.7) — unlike live streams, a VOD/series row is never dropped for a missing category. */
 const UNCATEGORIZED = 'uncategorized';
 
-export async function getVodCategories(source: XtreamSource): Promise<XtreamResult<XtreamCategory[]>> {
-    return getCategoriesByAction(source, 'get_vod_categories');
+export async function getVodCategories(source: XtreamSource, signal?: AbortSignal): Promise<XtreamResult<XtreamCategory[]>> {
+    return getCategoriesByAction(source, 'get_vod_categories', signal);
 }
 
-export async function getSeriesCategories(source: XtreamSource): Promise<XtreamResult<XtreamCategory[]>> {
-    return getCategoriesByAction(source, 'get_series_categories');
+export async function getSeriesCategories(source: XtreamSource, signal?: AbortSignal): Promise<XtreamResult<XtreamCategory[]>> {
+    return getCategoriesByAction(source, 'get_series_categories', signal);
 }
 
-async function getCategoriesByAction(source: XtreamSource, action: string): Promise<XtreamResult<XtreamCategory[]>> {
-    const result = await callApi(source, action);
+async function getCategoriesByAction(source: XtreamSource, action: string, signal?: AbortSignal): Promise<XtreamResult<XtreamCategory[]>> {
+    const result = await callApi(source, action, '', signal);
     if (!result.ok) return result;
 
     const rows = asArray<Record<string, unknown>>(result.data);
@@ -140,9 +150,9 @@ async function getCategoriesByAction(source: XtreamSource, action: string): Prom
 }
 
 /** Omitting `category_id` mirrors Feature 19.2.7's live quirk — returns the whole VOD catalog in one call. */
-export async function getVodStreams(source: XtreamSource, categoryId?: string): Promise<XtreamResult<XtreamVodStream[]>> {
+export async function getVodStreams(source: XtreamSource, categoryId?: string, signal?: AbortSignal): Promise<XtreamResult<XtreamVodStream[]>> {
     const extra = categoryId !== undefined ? `&category_id=${categoryId}` : '';
-    const result = await callApi(source, 'get_vod_streams', extra);
+    const result = await callApi(source, 'get_vod_streams', extra, signal);
     if (!result.ok) return result;
 
     const rows = asArray<Record<string, unknown>>(result.data);
@@ -191,18 +201,28 @@ function normalizeVodInfo(payload: Record<string, unknown>): XtreamVodInfo {
     const genre = asString(info['genre']);
     const durationSecs = asNumber(info['duration_secs']);
     const releaseDate = asString(info['releasedate']) ?? asString(info['release_date']);
+    // Panels disagree about both the key and the type: `imdb_id` arrives as
+    // `"tt0111161"`, `"0111161"`, `""` or `0`, and `tmdb_id` as a number or
+    // a numeric string. Both are normalized here rather than at the consumer,
+    // and anything that isn't a plausible id is simply dropped — a wrong id
+    // sent to a subtitle service returns a confident, empty answer.
+    const imdbId = /^tt\d{5,10}$/.test(asString(info['imdb_id'])?.trim() ?? '') ? asString(info['imdb_id'])?.trim() : undefined;
+    const tmdbRaw = asNumber(info['tmdb_id']) ?? asNumber(info['tmdb']);
+    const tmdbId = tmdbRaw !== undefined && tmdbRaw > 0 ? tmdbRaw : undefined;
 
     return {
         ...(plot !== undefined ? { plot } : {}),
         ...(genre !== undefined ? { genre } : {}),
         ...(durationSecs !== undefined ? { durationSecs } : {}),
         ...(releaseDate !== undefined ? { releaseDate } : {}),
+        ...(imdbId !== undefined ? { imdbId } : {}),
+        ...(tmdbId !== undefined ? { tmdbId } : {}),
     };
 }
 
-export async function getSeries(source: XtreamSource, categoryId?: string): Promise<XtreamResult<XtreamSeries[]>> {
+export async function getSeries(source: XtreamSource, categoryId?: string, signal?: AbortSignal): Promise<XtreamResult<XtreamSeries[]>> {
     const extra = categoryId !== undefined ? `&category_id=${categoryId}` : '';
-    const result = await callApi(source, 'get_series', extra);
+    const result = await callApi(source, 'get_series', extra, signal);
     if (!result.ok) return result;
 
     const rows = asArray<Record<string, unknown>>(result.data);

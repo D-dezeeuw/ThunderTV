@@ -1,5 +1,6 @@
-import { defineFn, refs, setValue, type State } from 'spektrum';
+import { defineFn, refs, setValue, tick, type State } from 'spektrum';
 import { getPlatform } from '../core/platform';
+import { strings } from '../app/strings';
 import type { Density } from '../ui/density';
 import { persist } from './persist';
 import { applyFontSize, applyTheme } from './theme';
@@ -7,6 +8,7 @@ import {
     UI_DENSITY,
     UI_FONT_SIZE,
     UI_SETTINGS_OPEN,
+    UI_ANNOUNCEMENT,
     UI_STORAGE_NOTICE_DISMISSED,
     UI_THEME,
     type FontSize,
@@ -136,4 +138,26 @@ export function handleStorageDemotion(_from: string, to: string): void {
     setValue('storage.tier', to);
     setValue(UI_STORAGE_NOTICE_DISMISSED, false);
     setValue('platform.capabilities', getPlatform().capabilities);
+    announce(to === 'partial' ? strings.storageNotice.partial : strings.storageNotice.none);
+}
+
+/**
+ * Speaks `message` to assistive technology, once (Feature 25.8.5).
+ *
+ * The blank-then-set is not superstition. A live region only announces when
+ * its text *changes*, so demoting twice for the same reason, or two identical
+ * playback failures in a row, would write the same string and say nothing the
+ * second time — the case where a user most needs to hear it. Clearing first
+ * guarantees a change. It has to be two ticks, not two writes in one, because
+ * Spektrum batches: without the intervening `tick()` the DOM only ever sees
+ * the final value, which is the bug this avoids.
+ *
+ * An empty or whitespace-only message is dropped rather than clearing the
+ * region for no reason.
+ */
+export function announce(message: string): void {
+    if (!message.trim()) return;
+    setValue(UI_ANNOUNCEMENT, '');
+    tick();
+    setValue(UI_ANNOUNCEMENT, message);
 }

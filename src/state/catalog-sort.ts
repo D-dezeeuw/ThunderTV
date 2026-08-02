@@ -1,5 +1,5 @@
 import { matchesCountry } from '../channels/country-language-map';
-import { popularityRank } from './catalog-popularity';
+import { isTopHundredCategory, popularityRank } from './catalog-popularity';
 import type { XtreamCategory } from '../xtream/types';
 
 /**
@@ -22,6 +22,12 @@ import type { XtreamCategory } from '../xtream/types';
  * well-known streaming services ahead of everything else, because on a
  * single-country account nearly every category matches the country and the
  * country key alone therefore decided almost nothing.
+ *
+ * Ahead of both sits "Top 100" (`isTopHundredCategory()`, which documents
+ * exactly what counts as one): it is what a viewer opens to see what is
+ * worth watching, and it names no service, so the popularity table would
+ * otherwise leave it in the long tail. Several matches keep their relative
+ * order at the top; everything else keeps the order it had.
  */
 export function sortCategoriesCountryFirst(
     categories: readonly XtreamCategory[],
@@ -32,11 +38,14 @@ export function sortCategoriesCountryFirst(
         .map((category, index) => ({
             category,
             index,
+            top: isTopHundredCategory(category.name) ? 0 : 1,
             rank: popularityRank(category.name),
             country: matchesCountry(category.name, code) ? 0 : 1,
         }))
         .sort((a, b) => {
-            // Popularity leads. On a single-country account almost every
+            // "Top 100" first, whatever else it may also name.
+            if (a.top !== b.top) return a.top - b.top;
+            // Popularity next. On a single-country account almost every
             // category matched the country, so country-first alone left the
             // provider's arbitrary order essentially intact — the services a
             // viewer actually opens sat wherever the panel happened to put

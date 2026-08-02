@@ -1,11 +1,14 @@
 import { setValue } from 'spektrum';
 import { DEBUG_OPEN } from './debug';
+import { GUIDE_SELECTED_KEY } from './guide';
 import { PLAYER_TRACK_MENU, type TrackMenu } from './player-tracks';
+import { SEARCH_SWEEP_OPEN } from './search';
+import { closeSweep } from './search-sweep.actions';
 import { SERIES_DETAIL_ID } from './series';
 import { get } from './typed';
 import { UI_SETTINGS_OPEN } from './ui';
 import { VOD_DETAIL_ID } from './vod';
-import { UI_WIZARD_OPEN } from './wizard';
+import { UI_WIZARD_EDIT_SOURCE_ID, UI_WIZARD_OPEN } from './wizard';
 
 /**
  * What the remote's Back button (and a browser Backspace on a TV build)
@@ -42,8 +45,25 @@ export function closeTopmostOverlay(): boolean {
         setValue(UI_SETTINGS_OPEN, false);
         return true;
     }
+    // The "search all" warning/progress modal — an overlay over the catalog
+    // view, so it unwinds before the view does. Routed through
+    // `closeSweep()` rather than a bare `setValue` because closing it while
+    // a sweep is running has to cancel that sweep (see its own doc).
+    if (get<boolean>(SEARCH_SWEEP_OPEN) === true) {
+        closeSweep();
+        return true;
+    }
     if (get<boolean>(UI_WIZARD_OPEN) === true) {
+        // Discards an in-progress source edit along with the modal — the
+        // fields are uncontrolled, so nothing was written anywhere yet.
+        setValue(UI_WIZARD_EDIT_SOURCE_ID, null);
         setValue(UI_WIZARD_OPEN, false);
+        return true;
+    }
+    // The Guide's programme detail modal — same family as the catalog detail
+    // panels below: an overlay over one view, unwound before the view itself.
+    if (get<string | null>(GUIDE_SELECTED_KEY)) {
+        setValue(GUIDE_SELECTED_KEY, null);
         return true;
     }
     // The catalog detail panels are overlays over the list, so they unwind

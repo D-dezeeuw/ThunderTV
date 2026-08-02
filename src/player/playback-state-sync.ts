@@ -1,4 +1,5 @@
 import { reportPaused } from '../state/player.actions';
+import { reportPlaybackEnded } from '../state/series.actions';
 
 /**
  * Keeps `player.paused` equal to what the `<video>` element is actually
@@ -16,10 +17,10 @@ import { reportPaused } from '../state/player.actions';
  * So the picture keeps the browser's native behaviour and this only observes
  * it. That is strictly better than intercepting, because it makes *every*
  * route to a pause agree with the UI — the native control bar, a click on the
- * picture, the media keys on a keyboard, the remote's play/pause, and the
- * app's own Stop/Play button. Before this, only the app's own button updated
- * `player.paused`, so pausing from the native controls left the button
- * showing the wrong icon.
+ * picture, the media keys on a keyboard, the remote's play/pause, and a tap on
+ * the audio-only pane. Before this, only the app's own control updated
+ * `player.paused`, so pausing from the native controls left the rest of the UI
+ * believing the stream was still running.
  *
  * The audio-only pane is unaffected and keeps its explicit binding
  * (`index.html` wires `player/togglePlayback` onto `.radio-now-playing`): a
@@ -37,11 +38,21 @@ export function attachPlaybackStateSync(video: HTMLVideoElement): () => void {
     const onPause = (): void => {
         reportPaused(true);
     };
+    // Feature 21.6.4. Attached here rather than beside `position.ts`'s own
+    // `ended` listener because the two want opposite things from the event:
+    // that one forgets the position (the programme is over), this one offers
+    // what follows. Keeping them separate means neither has to care about
+    // the other's ordering.
+    const onEnded = (): void => {
+        reportPlaybackEnded();
+    };
 
     video.addEventListener('play', onPlay);
     video.addEventListener('pause', onPause);
+    video.addEventListener('ended', onEnded);
     return () => {
         video.removeEventListener('play', onPlay);
         video.removeEventListener('pause', onPause);
+        video.removeEventListener('ended', onEnded);
     };
 }

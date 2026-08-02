@@ -2,6 +2,7 @@ import { appState, getPathObj } from 'spektrum';
 import { lookupCatalog } from '../channels/dutch-catalog';
 import { classifyJunk } from '../channels/junk-filter';
 import { parseCategoryName, parseChannelName } from '../channels/name-parse';
+import { redactUrl as redactCredentialUrl } from '../core/redact';
 import { getRows } from '../m3u/channel-memory';
 import type { ChannelRow } from '../m3u/types';
 import { isHiddenSource } from './hidden-sources';
@@ -50,32 +51,15 @@ function esc(value: unknown): string {
 }
 
 /**
- * Strips anything credential-shaped from a URL: `user:pass@` userinfo, and
- * the `username`/`password`/`token` query parameters Xtream panels use.
- * Falls back to dropping the whole URL if it cannot be parsed — better a
- * useless field than a leaked one.
+ * Strips anything credential-shaped from a URL, delegating to
+ * `core/redact`'s `redactUrl`. The wrapper exists for the `null` case: an
+ * export field that was never set renders as empty, not as the
+ * unparseable-URL placeholder, which would read as though something had
+ * been hidden.
  */
 export function redactUrl(url: string | null): string {
     if (!url) return '';
-    try {
-        const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `http://${url}`;
-        const parsed = new URL(withScheme);
-        parsed.username = '';
-        parsed.password = '';
-        for (const key of ['username', 'password', 'token', 'pass', 'user']) {
-            if (parsed.searchParams.has(key)) parsed.searchParams.set(key, 'REDACTED');
-        }
-        // Xtream stream paths embed credentials as path segments
-        // (/live/<user>/<pass>/<id>.ts), which no query-param scrub catches.
-        const path = parsed.pathname.replace(
-            /^\/(live|movie|series)\/[^/]+\/[^/]+\//i,
-            '/$1/REDACTED/REDACTED/',
-        );
-        parsed.pathname = path;
-        return parsed.toString();
-    } catch {
-        return '[unparseable url redacted]';
-    }
+    return redactCredentialUrl(url);
 }
 
 function tag(name: string, attrs: Record<string, unknown>, indent: string): string {

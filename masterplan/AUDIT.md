@@ -11,12 +11,19 @@
 > original measurement and what actually shipped, because the *systemic* cause
 > is unchanged and the fix arrived by luck of timing rather than by a gate.
 >
-> **Remediation status.** §3.1, §4.1, §4.2 and §4.3 are now closed in code —
-> see [`UPGRADES.md`](./UPGRADES.md) for what landed. The findings are kept
-> here as written rather than deleted: the measurements are the evidence for
-> why the gates exist, and a gate with no recorded failure it prevents is the
-> first thing someone deletes. Everything not marked closed there is still
-> open.
+> **Remediation status.** §3.1, §3.2, §4.1, §4.2 and §4.3 are now closed in
+> code — see [`UPGRADES.md`](./UPGRADES.md) for what landed. The findings are
+> kept here as written rather than deleted: the measurements are the evidence
+> for why the gates exist, and a gate with no recorded failure it prevents is
+> the first thing someone deletes. Everything not marked closed there is
+> still open.
+>
+> Since then a v1.0.0 production-readiness pass (`becff80`) closed §4.7 on
+> the web target and rebuilt the §4.1 budget gate to measure every eager
+> script rather than one chunk. Two findings are still live and one is
+> getting worse: §4.8's `index.html` has grown from 2,366 to **3,560 lines**
+> and remains the only major artifact with no size fence, and §4.11's PWA gap
+> is untouched — still a manifest with no service worker.
 
 ---
 
@@ -37,6 +44,7 @@ Three facts define the current state:
 2. **The masterplan tracker reports 0/100 for phases 09–30**, while the code
    for phases 09–13, 16–22 and 28–29 demonstrably ships. The project's own
    navigation document is now actively misleading. **Unchanged by the merge.**
+   *(Closed — see §3.2.)*
 3. **The performance budget is drifting away, not toward, its target.** The
    breach widened from 12% over to **20% over** across two merges, because
    nothing measures it.
@@ -50,10 +58,10 @@ Three facts define the current state:
 | CSS fence / file-access fence | ✅ Clean | both custom guards pass |
 | Tests | ✅ 1,125 pass (133 files) | flake fixed — 11 consecutive clean runs (§4.3) |
 | Build | ✅ Succeeds | 616 ms |
-| Perf budget | ✅ **Under, and enforced** | 46.0 kB gz / 135.7 kB raw vs. 60 kB / 200 kB |
+| Perf budget | ✅ **Enforced on the right number** | all eager JS + HTML + CSS + shell text + install footprint, re-baselined to the webOS floor (`webos/PERFORMANCE-BUDGET.md`); 92.3 KiB gz eager JS vs. 100 KiB — 8% headroom |
 | Feature reachability | ✅ **Gated in CI** | 77 registered, 73 bound, 4 allowlisted, 0 dead clicks |
-| Plan ↔ code fidelity | ❌ **Detached** | phases 09–30 report 0% while shipping |
-| Security posture | ✅ Strong | with two gaps (§4.7) |
+| Plan ↔ code fidelity | ✅ **Reconciled and gated** | every phase carries a verified `> **Status:**` line; §4's table is generated and `--check`ed in `verify` |
+| Security posture | ✅ Strong | §4.7's two gaps closed on the web target — strict CSP with precompiled bindings, Spektrum served same-origin; Electron CSP header still missing |
 
 ---
 
@@ -140,7 +148,15 @@ Related: the app has **zero `data-model` bindings**, despite `data-model` being
 named as one of the four core Spektrum bindings in the masterplan. Every input
 is read imperatively via refs.
 
-### 3.2 The masterplan tracker no longer describes the codebase
+### 3.2 The masterplan tracker no longer describes the codebase — ✅ CLOSED
+
+> **Closed by UPGRADES U5.** Every phase file now carries a verified
+> `> **Status:**` line, and MASTERPLAN §4's table is generated from those
+> lines by `scripts/gen-phase-status.mjs`, `--check`ed inside `npm run
+> verify`. The reconciliation turned up more than staleness: phases 16, 17
+> and 18 were **superseded** by Phases 31/32 rather than completed, and six
+> more shipped only partially. The finding below stands as written — it is
+> the evidence for why the gate exists.
 
 Checkbox completion per phase file:
 
@@ -301,7 +317,17 @@ Each is honestly documented, which is how they were found:
 A phase boundary is a scheduling device. When it becomes a *design* boundary,
 the scars are permanent and compound.
 
-### 4.7 Security: two gaps in an otherwise strong posture
+### 4.7 Security: two gaps in an otherwise strong posture — ✅ CLOSED on the web target
+
+> **Closed by the v1.0.0 pass (`becff80`), except for Electron.** A strict,
+> enforced CSP now ships in `index.html`, and it solved the harder half of
+> the problem the finding did not anticipate: Spektrum's `{{expr}}` bindings
+> are precompiled at build time (717 of them) so no `eval`/`new Function`
+> is needed at runtime and `script-src` can stay tight. The import map
+> resolves Spektrum to the same-origin vendored copy on the web target too,
+> so the build-time SHA-384 finally constrains what the browser fetches —
+> the exact gap the second bullet below describes. `npm run lint:csp` gates
+> both. **Still open:** no CSP header in `desktop/main.mjs` (UPGRADES U12).
 
 - **No Content-Security-Policy anywhere.** No `<meta http-equiv>` in
   `index.html`, no `session.webRequest` header in `desktop/main.mjs`. For an

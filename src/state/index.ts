@@ -1,5 +1,6 @@
 import { appState, getPathObj, setValue } from 'spektrum';
 import { applyLocale, isLocale, strings } from '../app/strings';
+import { initBootState } from './boot';
 import { SETTINGS_LOCALE } from './settings';
 import { getPlatform } from '../core/platform';
 import { initEpgState } from './epg';
@@ -7,6 +8,7 @@ import { initEpgSettingsState } from './epg-settings';
 import { registerEpgSettingsActions } from './epg-settings.actions';
 import { initFavoritesState } from './favorites';
 import { registerFavoritesActions } from './favorites.actions';
+import { registerEpgRowSelectors } from './epg-rows.selectors';
 import { registerFavoritesSelectors } from './favorites.selectors';
 import { initCodexState } from './codex';
 import { registerCodexActions } from './codex.actions';
@@ -37,6 +39,8 @@ import { initDebugState } from './debug';
 import { registerPlayerActions } from './player.actions';
 import { initPlayerTracksState } from './player-tracks';
 import { registerPlayerTrackActions } from './player-tracks.actions';
+import { initSubtitleSearchState } from './subtitle-search';
+import { registerSubtitleSearchActions } from './subtitle-search.actions';
 import { registerRecentActions } from './recent.actions';
 import { registerGuideActions } from './guide.actions';
 import { registerGuideSelectors } from './guide.selectors';
@@ -47,6 +51,7 @@ import { registerPlaylistActions } from './playlist.actions';
 import { registerPlaylistSelectors } from './playlist.selectors';
 import { persistedKeys } from './registry';
 import { registerSearchActions } from './search.actions';
+import { registerSearchSweepActions } from './search-sweep.actions';
 import { initSearchState } from './search';
 import { registerSeriesActions } from './series.actions';
 import { initSeriesState } from './series';
@@ -84,6 +89,7 @@ export { loadDefaultEpg, primeEpgMapping } from './epg-load';
 export { fetchChannelEpgOnDemand, loadXtreamGuide } from './xtream-epg-load';
 export { openWizard, openWizardIfNoSources } from './wizard.actions';
 export { shouldOpenWizard } from './wizard';
+export { manageBootOverlay, markChannelDataReady } from './boot';
 export { openVodCatalog, republishVodRows } from './vod.actions';
 export { openSeriesCatalog, republishSeriesRows } from './series.actions';
 export { warmVodCatalog } from './vod-warm';
@@ -100,10 +106,12 @@ export function initState(): void {
     // consumer — including the bindDOM test harness, which does not call
     // seedStrings() — can resolve it before the first bind.
     seedBlankImage();
+    initBootState();
     initPlaylistState();
     initImportState();
     initPlayerState();
     initPlayerTracksState();
+    initSubtitleSearchState();
     initEpgState();
     initEpgSettingsState();
     initSettingsState();
@@ -134,6 +142,7 @@ export function registerActions(): void {
     registerSettingsActions();
     registerPlayerActions();
     registerPlayerTrackActions();
+    registerSubtitleSearchActions();
     registerUiActions();
     registerListActions();
     registerListLayoutActions();
@@ -148,6 +157,7 @@ export function registerActions(): void {
     registerVodActions();
     registerSeriesActions();
     registerSearchActions();
+    registerSearchSweepActions();
     registerDownloadActions();
     registerEpgSettingsActions();
     registerHealthActions();
@@ -162,6 +172,7 @@ export function registerSelectors(): void {
     registerImportSelectors();
     registerPlayerSelectors();
     registerFavoritesSelectors();
+    registerEpgRowSelectors();
     registerUiSelectors();
     registerListSelectors();
     registerLiveSelectors();

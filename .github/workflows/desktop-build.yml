@@ -2,18 +2,6 @@ name: Desktop build
 
 # Catches electron-builder packaging regressions.
 #
-# Automatic runs are DISABLED — packaging is by far the most expensive thing
-# this repo asks of hosted runners (a full `npm ci` in two workspaces plus an
-# AppImage/nsis/dmg build), and Phase 29's posture is that installers are
-# built and uploaded by hand anyway. Run it from the Actions tab
-# ("Run workflow") when a release is actually being cut. To put it back on
-# pushes and tags, restore:
-#
-#   on:
-#     push:
-#       branches: [main]
-#       tags: ['v*']
-#     pull_request:
 on:
   workflow_dispatch:
     inputs:
@@ -42,9 +30,44 @@ jobs:
       - run: npm ci
         working-directory: desktop
 
+      # Electron has no headless mode of its own, so the runner needs a real
+      # X server for anything that opens a window.
+      - name: install Xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      # Before packaging: the same millisecond-cheap module-graph check
+      # `npm run verify` runs, so a broken files/extraResources allowlist
+      # fails here in seconds rather than after a full package + launch.
+      - run: npm run lint:desktop-package
+
+      # Launch the app from a checkout. Catches "the shell doesn't boot" and
+      # "the preload bridge changed shape" without waiting on electron-builder.
+      - name: smoke (unpackaged)
+        run: npm run smoke:desktop
+
       - name: package (AppImage)
         run: npm run package:linux
         working-directory: desktop
+
+      # The one that would have caught the two bugs this job was added for:
+      # both were invisible until the app ran from its *packaged* layout.
+      # `--dir` output is what the AppImage is built from, so smoking it
+      # tests the same file tree without mounting a FUSE image on CI.
+      - name: smoke (packaged)
+        run: |
+          npx --yes --package=electron-builder@26.15.3 \
+            electron-builder --config ../electron-builder.yml --linux dir
+          cd .. && npm run smoke:desktop:packaged
+        working-directory: desktop
+
+      # The screenshots are the only way to see what a failed run looked
+      # like — uploaded even on failure, for exactly that reason.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: thundertv-smoke-screenshots
+          path: release/smoke/*.png
+          retention-days: 7
 
       - uses: actions/upload-artifact@v4
         with:

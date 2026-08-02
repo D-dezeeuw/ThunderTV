@@ -43,17 +43,17 @@ export class ElectronDownloadAdapter implements DownloadAdapter {
     async prepare(filename: string): Promise<DownloadTarget | null> {
         const bridge = window.electron?.downloads;
         if (!bridge) return null;
-        const filePath = await bridge.prepare(filename);
+        const targetToken = await bridge.prepare(filename);
         // `null` is the viewer dismissing the native dialog — an ordinary
         // "never mind", so nothing is queued and nothing is reported.
-        if (!filePath) return null;
-        return { kind: 'managed', filename, filePath } as DownloadTarget & { filePath: string };
+        if (!targetToken) return null;
+        return { kind: 'managed', filename, targetToken } as DownloadTarget & { targetToken: string };
     }
 
     start(url: string, target: DownloadTarget, callbacks: DownloadCallbacks): DownloadHandle {
         const bridge = window.electron?.downloads;
-        const filePath = (target as DownloadTarget & { filePath?: string }).filePath;
-        if (!bridge || !filePath) {
+        const targetToken = (target as DownloadTarget & { targetToken?: string }).targetToken;
+        if (!bridge || !targetToken) {
             // Nothing to stream to. Reported rather than thrown so the queue
             // runner advances through its single failure path like any other.
             callbacks.onError('disk');
@@ -63,7 +63,7 @@ export class ElectronDownloadAdapter implements DownloadAdapter {
         const id = `dl-${String(++nextId)}`;
         this.pending.set(id, { callbacks, settled: false });
         this.listen();
-        bridge.start(id, url, filePath);
+        bridge.start(id, url, targetToken);
 
         return {
             cancel: () => {

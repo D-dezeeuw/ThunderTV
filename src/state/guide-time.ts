@@ -9,8 +9,18 @@
  * on the ingestion side).
  */
 
-/** The grid shows a rolling 4h window — enough to see "now" plus a few upcoming slots without needing horizontal scroll UI. */
-export const GUIDE_WINDOW_MS = 4 * 60 * 60 * 1000;
+/**
+ * How far behind "now" the window reaches. Starting the window *at* the
+ * clock (the original behaviour) pinned the now-line to the left edge and
+ * clipped every currently-airing programme to its remaining sliver — the
+ * viewer could never see what a running programme *is*, only what's left of
+ * it. An hour of past keeps the airing blocks whole (most slots are ≤1h)
+ * and puts the now-line visibly inside them.
+ */
+export const GUIDE_PAST_MS = 60 * 60 * 1000;
+
+/** The grid shows a rolling 5h window — an hour of past (`GUIDE_PAST_MS`) plus "now" and up to 4h of upcoming slots, without needing horizontal scroll UI. */
+export const GUIDE_WINDOW_MS = GUIDE_PAST_MS + 4 * 60 * 60 * 1000;
 
 /**
  * One step of the prev/next time controls (Phase 32). Half a window rather
@@ -48,8 +58,9 @@ export interface GuideWindow {
     end: number;
 }
 
+/** The visible window: `GUIDE_PAST_MS` behind the given instant (floored to a half-hour grid line) through the rest of `GUIDE_WINDOW_MS` ahead — so "now" lands inside the currently-airing blocks rather than on the window's left edge. */
 export function computeGuideWindow(nowMs: number): GuideWindow {
-    const start = floorToHalfHour(nowMs);
+    const start = floorToHalfHour(nowMs - GUIDE_PAST_MS);
     return { start, end: start + GUIDE_WINDOW_MS };
 }
 
@@ -112,4 +123,32 @@ export function formatTimeRange(startMs: number, stopMs: number, locale?: string
  */
 export function formatWindowDate(ms: number, locale?: string): string {
     return new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(ms));
+}
+
+function formatUnit(value: number, unit: 'hour' | 'minute', locale?: string): string {
+    return new Intl.NumberFormat(locale, { style: 'unit', unit, unitDisplay: 'short' }).format(value);
+}
+
+/**
+ * How long a programme runs, as locale-aware text — `"1 hr 30 min"`,
+ * `"45 min"`. Shown in the programme detail modal, where the start/stop
+ * range alone makes the viewer do the subtraction.
+ *
+ * `Intl.NumberFormat`'s unit style rather than a translated `"{n} min"`
+ * template: it already knows each locale's abbreviation and plural rules, so
+ * there is no third copy of the same string to keep in sync and no locale
+ * that ends up with an English suffix. A non-positive span (a malformed feed
+ * row where `stop <= start`) returns `''` and the modal simply omits the
+ * line, rather than printing `"0 min"` as if that were a fact.
+ */
+export function formatDuration(startMs: number, stopMs: number, locale?: string): string {
+    const totalMinutes = Math.round((stopMs - startMs) / 60_000);
+    if (totalMinutes <= 0) return '';
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const parts: string[] = [];
+    if (hours > 0) parts.push(formatUnit(hours, 'hour', locale));
+    if (minutes > 0) parts.push(formatUnit(minutes, 'minute', locale));
+    return parts.join(' ');
 }

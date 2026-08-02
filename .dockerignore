@@ -1,0 +1,12 @@
+# The only image in this repo (docker/Dockerfile) copies three dependency-free
+# files out of scripts/. Everything else is context the daemon would upload for
+# nothing — node_modules, dist/, .git and the boot wallpaper dwarf what is
+# actually built. Exclude all, then re-include exactly what the Dockerfile
+# COPYs; `scripts` itself is re-included first because a file inside an
+# excluded directory is never reachable.
+*
+!scripts
+scripts/*
+!scripts/home-proxy.mjs
+!scripts/proxy-server.mjs
+!scripts/cloudflare-cors-proxy.mjs

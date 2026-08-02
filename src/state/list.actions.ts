@@ -10,6 +10,7 @@ import { setActiveChannel } from './player.actions';
 import { PLAYLIST_ACTIVE_SOURCE_ID } from './playlist';
 import { openSeriesDetail } from './series.actions';
 import { get } from './typed';
+import { UI_ACTIVE_VIEW } from './ui';
 import { openVodDetail } from './vod.actions';
 
 /**
@@ -63,6 +64,26 @@ export function selectChannel(id: string | null): void {
     setValue(LIST_SELECTED_ID, id);
     const sourceId = get<string | null>(PLAYLIST_ACTIVE_SOURCE_ID);
     if (sourceId) saveListState(sourceId, { selectedId: id });
+}
+
+/**
+ * The boot splash's one-time "land on a ready Live tab" behavior
+ * (`src/state/boot.ts`'s `manageBootOverlay()`, wired in via
+ * `bootstrap.ts` as a callback rather than a direct import — see that
+ * module's comment for why): if boot is ending on the default Live route
+ * (never overriding an explicit deep link — e.g. `#/movies` or a
+ * `#/handoff` in flight) and a source is actually active, highlights the
+ * first row so a remote's Up/Down starts somewhere real and OK/Enter plays
+ * it immediately. Deliberately selects rather than plays — autoplaying a
+ * channel the user never chose is a surprise, not a convenience.
+ */
+export function preselectFirstLiveChannel(): void {
+    if (get<string>(UI_ACTIVE_VIEW) !== 'live') return;
+    if (!get<string | null>(PLAYLIST_ACTIVE_SOURCE_ID)) return;
+    if (rowCount() === 0) return;
+
+    const first = rowAt(0);
+    if (first) selectChannel(first.id);
 }
 
 /**

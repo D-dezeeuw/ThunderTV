@@ -12,7 +12,10 @@
 // (see main.mjs's `loadDefaultConfig`); `downloads` saves a movie to disk
 // from the main process, which is the one member that is more than a value
 // read — it exists so a multi-gigabyte file never has to pass through the
-// renderer at all (see main.mjs's `registerDownloadHandlers`). Context
+// renderer at all (see main.mjs's `registerDownloadHandlers`);
+// `transcode` is the origin + token of the localhost server that re-encodes
+// a film's undecodable audio on the fly (see transcode.mjs), `null` where
+// that server did not start. Context
 // isolation stays on; nothing else crosses the bridge — no raw
 // `ipcRenderer`, no filesystem, no `require`.
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- Electron preload scripts must be CommonJS; require() is the contract here.
@@ -20,6 +23,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const PROXY_ORIGIN_PREFIX = '--thundertv-proxy-origin=';
 const APP_VERSION_PREFIX = '--thundertv-app-version=';
+const TRANSCODE_ORIGIN_PREFIX = '--thundertv-transcode-origin=';
+const TRANSCODE_TOKEN_PREFIX = '--thundertv-transcode-token=';
 const IPC_SET_WINDOW_FULLSCREEN = 'thundertv:set-window-fullscreen';
 const IPC_WINDOW_FULLSCREEN_STATE = 'thundertv:window-fullscreen';
 const IPC_GET_DEFAULT_CONFIG = 'thundertv:get-default-config';
@@ -30,6 +35,8 @@ const IPC_DOWNLOAD_EVENT = 'thundertv:download-event';
 
 const proxyOriginArg = process.argv.find((a) => a.startsWith(PROXY_ORIGIN_PREFIX));
 const appVersionArg = process.argv.find((a) => a.startsWith(APP_VERSION_PREFIX));
+const transcodeOriginArg = process.argv.find((a) => a.startsWith(TRANSCODE_ORIGIN_PREFIX));
+const transcodeTokenArg = process.argv.find((a) => a.startsWith(TRANSCODE_TOKEN_PREFIX));
 
 // Mirrored here rather than queried on demand, so the renderer can read it
 // synchronously: the player's fullscreen toggle runs inside a click
@@ -43,7 +50,7 @@ ipcRenderer.on(IPC_WINDOW_FULLSCREEN_STATE, (_event, value) => {
 if (proxyOriginArg) {
     contextBridge.exposeInMainWorld('electron', {
         proxyOrigin: proxyOriginArg.slice(PROXY_ORIGIN_PREFIX.length),
-        appVersion: appVersionArg ? appVersionArg.slice(APP_VERSION_PREFIX.length) : '0.0.0',
+        appVersion: appVersionArg ? appVersionArg.slice(APP_VERSION_PREFIX.length) : '1.0.0',
         isWindowFullscreen: () => windowFullscreen,
         setWindowFullscreen: (next) => {
             const value = Boolean(next);
@@ -54,10 +61,21 @@ if (proxyOriginArg) {
             ipcRenderer.send(IPC_SET_WINDOW_FULLSCREEN, value);
         },
         getDefaultConfig: () => ipcRenderer.invoke(IPC_GET_DEFAULT_CONFIG),
+        // Two constants, not a method: the renderer builds its own `/stream`
+        // URLs and hands them to `fetch`/MediaSource, so nothing about a
+        // multi-gigabyte film has to travel over IPC. `null` (no argv from
+        // the main process) means this build cannot transcode at all.
+        transcode:
+            transcodeOriginArg && transcodeTokenArg
+                ? {
+                      origin: transcodeOriginArg.slice(TRANSCODE_ORIGIN_PREFIX.length),
+                      token: transcodeTokenArg.slice(TRANSCODE_TOKEN_PREFIX.length),
+                  }
+                : null,
         downloads: {
             prepare: (filename) => ipcRenderer.invoke(IPC_DOWNLOAD_PREPARE, String(filename)),
-            start: (id, url, filePath) => {
-                ipcRenderer.send(IPC_DOWNLOAD_START, String(id), String(url), String(filePath));
+            start: (id, url, targetToken) => {
+                ipcRenderer.send(IPC_DOWNLOAD_START, String(id), String(url), String(targetToken));
             },
             cancel: (id) => {
                 ipcRenderer.send(IPC_DOWNLOAD_CANCEL, String(id));

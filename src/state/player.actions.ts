@@ -21,6 +21,8 @@ import {
 } from './player';
 import { closeTrackMenu } from './player-tracks.actions';
 import type { ActiveChannelSnapshot } from './records';
+import { SERIES_NEXT_PROMPT } from './series';
+import { announce } from './ui.actions';
 import { get, replace, set } from './typed';
 import { UI_ACTIVE_VIEW } from './ui';
 
@@ -227,10 +229,15 @@ export function stopPlayback(): void {
 }
 
 /**
- * The Stop/Play toggle: pauses or resumes the media element in place,
- * leaving `player.active` (and so the row/episode highlight) untouched —
- * unlike `stopPlayback()`, which fully closes the channel. Reused across
- * Live/Radio/Movies/TV Shows since they all share the one `<video>` ref.
+ * Pauses or resumes the media element in place, leaving `player.active` (and
+ * so the row/episode highlight) untouched — unlike `stopPlayback()`, which
+ * fully closes the channel. Reused across Live/Radio/Movies/TV Shows since
+ * they all share the one `<video>` ref.
+ *
+ * The preview pane no longer carries a button for this: a `<video controls>`
+ * has its own, and a second copy beside it was clutter. The audio-only pane
+ * (`.radio-now-playing`, which is a canvas with no native controls) is the
+ * one surface that still binds it.
  */
 export function togglePlayback(): void {
     const video = refs['playerVideo'];
@@ -252,8 +259,8 @@ export function togglePlayback(): void {
  * The element's own events are the authority on this, not whoever asked for
  * the change: a viewer can pause from the native control bar, by clicking the
  * picture (Chromium toggles on the whole video surface), with a media key, or
- * from the app's own button. Only the last of those used to update
- * `player.paused`, so the Stop/Play icon could disagree with reality.
+ * by tapping the audio-only pane. Only the last of those used to update
+ * `player.paused`, so the state could disagree with reality.
  */
 export function reportPaused(paused: boolean): void {
     setValue(PLAYER_PAUSED, paused);
@@ -262,6 +269,10 @@ export function reportPaused(paused: boolean): void {
 /** Called by `src/player/engine.ts` when a stream dies (hls.js fatal error or the native element's `error` event) — the one visible diagnostic a phone user can screenshot. `null` clears it on a fresh attach. Stone 3's failure evidence is recorded by the engine itself (`advanceChain()`), not here: the player layer already owns the health monitor, and hooking it here would have `src/state/` reach into `src/player/`. */
 export function reportPlaybackError(detail: string | null): void {
     setValue(PLAYER_PLAYBACK_ERROR, detail);
+    // A dead stream is the one failure a viewer is guaranteed to be waiting
+    // on, so it is the one that most needs saying out loud (Feature 25.8.5).
+    // `null` is the clear-on-fresh-attach case and announces nothing.
+    if (detail) announce(detail);
 }
 
 /**
@@ -287,7 +298,15 @@ export function setVisualizerPreset(preference: string): void {
 }
 
 export function setActiveChannel(channel: ActiveChannelSnapshot): void {
-    setValue(PLAYER_ACTIVE, channel);
+    // `replace()`, not `setValue()`: the snapshot's optional `kind`/`radio`/
+    // `series` fields are written by only some callers, and a deep-merged
+    // write leaves the previous item's on the new one (`map-shaped-keys.ts`).
+    replace(PLAYER_ACTIVE, channel);
+    // A standing "Next: S02E01" offer belongs to the episode that produced
+    // it. Anything becoming active — including the offer being accepted —
+    // ends that, so clear it here rather than in each of the several paths
+    // that can start playback (Feature 21.6.4).
+    replace(SERIES_NEXT_PROMPT, null);
     setValue(PLAYER_PLAYBACK_ERROR, null);
     setValue(PLAYER_PLAYBACK_NOTICE, null);
     setValue(PLAYER_PAUSED, false);

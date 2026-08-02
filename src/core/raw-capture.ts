@@ -12,6 +12,7 @@
  * sessions is not a trade worth making for a diagnostic. A reload clears
  * them — re-import or refresh the source to repopulate.
  */
+import { redactJsonCredentialFields } from './redact';
 
 export interface RawCapture {
     /** What produced it: `xtream:get_live_streams`, `m3u:url`, `m3u:paste`. */
@@ -36,22 +37,8 @@ const MAX_ENTRIES = 24;
 
 let captures: RawCapture[] = [];
 
-/**
- * Xtream's `user_info` block echoes the account's username and password
- * back in plain text. Everything else in these payloads is channel data
- * worth reading verbatim, so the redaction is deliberately narrow: only
- * these two JSON fields, leaving the document otherwise byte-identical to
- * what the server sent.
- */
-function redactCredentialFields(body: string): string {
-    return body.replace(
-        /("(?:username|password)"\s*:\s*")(?:\\.|[^"\\])*(")/gi,
-        '$1REDACTED$2',
-    );
-}
-
 export function captureRawResponse(entry: Omit<RawCapture, 'length' | 'truncated'>): void {
-    const redacted = redactCredentialFields(entry.body);
+    const redacted = redactJsonCredentialFields(entry.body);
     const truncated = redacted.length > MAX_BODY_CHARS;
 
     captures.push({

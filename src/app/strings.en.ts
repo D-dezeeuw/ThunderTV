@@ -6,6 +6,7 @@ import { enHandoff } from './strings.en.handoff';
 import { enStarred } from './strings.en.starred';
 import { enEpg } from './strings.en.epg';
 import { enPlayerTracks } from './strings.en.player';
+import { enWizard } from './strings.en.wizard';
 
 export const en = {
     appName: 'ThunderTV',
@@ -98,7 +99,7 @@ export const en = {
     emptyStates: {
         firstRun: {
             heading: 'Add a source to get started',
-            note: 'Or open a connect bookmark link to configure this device in one visit.',
+            note: 'You can add, replace, or refresh sources later from Sources.',
             file: 'Upload M3U file',
             urlPlaceholder: 'https://provider.example/playlist.m3u',
             urlSubmit: 'Import from URL',
@@ -130,13 +131,14 @@ export const en = {
     },
 
     connect: {
-        detected: 'Connect link detected — this device will be configured shortly.',
+        detected: 'Connect bookmarks are not enabled in this release. Add the source manually under Sources.',
     },
 
     ...enEpg.topLevel,
     ...enCodex,
     ...enHandoff,
     ...enStarred,
+    ...enWizard,
 
     recent: {
         nowPlaying: 'Now playing:',
@@ -182,8 +184,11 @@ export const en = {
         hiddenNote: 'Hidden from the sidebar because it carries no playable channels. Still selectable here.',
         showHidden: 'Show hidden sources',
         allTitle: 'Default source',
-        allHint: 'Choose which imported source Live, Radio and Categories show. Switching here does the same thing as picking one in the Sources tab.',
+        allHint: 'Choose which imported source Live, Radio and Categories show. Switching here does the same thing as pressing Use in the Sources tab.',
         activeBadge: 'Active',
+        configuredTitle: 'Your sources',
+        configuredHint: 'Select a source to edit its connection details. Use makes it the one Live, Radio and Categories show.',
+        useButton: 'Use',
     },
 
     settings: {
@@ -244,7 +249,7 @@ export const en = {
             proxyLabel: 'Proxy URL template',
             proxyPlaceholder: 'https://my-proxy.example/{url}',
             proxyHelp:
-                'Optional. Applied to playlist, EPG, and API requests when set. No public proxy is provided or promised — video segments are fetched separately by the player and remain CORS-bound on the web regardless.',
+                'Optional. Applied to playlist, EPG, API and stream requests when set, and to channel logos a secure page would otherwise block. No public proxy is provided or promised — run your own (see scripts/home-proxy.mjs). If streams fail with 403/404 while the channel list loads fine, the proxy is probably on a datacenter IP the provider blocks; run it from your home connection instead.',
             proxySave: 'Save',
             proxyInvalid: 'Must be a valid https:// URL (or http://localhost for local testing).',
             proxySaved: 'Saved.',
@@ -293,20 +298,6 @@ export const en = {
         appearance: enAppearance,
     },
 
-    wizard: {
-        title: 'Welcome to ThunderTV',
-        skip: 'Skip for now',
-        step1: {
-            heading: 'Let’s get you set up',
-            intro: 'Choose your language and preferred content country — both are switchable anytime in Settings.',
-            next: 'Continue',
-        },
-        step2: {
-            heading: 'Add your channels',
-            intro: 'Enter your Xtream Codes account to import your channels now, or skip and add a source later from the Connect card.',
-            back: 'Back',
-        },
-    },
 
     list: {
         ...enEpg.list,
@@ -324,7 +315,6 @@ export const en = {
             openSources: 'Go to Sources',
         },
         backToGroups: '← Groups',
-        playerStop: 'Stop',
         playerFullscreen: 'Full screen',
         playerNextVisual: 'Next visual',
         playerPauseVisual: 'Pause visual',
@@ -347,7 +337,6 @@ export const en = {
         signalGood: 'Stream steady',
         signalFair: 'Stream buffering occasionally',
         signalPoor: 'Stream struggling — connection too slow or unstable',
-        nowPlayingEmpty: 'Pick a channel to start watching.',
         ...enPlayerTracks,
     },
 
