@@ -127,15 +127,23 @@ console.log(`check-dist: OK — no devtools symbols found in ${jsFiles.length} b
 // about whether those two boot tasks may wait for Settings to open. That is a
 // piece of work in its own right, which is why it is written down here rather
 // than rushed in alongside an unrelated fix.
+//
+// The HTML gates went 300/60 → 115/17 the moment `minifyIndexHtml()`
+// (vite.config.ts) started stripping comments and indentation from the *built*
+// shell: 239.9 → 111.3 KiB raw, 32.5 → 16.1 KiB gzip. That is formatting, not
+// features, so the budget follows it down immediately — the whole point of the
+// plugin's strict strip-count guard is that a reformat which stops matching
+// fails the build, and a slack budget here would let it fail quietly instead.
+// shellText follows for the same reason: 800/175 → 520/128.
 const BUDGETS = {
     startupJsRaw: 400 * 1024,
     startupJsGzip: 104 * 1024,
-    htmlRaw: 300 * 1024,
-    htmlGzip: 60 * 1024,
+    htmlRaw: 115 * 1024,
+    htmlGzip: 17 * 1024,
     cssRaw: 100 * 1024,
     cssGzip: 25 * 1024,
-    shellTextRaw: 800 * 1024,
-    shellTextGzip: 175 * 1024,
+    shellTextRaw: 520 * 1024,
+    shellTextGzip: 128 * 1024,
     installRaw: 10 * 1024 * 1024,
 };
 

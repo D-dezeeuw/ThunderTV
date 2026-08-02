@@ -90,12 +90,76 @@ function stripRegistryDescriptions(): Plugin {
     };
 }
 
+/**
+ * Vite rewrites asset URLs in `index.html` but does not minify it, so the
+ * built shell shipped the source's ~35 kB of explanatory HTML comments and
+ * ~104 kB of indentation verbatim — together ~58% of the single largest
+ * eager artifact, on the critical path of every boot including a webOS TV's.
+ *
+ * Three transforms, deliberately conservative:
+ *  1. drop `<!-- … -->` comments,
+ *  2. drop each line's leading indentation,
+ *  3. collapse runs of blank lines.
+ *
+ * The newline between two lines always survives, so inline-element spacing
+ * (`</span>\n<span>` still renders one space) is untouched. The whitespace-
+ * sensitive variant — joining `>\s*\n\s*<` into `><` — is deliberately NOT
+ * done: it buys ~1 KiB raw / 0.06 KiB gzip more and is exactly the transform
+ * that silently eats inter-word spacing. Verified safe for the current
+ * markup: no `<pre>`, no `white-space: pre*` rule, no `:empty` selector, the
+ * one `<textarea>` is empty, no attribute value spans a newline, and the only
+ * inline `<script>` is the one-line import map.
+ *
+ * Source `index.html` keeps every comment: `scripts/check-markup.mjs` and
+ * `scripts/spektrum-csp.mjs` both read the source file, never this output.
+ *
+ * Strict like `stripRegistryDescriptions()`: if a markup reformat stops the
+ * patterns matching, the build fails loudly instead of quietly putting
+ * 130 KiB back on the boot path.
+ */
+function minifyIndexHtml(): Plugin {
+    const MIN_COMMENTS = 60;
+    const MIN_DEDENTED_LINES = 2000;
+
+    return {
+        name: 'minify-index-html',
+        apply: 'build',
+        transformIndexHtml: {
+            order: 'post',
+            handler(html) {
+                let comments = 0;
+                let dedented = 0;
+
+                const out = html
+                    .replace(/<!--[\s\S]*?-->/g, () => {
+                        comments += 1;
+                        return '';
+                    })
+                    .replace(/^[ \t]+/gm, () => {
+                        dedented += 1;
+                        return '';
+                    })
+                    .replace(/\n{2,}/g, '\n');
+
+                if (comments < MIN_COMMENTS || dedented < MIN_DEDENTED_LINES) {
+                    throw new Error(
+                        `minify-index-html: stripped ${String(comments)} comment(s) and dedented ${String(dedented)} line(s), ` +
+                            `expected at least ${String(MIN_COMMENTS)} and ${String(MIN_DEDENTED_LINES)}. ` +
+                            'index.html changed shape — update the patterns in vite.config.ts rather than shipping the formatting.',
+                    );
+                }
+                return out;
+            },
+        },
+    };
+}
+
 export default defineConfig(({ mode }) => ({
     // Relative asset URLs, not root-absolute. One dist/ then loads correctly
     // from all three consumers: a GitHub Pages subpath (/thundertv/), a
     // packaged Electron `file://` window, and a packaged webOS app.
     base: './',
-    plugins: [externalizeSpektrum(), stripRegistryDescriptions()],
+    plugins: [externalizeSpektrum(), stripRegistryDescriptions(), minifyIndexHtml()],
     build: {
         // `--mode webos` (npm run build:lg) builds to a separate directory
         // and a lower syntax floor than the evergreen web/Electron build.
