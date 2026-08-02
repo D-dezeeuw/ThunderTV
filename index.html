@@ -4,7 +4,9 @@
 <html lang="en" :data-density="ui.density">
     <head>
         <meta charset="UTF-8" />
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <!-- Bundled source file, not a second copy in public/: base.css draws
+             the same SVG as a watermark, so dist/ used to ship it twice. -->
+        <link rel="icon" type="image/svg+xml" href="./src/styles/thunder-bolt.svg" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
@@ -15,13 +17,10 @@
              resolved theme's surface color at boot and on every switch. -->
         <meta name="theme-color" content="#171128" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <!--
-          Script execution is strict-CSP compatible: Spektrum expressions
-          are precompiled into a same-origin classic script at build time, so
-          the framework never reaches its new Function fallback. Inline style
-          remains allowed because Spektrum deliberately applies visibility,
-          sizing, and theme values through element.style.
-        -->
+        <!-- Strict-CSP compatible: Spektrum expressions are precompiled into a
+          same-origin classic script at build time, so the framework never
+          reaches its new Function fallback. Inline style stays allowed because
+          Spektrum applies visibility/sizing/theme through element.style. -->
         <meta
             http-equiv="Content-Security-Policy"
             content="default-src 'self'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; script-src 'self' 'sha256-6LCTVeYOA+8bY/X/wzednIrMfrdBCRYGWaLb8ZwPmoM='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; media-src 'self' blob: http: https:; connect-src 'self' blob: http: https:; font-src 'self' data:; worker-src 'self' blob:; manifest-src 'self'"
@@ -42,10 +41,9 @@
           `build.rollupOptions.external`). Every target uses the pinned,
           integrity-checked local copy — no runtime CDN, not even on web.
           Packaged targets rewrite the built imports to a relative file and drop
-          this map, avoiding an import-map shim on Chromium 87.
-          spektrum-version.json pins version + SHA-384; the target is the
-          generated spektrum.runtime.js, not the vendored spektrum.min.js —
-          see public/vendor/README.md. -->
+          this map, avoiding an import-map shim on Chromium 87. The target is
+          the generated spektrum.runtime.js, not the vendored (never shipped)
+          spektrum.min.js — see vendor/README.md. -->
         <script type="importmap">{ "imports": { "spektrum": "./vendor/spektrum.runtime.js" } }</script>
         <!-- The classic script is intentionally copied verbatim. -->
         <script vite-ignore src="./vendor/spektrum-precompiled.js"></script>
@@ -1702,10 +1700,9 @@
                                                     </div>
                                                     <!-- Always offered, not just when the list is empty: a movie's own
                                                          subtitles live inside its container and no browser exposes them
-                                                         (player/external-subs.ts), so a file from disk — or the free,
-                                                         keyless online search beside it (core/subtitles/) — is the only
-                                                         subtitle route Movies/TV Shows has. One press, never automatic,
-                                                         and every outcome of it is a message here. -->
+                                                         (player/external-subs.ts), so a file from disk — or the keyless
+                                                         online search beside it (core/subtitles/) — is the only subtitle
+                                                         route Movies/TV Shows has. One press, never automatic. -->
                                                     <button type="button" class="track-menu__item track-menu__item--action" data-action="click" data-fn="player/loadSubtitleFile" data-testid="subtitle-load-file">
                                                         <span class="track-menu__label">{{ strings.list.subtitlesLoadFile }}</span>
                                                     </button>

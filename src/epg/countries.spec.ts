@@ -1,15 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-    countryForLiveToken,
-    EPG_COUNTRIES,
-    feedUrls,
-    findCountry,
-    listCountries,
-    liveTokenFor,
-    plainFeedUrls,
-    stripCountrySuffix,
-    type EpgCountry,
-} from './countries';
+import { feedUrls, liveTokenFor, plainFeedUrls, stripCountrySuffix, type EpgCountry } from './countries';
+import { countryForLiveToken, EPG_COUNTRIES, findCountry, listCountries } from './countries-lookup';
 
 const NL: EpgCountry = {
     folder: 'Netherlands',

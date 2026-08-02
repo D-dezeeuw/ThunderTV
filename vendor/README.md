@@ -1,7 +1,7 @@
 # Vendored: Spektrum
 
 - **Package:** `spektrum` on npm
-- **Version:** 1.1.0 (pinned — see `../../scripts/spektrum-version.json`)
+- **Version:** 1.1.0 (pinned — see `../scripts/spektrum-version.json`)
 - **Upstream repository:** https://github.com/D-dezeeuw/spektrum
 - **License:** MIT
 - **File:** `spektrum.min.js`, fetched verbatim from
@@ -17,7 +17,19 @@ is never source code).
 version and verifies/updates the SHA-384 recorded in
 `scripts/spektrum-version.json`.
 
-## Generated files (both from `scripts/spektrum-csp.mjs`)
+## Why this is not `public/vendor/`
+
+Everything under `public/` is copied verbatim into `dist/`, and
+`spektrum.min.js` is a **build input**, not a runtime file: nothing fetches
+it, no import map points at it, no `<script>` names it. Sitting in `public/`
+it shipped 13.3 KiB of dead weight — plus this README's 2 KiB — in every web,
+Electron and webOS build. It lives at the repo root instead, which is where
+`scripts/spektrum-csp.mjs` reads it and where `spektrum-version.json`'s
+`vendoredPath` points.
+
+## Generated files — these DO ship, from `../public/vendor/`
+
+Both are produced by `scripts/spektrum-csp.mjs`.
 
 `spektrum-precompiled.js` is generated from `index.html`. It registers every
 template expression before `bindDOM()`, allowing a strict script CSP without

@@ -61,6 +61,27 @@ all read — nothing downstream should ever need a second list.
 - `computed()` selectors are read-only by construction — `src/state/*.selectors.ts`
   files never call `setValue`/`set()`.
 
+## `*.actions.ts` / `*.run.ts` — the lazy-action shim
+
+Some features register at boot for UI nobody reaches until Settings or the
+player bar is opened. Those are split in two: the `*.actions.ts` file keeps
+the `defineFn` registrations (so `scripts/check-reachability.mjs` can see
+them, and a press works whether or not anything has loaded yet) and does
+nothing but `await import('./*.run')` and delegate. Everything with real
+weight — the module graph a feature drags in — lives in the `*.run.ts`.
+
+`subtitle-search.actions.ts` is the worked example. `codex.actions.ts`,
+`codex-library.actions.ts` and `handoff.actions.ts` follow it; between them
+and the CSP registry compaction the eager bundle went 360.6 → 288.9 KiB raw
+(`scripts/check-dist.mjs`'s budget is a webOS 6 / Chromium 87 SLO, not a
+ratchet you may move). Two rules that come with the shape:
+
+- **State the shim itself owns must stay in the shim.** `handoff/dismiss`
+  clears three keys inline rather than loading a chunk to do it.
+- **A boot-path caller must be able to answer "no" without the import.**
+  `consumeHandoff()` tests `location.hash` first, so a boot that did not come
+  from a handoff link never fetches anything.
+
 ## Sanctioned non-action publishers
 
 Two keys are written directly with `setValue`, not through a `defineFn`

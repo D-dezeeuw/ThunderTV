@@ -12,7 +12,7 @@ import { createNativeTrackEngine } from './native-tracks';
 import type { PlayerEngine } from './player-engine';
 import { stopPositionMonitor, trackPlaybackPosition } from './position';
 import { monitorStreamHealth, reportAttachFailed, stopStreamHealthMonitor } from './stream-health';
-import { detachTranscode } from './transcode-engine';
+import { detachTranscode } from './transcode-lazy';
 import type { TrackSnapshot } from './tracks';
 
 /**

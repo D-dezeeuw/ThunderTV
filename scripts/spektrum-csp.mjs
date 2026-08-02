@@ -21,7 +21,13 @@ export const generatedPath = `${repoRoot}public/vendor/spektrum-precompiled.js`;
  * `expectedRuntimeSource()` for why it has to exist at all.
  */
 export const runtimePath = `${repoRoot}public/vendor/spektrum.runtime.js`;
-const vendoredPath = `${repoRoot}public/vendor/spektrum.min.js`;
+/**
+ * The pinned upstream bytes — a build *input*, so it lives at the repo root
+ * rather than in `public/`, where it would be copied into every dist/ that
+ * never fetches it. Keep in step with `spektrum-version.json`'s
+ * `vendoredPath`; see `vendor/README.md`.
+ */
+const vendoredPath = `${repoRoot}vendor/spektrum.min.js`;
 const versionPath = `${repoRoot}scripts/spektrum-version.json`;
 
 /**
@@ -118,7 +124,12 @@ export function extractExpressions(html) {
     return [...seen];
 }
 
-function normalizeNumericPaths(source) {
+/**
+ * `a.0.b` is not valid JS inside the literal wrapper, so it becomes `a[0].b`.
+ * Exported for `spektrum-csp.spec.mts`, which rebuilds the wrapper as its
+ * reference implementation and has to normalize identically.
+ */
+export function normalizeNumericPaths(source) {
     return source.replace(
         /([a-zA-Z_$][\w$]*)((?:\.\d+)+)/g,
         (_match, head, tail) => head + tail.replace(/\.(\d+)/g, '[$1]'),
@@ -126,18 +137,69 @@ function normalizeNumericPaths(source) {
 }
 
 /**
- * Every record repeats the same wrapper, so its identifiers are one letter
- * and the catch body is empty (`return` and `return void 0` are the same
- * value). At ~750 expressions that is ~21 KB less to *parse*, which is the
- * pressure `scripts/check-dist.mjs`'s raw eager budget exists to bound on a
- * Chromium 87 TV — gzip barely notices repeated text, a parser does.
+ * A plain dotted path (`strings.views.sources.heading`) or a negated one
+ * (`!ui.wizardOpen`). Segments after the first may be numeric so that
+ * `rows.0.name` classifies here too — the walker indexes it correctly and
+ * `normalizeNumericPaths()` is not needed.
+ */
+const PLAIN_PATH = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$0-9][\w$]*)*$/;
+const isPathExpression = (source) =>
+    PLAIN_PATH.test(source) || (source.startsWith('!') && PLAIN_PATH.test(source.slice(1)));
+
+/**
+ * The shared path walker, emitted once. Exactly the semantics of the literal
+ * wrapper below, and deliberately *not* built from a string — it is a closure
+ * over a pre-split array, so there is no `new Function`/`eval` and the whole
+ * point of precompiling survives.
  *
- * The wrapper cannot be hoisted into a shared factory: building one function
- * per expression from a string is exactly the `new Function`/`eval` that
- * precompiling exists to avoid under CSP. Each body has to be a literal.
+ * Matching `with(s)with(c||{})return(a.b.c)` means, in order:
+ *   - `with(null)` throws before anything else is consulted, so a nullish
+ *     state is `undefined` no matter what the scope holds;
+ *   - the inner `with` wins, so the scope resolves the head identifier first
+ *     and state second — both by HasProperty, i.e. prototype chain included,
+ *     which is what `in` does;
+ *   - a head identifier in neither is a ReferenceError, and stepping into a
+ *     nullish value mid-path is a TypeError; the wrapper's `catch {}` turns
+ *     both into `undefined`, so the walker's own `catch` has to as well
+ *     (this is also why `!a.b` with `a` undefined is `undefined`, not `true`
+ *     — the negation never runs).
+ */
+const WALKER = [
+    'function w(p,n){',
+    'return function(s,c){',
+    'try{',
+    'if(s==null)return;',
+    'var k=p[0],o=c?Object(c):null,v;',
+    'if(o&&k in o)v=o[k];',
+    'else{o=Object(s);if(k in o)v=o[k];else return}',
+    'for(var i=1;i<p.length;i++)v=v[p[i]];',
+    'return n?!v:v',
+    '}catch{}',
+    '}',
+    '}',
+].join('');
+
+/**
+ * 543 of the template's 768 expressions (71%) are a bare dotted path or a
+ * negated one. Emitting a literal `function(s,c){try{with(s)with(c||{})
+ * return(X)}catch{}}` for each cost the wrapper boilerplate *plus* a second
+ * copy of the path text, for ~750 functions a Chromium 87 TV has to parse
+ * before first paint.
+ *
+ * Those now emit as bare strings and get their evaluator from one shared
+ * closure factory at load time. A record is a string when it is a path (the
+ * leading `!` of a negated one is its own marker — no separate list, so the
+ * array keeps its source order and `check-csp.mjs` can still assert
+ * record-for-record identity against `extractExpressions()`), and a
+ * `[source, function]` pair when it is anything else.
+ *
+ * The remaining 225 — ternaries, class objects, comparisons, `?.` chains —
+ * keep the literal wrapper, whose identifiers are one letter and whose catch
+ * body is empty (`return` and `return void 0` are the same value).
  */
 export function emitClassicPrecompileSource(expressions) {
     const records = expressions.map((source) => {
+        if (isPathExpression(source)) return JSON.stringify(source);
         const normalized = normalizeNumericPaths(source);
         return `[${JSON.stringify(source)},function(s,c){try{with(s)with(c||{})return(${normalized})}catch{}}]`;
     });
@@ -145,7 +207,10 @@ export function emitClassicPrecompileSource(expressions) {
     return [
         '/* Generated by scripts/spektrum-csp.mjs. Do not edit. */',
         '(function(g){',
-        `const records=[${records.join(',')}];`,
+        WALKER,
+        `const records=[${records.join(',')}].map(function(r){`,
+        "return typeof r!='string'?r:r.charCodeAt(0)==33?[r,w(r.slice(1).split('.'),1)]:[r,w(r.split('.'),0)]",
+        '});',
         "Object.defineProperty(g,'__THUNDERTV_CSP_EXPRESSIONS__',{value:records,configurable:true});",
         '})(globalThis);',
         '',

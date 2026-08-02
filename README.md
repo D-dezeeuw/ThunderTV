@@ -199,7 +199,8 @@ SmartScreen warning on first run.
 
 [Spektrum](https://github.com/D-dezeeuw/spektrum) is pinned to `1.1.0`
 (`scripts/spektrum-version.json`) and loaded from the integrity-checked
-copy at `public/vendor/spektrum.min.js` on every target:
+copy at `vendor/spektrum.min.js` — a build input that never ships — on every
+target, via the `public/vendor/spektrum.runtime.js` generated from it:
 
 - **Web:** `index.html` resolves the local file through an import map.
 - **Electron/webOS:** `scripts/package-target.mjs` rewrites built bare
@@ -232,7 +233,8 @@ The vendored runtime is kept in sync (and hash-verified) by
 | `src/styles/`        | Phase 02 — App Shell & Design System                                                       |
 | `src/types/`         | Ambient declarations (`spektrum.d.ts`)                                                     |
 | `scripts/`           | Tooling: Spektrum pin sync/guard, dist checks, packaging swap, M3U fixture generation (Phase 06) |
-| `public/vendor/`     | Vendored Spektrum copy — committed, never hand-edited                                      |
+| `vendor/`            | Pinned Spektrum input — committed, never hand-edited, never shipped                        |
+| `public/vendor/`     | Generated Spektrum runtime + precompiled CSP registry (ships in dist/)                     |
 
 **Where does a piece of state live, and does it persist?** `src/state/README.md`
 is the module-ownership doc; `masterplan/reference/state-keys.md`

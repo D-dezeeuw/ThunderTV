@@ -22,7 +22,11 @@ Not a cache. Not a sync account. A file."* This module is v0 of that file.
 | `library.ts` | Following published Codexes: fetch, retain, refresh, rebuild. |
 
 State surface: `src/state/codex.ts`/`codex.actions.ts` (export/import) and
-`codex-library.ts`/`codex-library.actions.ts` (subscriptions and trust).
+`codex-library.ts`/`codex-library.actions.ts` (subscriptions and trust). Both
+`*.actions.ts` are boot-path shims: the `defineFn` registrations live there so
+`check-reachability.mjs` sees them, and every body is in the matching
+`*.run.ts`, imported on the press (or, for the two boot tasks, after first
+paint). Nothing in `src/codex/` is in the eager bundle.
 
 
 ## What a Codex contains — and what it must never contain

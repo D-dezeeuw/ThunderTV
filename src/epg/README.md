@@ -76,8 +76,13 @@ exact-join reason.
 
 ```
 src/epg/countries.ts      the local mapping file: which countries exist in
-(+ countries-data.ts)     globetvapp/epg, their feed files, their channel-id
-                           suffix (verified live, never assumed from ISO code)
+(+ countries-data.ts,     globetvapp/epg, their feed files, their channel-id
+   countries-lookup.ts)    suffix (verified live, never assumed from ISO code).
+                           countries.ts holds the shape and the pure helpers
+                           that take a country; every lookup *into* the ~10 KiB
+                           table is in countries-lookup.ts, `await import()`ed
+                           by its three async callers so the table stays off
+                           the boot path.
         │
         ▼
 src/epg/feed-fetch.ts     polite fetch: gz-first, ETag-conditional, 12h TTL,

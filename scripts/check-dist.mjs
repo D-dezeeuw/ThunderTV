@@ -10,6 +10,14 @@
 // must never be reachable from `main.ts`'s import graph. Nothing besides
 // dead-code elimination keeps it out today, so this is the regression guard
 // for that.
+//
+// Then: the size budgets, plus three cheap file-level assertions (no HTML
+// comments in the built shell, no PNG over 40 KiB, no two files with
+// identical bytes).
+//
+// `--dist <path>` points it at a different build. `dist-webos` selects the
+// webOS budget block; `npm run build:lg` runs exactly that before packaging.
+import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +43,20 @@ if (matches.length > 0) {
 }
 
 console.log(`check-dist: OK — ${indexHtmlPath} has no root-absolute asset references`);
+
+// vite.config.ts's `minifyIndexHtml()` strips every comment from the built
+// shell. It already fails the build if it matches too few, but that guard
+// lives in the plugin; this one is the outside check that the plugin ran at
+// all — a `plugins:` edit that drops it puts ~35 KiB of prose back on the
+// critical path and nothing else would notice.
+if (html.includes('<!--')) {
+    console.error(
+        `check-dist: ${indexHtmlPath} still contains HTML comments — vite.config.ts's minifyIndexHtml() did not run.`,
+    );
+    process.exit(1);
+}
+
+console.log('check-dist: OK — built HTML carries no comments');
 
 const FAKE_PLATFORM_SYMBOLS = [
     'FakeHttpAdapter',
@@ -127,17 +149,83 @@ console.log(`check-dist: OK — no devtools symbols found in ${jsFiles.length} b
 // about whether those two boot tasks may wait for Settings to open. That is a
 // piece of work in its own right, which is why it is written down here rather
 // than rushed in alongside an unrelated fix.
-const BUDGETS = {
-    startupJsRaw: 400 * 1024,
-    startupJsGzip: 104 * 1024,
-    htmlRaw: 300 * 1024,
-    htmlGzip: 60 * 1024,
+//
+// The HTML gates went 300/60 → 115/17 the moment `minifyIndexHtml()`
+// (vite.config.ts) started stripping comments and indentation from the *built*
+// shell: 239.9 → 111.3 KiB raw, 32.5 → 16.1 KiB gzip. That is formatting, not
+// features, so the budget follows it down immediately — the whole point of the
+// plugin's strict strip-count guard is that a reformat which stops matching
+// fails the build, and a slack budget here would let it fail quietly instead.
+// shellText follows for the same reason: 800/175 → 520/128.
+//
+// `installRaw` 10 MiB → 2 MiB after scripts/generate-icons.mjs started
+// compressing what it emits: the 1920×1080 boot wallpaper and the Electron
+// splash became WebP and the icon set became palette PNG, taking dist/ from
+// 4.44 to 1.81 MiB without touching a master under assets/. The old 10 MiB
+// ceiling was never a budget, just a tripwire; 2 MiB is one.
+//
+// 104 → 102 gzip / 400 → 330 raw once the generated CSP expression registry
+// stopped emitting a literal `with` wrapper per record. 543 of 768 template
+// expressions are a plain (or negated) dotted path and now ship as bare
+// strings fed to one shared path walker: 92.9 → 49.8 KiB raw, 8.81 → 7.16
+// gzip. Raw is the metric that models parse work on the TV and it moved 43
+// KiB — this is the item the 101→102→104 notes above kept deferring to, and
+// it did not cost a single feature.
+//
+// 102 → 97 gzip / 330 → 300 raw once the four eager-but-unreached graphs went
+// behind action shims (the `subtitle-search.actions.ts` pattern): Codex
+// export/import and the shared-Codex library, the 10 KiB EPG country table,
+// the Electron-only ffmpeg transcode route, and handoff. Eager 317.6 → 288.9
+// KiB raw, 101.6 → 94.8 gzip. That closes out the standing note above: the
+// answer to "how does this get back under 101" was these four plus the
+// registry compaction, and neither took a feature away.
+const WEB_BUDGETS = {
+    startupJsRaw: 300 * 1024,
+    startupJsGzip: 97 * 1024,
+    htmlRaw: 115 * 1024,
+    htmlGzip: 17 * 1024,
     cssRaw: 100 * 1024,
     cssGzip: 25 * 1024,
-    shellTextRaw: 800 * 1024,
-    shellTextGzip: 175 * 1024,
-    installRaw: 10 * 1024 * 1024,
+    shellTextRaw: 455 * 1024,
+    shellTextGzip: 121 * 1024,
+    installRaw: 2 * 1024 * 1024,
 };
+
+/**
+ * `npm run build:lg` had no size gate at all, which is backwards: the webOS
+ * build is the one running on the weakest hardware, and it is *bigger* than
+ * the web build, not smaller. `target: 'chrome87'` down-levels syntax
+ * (+7.2 KiB raw / +1.8 KiB gzip of eager JS today, plus a small
+ * `defineProperty` helper chunk), and `package-target.mjs webos` adds
+ * `tv-mode.css` on top of the normal stylesheets.
+ *
+ * So it gets its own block rather than sharing the web numbers — a shared
+ * budget would either be slack for web or permanently red for TV. Everything
+ * not listed falls back to the web value, so a new gate is enforced on both
+ * targets by default and only diverges when it has a measured reason to.
+ */
+const WEBOS_BUDGET_OVERRIDES = {
+    startupJsGzip: 99 * 1024,
+    shellTextRaw: 465 * 1024,
+    shellTextGzip: 124 * 1024,
+};
+
+const isWebos = path.basename(distDir.replace(/[/\\]$/, '')) === 'dist-webos';
+const BUDGETS = isWebos ? { ...WEB_BUDGETS, ...WEBOS_BUDGET_OVERRIDES } : WEB_BUDGETS;
+
+/**
+ * Two file-level assertions, both regression guards for wins that are easy to
+ * undo by accident:
+ *
+ *  - No shipped PNG over 40 KiB. `scripts/generate-icons.mjs` emits palette
+ *    PNGs and WebP; committing a raw 8-bit RGB export straight out of an image
+ *    tool is exactly how dist/ got to 4.4 MiB, and it is invisible in review.
+ *  - No two files in the tree with identical bytes. `public/favicon.svg` and
+ *    `src/styles/thunder-bolt.svg` were the same 9,522 bytes under two names
+ *    and both shipped; the same mistake with the wallpaper or a font would
+ *    cost far more.
+ */
+const MAX_PNG_BYTES = 40 * 1024;
 
 const normalizeRef = (ref) => ref.replace(/^\.\//, '').split(/[?#]/, 1)[0];
 const startupJs = new Set(
@@ -187,15 +275,47 @@ const shellSize = {
     gzip: jsSize.gzip + cssSize.gzip + htmlSize.gzip,
 };
 
-function directoryBytes(directory) {
-    let bytes = 0;
+function walkFiles(directory) {
+    const files = [];
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
         const item = path.join(directory, entry.name);
-        bytes += entry.isDirectory() ? directoryBytes(item) : statSync(item).size;
+        if (entry.isDirectory()) files.push(...walkFiles(item));
+        else files.push(item);
     }
-    return bytes;
+    return files;
 }
-const installRaw = directoryBytes(distDir);
+const distFiles = walkFiles(distDir);
+const installRaw = distFiles.reduce((bytes, file) => bytes + statSync(file).size, 0);
+
+const oversizedPngs = distFiles
+    .filter((file) => file.endsWith('.png') && statSync(file).size > MAX_PNG_BYTES)
+    .map((file) => `${path.relative(distDir, file)}: ${(statSync(file).size / 1024).toFixed(1)} KiB`);
+if (oversizedPngs.length > 0) {
+    console.error(`check-dist: PNG over ${String(MAX_PNG_BYTES / 1024)} KiB — recompress it, or emit WebP:`);
+    for (const entry of oversizedPngs) console.error(`  ${entry}`);
+    console.error('  Every shipped image comes from scripts/generate-icons.mjs; add it there rather than by hand.');
+    process.exit(1);
+}
+
+const byDigest = new Map();
+for (const file of distFiles) {
+    const digest = createHash('sha256').update(readFileSync(file)).digest('hex');
+    const group = byDigest.get(digest);
+    if (group) group.push(file);
+    else byDigest.set(digest, [file]);
+}
+const duplicateGroups = [...byDigest.values()].filter((group) => group.length > 1);
+if (duplicateGroups.length > 0) {
+    console.error('check-dist: byte-identical files shipped more than once:');
+    for (const group of duplicateGroups) {
+        console.error(`  ${group.map((file) => path.relative(distDir, file)).join(' == ')}`);
+    }
+    process.exit(1);
+}
+
+console.log(
+    `check-dist: OK — ${String(distFiles.length)} shipped file(s), none duplicated, no PNG over ${String(MAX_PNG_BYTES / 1024)} KiB`,
+);
 const checks = [
     ['eager JS raw', jsSize.raw, BUDGETS.startupJsRaw],
     ['eager JS gzip', jsSize.gzip, BUDGETS.startupJsGzip],

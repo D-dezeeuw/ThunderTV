@@ -170,6 +170,11 @@ only a couple of hundred kbit/s actually through an encoder
 the seam). AC-3, E-AC-3, DTS and TrueHD are all covered by that one
 mechanism, because none of them are special — they are simply "not AAC".
 
+None of it is in the eager bundle. `transcode-lazy.ts` is the seam: the two
+entry points (`audio-output.ts`'s verdict, `engine.ts`'s teardown) go through
+it, and a host with no `capabilities.audioTranscode` — every browser, every
+TV — never fetches an MSE pipeline it could not have used.
+
 The flow is a fallback, never a pre-emptive route: the film plays directly
 first, exactly as before, and only the detector above triggers a restart —
 at the second it had reached, with `playerTranscodingAudio` shown for the few

@@ -18,7 +18,9 @@ the path."*
 Position tracking lives in `src/player/position.ts` — it sits on the
 `<video>` element beside `stream-health.ts`, because that is the one place
 every engine converges. State surface: `src/state/handoff.ts` /
-`handoff.actions.ts`.
+`handoff.actions.ts` — a shim holding the two `defineFn`s and a
+`location.hash` test, with the real offer/consume logic in `handoff.run.ts`.
+A boot that did not arrive from a `#/handoff?h=…` link never fetches it.
 
 ## The transport, stated honestly
 

@@ -3,7 +3,6 @@ import { getPlatform } from '../core/platform';
 import type { ChannelRecord } from '../core/storage';
 import { deriveCatalog, type ParsedFeedFile } from '../epg/catalog';
 import { getCountryCatalog, replaceFileCatalog } from '../epg/catalog-storage';
-import { countryForLiveToken } from '../epg/countries';
 import { fetchCountryFeeds } from '../epg/feed-fetch';
 import { getMappingSync, matchChannels, matchedCatalogIds, primeMappingCache, saveMapping } from '../epg/match';
 import { getRows } from '../m3u/channel-memory';
@@ -44,6 +43,10 @@ export async function loadDefaultEpg(force = false): Promise<void> {
     await pruneStalePrograms(PROGRAM_MAX_AGE_MS);
 
     const liveCountryToken = get<string>(SETTINGS_LIVE_COUNTRY) ?? '';
+    // The country registry is a 10 KiB table nothing needs before first
+    // paint, so it is fetched here rather than parsed at boot — this
+    // function is a `supervise()` boot task and already awaits a prune.
+    const { countryForLiveToken } = await import('../epg/countries-lookup');
     const country = countryForLiveToken(liveCountryToken);
     if (!country) {
         set(EPG_CATALOG_COUNT, 0); // no country selected, or the token isn't in the registry

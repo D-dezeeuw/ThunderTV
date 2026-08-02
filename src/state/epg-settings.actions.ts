@@ -1,6 +1,5 @@
 import { defineFn } from 'spektrum';
 import { getPlatform } from '../core/platform';
-import { countryForLiveToken } from '../epg/countries';
 import { clearFeedBookkeeping } from '../epg/feed-fetch';
 import { clearMapping } from '../epg/match';
 import { EPG_CACHE_STATE, type EpgCacheFeedbackState } from './epg-settings';
@@ -59,6 +58,7 @@ export async function clearEpgCache(): Promise<void> {
         await storage.clearTable('epgPrograms');
 
         const liveCountryToken = get<string>(SETTINGS_LIVE_COUNTRY) ?? '';
+        const { countryForLiveToken } = await import('../epg/countries-lookup');
         const country = countryForLiveToken(liveCountryToken);
         if (country) {
             await clearFeedBookkeeping(country);

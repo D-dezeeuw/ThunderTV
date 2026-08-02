@@ -23,7 +23,11 @@
 .boot-overlay__wallpaper {
     position: absolute;
     inset: 0;
-    background: url('./boot-wallpaper.png') center / cover no-repeat;
+    /* WebP, not PNG: identical 1920x1080 art at 60 KiB instead of 1.8 MiB —
+       it was 40% of the whole install. Chrome 32+, so inside the webOS 6 /
+       Chromium 87 floor and every other target. Regenerate with
+       `node scripts/generate-icons.mjs`. */
+    background: url('./boot-wallpaper.webp') center / cover no-repeat;
     opacity: 0;
     animation: boot-wallpaper-in var(--dur-3) var(--ease-swift) 150ms both;
 }
