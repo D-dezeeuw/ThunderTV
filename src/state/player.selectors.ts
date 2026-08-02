@@ -1,7 +1,14 @@
 import { computed, type State } from 'spektrum';
 import { strings } from '../app/strings';
 import type { MediaTrack } from '../player/tracks';
-import { isAudioVisual, PLAYER_AUDIO_MODE, PLAYER_STREAM_HEALTH, PLAYER_VISUALIZER_PRESET, PLAYER_ZAP_HISTORY } from './player';
+import {
+    isAudioVisual,
+    PLAYER_ACTIVE,
+    PLAYER_AUDIO_MODE,
+    PLAYER_STREAM_HEALTH,
+    PLAYER_VISUALIZER_PRESET,
+    PLAYER_ZAP_HISTORY,
+} from './player';
 import { PLAYER_SUBTITLE_TRACKS } from './player-tracks';
 import { SETTINGS_LOCALE } from './settings';
 import { UI_ACTIVE_VIEW } from './ui';
@@ -36,6 +43,27 @@ export function registerPlayerSelectors(): void {
         if (health === 'poor') return strings.list.signalPoor;
         if (health === 'fair') return strings.list.signalFair;
         return strings.list.signalGood;
+    });
+
+    /**
+     * Whether the preview pane belongs on screen at all — nothing playing,
+     * no pane.
+     *
+     * `player.active` alone cannot answer this: it is *persisted*
+     * (masterplan §6.4's instant-restore pair), so a fresh boot rehydrates
+     * the last channel and the pane opened over a `<video>` that was not
+     * playing and — the attach watch only fires on a *change* — never would
+     * until the viewer picked something. `player.streamHealth` is the
+     * transient half of the same story: `monitorStreamHealth()` publishes it
+     * synchronously at the top of every `attachAndPlay()` and
+     * `stopStreamHealthMonitor()` nulls it inside `detach()`, so it is
+     * non-null exactly while a stream is attached *in this session*. A
+     * failed engine chain reports its error without detaching, so a stream
+     * that died still has a pane to say so in.
+     */
+    computed('playerPaneVisible', [PLAYER_ACTIVE, PLAYER_STREAM_HEALTH], (state: State) => {
+        const typed = state as { player?: { active?: unknown; streamHealth?: string | null } };
+        return Boolean(typed.player?.active) && Boolean(typed.player?.streamHealth);
     });
 
     /**

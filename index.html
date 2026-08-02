@@ -1553,14 +1553,19 @@
 
                                  Movies/TV Shows play into that same <video> (vod.actions.ts
                                  and series.actions.ts both go through setActiveChannel), so
-                                 they get this pane too — but only once something is
-                                 actually playing, since a permanent empty player beside a
-                                 poster grid is just noise. Without this, pressing Play on a
-                                 movie left the <video> in a `display: none` pane: audio
-                                 only, no picture, and nothing to fullscreen. -->
+                                 they get this pane too. Without it, pressing Play on a movie
+                                 left the <video> in a `display: none` pane: audio only, no
+                                 picture, and nothing to fullscreen.
+
+                                 Every view now shows the pane on the Movies/TV Shows rule —
+                                 only while something is actually playing. An empty player
+                                 beside a list is noise, and on a fresh boot it was a lie:
+                                 `player.active` is persisted, so it named a channel the
+                                 restored session never attached. `playerPaneVisible`
+                                 (state/player.selectors.ts) is that distinction. -->
                             <div
                                 class="now-playing"
-                                data-if="view.channelList.active || ((view.movies.active || view.series.active) && player.active)"
+                                data-if="playerPaneVisible"
                                 data-testid="now-playing-pane"
                             >
                                 <!-- The picture/audio-only distinction is a class on the
@@ -2031,9 +2036,6 @@
                                     <p class="player-shell__notice" data-if="player.playbackNotice" data-testid="player-notice">
                                         {{ player.playbackNotice }}
                                     </p>
-                                </div>
-                                <div class="empty-state now-playing__empty" data-if="!player.active" data-testid="now-playing-empty">
-                                    <p class="empty-state__message">{{ strings.list.nowPlayingEmpty }}</p>
                                 </div>
                             </div>
                         </div>

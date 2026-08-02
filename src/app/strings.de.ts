@@ -350,7 +350,6 @@ export const de = {
         signalGood: 'Stream stabil',
         signalFair: 'Stream puffert gelegentlich',
         signalPoor: 'Stream stockt — Verbindung zu langsam oder instabil',
-        nowPlayingEmpty: 'Wählen Sie einen Sender, um mit dem Ansehen zu beginnen.',
         ...dePlayerTracks,
     },
 
