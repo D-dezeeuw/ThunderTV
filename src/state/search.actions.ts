@@ -3,8 +3,10 @@ import type { Route } from '../app/router';
 import type { ChannelRow } from '../m3u/types';
 import { DEFAULT_SEARCH_LIMIT, rankSearch } from '../search/fuzzy';
 import { normalizeForSearch } from '../search/normalize';
+import { cleanCatalogDisplayName } from './catalog-clean-name';
 import { ensureRadioRows, liveDisplayRows, radioDisplayRows } from './live-rows';
 import { setDisplayedRows } from './list-rows';
+import type { SeriesItem } from './series';
 import {
     allLoadedSeriesItems,
     seriesCategoryName,
@@ -12,7 +14,15 @@ import {
     seriesItemToRow,
 } from './series-rows';
 import {
+    sweptMultiSource,
+    sweptSeriesItems,
+    sweptSeriesOwnership,
+    sweptVodItems,
+    sweptVodOwnership,
+} from './catalog-sweep';
+import {
     SEARCH_ACTIVE,
+    SEARCH_ALL_SOURCES,
     SEARCH_LOADED_ONLY,
     SEARCH_QUERY,
     SEARCH_RESULT_COUNTS,
@@ -22,6 +32,7 @@ import {
 } from './search';
 import { get, replace, set } from './typed';
 import { UI_ACTIVE_VIEW } from './ui';
+import type { VodItem } from './vod';
 import { allLoadedVodItems, cachedVodSource, vodCategoryName, vodHasUnfetchedCategories, vodItemToRow } from './vod-rows';
 
 /**
@@ -45,6 +56,9 @@ import { allLoadedVodItems, cachedVodSource, vodCategoryName, vodHasUnfetchedCat
  */
 let currentQuery = '';
 let currentScope: SearchScope = 'all';
+/** Same plain-module-variable reasoning as the two above — the sweep runner flips these and re-ranks in the same tick, so neither can be re-read from state here. */
+let currentAllSources = false;
+let currentSweepPartial = false;
 export function registerSearchActions(): void {
     // Each catalog tab's search bar is scoped to its own content — Live only
     // searches channels, Movies only movies, Series only series — so the
@@ -129,6 +143,18 @@ export function setSearchScope(scope: SearchScope): void {
     recomputeSearch();
 }
 
+/**
+ * Widens (or narrows) the `movies`/`series` scopes to every configured
+ * provider's swept catalog — `catalog-sweep.ts` owns the fetching and the
+ * pool, this only decides which row source the ranking reads.
+ */
+export function setSearchAllSources(on: boolean, partial = false): void {
+    currentAllSources = on;
+    currentSweepPartial = partial;
+    set(SEARCH_ALL_SOURCES, on);
+    recomputeSearch();
+}
+
 export function clearSearch(): void {
     currentQuery = '';
     set(SEARCH_QUERY, '');
@@ -173,11 +199,20 @@ export function recomputeSearch(): void {
     const radioMatches = wantRadio
         ? rankSearch(query, radioDisplayRows(), radioKeys.keyFor, DEFAULT_SEARCH_LIMIT)
         : [];
+    // "Search all" only swaps the row source — same `rankSearch()`, same
+    // pre-normalized `searchKey`, same limit, so a swept result is ranked by
+    // exactly the rules a single-provider one is. An empty pool (a sweep
+    // cancelled before anything landed) falls back to the loaded catalog
+    // rather than showing nothing.
+    const swept = currentAllSources;
+    const vodPool = swept && sweptVodItems().length > 0 ? sweptVodItems() : allLoadedVodItems();
+    const seriesPool = swept && sweptSeriesItems().length > 0 ? sweptSeriesItems() : allLoadedSeriesItems();
+
     const vodMatches = wantMovies
-        ? rankSearch(query, allLoadedVodItems(), (item) => item.searchKey, DEFAULT_SEARCH_LIMIT)
+        ? rankSearch(query, vodPool, (item) => item.searchKey, DEFAULT_SEARCH_LIMIT)
         : [];
     const seriesMatches = wantSeries
-        ? rankSearch(query, allLoadedSeriesItems(), (item) => item.searchKey, DEFAULT_SEARCH_LIMIT)
+        ? rankSearch(query, seriesPool, (item) => item.searchKey, DEFAULT_SEARCH_LIMIT)
         : [];
 
     const counts: SearchResultCounts = {
@@ -185,17 +220,63 @@ export function recomputeSearch(): void {
         movies: vodMatches.length,
         series: seriesMatches.length,
     };
-    const loadedOnly = (wantMovies && vodHasUnfetchedCategories()) || (wantSeries && seriesHasUnfetchedCategories());
+    // Search-all answers the coverage question differently: a swept pool
+    // holds every category of every provider it reached, so what is left to
+    // admit is whichever provider it did NOT reach (a failure, or a cancel).
+    const loadedOnly = swept
+        ? currentSweepPartial
+        : (wantMovies && vodHasUnfetchedCategories()) || (wantSeries && seriesHasUnfetchedCategories());
 
-    const vodSource = cachedVodSource();
     const rows: ChannelRow[] = [
         ...channelMatches,
         ...radioMatches,
-        ...vodMatches.map((item) => vodItemToRow(item, vodSource, vodCategoryName(item.categoryId))),
-        ...seriesMatches.map((item) => seriesItemToRow(item, seriesCategoryName(item.categoryId))),
+        ...vodMatches.map((item) => vodResultRow(item)),
+        ...seriesMatches.map((item) => seriesResultRow(item)),
     ].slice(0, DEFAULT_SEARCH_LIMIT);
 
     publishResults(rows, counts, loadedOnly);
+}
+
+/**
+ * A swept result can belong to a provider that is not the active one, so
+ * its playable URL has to be built from *that* provider's credentials and
+ * its category named from *that* provider's catalog — the active source's
+ * rail only knows its own. `sweptVodOwnership()` is `null` for everything
+ * the pool has never seen, which is every row when search-all is off, so
+ * this collapses back to the original single-source mapping.
+ */
+function vodResultRow(item: VodItem): ChannelRow {
+    const ownership = sweptVodOwnership(item.streamId, item.categoryId);
+    const category =
+        ownership?.categoryName != null
+            ? cleanCatalogDisplayName(ownership.categoryName)
+            : vodCategoryName(item.categoryId);
+    return vodItemToRow(
+        item,
+        ownership?.owner.source ?? cachedVodSource(),
+        withProvider(ownership?.owner.name, category, sweptMultiSource('vod')),
+    );
+}
+
+function seriesResultRow(item: SeriesItem): ChannelRow {
+    const ownership = sweptSeriesOwnership(item.seriesId, item.categoryId);
+    const category =
+        ownership?.categoryName != null
+            ? cleanCatalogDisplayName(ownership.categoryName)
+            : seriesCategoryName(item.categoryId);
+    return seriesItemToRow(item, withProvider(ownership?.owner.name, category, sweptMultiSource('series')));
+}
+
+/**
+ * Which provider a result came from, folded into the row's existing
+ * `group` line — the row shape already renders it, so provenance costs no
+ * markup at all. Only shown once the pool actually holds more than one
+ * provider: with a single source configured, naming it on every row is
+ * noise.
+ */
+function withProvider(provider: string | undefined, category: string | null, multiSource: boolean): string | null {
+    if (!multiSource || provider === undefined) return category;
+    return category ? `${provider} · ${category}` : provider;
 }
 
 function publishResults(rows: ChannelRow[], counts: SearchResultCounts, loadedOnly: boolean): void {
@@ -208,6 +289,8 @@ function publishResults(rows: ChannelRow[], counts: SearchResultCounts, loadedOn
 export function resetSearchActionsForTests(): void {
     currentQuery = '';
     currentScope = 'all';
+    currentAllSources = false;
+    currentSweepPartial = false;
     channelKeys.reset();
     radioKeys.reset();
 }

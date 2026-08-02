@@ -64,6 +64,7 @@ function parseRegistry(consts) {
         { file: 'registry-keys.ts', pattern: /export const KEY_REGISTRY[^={]*=\s*{([\s\S]*?)\n};/ },
         { file: 'registry-overflow.ts', pattern: /export const OVERFLOW_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
         { file: 'registry-epg.ts', pattern: /export const EPG_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
+        { file: 'registry-search.ts', pattern: /export const SEARCH_SWEEP_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
         { file: 'registry-ui.ts', pattern: /export const UI_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
     ];
     let body = '';

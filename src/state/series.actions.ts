@@ -4,6 +4,7 @@ import { nextEpisode } from '../xtream/next-episode';
 import type { XtreamSeries, XtreamSeriesInfo } from '../xtream/types';
 import { seriesEpisodeUrl } from '../xtream/urls';
 import { createCatalogActions, parseCatalogId, type CatalogActions } from './catalog-actions';
+import { foreignSeriesItem } from './catalog-sweep';
 import { refocusCategoryRow } from './groups.actions';
 import { selectChannel } from './list.actions';
 import { loadStoredDetail, saveStoredDetail } from './catalog-storage';
@@ -219,26 +220,29 @@ function formatEpisodeLabel(season: number, episode: number, title: string): str
  * to fall back on still reports `'ready'` (stale beats alarming).
  */
 export async function openSeriesDetail(seriesId: number): Promise<void> {
-    const item = seriesMemory.findItem(seriesId);
+    // Same "a search-all result may belong to another provider" contract as
+    // `vod.actions.ts`'s `openVodDetail()` — see its comment.
+    const foreign = foreignSeriesItem(seriesId);
+    const item = seriesMemory.findItem(seriesId) ?? foreign?.item;
     if (!item) return;
 
     const token = detailOpen.begin();
     set(SERIES_DETAIL_ID, seriesId);
     set(SERIES_DETAIL_STATUS, 'loading');
     set(SERIES_DETAIL_ERROR_REASON, null);
-    const categoryName = seriesCategoryName(item.categoryId);
+    const categoryName = foreign?.categoryName ?? seriesCategoryName(item.categoryId);
     replace(SERIES_DETAIL, toSeriesDetail(item, categoryName));
 
-    const account = await resolveActiveXtreamSource();
+    const account = foreign?.account ?? (await resolveActiveXtreamSource());
     if (!account) {
         if (!detailOpen.isCurrent(token)) return;
         set(SERIES_DETAIL_STATUS, 'error');
         set(SERIES_DETAIL_ERROR_REASON, 'no-source');
         return;
     }
-    setCachedSeriesSource(account.source);
+    if (!foreign) setCachedSeriesSource(account.source);
 
-    const { info, failed } = await fetchSeriesInfo(seriesId, account);
+    const { info, failed } = await fetchSeriesInfo(seriesId, account, foreign?.prefix ?? 'series');
     if (!detailOpen.isCurrent(token)) return; // superseded — the user moved on
 
     if (failed && !info) {
@@ -264,13 +268,17 @@ interface SeriesInfoFetch {
     failed: boolean;
 }
 
-/** Module-memory cache first, then the full-tier storage cache, then the network — shared by `openSeriesDetail()` and `playSeriesEpisode()` (an episode needs the season/episode list too, to find its `containerExtension`). `account` is always already-resolved non-null (both call sites resolve it themselves first). */
-async function fetchSeriesInfo(seriesId: number, account: ResolvedXtreamAccount): Promise<SeriesInfoFetch> {
+/** Module-memory cache first, then the full-tier storage cache, then the network — shared by `openSeriesDetail()` and `playSeriesEpisode()` (an episode needs the season/episode list too, to find its `containerExtension`). `account` is always already-resolved non-null (both call sites resolve it themselves first); `prefix` is its storage namespace, `'series'` for the active source and its own for a search-all result from another provider. */
+async function fetchSeriesInfo(
+    seriesId: number,
+    account: Pick<ResolvedXtreamAccount, 'source'>,
+    prefix: string,
+): Promise<SeriesInfoFetch> {
     const now = Date.now();
 
     let info = seriesMemory.detail(seriesId);
     if (!info || !isFresh(seriesMemory.detailFetchedAt(seriesId), now, CATALOG_TTL_MS)) {
-        const stored = await loadStoredDetail<XtreamSeriesInfo>('series', seriesId);
+        const stored = await loadStoredDetail<XtreamSeriesInfo>(prefix, seriesId);
         // No freshness gate — a season/episode list is exactly what an
         // offline viewer needs to still see, and a show that gained an
         // episode yesterday is a much smaller problem than a panel that
@@ -288,7 +296,7 @@ async function fetchSeriesInfo(seriesId: number, account: ResolvedXtreamAccount)
         if (!result.ok) return { info, failed: info === undefined };
         info = result.data;
         seriesMemory.setDetail(seriesId, info, now);
-        void saveStoredDetail('series', seriesId, { fetchedAt: now, data: info });
+        void saveStoredDetail(prefix, seriesId, { fetchedAt: now, data: info });
     }
     return { info, failed: false };
 }
@@ -303,13 +311,14 @@ async function fetchSeriesInfo(seriesId: number, account: ResolvedXtreamAccount)
  * this state-layer module has no business inventing.
  */
 export async function playSeriesEpisode(seriesId: number, episodeId: number | string): Promise<void> {
-    const item = seriesMemory.findItem(seriesId);
+    const foreign = foreignSeriesItem(seriesId);
+    const item = seriesMemory.findItem(seriesId) ?? foreign?.item;
     if (!item) return;
-    const account = await resolveActiveXtreamSource();
+    const account = foreign?.account ?? (await resolveActiveXtreamSource());
     if (!account) return;
-    setCachedSeriesSource(account.source);
+    if (!foreign) setCachedSeriesSource(account.source);
 
-    const { info } = await fetchSeriesInfo(seriesId, account);
+    const { info } = await fetchSeriesInfo(seriesId, account, foreign?.prefix ?? 'series');
     const episode = (info ?? []).flatMap((season) => season.episodes).find((ep) => String(ep.episodeId) === String(episodeId));
     if (!episode) return;
 
@@ -320,7 +329,7 @@ export async function playSeriesEpisode(seriesId: number, episodeId: number | st
         name: episode.title || item.name,
         streamUrl: url,
         logo: item.cover ?? null,
-        group: seriesCategoryName(item.categoryId),
+        group: foreign?.categoryName ?? seriesCategoryName(item.categoryId),
         kind: 'series',
         series: { seriesId, season: episode.season, episode: episode.episode },
     });
