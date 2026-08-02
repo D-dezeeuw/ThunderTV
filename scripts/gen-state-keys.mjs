@@ -66,6 +66,11 @@ function parseRegistry(consts) {
         { file: 'registry-epg.ts', pattern: /export const EPG_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
         { file: 'registry-search.ts', pattern: /export const SEARCH_SWEEP_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
         { file: 'registry-ui.ts', pattern: /export const UI_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
+        // Added late: registry-player.ts existed for several phases without
+        // being listed here, so its keys were exactly the silent miss the
+        // comment above warns about. Adding it also restores the three
+        // player-diagnostics keys to this doc.
+        { file: 'registry-player.ts', pattern: /export const PLAYER_REGISTRY_ENTRIES[^={]*=\s*{([\s\S]*?)\n};/ },
     ];
     let body = '';
     for (const { file, pattern } of sources) {

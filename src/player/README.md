@@ -126,6 +126,25 @@ menu's existing "Off" row turns it off. `clearExternalSubtitles()` runs in
 the engine's `stopVideoElement()`, so a file loaded for one film never
 follows the viewer into the next one with silently wrong timings.
 
+The menu's second route is **"Search subtitles online"**, which fetches one
+off the internet instead of off disk — a free, keyless, CORS-open service, an
+IMDb-id identification ladder, and a cache, all of which live in
+`src/core/subtitles/README.md`; the state half is
+`src/state/subtitle-search.actions.ts`. From this folder's point of view
+nothing new happens: the downloaded text goes through the same `toVtt()` and
+the same `addExternalSubtitle()`, so it is a `<track>` like any other, and the
+new MSE transcode route (`transcode-engine.ts`) changes none of that — a
+`<track>` sits on the element, not on the source. It is a manual press, never
+automatic, and **Movies/TV Shows only**: a live channel has no title to
+identify and no fixed timeline for cues to sit on.
+
+`toVtt()` grew for it. A browser drops a malformed cue *silently* — the track
+attaches, the menu lists it, no text appears — and a file nobody vetted is
+exactly where that bites: one-digit hours, hour-less stamps, a `,5`
+fraction, and an arrow with no spaces around it are all real SubRip and all
+invalid WebVTT. All four are normalized, and `subtitle-text.spec.ts` is where
+that behaviour is pinned.
+
 ### No decodable audio (`audio-output.ts`)
 
 A browser that meets an audio codec it has no decoder for does not fail the

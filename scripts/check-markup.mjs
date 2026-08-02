@@ -37,10 +37,12 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url));
  * The "search all" sweep modal paid for itself instead of raising these: it
  * reuses `.wizard-modal`/`.download-progress__bar` verbatim (no new CSS), and
  * ten of the file's longest comment blocks were condensed — same findings,
- * tighter prose — to cover its ~30 lines.
+ * tighter prose — to cover its ~30 lines. The online-subtitle search rows did
+ * the same and then some: four more comment blocks condensed, the ratchet
+ * lowered below where it started.
  */
 const BUDGETS = [
-    { path: 'index.html', maxLines: 3553, maxBytes: 246_445 },
+    { path: 'index.html', maxLines: 3538, maxBytes: 246_023 },
 ];
 
 let failed = false;

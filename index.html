@@ -1519,37 +1519,26 @@
                                 <div class="pad" :style="'height:' + list.padBottom + 'px'"></div>
                             </div>
 
-                            <!-- Right column: the preview. Live plays video; Radio (and any TV
-                                 channel switched to audio-only) shows a canvas visualizer
-                                 (src/player/visualizer/) instead — src/player/bindings.ts drives
-                                 the same <video> either way, it being the sole attach point for
-                                 the engine and the visualizer's Web Audio source, so audio-only
-                                 presentations keep it mounted but visually minimal (player.css's
-                                 .list-shell--split). Categories gets the same column, which is
-                                 what makes it three: categories -> channels -> preview. Movies/TV
-                                 Shows play into that same <video> (both go through
-                                 setActiveChannel), so they get the pane too — without it, Play on
-                                 a movie left the <video> in a `display: none` pane: audio, no
-                                 picture, nothing to fullscreen. Every view uses one rule: no pane
-                                 unless something plays. That mattered most on boot — player.active
-                                 is persisted, so the pane named a channel the restored session
-                                 never attached; playerPaneVisible (state/player.selectors.ts)
-                                 knows the difference. -->
+                            <!-- Right column: the preview. One <video> for every view
+                                 (src/player/bindings.ts is its sole attach point, and the
+                                 visualizer's Web Audio source); audio-only presentations keep it
+                                 mounted but minimal (player.css's .list-shell--split). Categories
+                                 makes the column count three; Movies/TV Shows play through the
+                                 same setActiveChannel, so they get the pane too — without it Play
+                                 gave audio inside a `display: none` pane. One rule everywhere: no
+                                 pane unless something plays, which is what playerPaneVisible
+                                 (state/player.selectors.ts) answers that persisted player.active
+                                 cannot. -->
                             <div
                                 class="now-playing"
                                 data-if="playerPaneVisible"
                                 data-testid="now-playing-pane"
                             >
-                                <!-- The picture/audio-only distinction is a class on the
-                                     shell, never a `:has(.radio-now-playing)` selector:
-                                     Spektrum's data-if only sets `display: none`, it does
-                                     not detach the node, so a structural selector would
-                                     match in Live too and collapse the video away (it did
-                                     — that was the "Live shows no picture" bug).
-
-                                     `visualizerActive` (state/player.selectors.ts) is
-                                     Radio, plus any TV channel the viewer switched to
-                                     audio-only. -->
+                                <!-- A class on the shell, never `:has(.radio-now-playing)`:
+                                     data-if only sets `display: none`, so a structural
+                                     selector matched in Live too and collapsed the video
+                                     (the "Live shows no picture" bug). `visualizerActive`
+                                     (player.selectors.ts) is Radio plus any audio-only TV. -->
                                 <div
                                     class="player-shell"
                                     :class="{ 'player-shell--audio': visualizerActive }"
@@ -1734,20 +1723,25 @@
                                                         <span class="track-menu__empty-dash" aria-hidden="true">—</span>
                                                         <p class="track-menu__empty-message">{{ strings.list.noSubtitles }}</p>
                                                     </div>
-                                                    <!-- Always offered, not just when the list is empty: a
-                                                         movie's own subtitles live inside its container and no
-                                                         browser exposes them (src/player/external-subs.ts), so
-                                                         a file from disk is the only subtitle route Movies/TV
-                                                         Shows ever has. -->
-                                                    <button
-                                                        type="button"
-                                                        class="track-menu__item track-menu__item--action"
-                                                        data-action="click"
-                                                        data-fn="player/loadSubtitleFile"
-                                                        data-testid="subtitle-load-file"
-                                                    >
+                                                    <!-- Always offered, not just when the list is empty: a movie's own
+                                                         subtitles live inside its container and no browser exposes them
+                                                         (src/player/external-subs.ts), so a file from disk — or the free,
+                                                         keyless online search beside it (src/core/subtitles/) — is the only
+                                                         subtitle route Movies/TV Shows ever has. The search is one press,
+                                                         never automatic, and every one of its outcomes is a message here. -->
+                                                    <button type="button" class="track-menu__item track-menu__item--action" data-action="click" data-fn="player/loadSubtitleFile" data-testid="subtitle-load-file">
                                                         <span class="track-menu__label">{{ strings.list.subtitlesLoadFile }}</span>
                                                     </button>
+                                                    <button type="button" class="track-menu__item track-menu__item--action" data-if="player.subtitleSearch.status !== 'searching'" data-action="click" data-fn="player/searchOnlineSubtitles" data-testid="subtitle-search-online">
+                                                        <span class="track-menu__label">{{ strings.list.subtitlesSearchOnline }}</span>
+                                                    </button>
+                                                    <p class="track-menu__empty-message" data-if="player.subtitleSearch.message" data-testid="subtitle-search-message">{{ player.subtitleSearch.message }}</p>
+                                                    <div class="track-menu__list" role="listbox" :aria-label="strings.list.subtitlesSearchOnline" data-each="player.subtitleSearch.results">
+                                                        <button type="button" class="track-menu__item" role="option" data-action="click" data-fn="player/useOnlineSubtitle" :data-value="item.id" data-testid="subtitle-online-item">
+                                                            <span class="track-menu__label truncate">{{ item.label }}</span>
+                                                            <span class="track-menu__lang">({{ item.lang }})</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1758,18 +1752,14 @@
                                              channel itself. The group carries the visibility for
                                              all three — the buttons no longer repeat data-if. -->
                                         <div class="player-shell__group" data-if="visualizerActive" data-testid="visualizer-controls">
-                                            <!-- Radio's visualizer-preset picker. NOT a native <select>:
-                                                 on webOS that dropdown is a browser-level widget outside
-                                                 the page, so remote key events (injected into the *page*)
-                                                 never reach it — it opens but can never be navigated or
-                                                 dismissed, and every further OK re-triggers the still-
-                                                 focused <select>: the endless self-reactivating dropdown
-                                                 seen in the simulator. Same track-menu pattern as the
-                                                 audio/subtitle popups above — ordinary focusable DOM that
-                                                 spatial nav, Enter/OK and Back (state/back-navigation.ts)
-                                                 already understand. Rows come from one `data-each` over
-                                                 `visualizerPresetOptions`; player.selectors.ts's
-                                                 VISUALIZER_PICKER_OPTIONS is the source of truth. -->
+                                            <!-- Radio's preset picker. NOT a native <select>: on webOS
+                                                 that dropdown lives outside the page, so injected remote
+                                                 keys never reach it — it opens, cannot be navigated or
+                                                 dismissed, and every OK re-triggers it (the endless
+                                                 self-reactivating dropdown). Same track-menu pattern as
+                                                 the popups above: ordinary focusable DOM spatial nav,
+                                                 Enter/OK and Back already understand, one `data-each`
+                                                 over `visualizerPresetOptions`. -->
                                             <div class="track-menu-anchor">
                                                 <button
                                                     type="button"
@@ -1920,20 +1910,15 @@
                                             {{ strings.handoff.dismiss }}
                                         </button>
                                     </div>
-                                    <!-- Variant switcher for the channel being watched. Here
-                                         rather than under each list row on purpose: the list
-                                         republishes its window every scroll frame, so a nested
-                                         data-each per row would rebuild these continuously across
-                                         a 90k-channel source, and alternate feeds only matter for
-                                         the channel actually playing. Icons, not text tabs: labels
-                                         like "FHD · NEDERLAND ULTRA" overran the pane and clipped.
-                                         Picture tier reads as lit bars (4 = UHD down to 1 = SD),
-                                         catch-up gets its own glyph, and the full label stays the
-                                         accessible name — spelled out beside the strip so the
-                                         current choice is never only an icon, with a short quality
-                                         caption per chip and the full label as an instant
-                                         `data-tip` tooltip (the native `title` never appears on
-                                         touch/TV and lags on hover). -->
+                                    <!-- Variant switcher for the channel being watched, here rather
+                                         than per list row: the window republishes every scroll frame,
+                                         so a nested data-each would rebuild these continuously across
+                                         90k channels, and alternate feeds only matter for what plays.
+                                         Icons, not text tabs — "FHD · NEDERLAND ULTRA" overran and
+                                         clipped. Picture tier is lit bars (4 = UHD … 1 = SD), catch-up
+                                         its own glyph, the full label the accessible name, spelled out
+                                         beside the strip and repeated as an instant `data-tip` (the
+                                         native `title` never shows on touch/TV). -->
                                     <div
                                         class="variants"
                                         data-if="hasVariants"

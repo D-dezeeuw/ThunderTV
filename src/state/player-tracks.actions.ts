@@ -240,7 +240,8 @@ export function setSubtitleTrack(idOrOff: string): void {
     set(PLAYER_TRACK_MENU, 'none');
 }
 
-function publishTrackLists(): void {
+/** Exported for `subtitle-search.actions.ts`, which attaches a downloaded subtitle as a real `<track>` and needs the menu it was fetched from to list it immediately. */
+export function publishTrackLists(): void {
     const snapshot = engineAccess.getPlayerTracks();
     set(PLAYER_AUDIO_TRACKS, snapshot.audio.slice(0, TRACK_LIST_CAP));
     set(PLAYER_SUBTITLE_TRACKS, snapshot.subtitles.slice(0, TRACK_LIST_CAP));

@@ -23,6 +23,21 @@ export const enPlayerTracks = {
     /** Opens the file picker for a .srt/.vtt sitting next to the film — the only subtitle route that works for a progressive VOD file, whatever the provider ships. */
     subtitlesLoadFile: 'Load subtitle file…',
     subtitlesLoadFailed: 'That subtitle file could not be read.',
+    /** The manual online search (`src/core/subtitles/`). Movies and episodes only — a live channel has no title to look up. */
+    subtitlesSearchOnline: 'Search subtitles online',
+    subtitlesOnlineSearching: 'Searching…',
+    subtitlesOnlineDownloading: 'Downloading…',
+    /** Shown above the results when the title was matched by name rather than by a provider-supplied IMDb id, so a wrong match is visible before the cues are. */
+    subtitlesOnlineMatchedTemplate: 'Best match: {title}',
+    subtitlesOnlineNone: 'No subtitles found for this title.',
+    subtitlesOnlineUnidentified: "This title couldn't be identified, so there is nothing to search for.",
+    subtitlesOnlineUnreachable: 'The subtitle service could not be reached from this device.',
+    subtitlesOnlineTimeout: 'The subtitle service took too long to answer. Try again.',
+    subtitlesOnlineAttachFailed: 'That subtitle could not be used.',
+    /** Row label prefix — the service publishes a language and an id, never a release name, so the rows are numbered. */
+    subtitlesOnlineProvider: 'OpenSubtitles',
+    subtitlesOnlineCachedLabel: 'Saved subtitle',
+    subtitlesOnlineCached: 'Using the subtitle saved for this title. Press again to search for another.',
     /** Switches a TV channel to Radio's audio + visualizer presentation, and back. */
     playerAudioOnly: 'Audio only',
     playerShowPicture: 'Show picture',

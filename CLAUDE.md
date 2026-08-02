@@ -37,6 +37,7 @@ phase file only for historical "why."
 | Stream health — which feeds actually play, decaying score, dead markers | `src/health/README.md` |
 | Codex — the signed, portable knowledge file (export/import/merge)          | `src/codex/README.md` |
 | Player engine (hls.js/mpegts.js/native), dock, theater mode, resume position | `src/player/README.md` |
+| Fetching subtitles off the internet (keyless service, IMDb-id matching, SRT→VTT) | `src/core/subtitles/README.md` |
 | Handing a session to another screen, the `#/handoff` link      | `src/handoff/README.md` |
 | Virtual list scrolling, group filtering, logo fallback, gestures | `src/ui/README.md` |
 | D-pad / arrow-key spatial focus, TV remote keycodes, Back button | `src/ui/spatial/README.md` |
