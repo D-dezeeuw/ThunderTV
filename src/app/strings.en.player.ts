@@ -8,7 +8,7 @@
  * belongs here now, in all three locales. Spread *inside* the locale file's
  * own `list: { … }` object
  * (`list.audioTracksLabel` etc. — matching every other player-bar string
- * already living there, e.g. `playerStop`/`nowPlayingEmpty`), not as a
+ * already living there, e.g. `playerFullscreen`/`signalGood`), not as a
  * second top-level `list` key: `list` already exists in `strings.en.ts`,
  * and two `list` keys in one object literal would silently resolve to
  * whichever comes last (JS's duplicate-property rule replaces rather than
@@ -26,8 +26,6 @@ export const enPlayerTracks = {
     /** Switches a TV channel to Radio's audio + visualizer presentation, and back. */
     playerAudioOnly: 'Audio only',
     playerShowPicture: 'Show picture',
-    /** The Stop/Play toggle's label while paused — resumes in place rather than closing the channel. */
-    playerResume: 'Play',
     /** Accessible name for the preview pane itself, which toggles playback when tapped. */
     playerTogglePlayback: 'Play or pause',
     /** Appended to the MediaError label when a movie/episode file uses a container this device has no decoder for — MKV most often, which Chromium does not support at all. */

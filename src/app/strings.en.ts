@@ -324,7 +324,6 @@ export const en = {
             openSources: 'Go to Sources',
         },
         backToGroups: '← Groups',
-        playerStop: 'Stop',
         playerFullscreen: 'Full screen',
         playerNextVisual: 'Next visual',
         playerPauseVisual: 'Pause visual',

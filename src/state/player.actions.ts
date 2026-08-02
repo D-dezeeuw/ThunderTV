@@ -229,10 +229,15 @@ export function stopPlayback(): void {
 }
 
 /**
- * The Stop/Play toggle: pauses or resumes the media element in place,
- * leaving `player.active` (and so the row/episode highlight) untouched —
- * unlike `stopPlayback()`, which fully closes the channel. Reused across
- * Live/Radio/Movies/TV Shows since they all share the one `<video>` ref.
+ * Pauses or resumes the media element in place, leaving `player.active` (and
+ * so the row/episode highlight) untouched — unlike `stopPlayback()`, which
+ * fully closes the channel. Reused across Live/Radio/Movies/TV Shows since
+ * they all share the one `<video>` ref.
+ *
+ * The preview pane no longer carries a button for this: a `<video controls>`
+ * has its own, and a second copy beside it was clutter. The audio-only pane
+ * (`.radio-now-playing`, which is a canvas with no native controls) is the
+ * one surface that still binds it.
  */
 export function togglePlayback(): void {
     const video = refs['playerVideo'];
@@ -254,8 +259,8 @@ export function togglePlayback(): void {
  * The element's own events are the authority on this, not whoever asked for
  * the change: a viewer can pause from the native control bar, by clicking the
  * picture (Chromium toggles on the whole video surface), with a media key, or
- * from the app's own button. Only the last of those used to update
- * `player.paused`, so the Stop/Play icon could disagree with reality.
+ * by tapping the audio-only pane. Only the last of those used to update
+ * `player.paused`, so the state could disagree with reality.
  */
 export function reportPaused(paused: boolean): void {
     setValue(PLAYER_PAUSED, paused);

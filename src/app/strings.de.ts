@@ -328,7 +328,6 @@ export const de = {
             openSources: 'Zu Quellen',
         },
         backToGroups: '← Gruppen',
-        playerStop: 'Stopp',
         playerFullscreen: 'Vollbild',
         playerNextVisual: 'Nächster Visual',
         playerPauseVisual: 'Visual pausieren',

@@ -15,7 +15,6 @@ export const dePlayerTracks = {
     subtitlesLoadFailed: 'Diese Untertiteldatei konnte nicht gelesen werden.',
     playerAudioOnly: 'Nur Ton',
     playerShowPicture: 'Bild anzeigen',
-    playerResume: 'Abspielen',
     playerTogglePlayback: 'Abspielen oder pausieren',
     playerUnsupportedContainer:
         'den Container dieser Datei kann dieses Gerät nicht abspielen; laden Sie sie herunter und öffnen Sie sie in einem anderen Player',

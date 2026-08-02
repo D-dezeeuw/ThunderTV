@@ -328,7 +328,6 @@ export const nl = {
             openSources: 'Naar Bronnen',
         },
         backToGroups: '← Groepen',
-        playerStop: 'Stoppen',
         playerFullscreen: 'Volledig scherm',
         playerNextVisual: 'Volgende visual',
         playerPauseVisual: 'Visual pauzeren',
