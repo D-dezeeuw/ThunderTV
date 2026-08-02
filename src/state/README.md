@@ -197,7 +197,12 @@ recording once rather than re-discovering per call site:
   identity against `live-rows.ts`'s `liveDisplayRows()` array (which only
   changes reference on an actual rebuild, never per keystroke) — satisfying
   `src/search/README.md`'s "normalize once" contract without a `ChannelRow`
-  schema change.
+  schema change. Radio gets a second instance of that same cache over
+  `radioDisplayRows()`: the `'radio'` scope is `'channels'` pointed at the
+  other row set (the two are disjoint — a station search must never surface a
+  TV channel the Radio tab cannot show), and since Live and Radio share one
+  search input in `index.html`, `search/setQueryChannels` resolves which of
+  the two it is from `ui.activeView` when that input fires.
 - **A series row's `url` is `''`** (`series-rows.ts`'s `seriesItemToRow()`)
   — a series is a container of episodes, never directly playable; a click
   handler must trigger `series/openDetail`, never reuse a generic play-on-

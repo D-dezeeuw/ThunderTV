@@ -705,7 +705,13 @@
                             </button>
                         </div>
 
-                        <div class="catalog-search" data-if="view.live.active" data-testid="live-search">
+                        <!-- One search box for Live and Radio: the two views hold
+                             disjoint row sets but the same kind of row, so
+                             `search/setQueryChannels` reads which one is on screen
+                             and scopes itself (state/search.actions.ts) rather than
+                             mounting a second input. The list/grid switch inside it
+                             stays Live-only — Radio has no grid layout to offer. -->
+                        <div class="catalog-search" data-if="view.live.active || view.radio.active" data-testid="live-search">
                             <input
                                 type="text"
                                 class="catalog-search__input"
@@ -722,7 +728,7 @@
                             <span class="catalog-search__counts" data-if="search.active" data-testid="live-search-counts">
                                 {{ strings.search.scopeChannels }}: {{ search.resultCounts.channels }}
                             </span>
-                            <div class="layout-toggle" role="group" :aria-label="strings.layout.group" data-testid="live-layout-toggle">
+                            <div class="layout-toggle" role="group" data-if="view.live.active" :aria-label="strings.layout.group" data-testid="live-layout-toggle">
                                 <button
                                     type="button"
                                     class="layout-toggle__btn"

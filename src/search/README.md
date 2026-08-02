@@ -1,8 +1,9 @@
 # Fuzzy search core (`src/search/`)
 
 Turns a typed query and a list of already-loaded rows into a ranked subset —
-the engine behind search over Live channels, the movie catalog, the series
-catalog, and an "everything" scope that spans all three.
+the engine behind search over Live channels, Radio stations, the movie
+catalog, the series catalog, and an "everything" scope that spans channels,
+movies and series.
 
 It is pure logic: no Spektrum, no DOM, no imports from anywhere else in the
 app, no user-visible strings (there are none to own — every string here is

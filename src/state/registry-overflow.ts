@@ -175,7 +175,7 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     [SEARCH_SCOPE]: {
         owner: 'search',
         persisted: false,
-        description: '"channels" | "movies" | "series" | "all" — which catalog(s) recomputeSearch() ranks against.',
+        description: '"channels" | "radio" | "movies" | "series" | "all" — which catalog(s) recomputeSearch() ranks against. "radio" is "channels" over the Radio row set; Live and Radio share one input, so it is resolved from ui.activeView when that input fires.',
     },
     [SEARCH_ACTIVE]: {
         owner: 'search',
@@ -185,12 +185,12 @@ export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     [SEARCH_RESULT_COUNTS]: {
         owner: 'search',
         persisted: false,
-        description: '{channels, movies, series} match counts, each scope\'s own (pre-concatenation) rankSearch() result length — stays accurate even when the "all" scope\'s combined row set had to truncate at DEFAULT_SEARCH_LIMIT.',
+        description: '{channels, movies, series} match counts, each scope\'s own (pre-concatenation) rankSearch() result length (radio stations count as channels) — stays accurate even when the "all" scope\'s combined row set had to truncate at DEFAULT_SEARCH_LIMIT.',
     },
     [SEARCH_LOADED_ONLY]: {
         owner: 'search',
         persisted: false,
-        description: 'True when the active scope includes movies/series and at least one relevant category has never been fetched — an honesty flag, not an error: results are real, just possibly incomplete. Always false for "channels" alone (always fully loaded).',
+        description: 'True when the active scope includes movies/series and at least one relevant category has never been fetched — an honesty flag, not an error: results are real, just possibly incomplete. Always false for "channels"/"radio" alone (both always fully loaded).',
     },
 
     // --- settings: audio/subtitle language (Phase 21) ---
