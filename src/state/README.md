@@ -79,6 +79,14 @@ action, because nothing user-triggered causes the write:
   rule intact without a fourth ESLint carve-out). Anything *derived* from
   the window (row count, empty-list flag) belongs in a `computed()` instead
   (Feature 05.6.4) — none exists yet, nothing has needed one.
+  **Each row object published here is stable per row id and updated in
+  place**, and its enrichment fields are always written (`null`/`0`, never
+  omitted). Both are load-bearing, not style: a keyed `data-each` clone
+  captures `item = array[index]` when it binds and is only re-scoped when
+  its *index* changes, and a binding whose delta path is `undefined` is
+  skipped entirely — so a fresh object, or an omitted field, at an unchanged
+  index is never read and the row keeps the line it was bound with. See
+  `list-publish.ts`'s header and `list-publish.row-join.spec.ts`.
 
 ## Naming rules
 
