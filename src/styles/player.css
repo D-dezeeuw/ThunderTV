@@ -182,8 +182,27 @@
     margin-left: auto;
 }
 
+/* Title row: the channel name plus the pane's own close button. The button
+   is pushed over with `margin-left: auto`, not `justify-content:
+   space-between` — data-if hides the name by setting `display: none` and
+   leaves the node in the tree, so space-between would park the button on the
+   left of the audio-only pane instead of its right. */
+.player-shell__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.player-shell__close {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
 .player-shell__name {
     display: block;
+    /* Flex items floor at their content width; without this the long-name
+       ellipsis never engages and the button gets pushed off the row. */
+    min-width: 0;
     font-size: var(--text-md);
     font-weight: 600;
     color: var(--color-text);

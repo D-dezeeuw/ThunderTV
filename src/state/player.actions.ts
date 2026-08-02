@@ -51,6 +51,10 @@ export function registerPlayerActions(): void {
     defineFn('player/togglePlayback', () => {
         togglePlayback();
     });
+    /** The preview pane's close button. Closing the pane and stopping are one act — `playerPaneVisible` is true exactly while a stream is attached, so nothing else can put it away. */
+    defineFn('player/stop', () => {
+        stopPlayback();
+    });
     // No state mutation involved (only a read) — registered here anyway
     // because every defineFn is registered before bindDOM()
     // (registerActions()'s contract); the fullscreen mechanics live in
