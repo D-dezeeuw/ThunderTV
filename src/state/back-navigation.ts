@@ -1,6 +1,8 @@
 import { setValue } from 'spektrum';
 import { DEBUG_OPEN } from './debug';
 import { PLAYER_TRACK_MENU, type TrackMenu } from './player-tracks';
+import { SEARCH_SWEEP_OPEN } from './search';
+import { closeSweep } from './search-sweep.actions';
 import { SERIES_DETAIL_ID } from './series';
 import { get } from './typed';
 import { UI_SETTINGS_OPEN } from './ui';
@@ -40,6 +42,14 @@ export function closeTopmostOverlay(): boolean {
     }
     if (get<boolean>(UI_SETTINGS_OPEN) === true) {
         setValue(UI_SETTINGS_OPEN, false);
+        return true;
+    }
+    // The "search all" warning/progress modal — an overlay over the catalog
+    // view, so it unwinds before the view does. Routed through
+    // `closeSweep()` rather than a bare `setValue` because closing it while
+    // a sweep is running has to cancel that sweep (see its own doc).
+    if (get<boolean>(SEARCH_SWEEP_OPEN) === true) {
+        closeSweep();
         return true;
     }
     if (get<boolean>(UI_WIZARD_OPEN) === true) {

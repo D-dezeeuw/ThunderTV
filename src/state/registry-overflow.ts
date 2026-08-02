@@ -43,6 +43,7 @@ import { CODEX_AUTHOR_ID, CODEX_MESSAGE, CODEX_STATE } from './codex';
 import { CODEX_BLOCKED_ROWS, CODEX_LIBRARY_MESSAGE, CODEX_LIBRARY_ROWS, CODEX_LIBRARY_STATE } from './codex-library';
 import { HANDOFF_LINK, HANDOFF_MESSAGE, HANDOFF_STATE } from './handoff';
 import { HEALTH_CLEARED, HEALTH_DEAD_COUNT, HEALTH_TRACKED_COUNT } from './health';
+import { SEARCH_SWEEP_REGISTRY_ENTRIES } from './registry-search';
 import { UI_REGISTRY_ENTRIES } from './registry-ui';
 import type { KeyMeta } from './registry';
 
@@ -54,13 +55,12 @@ import type { KeyMeta } from './registry';
  * prose to make room costs more than it saves — so anything added after that
  * lands here regardless of which module owns it (the file started out
  * catalog-only, hence its original name; the track-menu and audio-only-TV
- * `player` entries below are the ones that aren't). `KEY_REGISTRY` itself
- * (`registry.ts`) is still the single object every consumer (`persist.ts`,
- * `bulk-policy.ts`, `index.ts`'s `rehydrateState()`) reads — this file only
- * changes *how* it gets built, not what it is.
+ * `player` entries below are the ones that aren't). This file has since hit
+ * the same ceiling, so new entries go into a themed leaf spread in below.
  */
 export const OVERFLOW_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
     ...EPG_REGISTRY_ENTRIES,
+    ...SEARCH_SWEEP_REGISTRY_ENTRIES,
     ...UI_REGISTRY_ENTRIES,
     // --- vod (Phase 21 Movies catalog) ---
     [VOD_CATEGORIES]: {

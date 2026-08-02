@@ -49,6 +49,7 @@ import { registerPlaylistActions } from './playlist.actions';
 import { registerPlaylistSelectors } from './playlist.selectors';
 import { persistedKeys } from './registry';
 import { registerSearchActions } from './search.actions';
+import { registerSearchSweepActions } from './search-sweep.actions';
 import { initSearchState } from './search';
 import { registerSeriesActions } from './series.actions';
 import { initSeriesState } from './series';
@@ -152,6 +153,7 @@ export function registerActions(): void {
     registerVodActions();
     registerSeriesActions();
     registerSearchActions();
+    registerSearchSweepActions();
     registerDownloadActions();
     registerEpgSettingsActions();
     registerHealthActions();

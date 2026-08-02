@@ -59,6 +59,20 @@ export const nlCatalog = {
         scopeMovies: 'Films',
         scopeSeries: 'Series',
         loadedOnlyHint: 'Doorzoekt alleen geladen titels — open meer categorieën voor volledigere resultaten.',
+        allOff: 'Alle providers doorzoeken',
+        allOn: 'Doorzoekt alle providers — terug naar deze',
+        partialHint: 'Sommige providers waren niet bereikbaar, dus deze resultaten zijn onvolledig.',
+        sweepTitle: 'Alle providers doorzoeken',
+        sweepWarning:
+            'Hiermee wordt de volledige film- en seriecatalogus van elke ingestelde provider opgehaald. Dat kan enkele minuten duren en verplaatst veel data. Het resultaat wordt een dag bewaard, dus de volgende zoekopdracht is direct.',
+        sweepStart: 'Starten',
+        sweepProviders: 'Providers',
+        sweepCategories: 'Categorieën',
+        sweepItems: 'Titels gevonden',
+        sweepFailed: 'Niet bereikbaar',
+        sweepPartial: 'Klaar, maar onvolledig — sommige providers zijn overgeslagen of mislukt.',
+        sweepComplete: 'Klaar — alle providers zijn meegenomen.',
+        sweepCancelled: 'Gestopt. Alles wat al is opgehaald, is bewaard.',
     },
     /** De lijst/raster-schakelaar naast het zoekveld van elke weergave. */
     layout: {

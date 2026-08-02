@@ -33,9 +33,14 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url));
  * until the partials split lands: +6 lines / +962 B for the Feature 21.6
  * next-episode offer, and +2 lines / +275 B for the Feature 25.8.5
  * screen-reader announcement region.
+ *
+ * The "search all" sweep modal paid for itself instead of raising these: it
+ * reuses `.wizard-modal`/`.download-progress__bar` verbatim (no new CSS), and
+ * ten of the file's longest comment blocks were condensed — same findings,
+ * tighter prose — to cover its ~30 lines.
  */
 const BUDGETS = [
-    { path: 'index.html', maxLines: 3580, maxBytes: 246_486 },
+    { path: 'index.html', maxLines: 3553, maxBytes: 246_445 },
 ];
 
 let failed = false;

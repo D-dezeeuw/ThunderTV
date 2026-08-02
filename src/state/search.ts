@@ -1,4 +1,5 @@
 import { setValue } from 'spektrum';
+import { SWEEP_PROGRESS_ZERO, type SweepKind, type SweepProgress } from './sweep-plan';
 
 /**
  * Scoped fuzzy search across Live channels, the Movies catalog, and the
@@ -14,6 +15,26 @@ export const SEARCH_ACTIVE = 'search.active';
 export const SEARCH_RESULT_COUNTS = 'search.resultCounts';
 /** True when the current scope's results are known-incomplete because not every relevant category has been fetched yet (`movies`/`series` only — see `search.actions.ts`'s `recomputeSearch()`). Always `false` for `channels`, which is always fully loaded. */
 export const SEARCH_LOADED_ONLY = 'search.loadedOnly';
+
+/**
+ * "Search all" (`catalog-sweep.ts`): when true, the `movies`/`series` scopes
+ * rank over every configured provider's whole catalog instead of only the
+ * active source's loaded categories. A session-scoped browsing mode, not a
+ * preference — it is turned on by the affordance beside the search box and
+ * back off by the same button.
+ */
+export const SEARCH_ALL_SOURCES = 'search.allSources';
+/** The "this takes a while" confirmation/progress modal. */
+export const SEARCH_SWEEP_OPEN = 'search.sweepOpen';
+export const SEARCH_SWEEP_STATUS = 'search.sweepStatus';
+/** Which catalog the open sweep covers — the modal's copy is shared, the work is not. */
+export const SEARCH_SWEEP_KIND = 'search.sweepKind';
+export const SEARCH_SWEEP_PROGRESS = 'search.sweepProgress';
+
+/** `'confirm'` is the pre-flight warning (nothing fetched yet); `'done'` can still be partial — see `SweepProgress.partial`. */
+export type SweepStatus = 'idle' | 'confirm' | 'running' | 'done' | 'cancelled';
+
+export type { SweepKind } from './sweep-plan';
 
 /**
  * `'radio'` is `'channels'` pointed at the other row set: Radio's stations are
@@ -42,6 +63,11 @@ export interface SearchState {
     active: boolean;
     resultCounts: SearchResultCounts;
     loadedOnly: boolean;
+    allSources: boolean;
+    sweepOpen: boolean;
+    sweepStatus: SweepStatus;
+    sweepKind: SweepKind;
+    sweepProgress: SweepProgress;
 }
 
 export const SEARCH_DEFAULTS: SearchState = {
@@ -50,6 +76,11 @@ export const SEARCH_DEFAULTS: SearchState = {
     active: false,
     resultCounts: { channels: 0, movies: 0, series: 0 },
     loadedOnly: false,
+    allSources: false,
+    sweepOpen: false,
+    sweepStatus: 'idle',
+    sweepKind: 'vod',
+    sweepProgress: SWEEP_PROGRESS_ZERO,
 };
 
 export function initSearchState(): void {
@@ -58,4 +89,9 @@ export function initSearchState(): void {
     setValue(SEARCH_ACTIVE, SEARCH_DEFAULTS.active);
     setValue(SEARCH_RESULT_COUNTS, SEARCH_DEFAULTS.resultCounts);
     setValue(SEARCH_LOADED_ONLY, SEARCH_DEFAULTS.loadedOnly);
+    setValue(SEARCH_ALL_SOURCES, SEARCH_DEFAULTS.allSources);
+    setValue(SEARCH_SWEEP_OPEN, SEARCH_DEFAULTS.sweepOpen);
+    setValue(SEARCH_SWEEP_STATUS, SEARCH_DEFAULTS.sweepStatus);
+    setValue(SEARCH_SWEEP_KIND, SEARCH_DEFAULTS.sweepKind);
+    setValue(SEARCH_SWEEP_PROGRESS, SEARCH_DEFAULTS.sweepProgress);
 }

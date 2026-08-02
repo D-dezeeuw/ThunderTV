@@ -59,6 +59,20 @@ export const deCatalog = {
         scopeMovies: 'Filme',
         scopeSeries: 'Serien',
         loadedOnlyHint: 'Durchsucht nur bereits geladene Titel — öffnen Sie weitere Kategorien für vollständigere Ergebnisse.',
+        allOff: 'Alle Anbieter durchsuchen',
+        allOn: 'Durchsucht alle Anbieter — zurück zu diesem',
+        partialHint: 'Einige Anbieter waren nicht erreichbar, diese Ergebnisse sind daher unvollständig.',
+        sweepTitle: 'Alle Anbieter durchsuchen',
+        sweepWarning:
+            'Damit wird der komplette Film- und Serienkatalog jedes eingerichteten Anbieters geladen. Das kann mehrere Minuten dauern und überträgt viele Daten. Das Ergebnis wird einen Tag lang gespeichert, die nächste Suche ist also sofort da.',
+        sweepStart: 'Starten',
+        sweepProviders: 'Anbieter',
+        sweepCategories: 'Kategorien',
+        sweepItems: 'Gefundene Titel',
+        sweepFailed: 'Nicht erreichbar',
+        sweepPartial: 'Fertig, aber unvollständig — einige Anbieter wurden übersprungen oder schlugen fehl.',
+        sweepComplete: 'Fertig — alle Anbieter wurden erfasst.',
+        sweepCancelled: 'Gestoppt. Alles bereits Geladene bleibt erhalten.',
     },
     /** Der Listen-/Raster-Umschalter neben dem Suchfeld jeder Ansicht. */
     layout: {

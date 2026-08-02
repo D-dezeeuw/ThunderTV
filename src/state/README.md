@@ -33,7 +33,7 @@ generated `masterplan/reference/state-keys.md` is the per-key detail.
 | `vod.ts`              | `vod.categories`, `vod.activeCategoryId`, `vod.status`, `vod.errorReason`, `vod.count`, `vod.detailId`, `vod.detail`, `vod.warmStatus` | No (Phase 21) — the Movies catalog itself (categories/items/detail cache) lives in `vod-rows.ts`'s module memory and, on the `'full'` storage tier only, in ad hoc `catalog-storage.ts` keys outside the Phase 05 bridge; see "Existing-key decisions" below |
 | `series.ts`           | `series.categories`, `series.activeCategoryId`, `series.status`, `series.errorReason`, `series.count`, `series.detailId`, `series.detail`, `series.warmStatus` | No (Phase 21) — same reasoning as `vod.ts`, via `series-rows.ts`/`catalog-storage.ts` |
 | `vod.ts`/`series.ts`  | (also `vod.stale`, `series.stale`)                                                                                   | No — each describes this session's last fetch attempt; a restored `true` would accuse a healthy boot of being offline before it had tried anything |
-| `search.ts`           | `search.query`, `search.scope`, `search.active`, `search.resultCounts`, `search.loadedOnly`                           | No (Phase 21) — a live, disposable session activity, reset every boot like `ui.settingsOpen` |
+| `search.ts`           | `search.query`, `search.scope`, `search.active`, `search.resultCounts`, `search.loadedOnly`, plus the "search all" quintet `search.allSources`, `search.sweepOpen`, `search.sweepStatus`, `search.sweepKind`, `search.sweepProgress` | No (Phase 21) — a live, disposable session activity, reset every boot like `ui.settingsOpen`. The sweep keys follow the same rule: the *catalogs* it fetches are cached for 24h through `catalog-storage.ts`, but which mode the box is in and how far one sweep got describe a single sitting (`catalog-sweep.ts`/`sweep-pool.ts`/`search-sweep.actions.ts`, registered in `registry-search.ts`) |
 | `downloads.ts`        | `downloads.items`, `downloads.activeId`                                                                              | No — the save-file handle and the transfer belong to the session that started them, so a restored queue would show rows nothing could resume; a reload genuinely does abandon an in-flight download |
 
 **The rule:** adding a Spektrum key means adding it to `registry-keys.ts`'s
@@ -363,6 +363,54 @@ app layer calls them (after first paint, on a Movies/Series tab open, etc.).
   a `sequence-token.ts` instance was not needed here since there is only one
   warm attempt per catalog to protect, not a rapid sequence of
   user-triggered ones.
+
+### "Search all" — one query across every provider (`catalog-sweep.ts`)
+
+The warm above covers every *category* of the **active** account. It does
+not, and cannot, cover the accounts you are not watching: Movies and TV
+Shows resolve exactly one source (`resolveActiveXtreamSource()`), so a
+second configured provider's catalog was never fetched at all. That gap is
+what "Search all" closes, and it shapes every decision below.
+
+- **It is the same cache, once per source.** `sweep-pool.ts` calls
+  `catalog-warm.ts`'s own `loadStoredWarmMeta` → `rehydrateWarmedCatalog`,
+  or fetch → `groupWarmedItems` → `commitWarmedCatalog`, against
+  `sweepPrefix()`'s key namespace: the **bare** `'vod'`/`'series'` prefix
+  for the active source — so a Movies tab opened today has already paid for
+  it — and `'<kind>@<sourceKey>'` for every other. No parallel cache, no
+  second TTL. (`sourceKey` is `makeSourceKey()`, stable across the id churn
+  every re-import causes.)
+- **A warm cache means no modal.** `isSweepWarm()` asks "is every planned
+  source inside the 24h TTL" with local reads only, so the usual press just
+  turns the mode on. The warning modal exists for the cold case, and
+  nothing is fetched before Start.
+- **Cancel aborts the request, not just the loop.** This is the one place
+  in the app that passes an `AbortSignal` into `xtream/client.ts`, because
+  the thing being cancelled is a single multi-megabyte dump. A caller-
+  initiated abort *rejects* (`classified-fetch.ts` re-throws it deliberately),
+  so the sweep catches it and re-checks `signal.aborted` rather than
+  counting it as a provider failure. Sources already committed stay
+  committed. Closing the modal cancels, so a sweep never runs unseen.
+- **Partial is a published fact, not a silence.** A failed source still
+  counts as done (it is finished) and raises `sourcesFailed`/`partial`;
+  `search.loadedOnly` is fed from that flag while search-all is on, which
+  is what puts the "some providers could not be reached" line under the
+  results.
+- **Dedup is by item id, first source wins** (`sweep-plan.ts`). Not a
+  preference: a row's id is `vod:<streamId>`, so two entries sharing one id
+  are indistinguishable to the detail/play/selection paths. The active
+  source is swept first precisely so it wins those collisions. The same
+  film from two providers is *kept* — different ids, individually playable,
+  and one panel's copy works when another's does not; the rows are told
+  apart by the provider name folded into `group`, which the row shape
+  already renders (so provenance cost no markup).
+- **A foreign result behaves like a local one.** `foreignVodItem()`/
+  `foreignSeriesItem()` hand `vod.actions.ts`/`series.actions.ts` the owning
+  account and its cache prefix, so detail and playback use the right
+  credentials and never write a foreign movie's `get_vod_info` into the
+  active source's detail keys. They return `null` for the active source and
+  for everything the pool has not seen — which is every row when search-all
+  is off, leaving that path exactly as it was.
 
 ### Movies/Series rail visibility (`settings.nav.movies`/`settings.nav.series`)
 

@@ -589,17 +589,13 @@
                      republished on view change (src/state/live.actions.ts)
                      instead of mounting a second list. -->
                 <!-- Movies/Series (Phase 21) share this exact physical list —
-                     `data-ref="listContainer"`/`"rowsContainer"` below must stay
-                     singular app-wide (src/ui/list-bindings.ts only ever wires
-                     the one Spektrum resolves into `refs`), so a wrapper spanning
-                     all five list-driven routes replaces the single-route
-                     section as the outermost gate. The inner `<section
-                     class="view__section view__section--fill" data-if="view.channelList.active">`
-                     immediately below is otherwise untouched, byte-for-byte
-                     (player-shell.markup.spec.ts asserts that literal string) —
-                     it now wraps only the "no active source" empty state, with
-                     `.list-shell` (header/body/list) pulled out to sit beside it
-                     as this wrapper's other child, shared by Movies/Series too. -->
+                     `data-ref="listContainer"`/`"rowsContainer"` must stay singular
+                     app-wide (list-bindings.ts wires only the one Spektrum resolves
+                     into `refs`), so this wrapper over all five list-driven routes is
+                     the outermost gate. The inner `view__section--fill` section below
+                     is untouched byte-for-byte (player-shell.markup.spec.ts asserts
+                     that literal) and now wraps only the "no active source" empty
+                     state, with `.list-shell` beside it as the other child. -->
                 <div
                     class="channel-list-scope"
                     data-if="view.channelList.active || view.movies.active || view.series.active"
@@ -840,6 +836,10 @@
                             <span class="catalog-search__counts" data-if="search.active" data-testid="movies-search-counts">
                                 {{ strings.search.scopeMovies }}: {{ search.resultCounts.movies }}
                             </span>
+                            <!-- "Search all": one query across every configured provider's
+                                 whole catalogue (state/catalog-sweep.ts). Warm cache turns it
+                                 on outright; a cold one opens the sweep modal below first. -->
+                            <button type="button" class="btn" data-if="search.active" data-action="click" data-fn="search/toggleAll" data-testid="movies-search-all">{{ search.allSources ? strings.search.allOn : strings.search.allOff }}</button>
                             <div class="layout-toggle" role="group" :aria-label="strings.layout.group" data-testid="movies-layout-toggle">
                                 <button
                                     type="button"
@@ -872,7 +872,7 @@
                                     <svg class="icon icon--s" aria-hidden="true"><use href="#icon-view-grid"></use></svg>
                                 </button>
                             </div>
-                            <p class="catalog-search__hint" data-if="search.active && search.loadedOnly" data-testid="movies-search-loaded-only">{{ strings.search.loadedOnlyHint }}</p>
+                            <p class="catalog-search__hint" data-if="search.active && search.loadedOnly" data-testid="movies-search-loaded-only">{{ search.allSources ? strings.search.partialHint : strings.search.loadedOnlyHint }}</p>
                         </div>
 
                         <div class="list-shell__empty" data-if="view.movies.active && vod.status === 'error' && vod.errorReason === 'no-source'" data-testid="movies-no-source">
@@ -925,6 +925,7 @@
                             <span class="catalog-search__counts" data-if="search.active" data-testid="series-search-counts">
                                 {{ strings.search.scopeSeries }}: {{ search.resultCounts.series }}
                             </span>
+                            <button type="button" class="btn" data-if="search.active" data-action="click" data-fn="search/toggleAll" data-testid="series-search-all">{{ search.allSources ? strings.search.allOn : strings.search.allOff }}</button>
                             <div class="layout-toggle" role="group" :aria-label="strings.layout.group" data-testid="series-layout-toggle">
                                 <button
                                     type="button"
@@ -957,7 +958,7 @@
                                     <svg class="icon icon--s" aria-hidden="true"><use href="#icon-view-grid"></use></svg>
                                 </button>
                             </div>
-                            <p class="catalog-search__hint" data-if="search.active && search.loadedOnly" data-testid="series-search-loaded-only">{{ strings.search.loadedOnlyHint }}</p>
+                            <p class="catalog-search__hint" data-if="search.active && search.loadedOnly" data-testid="series-search-loaded-only">{{ search.allSources ? strings.search.partialHint : strings.search.loadedOnlyHint }}</p>
                         </div>
 
                         <div class="list-shell__empty" data-if="view.series.active && series.status === 'error' && series.errorReason === 'no-source'" data-testid="series-no-source">
@@ -1108,24 +1109,17 @@
                                 </div>
                             </div>
 
-                            <!-- Series detail (Phase 21, Issue 2 follow-up): same overlay
-                                 chrome as Movies, plus a flattened season-header/episode row
-                                 list off series.detail.rows. Deliberately ONE flat data-each,
-                                 not seasons[].episodes[] nested two levels: Spektrum's
-                                 data-each clones an element's own *first element child* into
-                                 its container, so a season block that itself carries
-                                 data-each (the original markup here) treats its own nested
-                                 episode-list as a static, never-cloned sibling — it binds
-                                 once and never again, which is why episode lines used to
-                                 render literal "{{ }}" text. series.detail.rows
-                                 (series-rows.ts's buildSeriesDetailRows()) is pre-flattened
-                                 and pre-formatted (durationMins rounded in state, not via
-                                 Math.round() in a template expression) so this can be a
-                                 single-level data-each + data-if per row kind, the exact
-                                 pattern every other list in the app already uses. No
-                                 season-tab selection exists in state, so every season still
-                                 renders as its own collapsed-by-nothing header + episode
-                                 rows. -->
+                            <!-- Series detail (Phase 21, Issue 2 follow-up): same overlay chrome
+                                 as Movies, plus ONE flat data-each over series.detail.rows —
+                                 never seasons[].episodes[] nested two levels. Spektrum's
+                                 data-each clones an element's own *first element child*, so a
+                                 season block carrying data-each treats its nested episode list as
+                                 a static sibling that binds once and never again: the literal
+                                 "{{ }}" episode lines this replaced. buildSeriesDetailRows()
+                                 pre-flattens and pre-formats (durationMins rounded in state, not
+                                 via Math.round() in a template expression), so a single-level
+                                 data-each + data-if per row kind is enough — the pattern every
+                                 other list here uses. No season-tab selection exists in state. -->
                             <div
                                 class="catalog-detail"
                                 data-if="view.series.active && series.detailId"
@@ -1189,18 +1183,13 @@
                                         {{ strings.series.noEpisodes }}
                                     </p>
                                     <!-- data-each binds `download.episodeRows`, not
-                                         `series.detail.rows`: a flat row cannot look itself
-                                         up in `downloads.items`, so the join has to happen
-                                         in a selector before the template sees it
-                                         (downloads.selectors.ts). The rows are otherwise
-                                         `series.detail.rows` verbatim.
-
-                                         It is also a PLAIN PATH on purpose. This was
-                                         `series.detail?.rows || []`, and Spektrum's
-                                         data-each does not evaluate an expression there —
-                                         it silently rendered zero rows, which is why the
-                                         episode list came up empty. Keep any fallback in
-                                         the selector (it already returns []), never here. -->
+                                         `series.detail.rows`: a flat row cannot look itself up
+                                         in `downloads.items`, so the join happens in a selector
+                                         first (downloads.selectors.ts); the rows are otherwise
+                                         verbatim. It is also a PLAIN PATH on purpose — this was
+                                         `series.detail?.rows || []`, and data-each does not
+                                         evaluate an expression there, so it silently rendered
+                                         zero rows. Keep any fallback in the selector. -->
                                     <div
                                         class="catalog-seasons"
                                         data-if="series.detailStatus === 'ready' && series.detail.rows.length > 0"
@@ -1438,20 +1427,16 @@
                                 data-fn="list/handleListKeydown"
                             >
                                 <div class="pad" :style="'height:' + list.padTop + 'px'"></div>
-                                <!-- `data-key` matters more here than anywhere else in
-                                     the app. Without it Spektrum's `data-each` diffs by
-                                     object identity over a plain prefix scan, so any
-                                     change that isn't a pure append/trim destroys and
-                                     rebuilds every row clone. A virtual list's window
-                                     changes on every scroll frame, and the rows Live and
-                                     Radio publish are re-allocated by
-                                     `state/list-publish.ts`'s EPG/health enrichment — so
-                                     the whole row DOM was being torn down mid-scroll,
-                                     collapsing this container's height, which makes the
-                                     browser clamp scrollTop and fire another scroll event
-                                     at a different position. That feedback loop is the
-                                     "list ping-pongs while scrolling" report. Keyed by
-                                     row id, clones are reused and only re-bound. -->
+                                <!-- `data-key` matters more here than anywhere else. Without
+                                     it Spektrum's `data-each` diffs by object identity over a
+                                     prefix scan, so any change that isn't a pure append/trim
+                                     rebuilds every clone. A virtual list's window changes every
+                                     scroll frame and list-publish.ts re-allocates enriched rows,
+                                     so the row DOM was torn down mid-scroll, collapsing this
+                                     container's height — the browser then clamps scrollTop and
+                                     fires another scroll at a different position: the "list
+                                     ping-pongs while scrolling" report. Keyed, clones are
+                                     reused and only re-bound. -->
                                 <div class="rows" data-ref="rowsContainer" data-each="list.visibleRows" data-key="item.id" data-action="click" data-fn="list/selectChannel">
                                     <div
                                         class="channel-row"
@@ -1502,20 +1487,15 @@
                                             </span>
                                         </span>
                                         <!-- Movies/Series catalog rows (Phase 21): `.rows`' own
-                                             data-fn="list/selectChannel" (above) always plays via
-                                             the row's `url` — right for a live channel, wrong for
-                                             a movie (should open detail, not autoplay) and broken
-                                             for a series (row `url` is '' — see
-                                             src/state/series-rows.ts). `ChannelRow` carries no
-                                             `kind` field to branch on and `data-fn` cannot vary
-                                             per row in a shared data-each template (Spektrum binds
-                                             it once per clone, not reactively), so these two
-                                             full-row overlays key off the id prefix
-                                             (vod.actions.ts's/series-rows.ts's `vod:`/`series:`
-                                             row-id convention) and `.stop` before the click ever
-                                             reaches the container's generic handler. Absent for a
-                                             real channel row, so Live/Radio/Categories behavior is
-                                             unchanged. -->
+                                             data-fn="list/selectChannel" always plays the row's
+                                             `url` — right for a live channel, wrong for a movie
+                                             (open detail, don't autoplay) and broken for a series
+                                             (its `url` is ''). `ChannelRow` has no `kind` to branch
+                                             on and `data-fn` cannot vary per row in a shared
+                                             data-each (Spektrum binds it once per clone), so these
+                                             two full-row overlays key off the `vod:`/`series:` id
+                                             prefix and `.stop` before the container's generic
+                                             handler sees the click. Absent for a real channel row. -->
                                         <div
                                             class="channel-row__catalog-trigger"
                                             data-if="item.id.indexOf('vod:') === 0"
@@ -1539,30 +1519,22 @@
                                 <div class="pad" :style="'height:' + list.padBottom + 'px'"></div>
                             </div>
 
-                            <!-- Right column: the preview. Live plays video; Radio (and
-                                 any TV channel switched to audio-only) shows a canvas
-                                 visualizer (src/player/visualizer/) instead —
-                                 src/player/bindings.ts still drives the same <video>
-                                 element either way, it is the sole attach point for the
-                                 audio/video engine and doubles as the visualizer's Web
-                                 Audio source, so the audio-only presentations keep it
-                                 mounted but visually minimal rather than removing it,
-                                 see player.css's .list-shell--split rules.
-
-                                 Categories gets the same column, which is what makes it
-                                 three: categories -> channels -> preview.
-
-                                 Movies/TV Shows play into that same <video> (vod.actions.ts
-                                 and series.actions.ts both go through setActiveChannel), so
-                                 they get this pane too. Without it, pressing Play on a movie
-                                 left the <video> in a `display: none` pane: audio only, no
-                                 picture, and nothing to fullscreen.
-
-                                 Every view now uses that same rule: no pane unless something
-                                 plays. On a boot it was worse than noise — `player.active`
-                                 is persisted, so the pane named a channel the restored
-                                 session never attached. `playerPaneVisible`
-                                 (state/player.selectors.ts) knows the difference. -->
+                            <!-- Right column: the preview. Live plays video; Radio (and any TV
+                                 channel switched to audio-only) shows a canvas visualizer
+                                 (src/player/visualizer/) instead — src/player/bindings.ts drives
+                                 the same <video> either way, it being the sole attach point for
+                                 the engine and the visualizer's Web Audio source, so audio-only
+                                 presentations keep it mounted but visually minimal (player.css's
+                                 .list-shell--split). Categories gets the same column, which is
+                                 what makes it three: categories -> channels -> preview. Movies/TV
+                                 Shows play into that same <video> (both go through
+                                 setActiveChannel), so they get the pane too — without it, Play on
+                                 a movie left the <video> in a `display: none` pane: audio, no
+                                 picture, nothing to fullscreen. Every view uses one rule: no pane
+                                 unless something plays. That mattered most on boot — player.active
+                                 is persisted, so the pane named a channel the restored session
+                                 never attached; playerPaneVisible (state/player.selectors.ts)
+                                 knows the difference. -->
                             <div
                                 class="now-playing"
                                 data-if="playerPaneVisible"
@@ -1634,18 +1606,14 @@
                                             <span class="signal__bar signal__bar--3"></span>
                                         </span>
 
-                                        <!-- Audio/subtitle track menus (final audio/subtitle stage). Each
-                                             popup opens as a centered, keyboard-navigable modal dialog
-                                             (`.track-menu` below) rather than an anchored popup — the old
-                                             anchored popup could clip off the left edge of the viewport.
-                                             Shown only for Movies/Series (`view.movies.active ||
-                                             view.series.active`) — a Live channel or radio station has no
-                                             per-title track list to pick, and only the catalog video
-                                             previews carry one. Rendered regardless of track count within
-                                             those two views: an empty track list still opens the dialog and
-                                             explains itself (see .track-menu__empty below) rather than
-                                             hiding the button, so a viewer never wonders whether the feature
-                                             is broken or just absent for this stream. -->
+                                        <!-- Audio/subtitle track menus. Each opens as a centered,
+                                             keyboard-navigable modal dialog (`.track-menu` below); the
+                                             old anchored popup could clip off the viewport's left edge.
+                                             Movies/Series only — a live channel or station has no
+                                             per-title track list. Rendered whatever the track count: an
+                                             empty list opens the dialog and explains itself
+                                             (.track-menu__empty) rather than hiding the button, so the
+                                             feature never looks broken instead of merely absent. -->
                                         <div class="track-menu-anchor" data-if="view.movies.active || view.series.active">
                                             <button
                                                 type="button"
@@ -1790,24 +1758,18 @@
                                              channel itself. The group carries the visibility for
                                              all three — the buttons no longer repeat data-if. -->
                                         <div class="player-shell__group" data-if="visualizerActive" data-testid="visualizer-controls">
-                                            <!-- Radio's visualizer-preset picker. Deliberately NOT a
-                                                 native <select>: on webOS the dropdown a <select> opens
-                                                 is a browser-level widget that lives outside the page,
-                                                 so the remote's key events (which the LG simulator
-                                                 injects into the *page*) never reach it — the popup can
-                                                 be opened but never navigated or dismissed, and every
-                                                 further OK press re-triggers the still-focused <select>,
-                                                 which is the endless self-reactivating dropdown seen in
-                                                 the simulator. This is the same track-menu pattern as
-                                                 the audio/subtitle popups above: ordinary focusable DOM
-                                                 that spatial navigation, Enter/OK and the Back button
-                                                 (state/back-navigation.ts) all already understand.
-                                                 Rows come from one `data-each` over
-                                                 `visualizerPresetOptions` rather than eleven
-                                                 hand-authored entries — state/player.selectors.ts's
-                                                 VISUALIZER_PICKER_OPTIONS is the source of truth, and
-                                                 visualizer-picker.markup.spec.ts checks it against the
-                                                 real preset list. -->
+                                            <!-- Radio's visualizer-preset picker. NOT a native <select>:
+                                                 on webOS that dropdown is a browser-level widget outside
+                                                 the page, so remote key events (injected into the *page*)
+                                                 never reach it — it opens but can never be navigated or
+                                                 dismissed, and every further OK re-triggers the still-
+                                                 focused <select>: the endless self-reactivating dropdown
+                                                 seen in the simulator. Same track-menu pattern as the
+                                                 audio/subtitle popups above — ordinary focusable DOM that
+                                                 spatial nav, Enter/OK and Back (state/back-navigation.ts)
+                                                 already understand. Rows come from one `data-each` over
+                                                 `visualizerPresetOptions`; player.selectors.ts's
+                                                 VISUALIZER_PICKER_OPTIONS is the source of truth. -->
                                             <div class="track-menu-anchor">
                                                 <button
                                                     type="button"
@@ -1958,28 +1920,20 @@
                                             {{ strings.handoff.dismiss }}
                                         </button>
                                     </div>
-                                    <!-- Variant switcher for the channel being watched.
-                                         Lives here rather than under each list row on
-                                         purpose: the list republishes its window on every
-                                         scroll frame, so a nested data-each per row would
-                                         rebuild these continuously across a 90k-channel
-                                         source. The alternate feeds only matter for the
-                                         channel you are actually watching.
-
-                                         Icons, not a row of text tabs: a channel carried
-                                         by several bundles produced labels like
-                                         "FHD · NEDERLAND ULTRA" that overran the pane and
-                                         clipped. Picture tier reads as lit bars (4 = UHD
-                                         down to 1 = SD), catch-up gets its own glyph, and
-                                         the full label stays available as the accessible
-                                         name — with the playing feed's label spelled out
-                                         beside the strip, so the current choice is never
-                                         only an icon. Each chip also carries a short
-                                         always-visible quality caption (icons alone read
-                                         as noise at a glance), and the full label surfaces
-                                         as an instant `data-tip` tooltip on hover/focus
-                                         instead of the native `title`, which never appears
-                                         on touch/TV and lags on hover. -->
+                                    <!-- Variant switcher for the channel being watched. Here
+                                         rather than under each list row on purpose: the list
+                                         republishes its window every scroll frame, so a nested
+                                         data-each per row would rebuild these continuously across
+                                         a 90k-channel source, and alternate feeds only matter for
+                                         the channel actually playing. Icons, not text tabs: labels
+                                         like "FHD · NEDERLAND ULTRA" overran the pane and clipped.
+                                         Picture tier reads as lit bars (4 = UHD down to 1 = SD),
+                                         catch-up gets its own glyph, and the full label stays the
+                                         accessible name — spelled out beside the strip so the
+                                         current choice is never only an icon, with a short quality
+                                         caption per chip and the full label as an instant
+                                         `data-tip` tooltip (the native `title` never appears on
+                                         touch/TV and lags on hover). -->
                                     <div
                                         class="variants"
                                         data-if="hasVariants"
@@ -2265,17 +2219,13 @@
                             ></div>
 
                             <!-- Channel rows and program blocks are two SIBLING flat
-                                 `data-each` lists, not one nested inside the other —
-                                 Spektrum's `data-each` does not reliably (re)bind when
-                                 nested inside another `data-each`'s per-item template
-                                 (the same reason `series.detail.rows` flattens seasons/
-                                 episodes into one list; see `src/state/README.md`'s "Two
-                                 Spektrum gotchas"). Both lists' items are placed onto
-                                 `.guide__rows`' CSS grid by an explicit `grid-row`
-                                 (channel rows via their own loop `index`, program blocks
-                                 via `program.channelIndex`), so the 2-column-per-channel
-                                 layout is unchanged even though the markup no longer
-                                 nests. -->
+                                 `data-each` lists, never nested: Spektrum's `data-each`
+                                 does not reliably (re)bind inside another's per-item
+                                 template (the reason `series.detail.rows` flattens too —
+                                 state/README.md's "Two Spektrum gotchas"). Both are placed
+                                 on `.guide__rows`' grid by an explicit `grid-row` (rows via
+                                 loop `index`, blocks via `program.channelIndex`), so the
+                                 2-column layout survives the un-nesting. -->
                             <div class="guide__row-list" data-each="guide.view.channels" data-testid="guide-row-list">
                                 <button
                                     type="button"
@@ -3326,21 +3276,44 @@
                 </div>
             </aside>
 
-            <!-- First-run setup wizard: shown automatically when boot finds
-                 zero configured sources on an install that never completed
-                 setup (state/wizard.ts's shouldOpenWizard(), wired in
-                 app/bootstrap.ts right after the real playlist.sources load
-                 resolves). Saving, skipping, or booting with a source
-                 already configured writes the persisted ui.setupComplete
-                 flag, so a known configuration never sees this again; it
-                 also reopens from Settings → Streaming (wizard/open).
-                 Every field reuses an existing action: step 1's selects are
+            <!-- "Search all" warning + progress (state/catalog-sweep.ts). Only
+                 opens when at least one provider's catalogue cache is cold or
+                 stale — a warm one needs no fetching, so search-all just turns
+                 on. Start is the consent; Cancel aborts mid-request and keeps
+                 whatever already landed. Closing (button, Escape, backdrop, TV
+                 Back) cancels too, so a sweep never runs with nothing on screen
+                 saying so. Reuses the wizard's modal chrome verbatim: no new CSS,
+                 and the same D-pad/Back behaviour every other overlay has. -->
+            <aside class="wizard-modal" data-if="search.sweepOpen" data-ref="sweepModal" tabindex="-1" role="dialog" aria-modal="true" :aria-label="strings.search.sweepTitle" data-action="keydown.esc" data-fn="search/closeSweep">
+                <div class="wizard-modal__backdrop" data-action="click" data-fn="search/closeSweep"></div>
+                <div class="wizard-modal__body">
+                    <h2 class="wizard-modal__title">{{ strings.search.sweepTitle }}</h2>
+                    <p class="settings-section__hint" data-if="search.sweepStatus === 'confirm'" data-testid="sweep-warning">{{ strings.search.sweepWarning }}</p>
+                    <progress class="download-progress__bar" data-if="search.sweepStatus !== 'confirm'" max="100" :value="search.sweepProgress.percent" :aria-label="strings.search.sweepTitle"></progress>
+                    <p class="settings-section__hint" data-testid="sweep-counts">{{ strings.search.sweepProviders }}: {{ search.sweepProgress.sourcesDone }} / {{ search.sweepProgress.sourcesTotal }} · {{ strings.search.sweepCategories }}: {{ search.sweepProgress.categories }} · {{ strings.search.sweepItems }}: {{ search.sweepProgress.items }} {{ search.sweepProgress.currentSource }}</p>
+                    <p class="settings-section__error" data-if="search.sweepProgress.sourcesFailed > 0" data-testid="sweep-failed">{{ strings.search.sweepFailed }}: {{ search.sweepProgress.sourcesFailed }} / {{ search.sweepProgress.sourcesTotal }}</p>
+                    <p class="settings-section__hint" data-if="search.sweepStatus === 'cancelled'" data-testid="sweep-cancelled">{{ strings.search.sweepCancelled }}</p>
+                    <p class="settings-section__hint" data-if="search.sweepStatus === 'done'" data-testid="sweep-done">{{ search.sweepProgress.partial ? strings.search.sweepPartial : strings.search.sweepComplete }}</p>
+                    <div class="wizard-modal__actions">
+                        <button type="button" class="btn btn--primary" data-if="search.sweepStatus === 'confirm'" data-action="click" data-fn="search/startSweep" data-testid="sweep-start-btn">{{ strings.search.sweepStart }}</button>
+                        <button type="button" class="btn" data-if="search.sweepStatus === 'running'" data-action="click" data-fn="search/cancelSweep" data-testid="sweep-cancel-btn">{{ strings.downloads.cancel }}</button>
+                        <button type="button" class="btn" data-action="click" data-fn="search/closeSweep" data-testid="sweep-close-btn">{{ strings.catalog.close }}</button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- First-run setup wizard: opened by state/wizard.ts's
+                 shouldOpenWizard() when boot finds zero sources on an install that
+                 never completed setup. Saving, skipping, or booting with a source
+                 configured writes the persisted ui.setupComplete, so a known
+                 configuration never sees it again; Settings → Streaming reopens it.
+                 Every field reuses an existing action: step 1 is
                  settings/setLocale + setLiveCountry, step 2 is Settings →
-                 Streaming's own Xtream fields/feedback and saveXtreamAccount().
-                 ui.wizardEditSourceId turns that same step 2 into an editor
-                 for one configured source (state/source-edit.ts): re-labelled
-                 copy, no step-1 detour, Save routed down the re-import path.
-                 Closes unsaved on Escape, backdrop click, and TV Back. -->
+                 Streaming's own Xtream fields and saveXtreamAccount().
+                 ui.wizardEditSourceId turns step 2 into an editor for one
+                 configured source (state/source-edit.ts): re-labelled copy, no
+                 step-1 detour, Save routed down the re-import path. Closes
+                 unsaved on Escape, backdrop click, and TV Back. -->
             <aside
                 class="wizard-modal"
                 data-if="ui.wizardOpen"

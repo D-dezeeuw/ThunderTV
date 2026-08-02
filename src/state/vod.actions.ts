@@ -1,5 +1,6 @@
 import { defineFn } from 'spektrum';
 import { createCatalogActions, parseCatalogId, type CatalogActions } from './catalog-actions';
+import { foreignVodItem } from './catalog-sweep';
 import { refocusCategoryRow } from './groups.actions';
 import { loadStoredDetail, saveStoredDetail } from './catalog-storage';
 import { setActiveChannel } from './player.actions';
@@ -131,22 +132,34 @@ const detailOpen = createSequenceToken();
 
 /** Publishes an immediate, partial snapshot from memory, then fills in `get_vod_info`'s fields once fetched (TTL-cached, module memory first, then the full-tier storage cache, then the network) — `replace()`, not `set()`, since two different movies' optional fields (`plot`/`genre`/`rating`/…) would otherwise bleed into each other via Spektrum's object merge (`state/README.md`'s merge-hazard finding). */
 export async function openVodDetail(streamId: number): Promise<void> {
-    const item = vodMemory.findItem(streamId);
+    // "Search all" (`catalog-sweep.ts`) can put a movie from a *different*
+    // provider in the results, and picking it has to behave exactly like
+    // picking it from its own category: its owner's credentials build the
+    // URL and fetch the detail, and its own cache namespace holds the
+    // result. `foreignVodItem()` is null for everything else — including
+    // every row when search-all is off — so the path below is unchanged
+    // for the active source.
+    const foreign = foreignVodItem(streamId);
+    const item = vodMemory.findItem(streamId) ?? foreign?.item;
     if (!item) return;
 
     const token = detailOpen.begin();
     set(VOD_DETAIL_ID, streamId);
-    const categoryName = vodCategoryName(item.categoryId);
+    const categoryName = foreign?.categoryName ?? vodCategoryName(item.categoryId);
     replace(VOD_DETAIL, toVodDetail(item, categoryName));
 
-    const account = await resolveActiveXtreamSource();
+    const account = foreign?.account ?? (await resolveActiveXtreamSource());
     if (!account) return;
-    setCachedVodSource(account.source);
+    // Deliberately not cached for a foreign source: `cachedVodSource()` is
+    // what the Movies list builds its row URLs from, and it belongs to the
+    // active account.
+    if (!foreign) setCachedVodSource(account.source);
+    const prefix = foreign?.prefix ?? 'vod';
 
     const now = Date.now();
     let info = vodMemory.detail(streamId);
     if (!info || !isFresh(vodMemory.detailFetchedAt(streamId), now, CATALOG_TTL_MS)) {
-        const stored = await loadStoredDetail<XtreamVodInfo>('vod', streamId);
+        const stored = await loadStoredDetail<XtreamVodInfo>(prefix, streamId);
         // No freshness gate: a plot, a genre and a running time do not go out
         // of date the way a category listing does, and offline this is the
         // only version of them there is.
@@ -162,8 +175,12 @@ export async function openVodDetail(streamId: number): Promise<void> {
         // is still the best answer available.
         if (result.ok) {
             info = result.data;
+            // Keyed by stream id, which the sweep pool keeps unique across
+            // providers (`sweep-plan.ts`'s dedup rule), so a foreign movie's
+            // detail can share this in-session map safely — only the
+            // *storage* namespace has to be its owner's.
             vodMemory.setDetail(streamId, info, now);
-            void saveStoredDetail('vod', streamId, { fetchedAt: now, data: info });
+            void saveStoredDetail(prefix, streamId, { fetchedAt: now, data: info });
         }
     }
 
@@ -187,13 +204,14 @@ export function closeVodDetail(): void {
  * snapshot ever built before this phase).
  */
 export async function playVod(streamId: number): Promise<void> {
-    const item = vodMemory.findItem(streamId);
+    const foreign = foreignVodItem(streamId);
+    const item = vodMemory.findItem(streamId) ?? foreign?.item;
     if (!item) return;
-    const account = await resolveActiveXtreamSource();
+    const account = foreign?.account ?? (await resolveActiveXtreamSource());
     if (!account) return;
-    setCachedVodSource(account.source);
+    if (!foreign) setCachedVodSource(account.source);
 
-    const categoryName = vodCategoryName(item.categoryId);
+    const categoryName = foreign?.categoryName ?? vodCategoryName(item.categoryId);
     const row = vodItemToRow(item, account.source, categoryName);
     setActiveChannel({
         id: row.id,
