@@ -705,12 +705,11 @@
                             </button>
                         </div>
 
-                        <!-- One search box for Live and Radio: the two views hold
-                             disjoint row sets but the same kind of row, so
-                             `search/setQueryChannels` reads which one is on screen
-                             and scopes itself (state/search.actions.ts) rather than
-                             mounting a second input. The list/grid switch inside it
-                             stays Live-only — Radio has no grid layout to offer. -->
+                        <!-- One search box for Live and Radio: same kind of row, two
+                             disjoint sets, so `search/setQueryChannels` scopes itself
+                             from the view on screen (state/search.actions.ts) instead
+                             of mounting a second input. The list/grid switch inside
+                             stays Live-only — Radio has no grid to offer. -->
                         <div class="catalog-search" data-if="view.live.active || view.radio.active" data-testid="live-search">
                             <input
                                 type="text"
@@ -1563,12 +1562,11 @@
                                  left the <video> in a `display: none` pane: audio only, no
                                  picture, and nothing to fullscreen.
 
-                                 Every view now shows the pane on the Movies/TV Shows rule —
-                                 only while something is actually playing. An empty player
-                                 beside a list is noise, and on a fresh boot it was a lie:
-                                 `player.active` is persisted, so it named a channel the
-                                 restored session never attached. `playerPaneVisible`
-                                 (state/player.selectors.ts) is that distinction. -->
+                                 Every view now uses that same rule: no pane unless something
+                                 plays. On a boot it was worse than noise — `player.active`
+                                 is persisted, so the pane named a channel the restored
+                                 session never attached. `playerPaneVisible`
+                                 (state/player.selectors.ts) knows the difference. -->
                             <div
                                 class="now-playing"
                                 data-if="playerPaneVisible"
@@ -1901,13 +1899,10 @@
                                              picture collapses, the visualizer takes the
                                              pane. Not offered in Radio, which has no
                                              picture to give up in the first place, and no
-                                             longer offered in Live, where it was only ever
-                                             distracting beside the channel list. It does
-                                             still appear in Live while the mode is *on* —
-                                             the preference persists, so a viewer who
-                                             switched it on in Categories (or before it left
-                                             Live) must keep a visible way back to the
-                                             picture. -->
+                                             longer in Live, where it only distracted. It
+                                             does still show there while the mode is *on*:
+                                             the preference persists, so it must always
+                                             carry its own way back to the picture. -->
                                         <button
                                             type="button"
                                             class="icon-btn"
@@ -1935,13 +1930,10 @@
                                             <button type="button" class="btn" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
                                                 {{ strings.list.playerFullscreen }}
                                             </button>
-                                            <!-- No Stop/Play button here: the preview's own
-                                                 <video controls> already carries one, and the
-                                                 audio-only pane toggles playback when tapped
-                                                 (.radio-now-playing above). A third copy of the
-                                                 same control was clutter — `player/togglePlayback`
-                                                 and `player.paused` stay, both still used by
-                                                 those two surfaces. -->
+                                            <!-- No Stop/Play button: `<video controls>` carries
+                                                 one and .radio-now-playing toggles on tap, so a
+                                                 third copy was clutter. player/togglePlayback
+                                                 and player.paused still serve both. -->
                                             <!-- Handoff (Phase 38, stone 9). The link is shown
                                                  as well as copied: most TV webviews have no
                                                  clipboard at all, and a button that silently
