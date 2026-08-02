@@ -193,6 +193,10 @@ export function fakeElectronBridge(proxyOrigin = 'http://127.0.0.1:52301'): Elec
             cancel: () => undefined,
             onEvent: () => () => undefined,
         },
+        // Absent by default, the way it is in any build whose main process
+        // came up without a transcode server: a spec that wants the desktop
+        // audio-transcode route sets this member on the returned object.
+        transcode: null,
     };
 }
 

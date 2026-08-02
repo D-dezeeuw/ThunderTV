@@ -3,6 +3,7 @@ import type { StorageAdapter } from '../storage/storage-adapter';
 import type { Capabilities } from './capabilities';
 import type { DownloadAdapter } from './download-adapter';
 import type { FileAdapter } from './file-adapter';
+import type { AudioTranscodeControl } from './transcode-adapter';
 
 /**
  * The single interface every environment-specific concern is injected
@@ -42,6 +43,14 @@ export interface PlatformAdapter {
      * to it when page-level fullscreen doesn't take.
      */
     windowFullscreen?: WindowFullscreenControl;
+    /**
+     * Present only on a host that can re-encode a film's audio while it
+     * plays — the Electron shell, which bundles ffmpeg. Absent everywhere
+     * else, which is what `src/player/transcode-fallback.ts` gates on. See
+     * `transcode-adapter.ts` for why this is an optional member rather than
+     * a `capabilities` flag.
+     */
+    audioTranscode?: AudioTranscodeControl;
     /**
      * Present only on the Electron adapter (`electron-platform.ts`), backed by
      * `window.electron.getDefaultConfig()`. See that bridge method's comment

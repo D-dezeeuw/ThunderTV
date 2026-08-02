@@ -141,6 +141,65 @@ stays at zero (or Firefox's `mozHasAudio === false`) publishes
 nothing — a false "no sound" over a stream that has sound is worse than
 silence about it.
 
+### …and what the desktop does about it instead (`transcode-fallback.ts`, `transcode-engine.ts`)
+
+A message is the best a *browser* can do. The desktop build owns a main
+process, so `transcode-fallback.ts` answers the same verdict by playing the
+film again with its audio re-encoded — `-c:v copy -c:a aac`, video untouched,
+only a couple of hundred kbit/s actually through an encoder
+(`desktop/transcode.mjs` runs it; `src/core/platform/transcode-adapter.ts` is
+the seam). AC-3, E-AC-3, DTS and TrueHD are all covered by that one
+mechanism, because none of them are special — they are simply "not AAC".
+
+The flow is a fallback, never a pre-emptive route: the film plays directly
+first, exactly as before, and only the detector above triggers a restart —
+at the second it had reached, with `playerTranscodingAudio` shown for the few
+seconds it takes. Metadata is not consulted, because a panel's
+`get_vod_info` audio codec is wrong often enough that trusting it would send
+files that play fine down a slower path. One attempt per film
+(`attemptedFor`): if the transcode fails, the direct stream is re-attached —
+picture back, no sound — under `playerNoAudioDecodedTranscodeFailed`, which
+says both halves. A *fix* that fails must never be worse than the bug.
+
+`transcode-engine.ts` plays the result through MediaSource rather than
+`video.src`, and that is the difference between "sound works" and "this is a
+film". ffmpeg's fragmented MP4 comes down a pipe with no `Content-Length`,
+no byte ranges and a zero `mvhd` duration, so a `<video>` handed it directly
+treats it as a live feed: no duration, no usable scrub bar, nowhere to jump.
+MediaSource gets `duration` from what ffmpeg probed off the real file, gets
+`timestampOffset` set to each restart's position (so `currentTime` is a
+position in the *film*), and turns a seek outside the buffer into a new
+`/stream?t=` — one `-ss` keyframe scan, no streaming through everything in
+between. Inside the buffered window a seek is the browser's own and free.
+Buffer limits are deliberate and small (60 s ahead, 30 s behind): a copied 4K
+video stream is hundreds of megabytes a minute, MSE's quota is not, and *not
+reading* is the entire flow-control mechanism — the socket stalls, ffmpeg's
+write blocks, and the provider stops being read from.
+
+`transcode-stream.ts` opens each stream and reads its head before the
+element sees a byte of it, which is what keeps a failure reportable:
+ffmpeg's own errors come back as an HTTP status, and a status can be turned
+into a sentence — once a media element is consuming a body there is nothing
+left to say to anyone.
+
+Two known edges, both stated rather than hidden: `-ss` lands on the keyframe
+at or before the requested second, so a seek can resume up to one GOP early
+(never late, so nothing is skipped); and only H.264 video is taken, since
+`mp4-init.ts` builds its `addSourceBuffer()` codec string from the `avcC`
+box and declines anything it cannot name — HEVC does not play in Chromium
+today with or without this route. `position.ts` keeps working across the
+switch: `transcode-fallback.ts` re-arms the position monitor under the same
+`streamKey` the direct attempt used, so resume does not care which route
+played the film. The stream-health indicator, by contrast, stays off while
+transcoding on purpose: what the element would be reporting on is a local
+pipe, and crediting its stalls to the provider's feed would poison the very
+score that picks between variants (`src/health/README.md`).
+
+**Live is out of scope, deliberately.** A live channel reaches the element
+through mpegts.js, has no duration to seek in, and routinely carries MPEG-2
+video that `-c:v copy` cannot put into an MP4 anything will play. Live keeps
+the message.
+
 The state/UI stage this section used to describe as "later" is
 `src/state/player-tracks.ts`/`player-tracks.actions.ts` (`state/README.md`'s
 module table). `registerTrackSync()` there is the one piece that reaches

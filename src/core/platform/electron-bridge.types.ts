@@ -61,6 +61,25 @@ export interface ElectronBridge {
      * and `desktop/main.mjs` for the implementation on the other.
      */
     readonly downloads: ElectronDownloadBridge;
+    /**
+     * Where the main process's audio transcoder is listening, and the token
+     * every request to it must carry — `null` in a build whose transcode
+     * server did not start (no bundled ffmpeg, or a port that would not
+     * bind), which the renderer reads as "behave like the web build".
+     *
+     * Two constants rather than a method: the renderer builds `/stream`
+     * URLs itself and gives them to `fetch`/MediaSource, so a film's bytes
+     * never touch IPC. See `desktop/transcode.mjs`, and
+     * `src/core/platform/transcode-adapter.ts` for this side of it.
+     */
+    readonly transcode: ElectronTranscodeBridge | null;
+}
+
+export interface ElectronTranscodeBridge {
+    /** `http://127.0.0.1:<port>`, loopback-only. */
+    readonly origin: string;
+    /** Per-session, and required: this server hands an arbitrary URL to a subprocess, so it does not answer an untokened caller. */
+    readonly token: string;
 }
 
 export interface ElectronDownloadBridge {

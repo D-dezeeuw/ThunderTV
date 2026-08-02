@@ -128,6 +128,26 @@ activation before `requestFullscreen()` ever ran — which is why
 `desktop/preload.cjs` mirrors the main process's fullscreen state into a
 local cache rather than answering over IPC on demand.
 
+## `audioTranscode` — the second optional member
+
+`PlatformAdapter.audioTranscode` (`transcode-adapter.ts`) is present only on
+the Electron adapter, and only when its main process actually started a
+transcode server (`window.electron.transcode` non-null). It exists because
+Chromium has no AC-3/E-AC-3/DTS decoder and a desktop host does: `open()`
+returns the `Response` of a localhost stream carrying the same film with its
+audio re-encoded, which `src/player/transcode-engine.ts` pumps into
+MediaSource. The fetch lives here rather than in `src/player/` for the
+ordinary reason (Feature 03.9), and deliberately not through
+`WebHttpAdapter`: that layer exists to classify and *complete* a request,
+and this one is an endless body read for as long as the film lasts.
+
+No matching `capabilities` flag, on purpose. The member's presence is the
+capability — a boolean beside it would be a second copy of "is the member
+there" with nothing keeping the two honest, which is exactly the drift
+`durableStorage`'s live getter avoids. Same reasoning as
+`windowFullscreen`; a UX-level *policy* question (should the CORS warning
+show?) is what `capabilities` is for.
+
 ## Testing against `FakePlatform`
 
 `fake-platform.ts` is test-only (never imported outside `*.spec.ts` —

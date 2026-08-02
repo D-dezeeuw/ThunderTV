@@ -21,4 +21,7 @@ export const nlPlayerTracks = {
     playerNoDataYet: 'na 20 seconden nog geen afspeelbare gegevens',
     playerNoAudioDecoded:
         'Geen geluid — dit apparaat heeft geen decoder voor de audio van dit bestand (meestal Dolby Digital/AC-3, E-AC-3 of DTS). Het beeld speelt gewoon door.',
+    playerTranscodingAudio: 'Geluid herstellen — audio van dit bestand wordt omgezet…',
+    playerNoAudioDecodedTranscodeFailed:
+        'Geen geluid — dit apparaat heeft geen decoder voor de audio van dit bestand (meestal Dolby Digital/AC-3, E-AC-3 of DTS) en omzetten lukte hier ook niet. Het beeld speelt gewoon door.',
 } as const;
