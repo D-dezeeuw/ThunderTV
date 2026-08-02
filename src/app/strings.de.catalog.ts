@@ -13,8 +13,8 @@ export const deCatalog = {
         retry: 'Erneut versuchen',
         offline: 'Gespeicherte Daten — der Anbieter war nicht erreichbar. Heruntergeladene Titel laufen weiterhin.',
         variantsToggle: 'Andere Versionen dieser Kategorie',
-        noSoundWarning: 'Kein Ton auf diesem Gerät — für die Tonspur dieses Titels (Dolby oder DTS) gibt es hier keinen Decoder. Das Bild läuft normal.',
-        noPictureWarning: 'Dieses Gerät hat keinen Decoder für das Video dieses Titels; er läuft möglicherweise gar nicht.',
+        noSoundWarning: 'Kein Ton auf diesem Gerät — für die Tonspur dieses Titels (Dolby oder DTS) gibt es hier keinen Decoder.',
+        noPictureWarning: 'Kein Decoder für das Video dieses Titels auf diesem Gerät; er läuft möglicherweise nicht.',
     },
 
     movies: {

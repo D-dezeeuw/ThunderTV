@@ -103,9 +103,24 @@ console.log(`check-dist: OK — no devtools symbols found in ${jsFiles.length} b
 // 17.8 KiB while transfer moved the wrong way by 0.8. If this needs to come
 // back down, the honest target is the eager Codex/handoff action modules,
 // which are registered at boot for UI nobody reaches before Settings.
+//
+// Raised again, 101 → 103, for the no-sound work (HEVC transcode fix +
+// codec badges/markers), which costs 2.0 KiB gz eager: the marker store and
+// codec judgement are read synchronously while catalog rows are published,
+// so there is no lazy seam to hide them behind. Two things were measured
+// rather than assumed before moving the number. Trimming the feature's own
+// prose — registry descriptions, warning copy — bought 0.13 KiB, i.e.
+// nothing; and stubbing out `registerCodexActions()`/
+// `registerCodexLibraryActions()` and their two boot tasks drops the eager
+// bundle to 98.4 KiB, so the Codex path named above is worth **4.3 KiB
+// gz** — more than twice what this feature costs, and still the honest way
+// back under 101. It is a piece of work in its own right (a lazy shim per
+// `data-fn`, plus deciding whether the two boot tasks may wait for Settings
+// to open), which is why it is written down here instead of rushed in
+// alongside an unrelated fix.
 const BUDGETS = {
     startupJsRaw: 400 * 1024,
-    startupJsGzip: 101 * 1024,
+    startupJsGzip: 103 * 1024,
     htmlRaw: 300 * 1024,
     htmlGzip: 60 * 1024,
     cssRaw: 100 * 1024,

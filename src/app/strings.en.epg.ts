@@ -42,7 +42,7 @@ export const enEpg = {
         /** Settings -> Playback. Off by default: a catalog with entries quietly missing is a worse surprise than a badged entry. */
         hideNoAudioTitles: 'Hide titles with no sound on this device',
         hideNoAudioTitlesHelp:
-            'Only hides titles this device already played without sound (and, on the desktop, could not convert either). Off by default — the warning on a title\u2019s detail page is always shown.',
+            'Only hides titles this device already played without sound. Off by default — a title\u2019s detail page always shows the warning.',
         showHandoffButton: 'Show "Continue on another device" button',
         showHandoffButtonHelp:
             'Adds a button to the player bar for handing the current stream off to another screen. Off by default.',

@@ -32,7 +32,7 @@ export const PLAYER_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'player',
         persisted: false,
         description:
-            "Transient: what the last desktop audio-transcode attempt found — the file's video/audio codecs, and on failure the HTTP status plus the tail of ffmpeg's stderr. Shown in the debug panel only (the player bar keeps its one-sentence notice), because the alternative was a bug report that could only say \"it failed\".",
+            "Transient: what the last desktop audio-transcode attempt found — the codecs, and on failure the HTTP status plus ffmpeg's stderr tail. Debug panel only; the player bar keeps its one-sentence notice.",
     },
     [PLAYER_SUBTITLE_SEARCH]: {
         owner: 'player',

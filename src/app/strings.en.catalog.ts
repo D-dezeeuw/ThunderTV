@@ -24,8 +24,8 @@ export const enCatalog = {
         /** The expand triangle on a category that a provider ships in several country/editorial versions. State is carried by aria-expanded, so one label covers both. */
         variantsToggle: 'Other versions of this category',
         /** Shown on the detail pane before play, from panel metadata or from what this device learned the last time it tried (`src/player/codec-support.ts`). A warning, never a block: the metadata is wrong often enough that refusing to play on it would break films that work. */
-        noSoundWarning: "No sound on this device — this title's soundtrack (Dolby or DTS) has no decoder here. The picture plays normally.",
-        noPictureWarning: "This device has no decoder for this title's video, so it may not play at all.",
+        noSoundWarning: "No sound on this device — this title's soundtrack (Dolby or DTS) has no decoder here.",
+        noPictureWarning: "No decoder for this title's video on this device — it may not play.",
     },
 
     movies: {

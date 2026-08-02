@@ -48,19 +48,15 @@ const DECODABLE_AUDIO = new Set(['aac', 'mp4a', 'mp3', 'mp2', 'opus', 'vorbis', 
  * `MediaSource.isTypeSupported()` actually wants. Levels are deliberately
  * middling (H.264 High 4.0, HEVC Main L93): a device that decodes the family
  * at all decodes these, and a level-specific "no" would be a wrong answer to
- * the question being asked.
+ * the question being asked. Keyed by ffprobe's `codec_name` spellings, which
+ * is the only vocabulary a panel ever sends — not the MP4 fourccs.
  */
 const VIDEO_PROBES: Record<string, string> = {
     h264: 'video/mp4; codecs="avc1.640028"',
-    avc: 'video/mp4; codecs="avc1.640028"',
-    avc1: 'video/mp4; codecs="avc1.640028"',
     hevc: 'video/mp4; codecs="hvc1.1.6.L93.B0"',
     h265: 'video/mp4; codecs="hvc1.1.6.L93.B0"',
-    hvc1: 'video/mp4; codecs="hvc1.1.6.L93.B0"',
     vp9: 'video/mp4; codecs="vp09.00.10.08"',
-    vp09: 'video/mp4; codecs="vp09.00.10.08"',
     av1: 'video/mp4; codecs="av01.0.05M.08"',
-    av01: 'video/mp4; codecs="av01.0.05M.08"',
 };
 
 /** Panels write `AC-3`, `ac3`, `E-AC-3 (Dolby Digital+)` and worse; only the first token, lower-cased, is ever meaningful. */

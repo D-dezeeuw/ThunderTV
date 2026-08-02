@@ -12,6 +12,6 @@ export const SETTINGS_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         owner: 'settings',
         persisted: true,
         description:
-            'Hide Movies/TV Shows titles this device has already proved come out silent (src/player/no-audio-marks.ts). Off by default, deliberately: filtering a catalog on evidence the viewer cannot see is worse than badging it, and the badge on the detail pane is the always-on half of the feature.',
+            'Hide Movies/TV Shows titles this device already proved come out silent (src/player/no-audio-marks.ts). Off by default: filtering on evidence the viewer cannot see is worse than badging.',
     },
 };
