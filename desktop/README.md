@@ -77,6 +77,13 @@ goes red for an app-wide bug no change to `desktop/` could fix stops being
 worth running. There are two such notes today; see the repo-root
 `CLAUDE.md` table entry for where they live.
 
+The technique behind all of this — Xvfb, CDP over Node's built-in
+`WebSocket`, and the packaged-vs-source path table that explains both bugs
+above — is written up as an agent skill in
+`.claude/skills/electron-testing/`. Read that before changing
+`electron-builder.yml`'s allowlists or any `__dirname`-relative path in
+`main.mjs`.
+
 ## Packaging
 
 ```bash
