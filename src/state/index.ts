@@ -8,6 +8,7 @@ import { initEpgSettingsState } from './epg-settings';
 import { registerEpgSettingsActions } from './epg-settings.actions';
 import { initFavoritesState } from './favorites';
 import { registerFavoritesActions } from './favorites.actions';
+import { registerEpgRowSelectors } from './epg-rows.selectors';
 import { registerFavoritesSelectors } from './favorites.selectors';
 import { initCodexState } from './codex';
 import { registerCodexActions } from './codex.actions';
@@ -165,6 +166,7 @@ export function registerSelectors(): void {
     registerImportSelectors();
     registerPlayerSelectors();
     registerFavoritesSelectors();
+    registerEpgRowSelectors();
     registerUiSelectors();
     registerListSelectors();
     registerLiveSelectors();

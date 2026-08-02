@@ -89,7 +89,7 @@ describe('publishListWindow row identity', () => {
         expect(published()[0]).toBe(first[0]);
     });
 
-    it('still re-derives when the underlying row is replaced', () => {
+    it('re-derives into the same object when the underlying row is replaced', () => {
         const before = [row('a', { logo: 'http://example.test/one.png' })];
         publishListWindow(before, 0, 0);
         tick();
@@ -98,7 +98,9 @@ describe('publishListWindow row identity', () => {
         const after = [row('a', { logo: 'http://example.test/two.png' })];
         publishListWindow(after, 0, 0);
         tick();
-        expect(published()[0]).not.toBe(first);
+        // Same object, new value: the clone bound to it only re-scopes when
+        // its index moves, so a fresh object here would never be read.
+        expect(published()[0]).toBe(first);
         expect(published()[0]?.logo).toBe('http://example.test/two.png');
     });
 });

@@ -44,8 +44,6 @@ export const enEpg = {
             'Adds a button to the player bar for handing the current stream off to another screen. Off by default.',
     },
     list: {
-        /** Prefixes the upcoming programme on a channel row: "Then · The Nine O'Clock News". */
-        epgNextPrefix: 'Then ·',
         streamLikelyDead: 'This feed has failed most times it was tried recently. It may still work — this is a guess from your own playback history.',
     },
     /** Complete top-level blocks, spread as one line into `strings.<locale>.ts` — that file has no room left for a nested block of its own. */

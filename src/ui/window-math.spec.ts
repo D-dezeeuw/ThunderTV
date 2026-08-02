@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampScrollTop, computeVisibleCount, computeWindow } from './window-math';
+import { clampScrollTop, computeVisibleCount, computeWindow, resolveScrollTarget } from './window-math';
 
 describe('computeWindow() (Feature 08.1.9)', () => {
     it('computes the standard mid-list window with overscan on both sides', () => {
@@ -146,5 +146,46 @@ describe('clampScrollTop() in the grid layout', () => {
 
     it('rounds a partial last line up, so its tiles stay reachable', () => {
         expect(clampScrollTop(999_999, 10, 300, 0, 4)).toBe(3 * 300);
+    });
+});
+
+/**
+ * "When new channels load in, the list scrolls on its own and fights me."
+ * Appending rows must leave the viewer exactly where they are — including
+ * where they have got to *since* the last scroll event this module saw,
+ * which is what the container's live position carries and the controller's
+ * own last-known value does not.
+ */
+describe('resolveScrollTarget()', () => {
+    it('leaves the DOM alone on growth, adopting where the container really is', () => {
+        expect(resolveScrollTarget({ current: 1200, live: 1560, growth: true })).toEqual({
+            scrollTop: 1560,
+            writeToDom: false,
+        });
+    });
+
+    it('falls back to the controller position when there is no measurable container', () => {
+        expect(resolveScrollTarget({ current: 1200, live: null, growth: true })).toEqual({
+            scrollTop: 1200,
+            writeToDom: false,
+        });
+    });
+
+    it('sends a replacement to the top, and says so', () => {
+        expect(resolveScrollTarget({ current: 1200, live: 1560, growth: false })).toEqual({
+            scrollTop: 0,
+            writeToDom: true,
+        });
+    });
+
+    it('honours an explicitly requested position — including 0', () => {
+        expect(resolveScrollTarget({ current: 5, live: 5, requested: 900, growth: false })).toEqual({
+            scrollTop: 900,
+            writeToDom: true,
+        });
+        expect(resolveScrollTarget({ current: 5, live: 5, requested: 0, growth: true })).toEqual({
+            scrollTop: 0,
+            writeToDom: true,
+        });
     });
 });

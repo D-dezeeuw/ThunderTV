@@ -26,7 +26,6 @@ export const nlEpg = {
         showHandoffButtonHelp: 'Voegt een knop toe aan de spelerbalk om de huidige stream over te dragen naar een ander scherm. Standaard uit.',
     },
     list: {
-        epgNextPrefix: 'Straks ·',
         streamLikelyDead: 'Deze feed is de laatste tijd meestal mislukt. Hij kan nog steeds werken — dit is een inschatting op basis van uw eigen kijkgeschiedenis.',
     },
     /** Complete top-level blocks, spread as one line into `strings.<locale>.ts` — that file has no room left for a nested block of its own. */

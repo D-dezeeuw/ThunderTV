@@ -26,7 +26,6 @@ export const deEpg = {
         showHandoffButtonHelp: 'Fügt der Player-Leiste eine Schaltfläche hinzu, um den aktuellen Stream an ein anderes Gerät zu übergeben. Standardmäßig aus.',
     },
     list: {
-        epgNextPrefix: 'Danach ·',
         streamLikelyDead: 'Dieser Feed ist zuletzt meistens fehlgeschlagen. Er kann trotzdem funktionieren — dies ist eine Schätzung aus Ihrem eigenen Wiedergabeverlauf.',
     },
     /** Complete top-level blocks, spread as one line into `strings.<locale>.ts` — that file has no room left for a nested block of its own. */

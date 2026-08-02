@@ -79,6 +79,14 @@ action, because nothing user-triggered causes the write:
   rule intact without a fourth ESLint carve-out). Anything *derived* from
   the window (row count, empty-list flag) belongs in a `computed()` instead
   (Feature 05.6.4) — none exists yet, nothing has needed one.
+  **Each row object published here is stable per row id and updated in
+  place**, and its enrichment fields are always written (`null`/`0`, never
+  omitted). Both are load-bearing, not style: a keyed `data-each` clone
+  captures `item = array[index]` when it binds and is only re-scoped when
+  its *index* changes, and a binding whose delta path is `undefined` is
+  skipped entirely — so a fresh object, or an omitted field, at an unchanged
+  index is never read and the row keeps the line it was bound with. See
+  `list-publish.ts`'s header and `list-publish.row-join.spec.ts`.
 
 ## Naming rules
 
@@ -579,6 +587,28 @@ layer:
   already-on-TV case where no `hashchange` fires. Programme blocks reach
   the same action (`guide/openProgram`), so clicking anywhere on a row —
   logo, name, or a block — lands on TV with the channel playing.
+
+### Starred and Recents get the same line, through a map
+
+`epg-rows.selectors.ts` publishes `computed('epg.nowByRow', …)` — row id →
+what is on now — and those two lists read `epg.nowByRow[item.id]` rather
+than carrying enriched rows of their own. Three reasons, all of which
+generalise to any future list that wants the line:
+
+- **It joins by id.** A row can only ever render its own programme, whatever
+  the engine does with the clone (see the `list.visibleRows` note above).
+- **It leaves the row arrays alone.** `favorites.rows`/`player.zapHistory`
+  are keyless `data-each`es, so republishing either on the 30s beat would
+  destroy and rebuild every row — twice a minute, under whatever the viewer
+  had focused. Only the line's own bindings re-run.
+- **`player.zapHistory` is persisted.** Enriching the snapshots in place
+  would write programme titles into storage that are wrong within the hour.
+
+A `computed()` *assigns* its value rather than merging it, so an entry
+disappears with its row and none of the map-shaped-key ceremony applies. A
+`FavoriteRecord`/`ActiveChannelSnapshot` carries no `tvgId`, so the guide id
+comes from the channel row wearing the same id (variants included); an id
+that resolves to nothing is absent from the map, and the row shows no line.
 
 ## The persistence bridge, in one paragraph
 

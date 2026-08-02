@@ -71,6 +71,48 @@ export function computeVisibleCount(viewportHeight: number, rowH: number): numbe
     return Math.max(1, Math.ceil(Math.max(viewportHeight, 0) / rowH));
 }
 
+export interface ScrollTargetInput {
+    /** The controller's own last-known position. */
+    current: number;
+    /** Where the container really is at this instant, or `null` when there is nothing measurable — no container yet, or one hidden by a `data-if` (which reports 0 rather than where it will be). */
+    live: number | null;
+    /** A position the caller named explicitly: a restored session, a group jump. */
+    requested?: number | undefined;
+    /** This publish *appends* to the set already on screen rather than replacing it. */
+    growth: boolean;
+}
+
+export interface ScrollTarget {
+    scrollTop: number;
+    /** Whether the container's own `scrollTop` may be assigned. */
+    writeToDom: boolean;
+}
+
+/**
+ * Where a `setRows()` publish leaves the viewer — the whole decision, pure,
+ * so it can be reasoned about without a container.
+ *
+ * The growth case is the one with history behind it. Appending more channels
+ * (the chunked source load, once per `CHUNK_ROWS`) used to re-assign the
+ * container's `scrollTop` from the controller's last-known value. That value
+ * is only as fresh as the last `scroll` event this module processed, so an
+ * in-flight gesture — inertial scrolling on a touch screen, a held wheel —
+ * was repeatedly yanked back to where it had been a frame or two earlier,
+ * once per page, for the whole load. Growth cannot move a row that is
+ * already on screen (every new row is past the end), so there is nothing to
+ * re-anchor and nothing to assign: adopt whatever position the container is
+ * really at and leave the DOM alone.
+ */
+export function resolveScrollTarget(input: ScrollTargetInput): ScrollTarget {
+    // An explicit position is the caller naming one, which outranks growth —
+    // the two never co-occur today, but "the caller asked" is the stronger
+    // signal of the pair.
+    if (input.requested !== undefined) return { scrollTop: input.requested, writeToDom: true };
+    if (input.growth) return { scrollTop: input.live ?? input.current, writeToDom: false };
+    // A replacement is a new list: it starts at the top, and says so.
+    return { scrollTop: 0, writeToDom: true };
+}
+
 /** Clamps a candidate `scrollTop` into the real scrollable range for `totalRows` at `rowH`, given the current `viewportHeight` (Feature 08.1.8/08.6.5) — used both for live scroll events and for restoring a persisted position against a list that may have shrunk since it was saved. `columns > 1` shortens the extent proportionally, since a grid packs the same rows into fewer lines. */
 export function clampScrollTop(
     scrollTop: number,

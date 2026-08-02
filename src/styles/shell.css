@@ -351,6 +351,15 @@
     color: var(--color-text-dim);
 }
 
+/* What's on now (state/epg-rows.selectors.ts). Full text colour, unlike the
+   group line above it: it is the one line here that changes, and it is what
+   the viewer is actually choosing between. Absent entirely for a channel
+   with no guide data — never a placeholder. */
+.recent-zap-history__epg {
+    font-size: var(--text-xs);
+    color: var(--color-text);
+}
+
 .recent-zap-history__badge {
     flex: none;
     padding: var(--space-1) var(--space-2);
