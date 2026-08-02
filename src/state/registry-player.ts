@@ -1,4 +1,4 @@
-import { PLAYER_PLAYBACK_ERROR, PLAYER_PLAYBACK_NOTICE, PLAYER_STREAM_HEALTH } from './player';
+import { PLAYER_PLAYBACK_ERROR, PLAYER_PLAYBACK_NOTICE, PLAYER_STREAM_HEALTH, PLAYER_TRANSCODE_DIAGNOSTIC } from './player';
 import type { KeyMeta } from './registry';
 import { PLAYER_SUBTITLE_SEARCH } from './subtitle-search';
 
@@ -27,6 +27,12 @@ export const PLAYER_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         persisted: false,
         description:
             'Transient: a stream that plays but is missing something — today only "the picture runs, no audio is being decoded" (src/player/audio-output.ts), which is what an AC-3/E-AC-3/DTS movie looks like in a browser. Separate from playbackError because nothing failed: the title is watchable, and the bar says so in its own words rather than in red.',
+    },
+    [PLAYER_TRANSCODE_DIAGNOSTIC]: {
+        owner: 'player',
+        persisted: false,
+        description:
+            "Transient: what the last desktop audio-transcode attempt found — the codecs, and on failure the HTTP status plus ffmpeg's stderr tail. Debug panel only; the player bar keeps its one-sentence notice.",
     },
     [PLAYER_SUBTITLE_SEARCH]: {
         owner: 'player',

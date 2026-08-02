@@ -83,6 +83,7 @@ export const nl = {
             radioCount: 'Radiozenders',
             storage: 'Opslaglaag',
             platform: 'Platform',
+            transcode: 'Laatste audioconversie',
         },
     },
 

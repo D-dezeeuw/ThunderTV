@@ -115,6 +115,8 @@ export interface SeriesDetail {
     year: string | null;
     rating: string | null;
     rows: SeriesDetailRow[];
+    /** Same per-device warning as `VodDetail`'s, read off the first episode that names an audio codec — a series is encoded as one batch far more often than not. */
+    audioWarning: string | null;
 }
 
 /** The rendered half of a next-episode offer: `label` is preformatted ("S02E01 — Pilot") so the markup binds one string and the season/episode numbers stay out of the template. `episodeId` is what `series/playNext` replays. */

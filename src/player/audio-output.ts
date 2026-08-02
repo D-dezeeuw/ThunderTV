@@ -1,4 +1,7 @@
+import { PLAYER_ACTIVE } from '../state/player';
 import { reportPlaybackNotice } from '../state/player.actions';
+import { get } from '../state/typed';
+import { clearNoAudioMark, markedContentId } from './no-audio-marks';
 import { handleSilentAudio } from './transcode-fallback';
 
 /**
@@ -89,6 +92,11 @@ function probe(video: HTMLVideoElement): void {
     if (verdict === 'unknown') return;
     clearTimers();
     if (verdict !== 'silent') {
+        // Audible: drop anything this device learned about the title on a
+        // previous attempt (`no-audio-marks.ts`). A file can be replaced with
+        // a different encode, and a stale warning is the one failure mode a
+        // badge nobody can clear would have.
+        clearNoAudioMark(markedContentId(get(PLAYER_ACTIVE)));
         reportPlaybackNotice(null);
         return;
     }

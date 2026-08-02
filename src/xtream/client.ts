@@ -1,6 +1,6 @@
 import { getPlatform } from '../core/platform';
 import { captureRawResponse } from '../core/raw-capture';
-import { asArray, asBool01, asNumber, asString } from './coerce';
+import { asArray, asBool01, asNumber, asString, codecName } from './coerce';
 import { classifyXtreamHttpFailure, looksLikeHtmlLoginPage, type XtreamError } from './errors';
 import { coerceSeriesInfo } from './series-coerce';
 import type {
@@ -209,6 +209,11 @@ function normalizeVodInfo(payload: Record<string, unknown>): XtreamVodInfo {
     const imdbId = /^tt\d{5,10}$/.test(asString(info['imdb_id'])?.trim() ?? '') ? asString(info['imdb_id'])?.trim() : undefined;
     const tmdbRaw = asNumber(info['tmdb_id']) ?? asNumber(info['tmdb']);
     const tmdbId = tmdbRaw !== undefined && tmdbRaw > 0 ? tmdbRaw : undefined;
+    // `info.video`/`info.audio` are the panel's own ffprobe blocks. Panels
+    // that have nothing send `[]` (or omit them), which `asRecord()` flattens
+    // to `{}` — hence "absent" rather than a guess.
+    const videoCodec = codecName(info['video']);
+    const audioCodec = codecName(info['audio']);
 
     return {
         ...(plot !== undefined ? { plot } : {}),
@@ -217,6 +222,8 @@ function normalizeVodInfo(payload: Record<string, unknown>): XtreamVodInfo {
         ...(releaseDate !== undefined ? { releaseDate } : {}),
         ...(imdbId !== undefined ? { imdbId } : {}),
         ...(tmdbId !== undefined ? { tmdbId } : {}),
+        ...(videoCodec !== undefined ? { videoCodec } : {}),
+        ...(audioCodec !== undefined ? { audioCodec } : {}),
     };
 }
 

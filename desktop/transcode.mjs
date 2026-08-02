@@ -42,6 +42,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PLAYER_USER_AGENT } from '../scripts/cloudflare-cors-proxy.mjs';
 
 const desktopDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -85,10 +86,21 @@ export function resolveFfmpegPath() {
     return null;
 }
 
-/** Reconnect options are options of the *http* protocol: passing them for any other input makes ffmpeg exit with "Option reconnect not found." */
+/**
+ * Reconnect options are options of the *http* protocol: passing them for any
+ * other input makes ffmpeg exit with "Option reconnect not found."
+ *
+ * `-user_agent` is on the same list, and is not cosmetic: ffmpeg introduces
+ * itself as `Lavf/<version>`, which a large share of Xtream panels answer
+ * with 403/458 — exactly the refusal the app's own requests have always
+ * sidestepped by going out as VLC (`PLAYER_USER_AGENT`, imported rather than
+ * copied). Two identities asking one panel for one film get two answers, and
+ * the viewer sees a film that plays but cannot be transcoded.
+ */
 function inputOptionsFor(src) {
     if (!/^https?:/i.test(src)) return [];
-    return ['-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5'];
+    // prettier-ignore
+    return ['-user_agent', PLAYER_USER_AGENT, '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5'];
 }
 
 /**

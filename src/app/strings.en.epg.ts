@@ -39,6 +39,10 @@ export const enEpg = {
     },
     /** Spread into `settings.playback` — that block is full too. */
     playback: {
+        /** Settings -> Playback. Off by default: a catalog with entries quietly missing is a worse surprise than a badged entry. */
+        hideNoAudioTitles: 'Hide titles with no sound on this device',
+        hideNoAudioTitlesHelp:
+            'Only hides titles this device already played without sound. Off by default — a title\u2019s detail page always shows the warning.',
         showHandoffButton: 'Show "Continue on another device" button',
         showHandoffButtonHelp:
             'Adds a button to the player bar for handing the current stream off to another screen. Off by default.',
@@ -50,7 +54,8 @@ export const enEpg = {
     topLevel: {
         guide: {
             nowLabel: 'Now',
-            detailEmpty: 'Select a programme to see its details here.',
+            noDescription: 'No description available for this programme.',
+            watchChannel: 'Watch this channel',
             earlier: 'Earlier',
             later: 'Later',
             backToNow: 'Back to now',

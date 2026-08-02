@@ -56,26 +56,16 @@ import {
 import { UI_SETUP_COMPLETE, UI_WIZARD_OPEN, UI_WIZARD_STEP } from './wizard';
 import { OVERFLOW_REGISTRY_ENTRIES } from './registry-overflow';
 import { PLAYER_REGISTRY_ENTRIES } from './registry-player';
+import { SETTINGS_REGISTRY_ENTRIES } from './registry-settings';
 /**
  * One source of truth for every Spektrum key's persistence class and owner
  * (Feature 05.1.7) — the persistence bridge (05.3) and the generated
- * reference doc (05.9) both read this, so a key can never drift between
- * "what actually persists" and "what the docs claim persists".
+ * reference doc (05.9) both read it, so a key can never drift between what
+ * persists and what the docs claim persists.
  */
 export interface KeyMeta {
-    owner:
-        | 'playlist'
-        | 'import'
-        | 'player'
-        | 'epg'
-        | 'settings'
-        | 'ui'
-        | 'list'
-        | 'favorites'
-        | 'vod'
-        | 'series'
-        | 'search'
-        | 'downloads';
+    // prettier-ignore
+    owner: 'playlist' | 'import' | 'player' | 'epg' | 'settings' | 'ui' | 'list' | 'favorites' | 'vod' | 'series' | 'search' | 'downloads';
     persisted: boolean;
     /** Feature 05.8.5: the bulk-data guard's per-key ceiling, for keys holding an array. */
     maxItems?: number;
@@ -396,4 +386,5 @@ export const KEY_REGISTRY: Record<string, KeyMeta> = {
     },
     ...OVERFLOW_REGISTRY_ENTRIES,
     ...PLAYER_REGISTRY_ENTRIES,
+    ...SETTINGS_REGISTRY_ENTRIES,
 };

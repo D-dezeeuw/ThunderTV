@@ -21,7 +21,7 @@ repeated here, to avoid the two drifting apart.
 | `guide.channels` | epg | no | — | v1 | Live projection of the epgChannels/epgPrograms storage tables (guide-load.ts), exactly like playlist.sources projects the playlists table — never itself persisted, rebuilt at boot and after any ingest that wrote rows. |
 | `guide.loading` | epg | no | — | v1 | True while guide-load.ts is reading the EPG tables — transient. |
 | `guide.offsetMs` | epg | no | — | v1 | How far the Guide timetable window is shifted from "now", in ms (Phase 32). 0 means it tracks the clock. Not persisted: a returning user expects the guide to open on what is on now, not on wherever they had scrolled to yesterday. |
-| `guide.selectedKey` | epg | no | — | v1 | Which programme block is selected in the Guide grid ("<channelId>|<start>"), or null — view-local UI state, reset every boot. |
+| `guide.selectedKey` | epg | no | — | v1 | Which programme block is selected in the Guide grid ("<channelId>|<start>"), or null — view-local UI state, reset every boot. Non-null is also what opens the programme detail modal, so closing it (button, backdrop, Escape, TV Back) is a write of null; there is deliberately no second "modal open" flag to drift out of sync with the selection. |
 | `import.errorKind` | import | no | — | v1 | Classified failure kind of the last import attempt (Feature 07.4/07.7.6) — drives which retry affordance the UI offers. |
 | `import.errorMessage` | import | no | — | v1 | Human-readable message for the last import failure. |
 | `import.parsed` | import | no | — | v1 | Rows parsed so far in the in-flight import — a scalar counter, never the rows themselves (§5.8). |
@@ -51,6 +51,7 @@ repeated here, to avoid the two drifting apart.
 | `player.subtitleSearch` | player | no | — | v1 | Transient: the subtitle menu\'s "search online" panel — status, one message, and the pickable results (src/core/subtitles/). Cleared on every stream change. No maxItems: the value is an object, which the bulk guard does not inspect; subtitle-search.run.ts slices to SUBTITLE_RESULTS_CAP. |
 | `player.subtitleTracks` | player | no | 50 | v1 | Same role/lifecycle as player.audioTracks, for the subtitle-track popup. |
 | `player.trackMenu` | player | no | — | v1 | 'none' | 'audio' | 'subtitles' | 'visualizer' — which dock popup (if any) is open. 'visualizer' is Radio's preset picker, which shares this key so two popups can never be open at once (it publishes no track list of its own). Reset to 'none' on every player.active change (state/player-tracks.actions.ts's registerTrackSync()). |
+| `player.transcodeDiagnostic` | player | no | — | v1 | Transient: what the last desktop audio-transcode attempt found — the codecs, and on failure the HTTP status plus ffmpeg's stderr tail. Debug panel only; the player bar keeps its one-sentence notice. |
 | `player.variants` | player | no | 12 | v1 | The playing channel\'s alternate feeds (other qualities, a provider bundle\'s copy, catch-up) — rebuilt from the loaded catalog on every channel change, so never persisted: a stale copy would offer stream ids the provider may already have rotated. |
 | `player.visualizerPaused` | player | no | — | v1 | Whether the listener paused the Radio visualizer render loop — transient, always false on a fresh Radio visit. |
 | `player.visualizerPreset` | player | yes | — | v1 | Radio visualizer preference — \'auto\' (cycle every preset) or a specific preset id (a genre preset stays pinned). Chosen by the listener, never inferred from the audio. |
@@ -94,6 +95,7 @@ repeated here, to avoid the two drifting apart.
 | `settings.healthCleared` | settings | no | — | v1 | One-shot confirmation that the forget-stream-health button ran. |
 | `settings.healthDeadCount` | settings | no | — | v1 | How many of those score below the likely-dead threshold. Advisory: such rows are marked in the list, never removed. |
 | `settings.healthTrackedCount` | settings | no | — | v1 | How many feeds have accumulated playback evidence — Settings readout only, recomputed on demand from src/health/store.ts. |
+| `settings.hideNoAudioTitles` | settings | yes | — | v1 | Hide Movies/TV Shows titles this device already proved come out silent (src/player/no-audio-marks.ts). Off by default: filtering on evidence the viewer cannot see is worse than badging. |
 | `settings.liveCountry` | settings | yes | — | v1 | Country token the Live view keeps, matched against the "| NL |"-style prefix providers put on channels and categories. Empty string disables country filtering. |
 | `settings.liveDropJunk` | settings | yes | — | v1 | Drop event-slot placeholders (VIAPLAY 07 and friends), separator rows and adult entries from the Live view. On by default. |
 | `settings.liveEpgVerifiedOnly` | settings | yes | — | v1 | Live view strict mode — show only channels the Phase 31 EPG country catalog matched. Off by default; a not-yet-matched channel is far more often a catalog gap than an absent channel. |

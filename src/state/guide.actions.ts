@@ -1,4 +1,4 @@
-import { defineFn } from 'spektrum';
+import { defineFn, refs } from 'spektrum';
 import type { ChannelRow } from '../m3u/types';
 import { GUIDE_CHANNELS, GUIDE_OFFSET_MS, GUIDE_SELECTED_KEY, type GuideChannel } from './guide';
 import { buildLiveEpgIndex, matchGuideChannel } from './guide-live-join';
@@ -18,10 +18,16 @@ import { get, set } from './typed';
  */
 export function registerGuideActions(): void {
     /**
-     * A programme block is a way into its channel, not just a detail
-     * selector: picking one marks it selected *and* takes the viewer to the
-     * TV tab with that channel on. A grid cell that only filled a box below
-     * the grid gave a viewer who found what they wanted no way to watch it.
+     * A programme block opens the detail modal — what the programme is, on
+     * which channel, when, and how long — with watching it as the modal's
+     * own primary action.
+     *
+     * It used to start the channel outright. That answered the wrong
+     * question: the grid is what a viewer reads to *decide*, and a block
+     * that changes channel on touch makes browsing the guide impossible
+     * without interrupting whatever is playing. The channel cell still
+     * plays directly (`guide/playChannel`), so the row keeps both
+     * behaviours, one per half.
      *
      * One delegated click handler on the row container, reading the target's
      * own data attributes rather than binding per-block (mirrors
@@ -30,8 +36,26 @@ export function registerGuideActions(): void {
     defineFn('guide/openProgram', (el, _state, _delta, _value, event) => {
         const target = (event?.target as HTMLElement | undefined)?.closest<HTMLElement>('[data-program-key]') ?? el;
         const key = target.dataset['programKey'];
-        if (key !== undefined) set(GUIDE_SELECTED_KEY, key);
+        if (key === undefined) return;
+        set(GUIDE_SELECTED_KEY, key);
+        focusProgramModal();
+    });
+
+    /** Close (button, backdrop, Escape, and TV Back via `back-navigation.ts`) — the modal is `guide.selectedKey`'s own visibility, so this is one write of null. */
+    defineFn('guide/closeProgram', () => {
+        closeGuideProgram();
+    });
+
+    /**
+     * The modal's "watch this channel" button. Closes first, then plays: the
+     * jump lands on the TV tab, and leaving the modal open behind the
+     * navigation would have it waiting there on the viewer's next visit to
+     * the Guide.
+     */
+    defineFn('guide/playSelectedChannel', (el, _state, _delta, _value, event) => {
+        const target = (event?.target as HTMLElement | undefined)?.closest<HTMLElement>('[data-epg-id]') ?? el;
         const epgId = target.dataset['epgId'];
+        closeGuideProgram();
         if (epgId) playChannelByEpgId(epgId);
     });
 
@@ -50,6 +74,20 @@ export function registerGuideActions(): void {
         const target = (event?.target as HTMLElement | undefined)?.closest<HTMLElement>('[data-epg-id]') ?? el;
         const epgId = target.dataset['epgId'];
         if (epgId) playChannelByEpgId(epgId);
+    });
+}
+
+/** Clears the selection, which is what closes the programme modal — also called by `back-navigation.ts` for the remote's Back button. */
+export function closeGuideProgram(): void {
+    set(GUIDE_SELECTED_KEY, null);
+}
+
+/** Double-rAF for the same reason `search-sweep.actions.ts`'s `openModal()` uses one: `data-if`'s display flip lands on Spektrum's next tick, and a hidden element cannot take focus. Without it a D-pad user opens a dialog they cannot reach. */
+function focusProgramModal(): void {
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            (refs['guideProgramModal'] as HTMLElement | undefined)?.focus();
+        });
     });
 }
 

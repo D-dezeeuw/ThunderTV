@@ -19,6 +19,17 @@ export const PLAYER_PLAYBACK_NOTICE = 'player.playbackNotice';
 /** Transient: live stream quality ('good' | 'fair' | 'poor'), from stall frequency — the player-bar signal indicator. Null when nothing is playing. */
 export const PLAYER_STREAM_HEALTH = 'player.streamHealth';
 /**
+ * Transient, session-only: one line of *technical* truth about the last
+ * desktop audio-transcode attempt — the codecs the file turned out to carry,
+ * and, when it failed, the HTTP status and the tail of ffmpeg's own stderr.
+ * Never rendered in the player bar: the viewer gets
+ * `playerNoAudioDecodedTranscodeFailed`'s sentence, and this is what the
+ * debug panel shows underneath it. Without it every such report was a guess,
+ * because the 502 body the transcode server already produces was read and
+ * dropped on the floor.
+ */
+export const PLAYER_TRANSCODE_DIAGNOSTIC = 'player.transcodeDiagnostic';
+/**
  * The playing channel's alternate feeds — other qualities, a provider
  * bundle's own copy, the catch-up stream — taken from its grouped Live row
  * and rendered as the dock's variant strip. Derived from the loaded
@@ -85,6 +96,7 @@ export interface PlayerState {
     playbackError: string | null;
     playbackNotice: string | null;
     streamHealth: string | null;
+    transcodeDiagnostic: string | null;
     variants: ChannelVariant[];
     activeVariantId: string | null;
     visualizerPreset: string;
@@ -99,6 +111,7 @@ export const PLAYER_DEFAULTS: PlayerState = {
     playbackError: null,
     playbackNotice: null,
     streamHealth: null,
+    transcodeDiagnostic: null,
     variants: [],
     activeVariantId: null,
     visualizerPreset: 'classical',
@@ -114,6 +127,7 @@ export function initPlayerState(): void {
     setValue(PLAYER_PLAYBACK_ERROR, PLAYER_DEFAULTS.playbackError);
     setValue(PLAYER_PLAYBACK_NOTICE, PLAYER_DEFAULTS.playbackNotice);
     setValue(PLAYER_STREAM_HEALTH, PLAYER_DEFAULTS.streamHealth);
+    setValue(PLAYER_TRANSCODE_DIAGNOSTIC, PLAYER_DEFAULTS.transcodeDiagnostic);
     setValue(PLAYER_VARIANTS, PLAYER_DEFAULTS.variants);
     setValue(PLAYER_ACTIVE_VARIANT_ID, PLAYER_DEFAULTS.activeVariantId);
     setValue(PLAYER_VISUALIZER_PRESET, PLAYER_DEFAULTS.visualizerPreset);

@@ -83,6 +83,7 @@ export const de = {
             radioCount: 'Radiosender',
             storage: 'Speicherebene',
             platform: 'Plattform',
+            transcode: 'Letzte Audiokonvertierung',
         },
     },
 

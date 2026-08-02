@@ -4,9 +4,10 @@ import { getPlatform } from '../core/platform';
 import { effectiveProxyTemplate } from '../core/platform/electron-platform';
 import { streamKey } from '../health/stream-key';
 import { PLAYER_ACTIVE } from '../state/player';
-import { reportPlaybackNotice } from '../state/player.actions';
+import { appendTranscodeDiagnostic, reportPlaybackNotice, reportTranscodeDiagnostic } from '../state/player.actions';
 import { get } from '../state/typed';
 import { attachAndPlay, detach } from './engine';
+import { clearNoAudioMark, markedContentId, markNoAudio } from './no-audio-marks';
 import { monitorPlaybackPosition } from './position';
 import { attachTranscode } from './transcode-engine';
 
@@ -57,8 +58,15 @@ export function transcodableSource(active: unknown): string | null {
  * restarts the film through the transcoder at the second it had reached.
  */
 export async function handleSilentAudio(video: HTMLVideoElement): Promise<void> {
-    const source = transcodableSource(get(PLAYER_ACTIVE));
+    const active = get(PLAYER_ACTIVE);
+    const contentId = markedContentId(active);
+    const source = transcodableSource(active);
     if (!getPlatform().audioTranscode || !source) {
+        // Nothing left to try on this host, which is exactly the finding
+        // worth remembering for the next time this title is listed
+        // (`no-audio-marks.ts`) — and only for hosts that likewise cannot
+        // transcode.
+        markNoAudio(contentId, 'no-transcode', 'silent');
         reportPlaybackNotice(strings.list.playerNoAudioDecoded);
         return;
     }
@@ -71,6 +79,9 @@ export async function handleSilentAudio(video: HTMLVideoElement): Promise<void> 
     }
     attemptedFor = source;
 
+    // Whatever the previous film's attempt found is not evidence about this
+    // one, and a stale line in the debug panel is worse than an empty one.
+    reportTranscodeDiagnostic(null);
     const at = Number.isFinite(video.currentTime) ? Math.max(0, video.currentTime) : 0;
     const proxied = applyProxy(effectiveProxyTemplate(), source);
     reportPlaybackNotice(strings.list.playerTranscodingAudio);
@@ -81,17 +92,19 @@ export async function handleSilentAudio(video: HTMLVideoElement): Promise<void> 
     detach(video);
     const started = await attachTranscode(video, source, at, {
         onFailure: (detail) => {
-            fallBackToDirect(video, proxied, detail);
+            fallBackToDirect(video, proxied, detail, contentId);
         },
         // The notice is meant to cover the restart, not to sit there for the
-        // rest of the film.
+        // rest of the film. Sound is coming out of the speakers, so anything
+        // this device previously learned about this title is now wrong.
         onPlaying: () => {
             reportPlaybackNotice(null);
+            clearNoAudioMark(contentId);
         },
     });
 
     if (!started) {
-        fallBackToDirect(video, proxied, 'the transcoder did not start');
+        fallBackToDirect(video, proxied, 'the transcoder did not start', contentId);
         return;
     }
     // The same position store, under the same key the direct attempt used,
@@ -107,8 +120,12 @@ export async function handleSilentAudio(video: HTMLVideoElement): Promise<void> 
  * — and say both halves of what happened. Silently leaving a black screen
  * because a *fix* failed would be strictly worse than the bug.
  */
-function fallBackToDirect(video: HTMLVideoElement, proxiedUrl: string, detail: string): void {
+function fallBackToDirect(video: HTMLVideoElement, proxiedUrl: string, detail: string, contentId: string | null): void {
     console.warn('[ThunderTV] audio transcode unavailable:', detail);
+    appendTranscodeDiagnostic(detail);
+    // The strong finding: this device *has* a transcoder and still got
+    // nothing, so no browser will do better with this title either.
+    markNoAudio(contentId, 'transcode', detail);
     reportPlaybackNotice(strings.list.playerNoAudioDecodedTranscodeFailed);
     void attachAndPlay(video, proxiedUrl, { live: false });
 }

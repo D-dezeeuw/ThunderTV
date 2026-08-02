@@ -29,7 +29,36 @@ const INIT_SEGMENT_BASE64 =
     'AAACAAAAAQAAAAAAAAAAAAAAAAAAAGF1ZHRhAAAAWW1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAA' +
     'AAAALGlsc3QAAAAkqXRvbwAAABxkYXRhAAAAAQAAAABMYXZmNjAuMy4xMDA=';
 
+/**
+ * The same command run over an HEVC + AC-3 source — the file this feature
+ * exists for on a Mac, where the picture hardware-decodes and the sound does
+ * not. Real bytes again: the profile/tier/level/constraint fields of an
+ * `hvcC` are packed and bit-reversed, so a hand-built one would agree with
+ * whatever the parser happened to do to it.
+ */
+const HEVC_INIT_SEGMENT_BASE64 =
+    'AAAAHGZ0eXBpc281AAACAGlzbzVpc282bXA0MQAABSxtb292AAAAbG12aGQAAAAAAAAAAAAAAAAAAAPoAAAAAAABAAABAAAA' +
+    'AAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC' +
+    'AAACUHRyYWsAAABcdGtoZAAAAAMAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAA' +
+    'AAEAAAAAAAAAAAAAAAAAAEAAAAAAoAAAAHgAAAAAAextZGlhAAAAIG1kaGQAAAAAAAAAAAAAAAAAADIAAAAAAFXEAAAAAAAt' +
+    'aGRscgAAAAAAAAAAdmlkZQAAAAAAAAAAAAAAAFZpZGVvSGFuZGxlcgAAAAGXbWluZgAAABR2bWhkAAAAAQAAAAAAAAAAAAAA' +
+    'JGRpbmYAAAAcZHJlZgAAAAAAAAABAAAADHVybCAAAAABAAABV3N0YmwAAAELc3RzZAAAAAAAAAABAAAA+2h2YzEAAAAAAAAA' +
+    'AQAAAAAAAAAAAAAAAAAAAAAAoAB4AEgAAABIAAAAAAAAAAEUTGF2YzYwLjMuMTAwIGxpYngyNjUAAAAAAAAAAAAAAAAY//8A' +
+    'AAB3aHZjQwEBYAAAAJAAAAAAAB7wAPz9+PgAAA8DoAABABhAAQwB//8BYAAAAwCQAAADAAADAB6VlAmhAAEAK0IBAQFgAAAD' +
+    'AJAAAAMAAAMAHqAUICB8uWVlSkwvAWgIAAADAAgAAAMAyECiAAEABkQBwHPBiQAAAApmaWVsAQAAAAAQcGFzcAAAAAEAAAAB' +
+    'AAAAFGJ0cnQAAAAAAAICjQACAo0AAAAQc3R0cwAAAAAAAAAAAAAAEHN0c2MAAAAAAAAAAAAAABRzdHN6AAAAAAAAAAAAAAAA' +
+    'AAAAEHN0Y28AAAAAAAAAAAAAAb90cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAEBAAAA' +
+    'AAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAFbbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAA' +
+    'AACsRAAAAABVxAAAAAAALWhkbHIAAAAAAAAAAHNvdW4AAAAAAAAAAAAAAABTb3VuZEhhbmRsZXIAAAABBm1pbmYAAAAQc21o' +
+    'ZAAAAAAAAAAAAAAAJGRpbmYAAAAcZHJlZgAAAAAAAAABAAAADHVybCAAAAABAAAAynN0YmwAAAB+c3RzZAAAAAAAAAABAAAA' +
+    'bm1wNGEAAAAAAAAAAQAAAAAAAAAAAAIAEAAAAACsRAAAAAAANmVzZHMAAAAAA4CAgCUAAgAEgICAF0AVAAAAAALuAAAC7gAF' +
+    'gICABRIQVuUABoCAgAECAAAAFGJ0cnQAAAAAAALuAAAC7gAAAAAQc3R0cwAAAAAAAAAAAAAAEHN0c2MAAAAAAAAAAAAAABRz' +
+    'dHN6AAAAAAAAAAAAAAAAAAAAEHN0Y28AAAAAAAAAAAAAAEhtdmV4AAAAIHRyZXgAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAA' +
+    'AAAgdHJleAAAAAAAAAACAAAAAQAAAAAAAAAAAAAAAAAAAGF1ZHRhAAAAWW1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJh' +
+    'cHBsAAAAAAAAAAAAAAAALGlsc3QAAAAkqXRvbwAAABxkYXRhAAAAAQAAAABMYXZmNjAuMy4xMDA=';
+
 const INIT_SEGMENT = Uint8Array.from(atob(INIT_SEGMENT_BASE64), (c) => c.charCodeAt(0));
+const HEVC_INIT_SEGMENT = Uint8Array.from(atob(HEVC_INIT_SEGMENT_BASE64), (c) => c.charCodeAt(0));
 
 describe('readInitSegmentCodecs', () => {
     it('reads the profile/compatibility/level trio ffmpeg wrote into avcC', () => {
@@ -49,15 +78,34 @@ describe('readInitSegmentCodecs', () => {
         }
     });
 
-    it('declines a stream whose video track is not H.264', () => {
-        // `avc1` → `hvc1` in the sample entry: still a well-formed moov, but
-        // not one this can name — and naming it wrong is worse than not
-        // transcoding at all.
-        const hevc = INIT_SEGMENT.slice();
-        const at = indexOfAscii(hevc, 'avc1');
-        hevc.set([...'hvc1'].map((c) => c.charCodeAt(0)), at);
+    it('spells out the packed, bit-reversed fields of an hvcC', () => {
+        const codecs = readInitSegmentCodecs(HEVC_INIT_SEGMENT);
 
-        expect(readInitSegmentCodecs(hevc)).toBeNull();
+        // Stored: profile byte 0x01 (space 0, main tier, profile 1),
+        // compatibility 0x60000000 (which is `6` once bit-reversed), level
+        // 0x1e = 30, constraints 0x90 followed by five zero bytes that the
+        // string drops. Chromium prints exactly this for the same file.
+        expect(codecs?.video).toBe('hvc1.1.6.L30.90');
+        expect(codecs?.mime).toBe('video/mp4; codecs="hvc1.1.6.L30.90,mp4a.40.2"');
+    });
+
+    it('keeps the sample entry\'s own fourcc, since hev1 is not hvc1', () => {
+        // What ffmpeg writes when the source was an MKV — i.e. most of an
+        // Xtream VOD catalog. In-band parameter sets are a different
+        // proposition to a browser, so the name has to say so.
+        const inBand = HEVC_INIT_SEGMENT.slice();
+        inBand.set([...'hev1'].map((c) => c.charCodeAt(0)), indexOfAscii(inBand, 'hvc1'));
+
+        expect(readInitSegmentCodecs(inBand)?.video).toBe('hev1.1.6.L30.90');
+    });
+
+    it('declines a video track it still cannot name', () => {
+        // `avc1` → `vp09`: a well-formed moov whose codec string this does
+        // not build, and naming it wrong is worse than not transcoding.
+        const vp9 = INIT_SEGMENT.slice();
+        vp9.set([...'vp09'].map((c) => c.charCodeAt(0)), indexOfAscii(vp9, 'avc1'));
+
+        expect(readInitSegmentCodecs(vp9)).toBeNull();
     });
 
     it('returns null for anything that is not an init segment at all', () => {

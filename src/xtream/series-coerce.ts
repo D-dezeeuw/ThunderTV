@@ -1,4 +1,4 @@
-import { asArray, asNumber, asString } from './coerce';
+import { asArray, asNumber, asString, codecName } from './coerce';
 import type { XtreamEpisode, XtreamSeriesInfo, XtreamSeriesSeason } from './types';
 
 /**
@@ -53,6 +53,10 @@ function normalizeEpisode(row: Record<string, unknown>, season: number): XtreamE
     const containerExtension = asString(row['container_extension'])?.trim() || 'mp4';
     const title = asString(row['title']) ?? '';
     const durationSecs = asNumber(row['duration_secs']) ?? asNumber(infoField(row)['duration_secs']);
+    // Same ffprobe block a movie carries, one level further in. Worth taking
+    // because an episode's soundtrack is the one thing a viewer cannot find
+    // out without watching it (`src/player/codec-support.ts`).
+    const audioCodec = codecName(infoField(row)['audio']);
 
     return {
         episodeId,
@@ -61,6 +65,7 @@ function normalizeEpisode(row: Record<string, unknown>, season: number): XtreamE
         title,
         containerExtension,
         ...(durationSecs !== undefined ? { durationSecs } : {}),
+        ...(audioCodec !== undefined ? { audioCodec } : {}),
     };
 }
 

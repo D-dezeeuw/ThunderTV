@@ -53,6 +53,18 @@ const MANIFEST_MAX_BYTES = 2 * 1024 * 1024;
 /** Upstream response headers forwarded to the browser (plus CORS). */
 const PASSTHROUGH_HEADERS = ['content-type', 'content-length', 'content-range', 'accept-ranges'];
 
+/**
+ * The identity every ThunderTV request to a provider goes out under.
+ *
+ * Exported because there is a *second* client on the desktop that talks to
+ * the same panels and is not this proxy: `desktop/transcode.mjs`'s ffmpeg,
+ * which otherwise announces itself as `Lavf/<version>` and gets the 403
+ * this constant exists to avoid. Two clients, two answers from the panel,
+ * and the visible symptom is a film that plays directly but cannot be
+ * transcoded — so the string lives in one place and both read it.
+ */
+export const PLAYER_USER_AGENT = 'VLC/3.0.20 LibVLC/3.0.20';
+
 function corsResponse(body, init = {}) {
     const headers = new Headers(init.headers ?? {});
     for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
@@ -88,7 +100,7 @@ function upstreamHeadersFor(request) {
     // Many Xtream panels reject requests without a recognized player
     // User-Agent (403/458) — identify as VLC, the most widely whitelisted
     // IPTV client. Workers' fetch sends no UA at all otherwise.
-    headers['user-agent'] = 'VLC/3.0.20 LibVLC/3.0.20';
+    headers['user-agent'] = PLAYER_USER_AGENT;
     return headers;
 }
 

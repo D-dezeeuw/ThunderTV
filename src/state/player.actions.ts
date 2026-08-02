@@ -13,6 +13,7 @@ import {
     PLAYER_PLAYBACK_ERROR,
     PLAYER_PLAYBACK_NOTICE,
     PLAYER_STREAM_HEALTH,
+    PLAYER_TRANSCODE_DIAGNOSTIC,
     PLAYER_VARIANTS,
     PLAYER_VISUALIZER_PAUSED,
     PLAYER_VISUALIZER_PRESET,
@@ -50,6 +51,10 @@ export function registerPlayerActions(): void {
     });
     defineFn('player/togglePlayback', () => {
         togglePlayback();
+    });
+    /** The preview pane's close button. Closing the pane and stopping are one act — `playerPaneVisible` is true exactly while a stream is attached, so nothing else can put it away. */
+    defineFn('player/stop', () => {
+        stopPlayback();
     });
     // No state mutation involved (only a read) — registered here anyway
     // because every defineFn is registered before bindDOM()
@@ -285,6 +290,38 @@ export function reportPlaybackError(detail: string | null): void {
 export function reportPlaybackNotice(detail: string | null): void {
     setValue(PLAYER_PLAYBACK_NOTICE, detail);
 }
+
+/**
+ * The technical companion to the notice above, from the desktop transcode
+ * route (`src/player/transcode-stream.ts`, `transcode-fallback.ts`). Nothing
+ * in the player bar reads it — it is for the debug panel, which is the only
+ * devtools a packaged Electron window or a TV has. Also logged through
+ * `console.info`, since that is what the panel's copyable report carries.
+ */
+export function reportTranscodeDiagnostic(detail: string | null): void {
+    lastTranscodeDiagnostic = detail;
+    setValue(PLAYER_TRANSCODE_DIAGNOSTIC, detail);
+    if (detail) console.info('[ThunderTV] transcode:', detail);
+}
+
+/**
+ * Appends the route-level outcome to whatever the stream layer already
+ * found. Deliberately not a second `reportTranscodeDiagnostic()`: the useful
+ * half is usually the earlier one (an HTTP status and ffmpeg's stderr), and
+ * overwriting it with "the transcoder did not start" would throw away the
+ * answer to keep the symptom.
+ */
+export function appendTranscodeDiagnostic(detail: string): void {
+    reportTranscodeDiagnostic(lastTranscodeDiagnostic ? `${lastTranscodeDiagnostic} · ${detail}` : `failed — ${detail}`);
+}
+
+/**
+ * Kept here rather than read back out of the key: both halves of one failed
+ * attempt are written inside a single Spektrum turn, and `get()` sees
+ * `appState`, which is only updated on the next `tick()`. Reading it back
+ * would silently discard the first half — which is the half worth having.
+ */
+let lastTranscodeDiagnostic: string | null = null;
 
 /** Called by `src/player/stream-health.ts` as stalls come and go — drives the player-bar signal indicator. */
 export function reportStreamHealth(health: string | null): void {

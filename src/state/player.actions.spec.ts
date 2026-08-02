@@ -2,8 +2,16 @@ import { appState, bindDOM, getPathObj, refs, resetState, setValue, tick } from 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FakeWindowFullscreen, withFakePlatform } from '../core/platform/fake-platform';
 import { flushNow, pendingKeys } from './persist';
-import { audioVisualActive, registerPlayerActions, setActiveChannel, toggleAudioMode, togglePlayerFullscreen } from './player.actions';
-import { isAudioVisual, PLAYER_ACTIVE, PLAYER_AUDIO_MODE, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
+import {
+    appendTranscodeDiagnostic,
+    audioVisualActive,
+    registerPlayerActions,
+    reportTranscodeDiagnostic,
+    setActiveChannel,
+    toggleAudioMode,
+    togglePlayerFullscreen,
+} from './player.actions';
+import { isAudioVisual, PLAYER_ACTIVE, PLAYER_AUDIO_MODE, PLAYER_TRANSCODE_DIAGNOSTIC, PLAYER_ZAP_HISTORY, ZAP_HISTORY_CAP } from './player';
 import type { ActiveChannelSnapshot } from './records';
 import { UI_ACTIVE_VIEW } from './ui';
 
@@ -286,5 +294,36 @@ describe('player/setActiveChannel defineFn registration (Feature 05.2.1)', () =>
 
         destroy();
         btn.remove();
+    });
+});
+
+/**
+ * The debug panel's whole value here is that it keeps the *first* thing that
+ * went wrong. Every transcode failure ends at the same route-level shrug
+ * ("the transcoder did not start"), and the answer — an HTTP status and
+ * ffmpeg's stderr — is found earlier, by the layer that opened the stream.
+ */
+describe('transcode diagnostics', () => {
+    afterEach(() => {
+        resetState();
+    });
+
+    it('keeps what the stream layer found and adds the route-level outcome', () => {
+        reportTranscodeDiagnostic('failed — HTTP 502 — ffmpeg exited (1)\nServer returned 403 Forbidden');
+        appendTranscodeDiagnostic('the transcoder did not start');
+        tick();
+
+        expect(getPathObj(appState, PLAYER_TRANSCODE_DIAGNOSTIC)).toContain('403 Forbidden');
+        expect(getPathObj(appState, PLAYER_TRANSCODE_DIAGNOSTIC)).toContain('did not start');
+    });
+
+    it('still says something when nothing earlier reported', () => {
+        // Every attempt starts by clearing the previous film's finding
+        // (`transcode-fallback.ts`), so this is the real starting state.
+        reportTranscodeDiagnostic(null);
+        appendTranscodeDiagnostic('the transcoder did not start');
+        tick();
+
+        expect(getPathObj(appState, PLAYER_TRANSCODE_DIAGNOSTIC)).toBe('failed — the transcoder did not start');
     });
 });

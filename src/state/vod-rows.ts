@@ -4,6 +4,7 @@ import type { XtreamSource, XtreamVodInfo, XtreamVodStream } from '../xtream/typ
 import { vodStreamUrl } from '../xtream/urls';
 import { createCategoryRail } from './catalog-category-tree';
 import { cleanCatalogDisplayName } from './catalog-clean-name';
+import { catalogAudioWarning } from './catalog-audio-warning';
 import { createCatalogMemory } from './catalog-memory';
 import type { VodDetail, VodItem } from './vod';
 
@@ -108,6 +109,7 @@ export function toVodDetail(item: VodItem, categoryName: string | null, info?: X
         genre: info?.genre ?? null,
         durationSecs: info?.durationSecs ?? null,
         releaseDate: info?.releaseDate ?? null,
+        audioWarning: catalogAudioWarning(makeVodRowId(item.streamId), info?.audioCodec, info?.videoCodec),
     };
 }
 

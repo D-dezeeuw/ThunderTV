@@ -65,6 +65,8 @@ export interface VodDetail {
     genre: string | null;
     durationSecs: number | null;
     releaseDate: string | null;
+    /** Pre-rendered by `catalog-audio-warning.ts` (a per-device answer, so never part of the stored catalog payload) — `null` when there is nothing to warn about. */
+    audioWarning: string | null;
 }
 
 export interface VodState {

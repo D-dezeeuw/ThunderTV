@@ -29,3 +29,17 @@ export function asArray<T>(value: unknown): T[] {
     if (value && typeof value === 'object') return Object.values(value) as T[];
     return [];
 }
+
+/**
+ * One ffprobe stream block's `codec_name` — the shape `get_vod_info`'s
+ * `info.video`/`info.audio` and a `get_series_info` episode's `info.audio`
+ * both have, when the panel filled them in at all. Lower-cased here so
+ * `src/player/codec-support.ts` can compare against one spelling; panels
+ * that have nothing send `[]` or omit the block entirely, which comes back
+ * as `undefined` rather than as a guess.
+ */
+export function codecName(block: unknown): string | undefined {
+    const record = block && typeof block === 'object' ? (block as Record<string, unknown>) : {};
+    const name = asString(record['codec_name'])?.trim().toLowerCase();
+    return name || undefined;
+}

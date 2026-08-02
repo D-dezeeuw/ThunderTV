@@ -50,6 +50,8 @@ export interface DebugSnapshot {
     radioCount: number;
     storageTier: string;
     platform: string;
+    /** The last desktop audio-transcode attempt, in ffmpeg's own words (`player.transcodeDiagnostic`) — `'(none)'` until one has been tried. */
+    transcode: string;
     /** Set when the state is internally inconsistent — the one line worth reading first. */
     diagnosis: string;
 }
@@ -133,6 +135,7 @@ interface DebugShapedState {
     live?: { stats?: { channels?: number; inputRows?: number }; radioCount?: number };
     storage?: { tier?: string };
     platform?: { name?: string };
+    player?: { transcodeDiagnostic?: string | null };
 }
 
 /**
@@ -187,6 +190,7 @@ function buildSnapshot(): DebugSnapshot {
         radioCount,
         storageTier: state.storage?.tier ?? '(unknown)',
         platform: state.platform?.name ?? '(unknown)',
+        transcode: state.player?.transcodeDiagnostic ?? '(none)',
         diagnosis: diagnose(state, rowsInMemory),
     };
     return snapshot;

@@ -33,6 +33,7 @@ import {
     SETTINGS_PROXY_SAVED,
     SETTINGS_PROXY_TEMPLATE,
     SETTINGS_REFRESH_STATE,
+    SETTINGS_HIDE_NO_AUDIO_TITLES,
     SETTINGS_SHOW_HANDOFF_BUTTON,
     SETTINGS_SUBTITLE_LANGUAGE,
     SETTINGS_XTREAM_BUSY,
@@ -137,6 +138,7 @@ const TOGGLEABLE: Record<string, string> = {
     liveDropJunk: SETTINGS_LIVE_DROP_JUNK,
     liveEpgVerifiedOnly: SETTINGS_LIVE_EPG_VERIFIED_ONLY,
     showHandoffButton: SETTINGS_SHOW_HANDOFF_BUTTON,
+    hideNoAudioTitles: SETTINGS_HIDE_NO_AUDIO_TITLES,
 };
 
 /** Exported for direct testing without a DOM element. */

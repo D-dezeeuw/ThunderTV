@@ -1,6 +1,7 @@
 import { bindDOM, run, tick } from 'spektrum';
 import { createPlatform, setPlatform } from '../core/platform';
 import { primeHealthCache } from '../health/store';
+import { primeNoAudioMarks } from '../player/no-audio-marks';
 import { publishCodexAuthorId } from '../state/codex.actions';
 import { refreshCodexLibraryOnBoot } from '../state/codex-library.actions';
 import { effectiveProxyTemplate } from '../core/platform/electron-platform';
@@ -116,6 +117,10 @@ export async function bootstrap(): Promise<void> {
     // background load — an unprimed cache simply means no row is annotated
     // yet, never a wrong annotation.
     supervise('health-cache', primeHealthCache);
+    // Which titles this device already proved come out silent (stone 3's
+    // sibling, src/player/no-audio-marks.ts) — same shape of load, same
+    // "unprimed means unannotated, never wrongly annotated" tolerance.
+    supervise('no-audio-marks', primeNoAudioMarks);
     // Codex (stone 4): surfaces this device's author fingerprint in Settings,
     // creating a keypair on first run. Background — nothing blocks on it.
     supervise('codex-author-id', publishCodexAuthorId);
