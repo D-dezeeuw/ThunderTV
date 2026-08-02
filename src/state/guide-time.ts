@@ -9,8 +9,18 @@
  * on the ingestion side).
  */
 
-/** The grid shows a rolling 4h window — enough to see "now" plus a few upcoming slots without needing horizontal scroll UI. */
-export const GUIDE_WINDOW_MS = 4 * 60 * 60 * 1000;
+/**
+ * How far behind "now" the window reaches. Starting the window *at* the
+ * clock (the original behaviour) pinned the now-line to the left edge and
+ * clipped every currently-airing programme to its remaining sliver — the
+ * viewer could never see what a running programme *is*, only what's left of
+ * it. An hour of past keeps the airing blocks whole (most slots are ≤1h)
+ * and puts the now-line visibly inside them.
+ */
+export const GUIDE_PAST_MS = 60 * 60 * 1000;
+
+/** The grid shows a rolling 5h window — an hour of past (`GUIDE_PAST_MS`) plus "now" and up to 4h of upcoming slots, without needing horizontal scroll UI. */
+export const GUIDE_WINDOW_MS = GUIDE_PAST_MS + 4 * 60 * 60 * 1000;
 
 /**
  * One step of the prev/next time controls (Phase 32). Half a window rather
@@ -48,8 +58,9 @@ export interface GuideWindow {
     end: number;
 }
 
+/** The visible window: `GUIDE_PAST_MS` behind the given instant (floored to a half-hour grid line) through the rest of `GUIDE_WINDOW_MS` ahead — so "now" lands inside the currently-airing blocks rather than on the window's left edge. */
 export function computeGuideWindow(nowMs: number): GuideWindow {
-    const start = floorToHalfHour(nowMs);
+    const start = floorToHalfHour(nowMs - GUIDE_PAST_MS);
     return { start, end: start + GUIDE_WINDOW_MS };
 }
 
