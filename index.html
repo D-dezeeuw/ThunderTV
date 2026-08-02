@@ -1019,6 +1019,10 @@
                                         <span data-if="vod.detail.year">{{ vod.detail.year }}</span>
                                         <span data-if="vod.detail.rating"> · ★ {{ vod.detail.rating }}</span>
                                     </p>
+                                    <!-- Warning, never a block (state/catalog-audio-warning.ts):
+                                         the panel's codec metadata is wrong often enough that
+                                         refusing to play on it would break films that work. -->
+                                    <p class="catalog-detail__empty" data-if="vod.detail.audioWarning" data-testid="movies-detail-audio-warning">{{ vod.detail.audioWarning }}</p>
                                     <p class="catalog-detail__plot" data-if="vod.detail.plot">{{ vod.detail.plot }}</p>
                                     <!-- While this movie is downloading the panel's buttons go
                                          inert (:disabled binds the property, not the attribute
@@ -1134,6 +1138,7 @@
                                         <span data-if="series.detail.year">{{ series.detail.year }}</span>
                                         <span data-if="series.detail.rating"> · ★ {{ series.detail.rating }}</span>
                                     </p>
+                                    <p class="catalog-detail__empty" data-if="series.detail.audioWarning" data-testid="series-detail-audio-warning">{{ series.detail.audioWarning }}</p>
                                     <p class="catalog-detail__plot" data-if="series.detail.plot">{{ series.detail.plot }}</p>
 
                                     <!-- Issue 2's "make failure visible" fix: openSeriesDetail()
@@ -1475,14 +1480,12 @@
                                         </span>
                                         <!-- Movies/Series catalog rows (Phase 21): `.rows`' own
                                              data-fn="list/selectChannel" always plays the row's
-                                             `url` — right for a live channel, wrong for a movie
-                                             (open detail, don't autoplay) and broken for a series
-                                             (its `url` is ''). `ChannelRow` has no `kind` to branch
-                                             on and `data-fn` cannot vary per row in a shared
-                                             data-each (Spektrum binds it once per clone), so these
-                                             two full-row overlays key off the `vod:`/`series:` id
-                                             prefix and `.stop` before the container's generic
-                                             handler sees the click. Absent for a real channel row. -->
+                                             `url` — wrong for a movie (open detail, don't autoplay)
+                                             and broken for a series (its `url` is ''). `ChannelRow`
+                                             has no `kind`, and `data-fn` cannot vary per row in a
+                                             shared data-each, so these two full-row overlays key off
+                                             the `vod:`/`series:` id prefix and `.stop` before the
+                                             generic handler sees the click. -->
                                         <div
                                             class="channel-row__catalog-trigger"
                                             data-if="item.id.indexOf('vod:') === 0"
@@ -1509,13 +1512,11 @@
                             <!-- Right column: the preview. One <video> for every view
                                  (src/player/bindings.ts is its sole attach point, and the
                                  visualizer's Web Audio source); audio-only presentations keep it
-                                 mounted but minimal (player.css's .list-shell--split). Categories
-                                 makes the column count three; Movies/TV Shows play through the
-                                 same setActiveChannel, so they get the pane too — without it Play
-                                 gave audio inside a `display: none` pane. One rule everywhere: no
-                                 pane unless something plays, which is what playerPaneVisible
-                                 (state/player.selectors.ts) answers that persisted player.active
-                                 cannot. -->
+                                 mounted but minimal (player.css's .list-shell--split). Movies/TV
+                                 Shows play through the same setActiveChannel, so they get the pane
+                                 too — without it Play gave audio inside a `display: none` pane. One
+                                 rule everywhere: no pane unless something plays, which is what
+                                 playerPaneVisible (state/player.selectors.ts) answers. -->
                             <div
                                 class="now-playing"
                                 data-if="playerPaneVisible"

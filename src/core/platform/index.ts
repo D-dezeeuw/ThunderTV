@@ -18,6 +18,18 @@ export function getPlatform(): PlatformAdapter {
     return instance;
 }
 
+/**
+ * Whether `setPlatform()` has run. Not an escape hatch from the rule above —
+ * app code still assumes a booted platform — but for the handful of *pure*
+ * mappers that fold in a per-device answer (`state/catalog-audio-warning.ts`
+ * asks whether this host can transcode audio), it is the difference between
+ * a mapping function a spec can call directly and one that needs a fake
+ * platform mounted to test a name.
+ */
+export function hasPlatform(): boolean {
+    return instance !== null;
+}
+
 /** Test-only: clears the singleton so specs can call `setPlatform()` again without restarting the process. Never call from app code — see `withFakePlatform` in `fake-platform.ts` for the sanctioned test pattern. */
 export function resetPlatformForTests(): void {
     instance = null;

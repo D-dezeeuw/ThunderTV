@@ -204,6 +204,19 @@ describe('xtream/client', () => {
         });
     });
 
+    it("getVodInfo takes the panel's own ffprobe codec names when it sent them", async () => {
+        await withFakePlatform({}, async ({ http }) => {
+            http.onGet(apiUrl(source, 'get_vod_info', '&vod_id=9')).reply({
+                kind: 'ok',
+                // `video: []` is what a panel with nothing to say sends — it
+                // must read as absent, not as a codec named ''.
+                body: JSON.stringify({ info: { audio: { codec_name: 'EAC3', channels: 6 }, video: [] } }),
+            });
+            const result = await getVodInfo(source, 9);
+            expect(result).toEqual({ ok: true, data: { audioCodec: 'eac3' } });
+        });
+    });
+
     it('getVodInfo tolerates a missing info object, never throws', async () => {
         await withFakePlatform({}, async ({ http }) => {
             http.onGet(apiUrl(source, 'get_vod_info', '&vod_id=9')).reply({ kind: 'ok', body: JSON.stringify({}) });

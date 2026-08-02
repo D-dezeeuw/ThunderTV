@@ -13,6 +13,8 @@ export const nlCatalog = {
         retry: 'Opnieuw proberen',
         offline: 'Opgeslagen gegevens — de provider was niet bereikbaar. Gedownloade titels spelen gewoon af.',
         variantsToggle: 'Andere versies van deze categorie',
+        noSoundWarning: 'Geen geluid op dit apparaat — voor de audio van deze titel (Dolby of DTS) is hier geen decoder. Het beeld speelt gewoon af.',
+        noPictureWarning: 'Dit apparaat heeft geen decoder voor de video van deze titel; mogelijk speelt hij helemaal niet af.',
     },
 
     movies: {

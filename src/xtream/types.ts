@@ -66,6 +66,8 @@ export interface XtreamEpisode {
     title: string;
     containerExtension: string;
     durationSecs?: number;
+    /** From the episode's own `info.audio.codec_name`, same provenance and same caveats as `XtreamVodInfo`'s. */
+    audioCodec?: string;
 }
 
 /** One season's episodes, already sorted by episode number — see `series-coerce.ts`. */
@@ -93,4 +95,14 @@ export interface XtreamVodInfo {
      */
     imdbId?: string;
     tmdbId?: number;
+    /**
+     * What the panel's own ffprobe found in the file, from `info.video`/
+     * `info.audio`'s `codec_name` — lower-cased, first token only (`ac3`,
+     * `eac3`, `hevc`). Present only when the panel filled those blocks in,
+     * which many do not, and wrong often enough that nothing may *act* on it:
+     * `src/player/codec-support.ts` turns it into a warning shown before
+     * play, and the playback path still decides by what actually happens.
+     */
+    videoCodec?: string;
+    audioCodec?: string;
 }

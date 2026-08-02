@@ -3,6 +3,7 @@ import { normalizeForSearch } from '../search/normalize';
 import type { XtreamSeries, XtreamSeriesInfo, XtreamSource } from '../xtream/types';
 import { createCategoryRail } from './catalog-category-tree';
 import { cleanCatalogDisplayName } from './catalog-clean-name';
+import { catalogAudioWarning } from './catalog-audio-warning';
 import { createCatalogMemory } from './catalog-memory';
 import {
     SERIES_DETAIL_EPISODES_CAP,
@@ -119,6 +120,16 @@ export function buildSeriesDetailRows(info: XtreamSeriesInfo, cap: number): Seri
     return rows;
 }
 
+/** Episodes are fetched as one payload and encoded as one batch; the first one that says anything is the series' answer. */
+function firstEpisodeAudioCodec(info?: XtreamSeriesInfo): string | undefined {
+    for (const season of info ?? []) {
+        for (const episode of season.episodes) {
+            if (episode.audioCodec) return episode.audioCodec;
+        }
+    }
+    return undefined;
+}
+
 export function toSeriesDetail(item: SeriesItem, categoryName: string | null, info?: XtreamSeriesInfo): SeriesDetail {
     return {
         seriesId: item.seriesId,
@@ -130,6 +141,7 @@ export function toSeriesDetail(item: SeriesItem, categoryName: string | null, in
         year: item.year ?? null,
         rating: item.rating ?? null,
         rows: info ? buildSeriesDetailRows(info, SERIES_DETAIL_EPISODES_CAP) : [],
+        audioWarning: catalogAudioWarning(firstEpisodeAudioCodec(info)),
     };
 }
 

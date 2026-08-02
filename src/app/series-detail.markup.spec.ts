@@ -79,6 +79,7 @@ function seedSeriesDetail(overrides: Partial<SeriesDetail> = {}): void {
         year: null,
         rating: null,
         rows: [],
+        audioWarning: null,
     };
     setValue('series.detailId', 7);
     setValue('series.detail', { ...base, ...overrides });

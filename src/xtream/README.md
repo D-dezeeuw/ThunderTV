@@ -37,3 +37,17 @@ starts with `<`". That is right for the JSON endpoints and wrong for
 `xmltv.php`, whose valid response opens with `<?xml`. `getXmltvGuide()`
 identifies the document positively instead, and detects HTML separately so a
 real login page still reports `auth-failed`.
+
+## Codec metadata (`coerce.ts`'s `codecName`)
+
+`get_vod_info`'s `info.video`/`info.audio` — and a `get_series_info`
+episode's `info.audio` — are the panel's own ffprobe output, so a title can
+be known to carry AC-3 or HEVC *before* anything is played
+(`src/player/codec-support.ts` turns that into the detail pane's "No sound
+on this device" warning). Two properties of that data decide how it is
+treated everywhere: it is **frequently absent** (panels send `[]`, or omit
+the block, which `codecName()` reports as `undefined` rather than as a codec
+named `''`), and it is **frequently wrong**. So it may warn and may never
+gate: the playback path still decides by what actually happens on the
+element, and `src/player/transcode-fallback.ts` still triggers on measured
+silence rather than on this.
