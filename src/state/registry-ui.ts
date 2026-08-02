@@ -1,6 +1,7 @@
 import { UI_BOOT_PHASE } from './boot';
 import { UI_LIST_LAYOUT } from './list-layout';
 import { UI_FONT_SIZE, UI_THEME } from './ui';
+import { UI_WIZARD_EDIT_SOURCE_ID } from './wizard';
 import type { KeyMeta } from './registry';
 
 /**
@@ -30,6 +31,12 @@ export const UI_REGISTRY_ENTRIES: Record<string, KeyMeta> = {
         persisted: true,
         description:
             'Per-view list/grid choice for the shared virtual list, keyed by the three views that offer the toggle (live/movies/series). Persisted because it is a browsing preference, not session state; a scope missing from the stored value falls back to the list layout (src/state/list-layout.ts).',
+    },
+    [UI_WIZARD_EDIT_SOURCE_ID]: {
+        owner: 'ui',
+        persisted: false,
+        description:
+            'The configured source the setup wizard is editing (null = the first-run flow). Set by sources/edit from a Sources-tab card, cleared on every close; transient like ui.wizardOpen, since a reload mid-edit means the edit never happened (src/state/source-edit.ts).',
     },
     [UI_BOOT_PHASE]: {
         owner: 'ui',

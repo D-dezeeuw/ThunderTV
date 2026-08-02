@@ -25,24 +25,39 @@ export const UI_WIZARD_STEP = 'ui.wizardStep';
  */
 export const UI_SETUP_COMPLETE = 'ui.setupComplete';
 
+/**
+ * Which configured source the wizard is *editing*, or `null` for the
+ * first-run flow. The Sources tab's configured-source cards open the same
+ * modal prefilled from that source's stored `PlaylistRecord`
+ * (`source-edit.ts`), so this one id is what makes step 2 an editor rather
+ * than a second, parallel form: it re-labels the copy, hides the step-1
+ * detour, and routes Save through `applySourceEdit()` instead of
+ * `saveXtreamAccount()`. Transient exactly like `ui.wizardOpen` — a reload
+ * mid-edit means the edit never happened.
+ */
+export const UI_WIZARD_EDIT_SOURCE_ID = 'ui.wizardEditSourceId';
+
 export type WizardStep = 1 | 2;
 
 export interface WizardState {
     open: boolean;
     step: WizardStep;
     setupComplete: boolean;
+    editSourceId: string | null;
 }
 
 export const WIZARD_DEFAULTS: WizardState = {
     open: false,
     step: 1,
     setupComplete: false,
+    editSourceId: null,
 };
 
 export function initWizardState(): void {
     setValue(UI_WIZARD_OPEN, WIZARD_DEFAULTS.open);
     setValue(UI_WIZARD_STEP, WIZARD_DEFAULTS.step);
     setValue(UI_SETUP_COMPLETE, WIZARD_DEFAULTS.setupComplete);
+    setValue(UI_WIZARD_EDIT_SOURCE_ID, WIZARD_DEFAULTS.editSourceId);
 }
 
 /**

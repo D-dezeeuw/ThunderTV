@@ -5,7 +5,7 @@ import { SERIES_DETAIL_ID } from './series';
 import { get } from './typed';
 import { UI_SETTINGS_OPEN } from './ui';
 import { VOD_DETAIL_ID } from './vod';
-import { UI_WIZARD_OPEN } from './wizard';
+import { UI_WIZARD_EDIT_SOURCE_ID, UI_WIZARD_OPEN } from './wizard';
 
 /**
  * What the remote's Back button (and a browser Backspace on a TV build)
@@ -43,6 +43,9 @@ export function closeTopmostOverlay(): boolean {
         return true;
     }
     if (get<boolean>(UI_WIZARD_OPEN) === true) {
+        // Discards an in-progress source edit along with the modal — the
+        // fields are uncontrolled, so nothing was written anywhere yet.
+        setValue(UI_WIZARD_EDIT_SOURCE_ID, null);
         setValue(UI_WIZARD_OPEN, false);
         return true;
     }

@@ -67,9 +67,19 @@
     color: var(--color-danger);
 }
 
+/* No `cursor: default` on the active card: in the Sources tab the card is
+   the source's editor, so the active one is every bit as clickable as the
+   rest — only its "already showing" tint differs. */
 .sources-list__select--active {
     background: var(--surface-hover);
-    cursor: default;
+}
+
+/* The Sources tab's per-row "make this the default" button, beside the card
+   that edits instead. `flex: none` keeps it off the card's growth, and the
+   end padding lines it up with the .active-badge it swaps places with. */
+.sources-list__use {
+    flex: none;
+    margin-inline-end: var(--row-pad-x);
 }
 
 .sources-list__active-badge {

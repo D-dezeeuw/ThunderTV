@@ -9,6 +9,7 @@ import { nlHandoff } from './strings.nl.handoff';
 import { nlStarred } from './strings.nl.starred';
 import { nlEpg } from './strings.nl.epg';
 import { nlPlayerTracks } from './strings.nl.player';
+import { nlWizard } from './strings.nl.wizard';
 
 export const nl = {
     appName: 'ThunderTV',
@@ -142,6 +143,7 @@ export const nl = {
     ...nlCodex,
     ...nlHandoff,
     ...nlStarred,
+    ...nlWizard,
 
     recent: {
         nowPlaying: 'Nu aan het afspelen:',
@@ -186,8 +188,11 @@ export const nl = {
         hiddenNote: 'Verborgen in de zijbalk omdat er geen afspeelbare zenders in zitten. Hier nog wel selecteerbaar.',
         showHidden: 'Verborgen bronnen tonen',
         allTitle: 'Standaardbron',
-        allHint: 'Kies welke geïmporteerde bron Live, Radio en Categorieën tonen. Hier wisselen doet hetzelfde als er een kiezen bij Bronnen.',
+        allHint: 'Kies welke geïmporteerde bron Live, Radio en Categorieën tonen. Hier wisselen doet hetzelfde als op Gebruiken drukken bij Bronnen.',
         activeBadge: 'Actief',
+        configuredTitle: 'Uw bronnen',
+        configuredHint: 'Kies een bron om de verbindingsgegevens te bewerken. Met Gebruiken wordt het de bron die Live, Radio en Categorieën tonen.',
+        useButton: 'Gebruiken',
     },
 
     settings: {
@@ -297,20 +302,6 @@ export const nl = {
         appearance: nlAppearance,
     },
 
-    wizard: {
-        title: 'Welkom bij ThunderTV',
-        skip: 'Voorlopig overslaan',
-        step1: {
-            heading: 'Laten we u instellen',
-            intro: 'Kies uw taal en gewenste inhoudsland — beide zijn later altijd wijzigbaar in Instellingen.',
-            next: 'Doorgaan',
-        },
-        step2: {
-            heading: 'Voeg uw zenders toe',
-            intro: 'Voer uw Xtream Codes-account in om nu uw zenders te importeren, of sla over en voeg later een bron toe via de Verbinden-kaart.',
-            back: 'Terug',
-        },
-    },
 
     list: {
         ...nlEpg.list,
