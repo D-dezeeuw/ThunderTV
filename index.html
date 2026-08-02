@@ -114,8 +114,6 @@
             <symbol id="icon-subtitles" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="6" y1="10" x2="11" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="13" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
             <!-- Audio-only toggle: headphones, distinct from icon-audio-tracks' speaker+waves. -->
             <symbol id="icon-headphones" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="2.5" y="13" width="4" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="17.5" y="13" width="4" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
-            <!-- Stop: a filled square, the universal "stop" glyph, paired with icon-play for the toggle. -->
-            <symbol id="icon-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1.5" fill="currentColor" stroke="none"/></symbol>
             <!-- Pause: two bars, paired with icon-play for the visualizer pause/resume toggle. -->
             <symbol id="icon-pause" viewBox="0 0 24 24"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="4.5" width="4.5" height="15" rx="1" fill="currentColor" stroke="none"/></symbol>
             <!-- Skip/next: a play triangle against a bar. -->
@@ -707,7 +705,12 @@
                             </button>
                         </div>
 
-                        <div class="catalog-search" data-if="view.live.active" data-testid="live-search">
+                        <!-- One search box for Live and Radio: same kind of row, two
+                             disjoint sets, so `search/setQueryChannels` scopes itself
+                             from the view on screen (state/search.actions.ts) instead
+                             of mounting a second input. The list/grid switch inside
+                             stays Live-only — Radio has no grid to offer. -->
+                        <div class="catalog-search" data-if="view.live.active || view.radio.active" data-testid="live-search">
                             <input
                                 type="text"
                                 class="catalog-search__input"
@@ -724,7 +727,7 @@
                             <span class="catalog-search__counts" data-if="search.active" data-testid="live-search-counts">
                                 {{ strings.search.scopeChannels }}: {{ search.resultCounts.channels }}
                             </span>
-                            <div class="layout-toggle" role="group" :aria-label="strings.layout.group" data-testid="live-layout-toggle">
+                            <div class="layout-toggle" role="group" data-if="view.live.active" :aria-label="strings.layout.group" data-testid="live-layout-toggle">
                                 <button
                                     type="button"
                                     class="layout-toggle__btn"
@@ -1555,14 +1558,18 @@
 
                                  Movies/TV Shows play into that same <video> (vod.actions.ts
                                  and series.actions.ts both go through setActiveChannel), so
-                                 they get this pane too — but only once something is
-                                 actually playing, since a permanent empty player beside a
-                                 poster grid is just noise. Without this, pressing Play on a
-                                 movie left the <video> in a `display: none` pane: audio
-                                 only, no picture, and nothing to fullscreen. -->
+                                 they get this pane too. Without it, pressing Play on a movie
+                                 left the <video> in a `display: none` pane: audio only, no
+                                 picture, and nothing to fullscreen.
+
+                                 Every view now uses that same rule: no pane unless something
+                                 plays. On a boot it was worse than noise — `player.active`
+                                 is persisted, so the pane named a channel the restored
+                                 session never attached. `playerPaneVisible`
+                                 (state/player.selectors.ts) knows the difference. -->
                             <div
                                 class="now-playing"
-                                data-if="view.channelList.active || ((view.movies.active || view.series.active) && player.active)"
+                                data-if="playerPaneVisible"
                                 data-testid="now-playing-pane"
                             >
                                 <!-- The picture/audio-only distinction is a class on the
@@ -1891,11 +1898,15 @@
                                         <!-- Watch a TV channel like a radio station: the
                                              picture collapses, the visualizer takes the
                                              pane. Not offered in Radio, which has no
-                                             picture to give up in the first place. -->
+                                             picture to give up in the first place, and no
+                                             longer in Live, where it only distracted. It
+                                             does still show there while the mode is *on*:
+                                             the preference persists, so it must always
+                                             carry its own way back to the picture. -->
                                         <button
                                             type="button"
                                             class="icon-btn"
-                                            data-if="view.live.active || view.categories.active"
+                                            data-if="view.categories.active || (view.live.active && player.audioMode)"
                                             :class="{ 'icon-btn--active': player.audioMode }"
                                             :aria-pressed="player.audioMode"
                                             :aria-label="player.audioMode ? strings.list.playerShowPicture : strings.list.playerAudioOnly"
@@ -1919,26 +1930,10 @@
                                             <button type="button" class="btn" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
                                                 {{ strings.list.playerFullscreen }}
                                             </button>
-                                            <!-- Stop/Play toggle: pauses the media element in
-                                                 place (state/player.actions.ts's togglePlayback())
-                                                 rather than closing the channel, so the row/
-                                                 episode highlight and player.active both survive
-                                                 a press — press again to resume. -->
-                                            <button
-                                                type="button"
-                                                class="icon-btn"
-                                                :aria-pressed="player.paused"
-                                                :aria-label="player.paused ? strings.list.playerResume : strings.list.playerStop"
-                                                :title="player.paused ? strings.list.playerResume : strings.list.playerStop"
-                                                data-action="click"
-                                                data-fn="player/togglePlayback"
-                                                data-testid="player-stop-btn"
-                                            >
-                                                <svg class="icon icon--s" aria-hidden="true">
-                                                    <use data-if="player.paused" href="#icon-play"></use>
-                                                    <use data-if="!player.paused" href="#icon-stop"></use>
-                                                </svg>
-                                            </button>
+                                            <!-- No Stop/Play button: `<video controls>` carries
+                                                 one and .radio-now-playing toggles on tap, so a
+                                                 third copy was clutter. player/togglePlayback
+                                                 and player.paused still serve both. -->
                                             <!-- Handoff (Phase 38, stone 9). The link is shown
                                                  as well as copied: most TV webviews have no
                                                  clipboard at all, and a button that silently
@@ -2039,9 +2034,6 @@
                                     <p class="player-shell__notice" data-if="player.playbackNotice" data-testid="player-notice">
                                         {{ player.playbackNotice }}
                                     </p>
-                                </div>
-                                <div class="empty-state now-playing__empty" data-if="!player.active" data-testid="now-playing-empty">
-                                    <p class="empty-state__message">{{ strings.list.nowPlayingEmpty }}</p>
                                 </div>
                             </div>
                         </div>

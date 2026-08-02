@@ -2,6 +2,7 @@ import { resetState, setValue, tick } from 'spektrum';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { clearRows, setRows as setChannelMemoryRows } from '../m3u/channel-memory';
 import type { ChannelRow } from '../m3u/types';
+import { mountTemplate } from '../shared/testing/bind-dom';
 import { getAllRows } from '../ui/virtual-list';
 import { get } from './typed';
 import { ensureLiveRows } from './live-rows';
@@ -12,10 +13,12 @@ import {
     SEARCH_LOADED_ONLY,
     SEARCH_QUERY,
     SEARCH_RESULT_COUNTS,
+    SEARCH_SCOPE,
     type SearchResultCounts,
 } from './search';
 import { setCachedVodSource, toVodItem, vodMemory } from './vod-rows';
 import { setCachedSeriesSource, toSeriesItem, seriesMemory } from './series-rows';
+import { UI_ACTIVE_VIEW } from './ui';
 
 const fakeSource = { url: 'http://provider.example', user: 'u', pass: 'p' };
 
@@ -123,6 +126,33 @@ describe('search.actions', () => {
         expect(getAllRows().map((r) => r.id)).toEqual(['c1', 'vod:1', 'series:1']);
     });
 
+    /**
+     * Radio shares Live's input, so the scope is decided from `ui.activeView`
+     * at press time. The rule that matters: the two row sets are disjoint, and
+     * a station search must never surface a TV channel the Radio tab cannot
+     * show (nor the reverse).
+     */
+    it('"radio" scope ranks stations only, and leaves TV channels out', () => {
+        setChannelMemoryRows([
+            ...channels,
+            { id: 'r1', name: 'NPO Radio 2', url: 'http://x/r1', group: 'NL', logo: null, tvgId: null, radio: true },
+        ]);
+        ensureLiveRows(true);
+
+        setSearchScope('radio');
+        setSearchQuery('npo');
+        tick();
+
+        expect(get<SearchResultCounts>(SEARCH_RESULT_COUNTS)).toEqual({ channels: 1, movies: 0, series: 0 });
+        expect(getAllRows().map((r) => r.id)).toEqual(['r1']);
+
+        // The same query in Live's own scope finds the television channel and
+        // not the station.
+        setSearchScope('channels');
+        tick();
+        expect(getAllRows().map((r) => r.id)).toEqual(['c1']);
+    });
+
     it('clearSearch() resets the query and publishes an empty result set', () => {
         setSearchScope('all');
         setSearchQuery('napoleon');
@@ -134,5 +164,44 @@ describe('search.actions', () => {
 
         expect(get<string>(SEARCH_QUERY)).toBe('');
         expect(get<SearchResultCounts>(SEARCH_RESULT_COUNTS)).toEqual({ channels: 0, movies: 0, series: 0 });
+    });
+});
+
+/**
+ * Live and Radio share one input in `index.html`, so the only thing deciding
+ * its scope is the view under it. Asserted through the real binding rather
+ * than by calling the action, since the binding is the half that could
+ * silently stop matching.
+ */
+describe('the shared Live/Radio search input', () => {
+    it('scopes itself to whichever of the two views is open', () => {
+        const mounted = mountTemplate(`
+            <input
+                type="text"
+                class="catalog-search__input"
+                :value="search.query"
+                data-action="input"
+                data-fn="search/setQueryChannels"
+                data-testid="live-search-input"
+            />
+        `);
+        const input = mounted.query<HTMLInputElement>('[data-testid="live-search-input"]');
+
+        setValue(UI_ACTIVE_VIEW, 'radio');
+        tick();
+        if (input) input.value = 'npo';
+        input?.dispatchEvent(new Event('input'));
+        tick();
+        expect(get<string>(SEARCH_SCOPE)).toBe('radio');
+
+        setValue(UI_ACTIVE_VIEW, 'live');
+        tick();
+        if (input) input.value = 'npo 1';
+        input?.dispatchEvent(new Event('input'));
+        tick();
+        expect(get<string>(SEARCH_SCOPE)).toBe('channels');
+
+        mounted.cleanup();
+        resetSearchActionsForTests();
     });
 });

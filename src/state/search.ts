@@ -15,10 +15,19 @@ export const SEARCH_RESULT_COUNTS = 'search.resultCounts';
 /** True when the current scope's results are known-incomplete because not every relevant category has been fetched yet (`movies`/`series` only — see `search.actions.ts`'s `recomputeSearch()`). Always `false` for `channels`, which is always fully loaded. */
 export const SEARCH_LOADED_ONLY = 'search.loadedOnly';
 
-export type SearchScope = 'channels' | 'movies' | 'series' | 'all';
+/**
+ * `'radio'` is `'channels'` pointed at the other row set: Radio's stations are
+ * `ChannelRow`s like any other, they just live in `live-rows.ts`'s radio
+ * array. It is a scope of its own rather than a flag on `'channels'` because
+ * the two lists are disjoint — searching Radio must never surface a TV channel
+ * the Radio tab cannot show. Both report into `resultCounts.channels`.
+ */
+export type SearchScope = 'channels' | 'radio' | 'movies' | 'series' | 'all';
 
 export function isSearchScope(value: unknown): value is SearchScope {
-    return value === 'channels' || value === 'movies' || value === 'series' || value === 'all';
+    return (
+        value === 'channels' || value === 'radio' || value === 'movies' || value === 'series' || value === 'all'
+    );
 }
 
 export interface SearchResultCounts {

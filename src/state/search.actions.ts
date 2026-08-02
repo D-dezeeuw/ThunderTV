@@ -1,8 +1,9 @@
 import { defineFn } from 'spektrum';
+import type { Route } from '../app/router';
 import type { ChannelRow } from '../m3u/types';
 import { DEFAULT_SEARCH_LIMIT, rankSearch } from '../search/fuzzy';
 import { normalizeForSearch } from '../search/normalize';
-import { liveDisplayRows } from './live-rows';
+import { ensureRadioRows, liveDisplayRows, radioDisplayRows } from './live-rows';
 import { setDisplayedRows } from './list-rows';
 import {
     allLoadedSeriesItems,
@@ -19,7 +20,8 @@ import {
     type SearchResultCounts,
     type SearchScope,
 } from './search';
-import { replace, set } from './typed';
+import { get, replace, set } from './typed';
+import { UI_ACTIVE_VIEW } from './ui';
 import { allLoadedVodItems, cachedVodSource, vodCategoryName, vodHasUnfetchedCategories, vodItemToRow } from './vod-rows';
 
 /**
@@ -48,9 +50,16 @@ export function registerSearchActions(): void {
     // searches channels, Movies only movies, Series only series — so the
     // scope is forced from the input's own view rather than left to a
     // scope-picker the user could point at the wrong category.
+    //
+    // Live and Radio share one input (index.html mounts the same
+    // `.catalog-search` block for both), so this one reads which of the two
+    // is on screen. Same rule, just resolved at press time instead of at
+    // authoring time — the alternative was a second input, a second data-fn
+    // and a second copy of the clear button for a list that differs only in
+    // which rows it holds.
     defineFn('search/setQueryChannels', (el) => {
         if (el instanceof HTMLInputElement) {
-            setSearchScope('channels');
+            setSearchScope(get<Route>(UI_ACTIVE_VIEW) === 'radio' ? 'radio' : 'channels');
             setSearchQuery(el.value);
         }
     });
@@ -75,23 +84,37 @@ export function registerSearchActions(): void {
  * Channels have no persisted `searchKey` field (`ChannelRow` is owned by
  * `src/m3u/`, out of this phase's `src/state/`-only scope) — so this module
  * builds its own small cache the first time a search touches a given row
- * array, keyed by reference identity: `liveDisplayRows()` only returns a
- * *new* array when the underlying catalog is actually rebuilt (source
- * switch, a Live filter change), never on a keystroke, so this still
+ * array, keyed by reference identity: `liveDisplayRows()`/`radioDisplayRows()`
+ * only return a *new* array when the underlying catalog is actually rebuilt
+ * (source switch, a Live filter change), never on a keystroke, so this still
  * satisfies `src/search/README.md`'s "normalize once, score many times"
- * contract in practice.
+ * contract in practice. One cache per row source, since the two arrays are
+ * rebuilt independently.
  */
-let channelIndexSource: readonly ChannelRow[] | null = null;
-let channelSearchKeys = new Map<string, string>();
-
-function channelSearchKey(row: ChannelRow): string {
-    const rows = liveDisplayRows();
-    if (channelIndexSource !== rows) {
-        channelSearchKeys = new Map(rows.map((r) => [r.id, normalizeForSearch(r.name)]));
-        channelIndexSource = rows;
-    }
-    return channelSearchKeys.get(row.id) ?? '';
+function createSearchKeyCache(rowsOf: () => readonly ChannelRow[]): {
+    keyFor: (row: ChannelRow) => string;
+    reset: () => void;
+} {
+    let indexSource: readonly ChannelRow[] | null = null;
+    let keys = new Map<string, string>();
+    return {
+        keyFor(row) {
+            const rows = rowsOf();
+            if (indexSource !== rows) {
+                keys = new Map(rows.map((r) => [r.id, normalizeForSearch(r.name)]));
+                indexSource = rows;
+            }
+            return keys.get(row.id) ?? '';
+        },
+        reset() {
+            indexSource = null;
+            keys = new Map();
+        },
+    };
 }
+
+const channelKeys = createSearchKeyCache(liveDisplayRows);
+const radioKeys = createSearchKeyCache(radioDisplayRows);
 
 export function setSearchQuery(raw: string): void {
     currentQuery = raw;
@@ -133,10 +156,23 @@ export function recomputeSearch(): void {
     }
 
     const wantChannels = scope === 'channels' || scope === 'all';
+    const wantRadio = scope === 'radio';
     const wantMovies = scope === 'movies' || scope === 'all';
     const wantSeries = scope === 'series' || scope === 'all';
 
-    const channelMatches = wantChannels ? rankSearch(query, liveDisplayRows(), channelSearchKey, DEFAULT_SEARCH_LIMIT) : [];
+    // Radio's rows are built on entering the view, but a recompute can also
+    // arrive from elsewhere (`catalog-warm.ts`) — `ensureRadioRows()` is
+    // memoized on its own inputs, so asking is free when they already exist.
+    if (wantRadio) ensureRadioRows();
+    const channelMatches = wantChannels
+        ? rankSearch(query, liveDisplayRows(), channelKeys.keyFor, DEFAULT_SEARCH_LIMIT)
+        : [];
+    // The two scopes are mutually exclusive, so one of these is always empty
+    // — kept as separate ranks rather than one row source picked by an `if`
+    // so each keeps its own normalize-once cache.
+    const radioMatches = wantRadio
+        ? rankSearch(query, radioDisplayRows(), radioKeys.keyFor, DEFAULT_SEARCH_LIMIT)
+        : [];
     const vodMatches = wantMovies
         ? rankSearch(query, allLoadedVodItems(), (item) => item.searchKey, DEFAULT_SEARCH_LIMIT)
         : [];
@@ -145,7 +181,7 @@ export function recomputeSearch(): void {
         : [];
 
     const counts: SearchResultCounts = {
-        channels: channelMatches.length,
+        channels: channelMatches.length + radioMatches.length,
         movies: vodMatches.length,
         series: seriesMatches.length,
     };
@@ -154,6 +190,7 @@ export function recomputeSearch(): void {
     const vodSource = cachedVodSource();
     const rows: ChannelRow[] = [
         ...channelMatches,
+        ...radioMatches,
         ...vodMatches.map((item) => vodItemToRow(item, vodSource, vodCategoryName(item.categoryId))),
         ...seriesMatches.map((item) => seriesItemToRow(item, seriesCategoryName(item.categoryId))),
     ].slice(0, DEFAULT_SEARCH_LIMIT);
@@ -167,10 +204,10 @@ function publishResults(rows: ChannelRow[], counts: SearchResultCounts, loadedOn
     setDisplayedRows(rows);
 }
 
-/** Test-only: resets the module-level query/scope/channel-index memory this file keeps outside Spektrum state. Never call from app code. */
+/** Test-only: resets the module-level query/scope/row-index memory this file keeps outside Spektrum state. Never call from app code. */
 export function resetSearchActionsForTests(): void {
     currentQuery = '';
     currentScope = 'all';
-    channelIndexSource = null;
-    channelSearchKeys = new Map();
+    channelKeys.reset();
+    radioKeys.reset();
 }

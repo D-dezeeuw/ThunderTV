@@ -328,7 +328,6 @@ export const nl = {
             openSources: 'Naar Bronnen',
         },
         backToGroups: '← Groepen',
-        playerStop: 'Stoppen',
         playerFullscreen: 'Volledig scherm',
         playerNextVisual: 'Volgende visual',
         playerPauseVisual: 'Visual pauzeren',
@@ -351,7 +350,6 @@ export const nl = {
         signalGood: 'Stream stabiel',
         signalFair: 'Stream buffert af en toe',
         signalPoor: 'Stream sputtert — verbinding te traag of onstabiel',
-        nowPlayingEmpty: 'Kies een zender om te beginnen met kijken.',
         ...nlPlayerTracks,
     },
 

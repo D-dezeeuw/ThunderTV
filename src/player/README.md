@@ -252,8 +252,10 @@ resumed.
 ### Audio-only TV (`player.audioMode`)
 
 The visualizer is not Radio's alone: `player/toggleAudioMode`
-(`state/player.actions.ts`, a button in the player bar shown in Live and
-Categories) plays a *television* channel with the picture collapsed and the
+(`state/player.actions.ts`, a button in the player bar shown in Categories —
+and in Live *only while the mode is already on*, so a persisted preference
+always keeps a visible way back to the picture; it was distracting there
+otherwise) plays a *television* channel with the picture collapsed and the
 visualizer in its place — a TV used as a stereo. One pure predicate,
 `state/player.ts`'s `isAudioVisual(view, audioMode)`, decides this
 everywhere: the `visualizerActive` computed the markup binds to

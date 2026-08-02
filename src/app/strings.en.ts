@@ -324,7 +324,6 @@ export const en = {
             openSources: 'Go to Sources',
         },
         backToGroups: '← Groups',
-        playerStop: 'Stop',
         playerFullscreen: 'Full screen',
         playerNextVisual: 'Next visual',
         playerPauseVisual: 'Pause visual',
@@ -347,7 +346,6 @@ export const en = {
         signalGood: 'Stream steady',
         signalFair: 'Stream buffering occasionally',
         signalPoor: 'Stream struggling — connection too slow or unstable',
-        nowPlayingEmpty: 'Pick a channel to start watching.',
         ...enPlayerTracks,
     },
 
