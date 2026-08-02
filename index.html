@@ -2103,6 +2103,7 @@
                                 <span class="recent-zap-history__text">
                                     <span class="recent-zap-history__name truncate">{{ item.name }}</span>
                                     <span class="recent-zap-history__group truncate" data-if="item.group">{{ item.group }}</span>
+                                    <span class="recent-zap-history__epg truncate" data-if="epg.nowByRow[item.id]">{{ epg.nowByRow[item.id] }}</span>
                                 </span>
                                 <span class="recent-zap-history__badge" data-if="item.radio">{{ strings.starred.radioBadge }}</span>
                                 <svg class="icon icon--s recent-zap-history__cue" aria-hidden="true">
@@ -2178,6 +2179,7 @@
                                 <span class="recent-zap-history__text">
                                     <span class="recent-zap-history__name truncate">{{ item.name }}</span>
                                     <span class="recent-zap-history__group truncate" data-if="item.group">{{ item.group }}</span>
+                                    <span class="recent-zap-history__epg truncate" data-if="epg.nowByRow[item.id]">{{ epg.nowByRow[item.id] }}</span>
                                 </span>
                                 <span class="recent-zap-history__badge" data-if="item.radio">{{ strings.recent.radioBadge }}</span>
                                 <svg class="icon icon--s recent-zap-history__cue" aria-hidden="true">

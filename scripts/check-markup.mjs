@@ -35,7 +35,7 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url));
  * screen-reader announcement region.
  */
 const BUDGETS = [
-    { path: 'index.html', maxLines: 3599, maxBytes: 247_521 },
+    { path: 'index.html', maxLines: 3591, maxBytes: 247_294 },
 ];
 
 let failed = false;

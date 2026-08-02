@@ -588,6 +588,28 @@ layer:
   the same action (`guide/openProgram`), so clicking anywhere on a row —
   logo, name, or a block — lands on TV with the channel playing.
 
+### Starred and Recents get the same line, through a map
+
+`epg-rows.selectors.ts` publishes `computed('epg.nowByRow', …)` — row id →
+what is on now — and those two lists read `epg.nowByRow[item.id]` rather
+than carrying enriched rows of their own. Three reasons, all of which
+generalise to any future list that wants the line:
+
+- **It joins by id.** A row can only ever render its own programme, whatever
+  the engine does with the clone (see the `list.visibleRows` note above).
+- **It leaves the row arrays alone.** `favorites.rows`/`player.zapHistory`
+  are keyless `data-each`es, so republishing either on the 30s beat would
+  destroy and rebuild every row — twice a minute, under whatever the viewer
+  had focused. Only the line's own bindings re-run.
+- **`player.zapHistory` is persisted.** Enriching the snapshots in place
+  would write programme titles into storage that are wrong within the hour.
+
+A `computed()` *assigns* its value rather than merging it, so an entry
+disappears with its row and none of the map-shaped-key ceremony applies. A
+`FavoriteRecord`/`ActiveChannelSnapshot` carries no `tvgId`, so the guide id
+comes from the channel row wearing the same id (variants included); an id
+that resolves to nothing is absent from the map, and the row shows no line.
+
 ## The persistence bridge, in one paragraph
 
 Actions call `persist(key)` after a `setValue`/`set()` write. `persist()`
