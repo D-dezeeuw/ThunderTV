@@ -48,6 +48,26 @@ files:
   - from: ../build/icons
     to: icons
 
+# `desktop/main.mjs` imports `../scripts/proxy-server.mjs` — a path that
+# points *outside* `directories.app`, so no `files:` entry above can ever
+# satisfy it (nothing can be placed above the asar root from in there).
+# From inside `app.asar`, `../scripts/…` resolves to `resources/scripts/…`,
+# which is precisely what `extraResources` writes — so the one static
+# import specifier is correct both packaged and unpackaged, with no
+# `app.isPackaged` branch in `main.mjs`.
+#
+# Without this the packaged app died at startup with
+# `ERR_MODULE_NOT_FOUND: …/resources/scripts/proxy-server.mjs` before any
+# window opened, while `npm start` from a checkout kept working — the
+# packaged-only failure mode `scripts/check-desktop-package.mjs` now
+# guards in `npm run verify`.
+extraResources:
+  - from: ../scripts/proxy-server.mjs
+    to: scripts/proxy-server.mjs
+  # `proxy-server.mjs`'s own import — the graph has to travel whole.
+  - from: ../scripts/cloudflare-cors-proxy.mjs
+    to: scripts/cloudflare-cors-proxy.mjs
+
 # No publish config (see header comment) — releases are manual, per
 # masterplan Phase 29's "zero GitHub Actions publishes" rule. The desktop
 # CI workflow (.github/workflows/desktop-build.yml) only builds and
