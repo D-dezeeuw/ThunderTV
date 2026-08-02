@@ -639,9 +639,21 @@ layer:
   stops playback on a genuine route change, so the direct write killed the
   stream the navigation existed to show. The helper arms that exemption,
   queues the row for `revealRowOnNextPublish()`, and covers the
-  already-on-TV case where no `hashchange` fires. Programme blocks reach
-  the same action (`guide/openProgram`), so clicking anywhere on a row —
-  logo, name, or a block — lands on TV with the channel playing.
+  already-on-TV case where no `hashchange` fires. The channel cell
+  (`guide/playChannel`) and the programme modal's watch button
+  (`guide/playSelectedChannel`) both end up here.
+- **A row's two halves do two different things.** The channel cell plays;
+  a programme block opens the detail modal (`guide/openProgram`) and
+  changes nothing else. Blocks used to play too, which made reading the
+  grid impossible without interrupting playback — the jump is now the
+  modal's own primary action, taken after the viewer knows what the
+  programme is. The modal *is* `guide.selectedKey`: non-null opens it,
+  and closing (button, backdrop, Escape, TV Back via
+  `back-navigation.ts`) is one write of null, so no second open-flag can
+  drift out of sync with the selection. `guide.view.selected` resolves
+  that key against **every** programme the bound rows carry, not the
+  windowed subset the grid draws, so an open modal doesn't evaporate when
+  its programme ages out of the visible window.
 
 ### Starred and Recents get the same line, through a map
 

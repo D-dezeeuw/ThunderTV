@@ -180,31 +180,67 @@
     display: block;
 }
 
-.guide__detail {
-    padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-l);
-    background: var(--color-surface);
+/* Programme detail modal. The overlay chrome itself is `.wizard-modal`
+   (shell.css) verbatim — these are only the body's own rows, replacing the
+   `.guide__detail` panel that used to sit under the grid: the modal says
+   everything that panel did and more, and keeping both would have shown the
+   same programme twice. */
+.guide-modal__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
 }
 
-.guide__detail-empty {
+.guide-modal__logo {
+    width: var(--logo-box);
+    height: var(--logo-box);
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.guide-modal__channel {
+    margin: 0;
     color: var(--color-text-dim);
     font-size: var(--text-sm);
 }
 
-.guide__detail-title {
-    margin: 0 0 var(--space-1);
-    font-size: var(--text-lg);
-}
-
-.guide__detail-time {
-    margin: 0 0 var(--space-2);
+/* Wraps rather than truncates: on a narrow window the "Now" badge and the
+   date/time/runtime line are separate facts, neither of which may vanish. */
+.guide-modal__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: calc(var(--space-2) * -1) 0 var(--space-3);
     color: var(--color-text-dim);
     font-size: var(--text-sm);
 }
 
-.guide__detail-description {
+.guide-modal__badge {
+    padding: 0 var(--space-2);
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-s);
+    color: var(--color-accent);
+    font-size: var(--text-xs);
+}
+
+.guide-modal__progress {
+    width: 100%;
+    height: 4px;
+    margin-bottom: var(--space-3);
+}
+
+.guide-modal__description {
     margin: 0;
     font-size: var(--text-sm);
     line-height: var(--leading-normal);
+    /* A feed's synopsis can run long; the modal body scrolls rather than
+       growing past the viewport (`.wizard-modal__body` caps its height). */
+    overflow-wrap: break-word;
+}
+
+.guide-modal__description--empty {
+    color: var(--color-text-dim);
+    font-style: italic;
 }

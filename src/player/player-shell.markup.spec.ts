@@ -270,3 +270,39 @@ describe('no dynamic :href binding on an SVG <use> element', () => {
         mounted.cleanup();
     });
 });
+
+/**
+ * The preview pane had no way out: it is gated on playback alone
+ * (`playerPaneVisible`), and nothing on screen stopped playback — only
+ * leaving the tab did, because the router stops on a route change. Its title
+ * row now carries a close button, and closing is stopping.
+ */
+describe('preview pane close button', () => {
+    it('carries no data-if, so the audio-only pane (where the title is hidden) closes too', () => {
+        const button = /<button[^>]*data-testid="player-close-btn"[^>]*>/.exec(indexHtml)?.[0] ?? '';
+        expect(button).toContain('data-fn="player/stop"');
+        expect(button).not.toContain('data-if');
+    });
+
+    it('stops playback, which is what takes the pane off screen', () => {
+        const mounted = mountTemplate(`
+            <div data-if="${NOW_PLAYING_GATE}" data-testid="now-playing-pane">
+                <button data-action="click" data-fn="player/stop" data-testid="player-close-btn"></button>
+            </div>
+        `);
+        const pane = (): HTMLElement | null => mounted.query('[data-testid="now-playing-pane"]');
+
+        setActiveChannel(CHANNEL);
+        // The transient half of the gate — non-null exactly while a stream is
+        // attached in this session.
+        reportStreamHealth('good');
+        tick();
+        expect(pane()?.style.display).toBe('');
+
+        mounted.dispatch('player/stop');
+        tick();
+        expect(pane()?.style.display).toBe('none');
+
+        mounted.cleanup();
+    });
+});

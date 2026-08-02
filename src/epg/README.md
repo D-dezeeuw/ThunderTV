@@ -53,12 +53,19 @@ that prompted this had every entry reading `Canal+`), and there is no case
 where the Guide should call a channel something other than what the TV list
 calls it. The feed still supplies the logo and, of course, the programmes.
 
-Clicking anywhere on a row — logo, name, or any programme block — plays that
-channel and lands on the TV tab with the row selected and scrolled into
-view. That goes through `recent.actions.ts`'s `showReplayedChannel()`, the
-same helper Starred and Recents use, because a bare `location.hash` write is
-a route change and **the router stops playback on one**: the old code
-started a stream and then had it killed by its own navigation.
+Clicking a row's **channel cell** — logo or name — plays that channel and
+lands on the TV tab with the row selected and scrolled into view. That goes
+through `recent.actions.ts`'s `showReplayedChannel()`, the same helper
+Starred and Recents use, because a bare `location.hash` write is a route
+change and **the router stops playback on one**: the old code started a
+stream and then had it killed by its own navigation.
+
+Clicking a **programme block** opens that programme's detail modal instead —
+channel, day, time, runtime, live progress and synopsis, with "watch this
+channel" as its own button (the same `playChannelByEpgId()` path) and a
+close. Blocks used to play the channel directly, which meant a viewer could
+not read the guide without interrupting whatever was on. The modal is driven
+by `guide.selectedKey` alone; see `src/state/README.md`'s guide section.
 
 The same resolution answers "which programmes belong to this channel row"
 for the list's now/next line — `src/state/epg-index.ts`'s
@@ -223,7 +230,8 @@ is on them":
   back is guaranteed-empty track) and +7 days. At offset 0 the window
   keeps tracking the clock with no extra bookkeeping, which is also why
   "back to now" is a single write of `0`.
-- **Play from the guide.** A guide row's channel cell is a real button:
+- **Play from the guide.** A guide row's channel cell is a real button
+  (a programme block opens the detail modal instead — see above):
   `playChannelByEpgId()` resolves the EPG channel id back to a Live row via
   the same `epgId`. It returns `false` — a quiet no-op, not an error — when
   the current subscription doesn't carry that channel, because the Guide

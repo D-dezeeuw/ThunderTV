@@ -28,6 +28,7 @@ export const dePlayerTracks = {
     playerAudioOnly: 'Nur Ton',
     playerShowPicture: 'Bild anzeigen',
     playerTogglePlayback: 'Abspielen oder pausieren',
+    playerClose: 'Wiedergabe beenden und Vorschau schließen',
     playerUnsupportedContainer:
         'den Container dieser Datei kann dieses Gerät nicht abspielen; laden Sie sie herunter und öffnen Sie sie in einem anderen Player',
     playerNoDataYet: 'nach 20 Sekunden noch keine abspielbaren Daten',

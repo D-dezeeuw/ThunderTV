@@ -104,23 +104,32 @@ console.log(`check-dist: OK — no devtools symbols found in ${jsFiles.length} b
 // back down, the honest target is the eager Codex/handoff action modules,
 // which are registered at boot for UI nobody reaches before Settings.
 //
-// Raised again, 101 → 103, for the no-sound work (HEVC transcode fix +
-// codec badges/markers), which costs 2.0 KiB gz eager: the marker store and
-// codec judgement are read synchronously while catalog rows are published,
-// so there is no lazy seam to hide them behind. Two things were measured
-// rather than assumed before moving the number. Trimming the feature's own
-// prose — registry descriptions, warning copy — bought 0.13 KiB, i.e.
-// nothing; and stubbing out `registerCodexActions()`/
-// `registerCodexLibraryActions()` and their two boot tasks drops the eager
-// bundle to 98.4 KiB, so the Codex path named above is worth **4.3 KiB
-// gz** — more than twice what this feature costs, and still the honest way
-// back under 101. It is a piece of work in its own right (a lazy shim per
-// `data-fn`, plus deciding whether the two boot tasks may wait for Settings
-// to open), which is why it is written down here instead of rushed in
-// alongside an unrelated fix.
+// 101 → 102 for the Guide's programme-detail modal: ~0.55 KiB gzip, of which
+// a third is the generated CSP expression registry growing by its dozen
+// bindings (public/vendor/spektrum-precompiled.js — every template expression
+// in index.html has an entry). Nothing here is lazy-loadable: the Guide's
+// selectors and actions are registered at boot like every other view's, and
+// the modal is markup in the one index.html. Eager *raw* — the metric that
+// models TV parse work — went 352.5 → 354.6 KiB, still 45 KiB inside its own
+// budget. The Codex/handoff note above is still the honest way back down.
+//
+// 102 → 104 for the no-sound work (HEVC transcode fix + codec badges and
+// learned markers), which costs 2.0 KiB gz eager: the marker store and the
+// codec judgement are read synchronously while catalog rows are published, so
+// there is no lazy seam to hide them behind. Two things were measured rather
+// than assumed before moving the number. Trimming the feature's own prose —
+// registry descriptions, warning copy, the video-probe table — bought
+// 0.13 KiB, i.e. nothing; and stubbing out `registerCodexActions()`/
+// `registerCodexLibraryActions()` and their two boot tasks dropped the eager
+// bundle by **4.3 KiB gz**, more than twice what this feature costs. So the
+// Codex path named above is not a vague aspiration, it is measured and it is
+// still the way back under 101 — a lazy shim per `data-fn`, plus a decision
+// about whether those two boot tasks may wait for Settings to open. That is a
+// piece of work in its own right, which is why it is written down here rather
+// than rushed in alongside an unrelated fix.
 const BUDGETS = {
     startupJsRaw: 400 * 1024,
-    startupJsGzip: 103 * 1024,
+    startupJsGzip: 104 * 1024,
     htmlRaw: 300 * 1024,
     htmlGzip: 60 * 1024,
     cssRaw: 100 * 1024,

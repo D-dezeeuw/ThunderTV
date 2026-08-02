@@ -21,7 +21,7 @@ repeated here, to avoid the two drifting apart.
 | `guide.channels` | epg | no | — | v1 | Live projection of the epgChannels/epgPrograms storage tables (guide-load.ts), exactly like playlist.sources projects the playlists table — never itself persisted, rebuilt at boot and after any ingest that wrote rows. |
 | `guide.loading` | epg | no | — | v1 | True while guide-load.ts is reading the EPG tables — transient. |
 | `guide.offsetMs` | epg | no | — | v1 | How far the Guide timetable window is shifted from "now", in ms (Phase 32). 0 means it tracks the clock. Not persisted: a returning user expects the guide to open on what is on now, not on wherever they had scrolled to yesterday. |
-| `guide.selectedKey` | epg | no | — | v1 | Which programme block is selected in the Guide grid ("<channelId>|<start>"), or null — view-local UI state, reset every boot. |
+| `guide.selectedKey` | epg | no | — | v1 | Which programme block is selected in the Guide grid ("<channelId>|<start>"), or null — view-local UI state, reset every boot. Non-null is also what opens the programme detail modal, so closing it (button, backdrop, Escape, TV Back) is a write of null; there is deliberately no second "modal open" flag to drift out of sync with the selection. |
 | `import.errorKind` | import | no | — | v1 | Classified failure kind of the last import attempt (Feature 07.4/07.7.6) — drives which retry affordance the UI offers. |
 | `import.errorMessage` | import | no | — | v1 | Human-readable message for the last import failure. |
 | `import.parsed` | import | no | — | v1 | Rows parsed so far in the in-flight import — a scalar counter, never the rows themselves (§5.8). |

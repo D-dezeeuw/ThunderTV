@@ -43,6 +43,8 @@ export const enPlayerTracks = {
     playerShowPicture: 'Show picture',
     /** Accessible name for the preview pane itself, which toggles playback when tapped. */
     playerTogglePlayback: 'Play or pause',
+    /** The preview pane's own close button. Says "stop" as well as "close" because it is the same act: the pane is on screen exactly while a stream is attached. */
+    playerClose: 'Stop and close the preview',
     /** Appended to the MediaError label when a movie/episode file uses a container this device has no decoder for — MKV most often, which Chromium does not support at all. */
     playerUnsupportedContainer:
         "this file's container is not one this device can play; downloading it and opening it in another player will work",
