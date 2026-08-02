@@ -120,6 +120,17 @@ export async function attachTranscode(
         return false;
     }
 
+    // Asked before `addSourceBuffer()` rather than instead of it: the throw
+    // below is a `NotSupportedError` whose message names nothing, and "this
+    // build has no HEVC decoder" is the one answer a viewer whose film has a
+    // picture but no sound can act on (`mp4-init.ts` now names HEVC, which
+    // macOS/Windows Electron decode and the web build does not).
+    if (!MediaSource.isTypeSupported(opened.mime)) {
+        detachTranscode();
+        options.onFailure(`this device cannot decode the transcoded stream (${opened.mime})`);
+        return false;
+    }
+
     try {
         if (opened.durationSec && Number.isFinite(opened.durationSec)) mediaSource.duration = opened.durationSec;
         active.buffer = mediaSource.addSourceBuffer(opened.mime);

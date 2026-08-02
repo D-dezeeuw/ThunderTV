@@ -15,11 +15,23 @@
  * here, because the caller's response to both is to stop and leave the
  * viewer with the message the web build shows.
  *
- * H.264 only, deliberately. `avcC` states profile/compatibility/level in
- * three consecutive bytes, which is exactly the `avc1.PPCCLL` string; HEVC's
- * `hvcC` needs bit-reversed compatibility flags and a constraint-byte tail,
- * and an HEVC file is not what this feature exists for — it does not play in
- * Chromium today with or without this route.
+ * H.264 and HEVC. `avcC` states profile/compatibility/level in three
+ * consecutive bytes, which is exactly the `avc1.PPCCLL` string; `hvcC` costs
+ * more work (bit-reversed compatibility flags, a constraint-byte tail) and
+ * was declined at first on the grounds that HEVC does not play in Chromium
+ * anyway. **That was only ever true of the web build.** macOS and Windows
+ * Electron hardware-decode HEVC, which is why an HEVC film there shows a
+ * perfect picture — and then, when its AC-3 audio triggers this route, the
+ * one file that most needs the transcode was the one file this declined to
+ * name. Whether the host can actually decode what is named stays a runtime
+ * question, asked of `MediaSource.isTypeSupported()` by the caller
+ * (`transcode-engine.ts`): on a host without an HEVC decoder the honest
+ * failure is unchanged, it just now says which codec it was.
+ *
+ * VP9/AV1 are still declined. Both are cheap to name in principle, but
+ * neither shows up in an Xtream VOD catalog often enough to have a fixture
+ * to test against, and a codec string nobody has ever seen a real file
+ * produce is a guess wearing a parser's clothes.
  */
 
 /** Bytes of fixed fields before the child boxes of a sample entry, by kind. */
@@ -108,6 +120,46 @@ function avcCodec(view: DataView, entry: Box): string | null {
     return `avc1.${hex(config.start + 1)}${hex(config.start + 2)}${hex(config.start + 3)}`;
 }
 
+/**
+ * `hvc1.PS_PP.CCCC.TLLL.BB…` out of the HEVCDecoderConfigurationRecord, per
+ * ISO/IEC 14496-15 §E.3 — the same string Chromium prints for a file it can
+ * play, or it will not play this one either.
+ *
+ * Three of the five fields are not the bytes as stored. The profile byte
+ * packs `profile_space` (2 bits, spelled as a leading A/B/C when non-zero)
+ * and `tier_flag` (1 bit, the `L`/`H` in front of the level) around the
+ * 5-bit profile; the compatibility flags are written **bit-reversed**,
+ * which is why Main profile's stored `0x60000000` is the familiar `6`; and
+ * the six constraint bytes drop their trailing zeros, so a file with none
+ * set contributes nothing at all rather than `.00.00.00.00.00.00`.
+ *
+ * The sample entry's own fourcc is echoed back rather than normalized to
+ * `hvc1`: `hev1` means the parameter sets travel in-band, and a browser is
+ * entitled to treat that as the different thing it is.
+ */
+function hevcCodec(view: DataView, entry: Box): string | null {
+    const config = findBoxAfterFixedHeader(view, entry, VISUAL_ENTRY_HEADER, 'hvcC');
+    if (!config || config.end - config.start < 13) return null;
+    const at = (offset: number): number => view.getUint8(config.start + offset);
+
+    const profileByte = at(1);
+    const space = profileByte >>> 6;
+    const tier = (profileByte >>> 5) & 0x1;
+    const profile = profileByte & 0x1f;
+
+    const compatibility = view.getUint32(config.start + 2);
+    let reversed = 0;
+    for (let bit = 0; bit < 32; bit += 1) reversed = (reversed << 1) | ((compatibility >>> bit) & 1);
+
+    const constraints: string[] = [];
+    for (let i = 0; i < 6; i += 1) constraints.push(at(6 + i).toString(16).padStart(2, '0'));
+    while (constraints.length > 0 && constraints[constraints.length - 1] === '00') constraints.pop();
+
+    const spaceLabel = space === 0 ? '' : String.fromCharCode(64 + space);
+    const head = `${entry.type}.${spaceLabel}${String(profile)}.${(reversed >>> 0).toString(16)}`;
+    return [`${head}.${tier === 0 ? 'L' : 'H'}${String(at(12))}`, ...constraints].join('.');
+}
+
 function findBoxAfterFixedHeader(view: DataView, entry: Box, fixed: number, type: string): Box | null {
     const childrenStart = entry.start + fixed;
     if (childrenStart > entry.end) return null;
@@ -130,6 +182,8 @@ export function readInitSegmentCodecs(bytes: Uint8Array): InitSegmentCodecs | nu
         if (!entry) continue;
         if (entry.type === 'avc1' || entry.type === 'avc3') {
             video ??= avcCodec(view, entry);
+        } else if (entry.type === 'hvc1' || entry.type === 'hev1') {
+            video ??= hevcCodec(view, entry);
         } else if (entry.type === 'mp4a') {
             // Always our own encoder's output (`-c:a aac` — AAC-LC), so the
             // object type is known without decoding the `esds` descriptors.

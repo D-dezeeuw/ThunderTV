@@ -215,10 +215,17 @@ Two known edges, both stated rather than hidden: `-ss` lands on the keyframe
 at or before the requested second, so a seek can resume up to one GOP early
 (never late, so nothing is skipped — and the appended frames can push
 `duration` a second past the probed length, which is why the scrub bar may
-read 121s for a 120s film after a seek); and only H.264 video is taken, since
-`mp4-init.ts` builds its `addSourceBuffer()` codec string from the `avcC`
-box and declines anything it cannot name — HEVC does not play in Chromium
-today with or without this route. `position.ts` keeps working across the
+read 121s for a 120s film after a seek); and only video `mp4-init.ts` can
+*name* is taken — `avcC` (H.264) and `hvcC` (HEVC) today, anything else
+declined. HEVC was declined outright at first, on the reasoning that
+Chromium cannot play it: true of the web build, **false of macOS/Windows
+Electron**, which hardware-decode it — so on the very host that owns the
+transcoder, every HEVC film showed a picture, lost its AC-3 sound, and then
+found the fix refusing to name the file. `transcode-engine.ts` asks
+`MediaSource.isTypeSupported()` about the resulting MIME before
+`addSourceBuffer()`, so a host with no HEVC decoder still fails — it just
+now says which codec it was instead of throwing a bare `NotSupportedError`.
+`position.ts` keeps working across the
 switch: `transcode-fallback.ts` re-arms the position monitor under the same
 `streamKey` the direct attempt used, so resume does not care which route
 played the film. The stream-health indicator, by contrast, stays off while
