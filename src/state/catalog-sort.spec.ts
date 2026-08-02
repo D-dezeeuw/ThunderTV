@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { XtreamCategory } from '../xtream/types';
 import { sortCategoriesCountryFirst } from './catalog-sort';
-import { popularityRank, UNRANKED } from './catalog-popularity';
+import { isTopHundredCategory, popularityRank, UNRANKED } from './catalog-popularity';
 
 const categories: XtreamCategory[] = [
     { id: '1', name: 'US | MOVIES' },
@@ -79,5 +79,43 @@ describe('popularity ordering', () => {
             { id: '3', name: 'NL | NETFLIX' },
         ];
         expect(sortCategoriesCountryFirst(mixed, 'DE').map((c) => c.id)).toEqual(['3', '2', '1']);
+    });
+});
+
+/**
+ * "Top 100" is what a viewer opens to see what is worth watching, and it
+ * names no service — so without its own key the popularity table leaves it
+ * in the long tail. The rule is `isTopHundredCategory()`'s: the normalized
+ * name *contains* the token, anywhere in it.
+ */
+describe('"Top 100" leads the ordering', () => {
+    it('matches the shapes a panel actually ships, and nothing that merely looks like them', () => {
+        expect(isTopHundredCategory('Top 100')).toBe(true);
+        expect(isTopHundredCategory('TOP 100')).toBe(true);
+        expect(isTopHundredCategory('┃NL┃ Top 100 Films')).toBe(true);
+        expect(isTopHundredCategory('Top100')).toBe(true);
+        expect(isTopHundredCategory('Top 1000')).toBe(false);
+        expect(isTopHundredCategory('Stop 100')).toBe(false);
+        expect(isTopHundredCategory('Top 50')).toBe(false);
+        expect(isTopHundredCategory('')).toBe(false);
+    });
+
+    it('puts it first even ahead of a named service, and keeps multiple matches in provider order', () => {
+        const withTop: XtreamCategory[] = [
+            { id: 'a', name: 'Turks nu te zien' },
+            { id: 'b', name: 'NL | NETFLIX' },
+            { id: 'c', name: 'NL | TOP 100 SERIES' },
+            { id: 'd', name: 'FR | FILMS' },
+            { id: 'e', name: 'Top 100' },
+        ];
+        expect(sortCategoriesCountryFirst(withTop, 'NL').map((c) => c.id)).toEqual(['c', 'e', 'b', 'a', 'd']);
+    });
+
+    it('leaves the rest of the order alone when the provider ships no Top 100', () => {
+        const none: XtreamCategory[] = [
+            { id: 'a', name: 'Turks nu te zien' },
+            { id: 'b', name: 'NL | NETFLIX' },
+        ];
+        expect(sortCategoriesCountryFirst(none, 'NL').map((c) => c.id)).toEqual(['b', 'a']);
     });
 });
