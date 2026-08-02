@@ -1499,42 +1499,46 @@
 
                             <!-- Right column: the preview. One <video> for every view
                                  (player/bindings.ts is its sole attach point and the visualizer's
-                                 Web Audio source); audio-only keeps it mounted but minimal
-                                 (.list-shell--split). Movies/TV Shows play through the same
-                                 setActiveChannel, so they get the pane too — without it Play gave
-                                 audio inside a `display: none` pane. One rule: no pane unless
-                                 something plays, which playerPaneVisible answers and persisted
-                                 player.active cannot. -->
+                                 Web Audio source); audio-only keeps it mounted but minimal.
+                                 Movies/TV Shows play through the same setActiveChannel, so they
+                                 get the pane too — without it Play gave audio inside a
+                                 `display: none` pane. One rule: no pane unless something plays,
+                                 which playerPaneVisible answers and player.active cannot. -->
                             <div
                                 class="now-playing"
                                 data-if="playerPaneVisible"
                                 data-testid="now-playing-pane"
                             >
                                 <!-- A class on the shell, never `:has(.radio-now-playing)`:
-                                     data-if only sets `display: none`, so a structural
-                                     selector matched in Live too and collapsed the video
-                                     (the "Live shows no picture" bug). `visualizerActive`
-                                     (player.selectors.ts) is Radio plus any audio-only TV. -->
+                                     data-if only sets `display: none`, so a structural selector
+                                     matched in Live too and collapsed the video (the "Live shows
+                                     no picture" bug). `visualizerActive` is Radio plus audio-only
+                                     TV. -->
                                 <div
                                     class="player-shell"
                                     :class="{ 'player-shell--audio': visualizerActive }"
                                     data-if="player.active"
                                     data-testid="player-shell"
                                 >
-                                    <!-- Moved above the video (was inside .player-shell__bar,
-                                         below it) so the title has its own full-width line
-                                         instead of fighting the control buttons for space and
-                                         truncating early. The audio-only pane already spells
-                                         the channel name across the visualizer, so this only
-                                         renders when a picture is playing. -->
-                                    <span class="player-shell__name truncate" data-if="!visualizerActive">{{ player.active.name }}</span>
+                                    <!-- Title row, above the video rather than in the bar below, so
+                                         the name gets a full line instead of truncating against the
+                                         buttons. Audio-only spells the name across the visualizer,
+                                         so the span hides there and the row shrinks to its close
+                                         button — how Radio gets closed too. Closing IS stopping:
+                                         the pane is on screen exactly while a stream is attached
+                                         (playerPaneVisible), so nothing else put it away. -->
+                                    <div class="player-shell__head">
+                                        <span class="player-shell__name truncate" data-if="!visualizerActive">{{ player.active.name }}</span>
+                                        <button type="button" class="icon-btn player-shell__close" data-action="click" data-fn="player/stop" :aria-label="strings.list.playerClose" :title="strings.list.playerClose" data-testid="player-close-btn">
+                                            <svg class="icon icon--s" aria-hidden="true"><use href="#icon-close"></use></svg>
+                                        </button>
+                                    </div>
                                     <video data-ref="playerVideo" class="player-shell__video" controls autoplay playsinline data-testid="player-video"></video>
-                                    <!-- Tapping the audio-only pane toggles playback, the same
-                                         way tapping the picture does (`src/player/bindings.ts`
-                                         wires the video side, which needs event geometry to
-                                         stay off the native control strip). Safe to bind
-                                         declaratively here: the visualizer canvas has no
-                                         controls of its own to compete with. -->
+                                    <!-- Tapping the audio-only pane toggles playback, as tapping
+                                         the picture does (player/bindings.ts wires the video side,
+                                         which needs event geometry to stay off the native control
+                                         strip). Safe declaratively here: the canvas has no controls
+                                         of its own to compete with. -->
                                     <div
                                         class="radio-now-playing"
                                         data-if="visualizerActive"
@@ -1548,15 +1552,15 @@
                                         <canvas class="radio-now-playing__canvas" data-ref="radioVisualizer" data-testid="radio-visualizer" aria-hidden="true"></canvas>
                                         <span class="radio-now-playing__name truncate">{{ player.active.name }}</span>
                                     </div>
-                                    <!-- Feature 21.6.4's next-episode offer; nothing auto-advances. Rationale in src/state/series.ts's SERIES_NEXT_PROMPT. -->
+                                    <!-- Feature 21.6.4's next-episode offer; nothing auto-advances. Rationale in state/series.ts's SERIES_NEXT_PROMPT. -->
                                     <div class="next-episode" data-if="series.nextPrompt" role="group" :aria-label="strings.catalog.series.nextAria" data-testid="next-episode">
                                         <span class="next-episode__label truncate">{{ strings.catalog.series.nextUpLabel }}: {{ series.nextPrompt.label }}</span>
                                         <button type="button" class="btn btn--primary" data-action="click" data-fn="series/playNext" data-testid="next-episode-play">{{ strings.catalog.series.nextPlay }}</button>
                                         <button type="button" class="btn" data-action="click" data-fn="series/dismissNext" data-testid="next-episode-dismiss">{{ strings.catalog.series.nextDismiss }}</button>
                                     </div>
                                     <div class="player-shell__bar">
-                                        <!-- Live stream-quality bars (src/player/stream-health.ts) —
-                                             lit count reflects stall frequency, engine-agnostic. -->
+                                        <!-- Live stream-quality bars (player/stream-health.ts): lit
+                                             count is stall frequency, engine-agnostic. -->
                                         <span
                                             class="signal"
                                             :class="'signal--' + (player.streamHealth ?? 'good')"
@@ -1574,10 +1578,10 @@
                                         <!-- Audio/subtitle track menus, each a centered, keyboard-
                                              navigable modal dialog (`.track-menu` below) — the old
                                              anchored popup clipped off the viewport's left edge.
-                                             Movies/Series only; a live channel has no per-title track
-                                             list. Rendered whatever the count: an empty list opens and
-                                             explains itself (.track-menu__empty) rather than hiding the
-                                             button, so the feature never looks broken. -->
+                                             Movies/Series only; a channel has no per-title tracks.
+                                             Rendered whatever the count: an empty list opens and
+                                             explains itself (.track-menu__empty) rather than hiding
+                                             the button, so it never looks broken. -->
                                         <div class="track-menu-anchor" data-if="view.movies.active || view.series.active">
                                             <button
                                                 type="button"
@@ -1843,26 +1847,20 @@
                                              the bar (margin-left: auto on this group) rather than
                                              sitting flush against the visualizer box. -->
                                         <div class="player-shell__actions">
-                                            <!-- No data-if: this whole shell only renders while
-                                                 something is playing, and everything that plays
-                                                 — Live, Radio, Categories, Movies, TV Shows —
-                                                 can be fullscreened (state/player.actions.ts
-                                                 picks the right element per view). -->
+                                            <!-- No data-if: this shell only renders while something
+                                                 plays, and everything that plays can be fullscreened
+                                                 (state/player.actions.ts picks the element). -->
                                             <button type="button" class="btn" data-action="click" data-fn="player/fullscreen" data-testid="player-fullscreen-btn">
                                                 {{ strings.list.playerFullscreen }}
                                             </button>
-                                            <!-- No Stop/Play button: `<video controls>` carries
-                                                 one and .radio-now-playing toggles on tap, so a
-                                                 third copy was clutter. player/togglePlayback
-                                                 and player.paused still serve both. -->
-                                            <!-- Handoff (Phase 38, stone 9). The link is shown
-                                                 as well as copied: most TV webviews have no
-                                                 clipboard at all, and a button that silently
-                                                 does nothing there is worse than one that just
-                                                 puts the address on screen to be typed. Hidden
-                                                 by default (Settings → Playback's
-                                                 `showHandoffButton` toggle) — most viewers never
-                                                 use it. -->
+                                            <!-- No Play/Pause here: `<video controls>` carries one
+                                                 and .radio-now-playing toggles on tap. Stop lives by
+                                                 the title above, as the pane's close. -->
+                                            <!-- Handoff (Phase 38, stone 9). The link is shown as
+                                                 well as copied: most TV webviews have no clipboard,
+                                                 and a button that silently does nothing is worse
+                                                 than one that puts the address on screen to be
+                                                 typed. Off by default (Settings → Playback). -->
                                             <button
                                                 type="button"
                                                 class="btn"

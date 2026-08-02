@@ -45,7 +45,7 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url));
  * panel it replaces came out too).
  */
 const BUDGETS = [
-    { path: 'index.html', maxLines: 3529, maxBytes: 245_967 },
+    { path: 'index.html', maxLines: 3527, maxBytes: 245_961 },
 ];
 
 let failed = false;
